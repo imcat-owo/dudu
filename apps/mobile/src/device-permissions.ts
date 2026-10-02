@@ -133,52 +133,16 @@ export async function checkNotificationPermission(): Promise<PermissionStatus> {
   }
 }
 
-/** Bluetooth — react-native-ble-plx (lazy; may be unavailable) */
+/** Bluetooth — not yet implemented (requires native BLE module). */
 export type BleDevice = { id: string; name: string | null; rssi: number | null };
 
 export async function checkBluetoothAvailable(): Promise<boolean> {
-  try {
-    // Lazy: BLE native module is optional.
-    require("react-native-ble-plx");
-    return true;
-  } catch {
-    return false;
-  }
+  // BLE native module not bundled yet. Return false so UI shows "Unavailable".
+  return false;
 }
 
 export async function scanBluetoothDevices(timeoutMs = 8000): Promise<BleDevice[]> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { BleManager } = require("react-native-ble-plx") as typeof import("react-native-ble-plx");
-  const manager = new BleManager();
-  try {
-    const state = await manager.state();
-    if (state !== "PoweredOn") {
-      throw new Error(`Bluetooth is ${state}. Turn it on and try again.`);
-    }
-    const found = new Map<string, BleDevice>();
-    try {
-      return await new Promise<BleDevice[]>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          manager.stopDeviceScan();
-          resolve([...found.values()]);
-        }, timeoutMs);
-        manager.startDeviceScan(null, null, (error, device) => {
-          if (error) {
-            clearTimeout(timer);
-            reject(error);
-            return;
-          }
-          if (device?.id && !found.has(device.id)) {
-            found.set(device.id, { id: device.id, name: device.name, rssi: device.rssi });
-          }
-        });
-      });
-    } finally {
-      manager.stopDeviceScan();
-    }
-  } finally {
-    manager.destroy();
-  }
+  throw new Error("Bluetooth scanning is not available in this build.");
 }
 
 export const requesters: Record<PermissionKind, () => Promise<PermissionStatus>> = {
