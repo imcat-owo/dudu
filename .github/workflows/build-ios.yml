@@ -1,0 +1,76 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/build-ios.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - name: Expo prebuild (generate ios/)
+        run: pnpm exec expo prebuild --platform ios --clean
+        env:
+          CI: 1
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Build with xcodebuild (unsigned)
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace OpenMuse.xcworkspace \
+            -scheme OpenMuse \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          cd ios/build/Build/Products/Release-iphoneos
+          APP=$(ls -d *.app | head -1)
+          echo "App bundle: $APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -r OpenMuse-unsigned.ipa Payload
+          ls -lh OpenMuse-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenMuse-unsigned-ipa
+          path: apps/mobile/ios/build/Build/Products/Release-iphoneos/OpenMuse-unsigned.ipa
+          retention-days: 14
