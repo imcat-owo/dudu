@@ -655,7 +655,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
             directory.entries.length === 0 && (
               <Empty
                 icon={Folder}
-                title="A little space to create"
+                title="一点创作空间"
                 detail="Add a file here, or ask your agent to make one in its workspace."
               />
             )}

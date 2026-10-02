@@ -82,7 +82,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="Device permissions" subtitle="What the assistant may access" onClose={onClose}>
+    <Sheet title="设备权限" subtitle="What the assistant may access" onClose={onClose}>
       <View style={{ gap: 4 }}>
         <Text style={s.muted}>
           The assistant has full access inside the app. Anything crossing the app boundary asks

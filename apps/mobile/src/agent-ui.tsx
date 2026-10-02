@@ -204,7 +204,7 @@ export function AgentActivityScreen() {
       {!tasks.length && (
         <Empty
           icon={ListChecks}
-          title="A place for the work"
+          title="工作的地方"
           detail="Delegate a task in Chat. Its plan, progress and results stay here."
         />
       )}
@@ -901,7 +901,7 @@ export function DelegateSheet() {
   }
   return (
     <Sheet
-      title="Hand over an outcome"
+      title="交付成果"
       subtitle="OpenMuse saves a plan and keeps working on the server."
       onClose={close}
     >
@@ -1628,7 +1628,7 @@ export function NotificationsSheet() {
   }
   return (
     <Sheet
-      title="Notifications"
+      title="通知"
       subtitle="Results and decisions that need your attention."
       onClose={close}
     >
@@ -1805,7 +1805,7 @@ export function AppsScreen() {
             </Button>
           </Card>
           <Card style={{ gap: 12 }}>
-            <SectionHeading title="Memory" />
+            <SectionHeading title="记忆" />
             <Text style={s.muted}>Context you can inspect, correct or forget.</Text>
             {data?.memories.map((item) => (
               <MemoryRow key={item.id} memory={item} />

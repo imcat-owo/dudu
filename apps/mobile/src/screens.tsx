@@ -269,7 +269,7 @@ export function TodayScreen() {
         </Card>
         <Card style={{ flex: 1 }}>
           <SectionHeading
-            title="From your inbox"
+            title="来自收件箱"
             action="Open mail"
             onPress={() => navigate("mail")}
           />
@@ -311,7 +311,7 @@ export function TodayScreen() {
           ) : (
             <Empty
               icon={Inbox}
-              title="Inbox is quiet"
+              title="收件箱很安静"
               detail="Connect Google to bring your messages here."
             />
           )}
@@ -319,7 +319,7 @@ export function TodayScreen() {
       </View>
       <View style={{ flexDirection: wide ? "row" : "column", gap: 22 }}>
         <Card style={{ flex: 1, backgroundColor: "#F0F0E7" }}>
-          <SectionHeading title="A hand with the little things" />
+          <SectionHeading title="帮你处理小事" />
           <Text style={[s.muted, { marginBottom: 15 }]}>
             Start with a thought. We’ll take it from there.
           </Text>
@@ -525,7 +525,7 @@ export function MailScreen() {
           ) : (
             <Empty
               icon={Mail}
-              title="A fresh page"
+              title="新的一页"
               detail="Messages you save as drafts will be here when you’re ready."
             />
           )
@@ -800,7 +800,7 @@ export function CalendarScreen() {
           !error && (
             <Empty
               icon={CalendarDays}
-              title="A little open space"
+              title="一点开放空间"
               detail={
                 all
                   ? "There’s nothing scheduled for the next 30 days."
@@ -872,7 +872,7 @@ export function BrowserScreen() {
         <ErrorNotice error={error} />
       </Card>
       <Card>
-        <SectionHeading title="Browser sessions" />
+        <SectionHeading title="浏览器会话" />
         {w.browsers.length ? (
           w.browsers.map((b) => (
             <Pressable

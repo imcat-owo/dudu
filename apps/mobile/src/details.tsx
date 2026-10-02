@@ -71,7 +71,7 @@ export function Details({ detail }: { detail: Detail }) {
   if (detail.type === "review") return <ReviewDetail initial={detail.action} />;
   if (detail.type === "browser") return <BrowserDetail initial={detail.browser} />;
   return (
-    <Sheet title="Your workspace" subtitle="A little room for everything." onClose={close}>
+    <Sheet title="Your workspace" subtitle="万物皆有容身之处。" onClose={close}>
       {[
         { section: "mail" as const, title: "Mail", icon: MailIcon },
         { section: "calendar" as const, title: "Calendar", icon: CalendarDays },
@@ -801,7 +801,7 @@ function FileDetail({ file: f }: { file: Artifact }) {
       </View>
       {f.fields && f.fields.length > 0 && (
         <Card>
-          <SectionHeading title="Fill this form" />
+          <SectionHeading title="填写此表单" />
           <Text style={[s.muted, { marginBottom: 18 }]}>
             Add your details below. Saving creates a new copy and keeps the original intact.
           </Text>

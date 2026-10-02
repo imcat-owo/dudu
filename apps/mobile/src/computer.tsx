@@ -154,7 +154,7 @@ export function ComputerSheet() {
   }
   return (
     <Sheet
-      title="Agent computer"
+      title="Agent 电脑"
       subtitle="Your agent works here. Step in whenever you need."
       onClose={close}
     >

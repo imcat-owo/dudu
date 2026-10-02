@@ -150,7 +150,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
           <>
             <LinkRow
               icon={MessageCircle}
-              title="Main chat"
+              title="主聊天"
               detail="Your ongoing conversation"
               onPress={() => {
                 select({ id: mainId, existing: true });
@@ -285,7 +285,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
           <>
             <LinkRow
               icon={MessageCircle}
-              title="Main chat"
+              title="主聊天"
               detail="Saved in this workspace"
               onPress={() => {
                 navigate("chat");
@@ -300,7 +300,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
         <View style={s.divider} />
         <LinkRow
           icon={Plus}
-          title="Delegate task"
+          title="委派任务"
           detail="A plan, document, or spending summary"
           onPress={() => {
             onClose();
@@ -309,16 +309,16 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
         />
         <LinkRow
           icon={Monitor}
-          title="Agent computer"
+          title="Agent 电脑"
           detail="Browser, sessions and documents"
           onPress={() => {
             onClose();
             open({ type: "computer" });
           }}
         />
-        <LinkRow icon={CalendarDays} title="Calendar" onPress={() => go("calendar")} />
-        <LinkRow icon={FileText} title="Files" onPress={() => go("files")} />
-        <LinkRow icon={Settings2} title="Apps & settings" onPress={() => go("apps")} />
+        <LinkRow icon={CalendarDays} title="日历" onPress={() => go("calendar")} />
+        <LinkRow icon={FileText} title="文件" onPress={() => go("files")} />
+        <LinkRow icon={Settings2} title="应用和设置" onPress={() => go("apps")} />
         <Button small icon={RefreshCw} onPress={() => void mutate(refresh)}>
           Refresh workspace
         </Button>
