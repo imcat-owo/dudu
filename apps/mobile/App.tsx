@@ -112,26 +112,26 @@ export default function App() {
             <Text
               style={{ fontSize: 32, color: colors.text, letterSpacing: -1, fontWeight: "500" }}
             >
-              Welcome to OpenMuse.
+              欢迎来到 OpenMuse。
             </Text>
-            <Text style={[s.muted, { textAlign: "center" }]}>A little room for your day.</Text>
+            <Text style={[s.muted, { textAlign: "center" }]}>给你的一天留个小房间。</Text>
             {busy ? (
               <ActivityIndicator color={colors.blueDark} />
             ) : (
               <Card style={{ width: "100%" }}>
                 <ErrorNotice error={error} />
                 <Field
-                  label="Workspace access key"
+                  label="工作区访问密钥"
                   value={accessKey}
                   onChangeText={setAccessKey}
                   secureTextEntry
-                  placeholder="Required for a live workspace"
+                  placeholder="连接线上工作区需要"
                 />
                 <Button primary onPress={() => void connect(accessKey || undefined)}>
                   Open workspace
                 </Button>
                 <Text style={[s.small, { marginTop: 15 }]}>
-                  Local workspaces open without a key. Make sure your OpenMuse server is running at{" "}
+                  本地工作区无需密钥。请确保 OpenMuse 服务器正在运行于{" "}
                   {API_URL}.
                 </Text>
               </Card>

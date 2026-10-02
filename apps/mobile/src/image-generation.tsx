@@ -83,7 +83,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
       {failed ? (
         <View style={{ padding: 20, alignItems: "center" }}>
           <Text style={[s.muted, { textAlign: "center" }]}>
-            Couldn't load the image.{"\n"}Try again with /img.
+            图片加载失败。{"\n"}用 /img 再试一次。
           </Text>
         </View>
       ) : (
@@ -102,7 +102,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
               }}
             >
               <ActivityIndicator size="large" color={colors.blue} />
-              <Text style={[s.muted, { marginTop: 8 }]}>Painting…</Text>
+              <Text style={[s.muted, { marginTop: 8 }]}>画画中…</Text>
             </View>
           )}
           <Image
