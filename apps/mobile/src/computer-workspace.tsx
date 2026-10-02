@@ -125,7 +125,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
         <View style={[s.row, { gap: 12 }]}>
           <Terminal size={24} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={s.heading}>Your Linux workspace</Text>
+            <Text style={s.heading}>你的 Linux 工作区</Text>
             <Text style={s.muted}>
               {running
                 ? "Running · files persist when stopped"
@@ -320,7 +320,7 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
             </Text>
           )}
           {!run.stdout && !run.stderr && run.status !== "running" && (
-            <Text style={s.small}>No output</Text>
+            <Text style={s.small}>无输出</Text>
           )}
           {run.truncated && (
             <Text style={s.small}>
@@ -471,7 +471,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
   return (
     <View style={{ gap: 12 }}>
       <View style={s.between}>
-        <Text style={s.heading}>Workspace files</Text>
+        <Text style={s.heading}>工作区文件</Text>
         {(busy || loading) && <ActivityIndicator color={colors.blueDark} />}
       </View>
       <Text selectable style={[s.small, { fontFamily: mono }]}>
@@ -582,7 +582,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
           </View>
           {importing && (
             <Card>
-              <Text style={s.heading}>Choose a saved PDF</Text>
+              <Text style={s.heading}>选择已保存的 PDF</Text>
               <Text style={[s.small, { marginTop: 6 }]}>
                 Copies into this folder. A file with the same name will be replaced.
               </Text>

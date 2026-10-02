@@ -432,7 +432,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           </View>
           {task.status === "waiting_approval" && (
             <Card style={{ backgroundColor: colors.lavender, gap: 12 }}>
-              <Text style={s.heading}>Ready for your review</Text>
+              <Text style={s.heading}>等待你的审核</Text>
               <Text style={s.muted}>Review the exact action and account before it proceeds.</Text>
               <Button primary busy={busy} onPress={() => void review()}>
                 Review action
@@ -469,7 +469,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                   value={answer}
                   onChangeText={setAnswer}
                   multiline
-                  placeholder="Add the missing details…"
+                  placeholder="补充缺失的细节…"
                 />
               )}
               {task.kind === "document" && !fieldNames.length && (
@@ -501,7 +501,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           )}
           {!!task.plan.length && (
             <Card style={{ gap: 15 }}>
-              <Text style={s.heading}>Plan</Text>
+              <Text style={s.heading}>计划</Text>
               {task.plan.map((step, index) => (
                 <View key={step.id} style={[s.row, { gap: 10, alignItems: "flex-start" }]}>
                   <Text
@@ -584,11 +584,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           ))}
           {!!task.evidence.length && (
             <View style={{ gap: 14 }}>
-              <Text style={s.heading}>Sources</Text>
+              <Text style={s.heading}>来源</Text>
               <EvidenceList items={task.evidence} />
             </View>
           )}
-          <Text style={s.heading}>Timeline</Text>
+          <Text style={s.heading}>时间线</Text>
           {detail?.events.map((event) => (
             <View
               key={event.id}
@@ -791,7 +791,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
         <View style={[s.row, { gap: 11, paddingHorizontal: 8, paddingTop: 13, paddingBottom: 4 }]}>
           <Text style={{ fontSize: 25 }}>💸</Text>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[s.text, { fontWeight: "600" }]}>Finance tracker</Text>
+            <Text style={[s.text, { fontWeight: "600" }]}>财务追踪</Text>
             <Text style={s.small}>Spending, savings, and a plan for what’s next.</Text>
           </View>
           <ChevronRight size={17} color={colors.muted} />
@@ -799,7 +799,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
       </Pressable>
       {details && (
         <View style={{ gap: 16, padding: 10 }}>
-          <Text style={s.label}>Where your money went</Text>
+          <Text style={s.label}>你的钱花在哪了</Text>
           {categories.map((category) => {
             const row = record(category);
             if (!row) return null;
@@ -833,7 +833,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 label="Turn this into a savings goal"
                 value={goalTitle}
                 onChangeText={setGoalTitle}
-                placeholder="What would you like to save for?"
+                placeholder="你想为什么存钱？"
               />
               <ErrorNotice error={goalError} />
               <Button
@@ -927,7 +927,7 @@ export function DelegateSheet() {
       />
       {kind === "document" && (
         <View style={{ gap: 8, marginBottom: 18 }}>
-          <Text style={s.heading}>Choose the email with the PDF</Text>
+          <Text style={s.heading}>选择带 PDF 的邮件</Text>
           {workspace.mail
             .filter((mail) => mail.attachments.length)
             .map((mail) => (
@@ -1014,7 +1014,7 @@ export function IdeasScreen() {
     <View style={{ gap: 20 }}>
       <AgentStatus />
       <View style={s.between}>
-        <Text style={s.small}>Inspired by your connected apps</Text>
+        <Text style={s.small}>来自你连接的应用</Text>
         <Button small icon={RefreshCw} busy={busy} onPress={() => void refreshIdeas()}>
           Find ideas
         </Button>
@@ -1035,7 +1035,7 @@ export function IdeasScreen() {
         .map((idea) => (
           <Card key={idea.id} style={{ gap: 7 }}>
             <Text style={s.heading}>{idea.title}</Text>
-            <Chip tint={colors.green}>Started</Chip>
+            <Chip tint={colors.green}>已开始</Chip>
             {!!idea.taskId && <TaskLink taskId={idea.taskId} />}
           </Card>
         ))}
@@ -1160,7 +1160,7 @@ export function GoalsScreen() {
                 backgroundColor: "#24A46B",
               }}
             />
-            <Text style={[s.heading, { color: "#189A58" }]}>Tracking</Text>
+            <Text style={[s.heading, { color: "#189A58" }]}>追踪</Text>
           </View>
           <Button small icon={Plus} onPress={() => setAdding("Tracking")}>
             Track
@@ -1210,7 +1210,7 @@ export function GoalsScreen() {
               backgroundColor: "#3D9BDE",
             }}
           />
-          <Text style={[s.heading, { color: colors.blueDark }]}>Goals</Text>
+          <Text style={[s.heading, { color: colors.blueDark }]}>目标</Text>
         </View>
         {data?.goals.map((item) => (
           <Pressable
@@ -1241,7 +1241,7 @@ export function GoalsScreen() {
         )}
       </View>
       <View style={{ height: 1, backgroundColor: colors.line }} />
-      <Text style={s.heading}>Create a goal</Text>
+      <Text style={s.heading}>创建目标</Text>
       {[
         { name: "Health", icon: Heart },
         { name: "Relationships", icon: Users },
@@ -1318,7 +1318,7 @@ function GoalForm({ onDone, category }: { onDone: () => void; category?: string 
         label="Your goal"
         value={title}
         onChangeText={setTitle}
-        placeholder="Build a three-month emergency fund"
+        placeholder="建立三个月的应急基金"
       />
       <Field
         label="What does success look like?"
@@ -1468,7 +1468,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
         label="What are you watching?"
         value={title}
         onChangeText={setTitle}
-        placeholder="A table at my favorite restaurant"
+        placeholder="在我最喜欢的餐厅订个桌子"
       />
       {workspace.mode === "sample" && (
         <CheckRow
@@ -1486,7 +1486,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
           placeholder="https://example.com/product"
         />
       )}
-      <Text style={[s.small, { marginBottom: 10 }]}>Notify me when</Text>
+      <Text style={[s.small, { marginBottom: 10 }]}>当…时通知我</Text>
       <View style={[s.row, { gap: 7, flexWrap: "wrap", marginBottom: 16 }]}>
         {(["change", "contains", "price_below"] as const).map((item) => (
           <Button small primary={condition === item} key={item} onPress={() => setCondition(item)}>
@@ -1641,7 +1641,7 @@ export function NotificationsSheet() {
           >
             <View style={s.between}>
               <Text style={s.heading}>{item.title}</Text>
-              {!item.read && <Chip>New</Chip>}
+              {!item.read && <Chip>新建</Chip>}
             </View>
             <Text style={s.muted}>{item.body}</Text>
             <Text style={s.small}>{stamp(item.createdAt)}</Text>
@@ -1731,10 +1731,10 @@ export function AppsScreen() {
         label="Search apps"
         value={query}
         onChangeText={setQuery}
-        placeholder="Search connectors"
+        placeholder="搜索连接器"
       />
       <ConnectionsScreen query={query} />
-      <Text style={s.heading}>On your computer</Text>
+      <Text style={s.heading}>在你的电脑上</Text>
       <Card style={{ paddingVertical: 3, backgroundColor: "#F4F5F6" }}>
         {shortcuts
           .filter((item) =>
@@ -1814,7 +1814,7 @@ export function AppsScreen() {
               label="Remember something about me"
               value={memory}
               onChangeText={setMemory}
-              placeholder="I prefer morning meetings"
+              placeholder="我更喜欢早上的会议"
             />
             <Button
               busy={busy}

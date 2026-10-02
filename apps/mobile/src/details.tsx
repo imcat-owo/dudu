@@ -184,7 +184,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
         </Card>
       ))}
       <ErrorNotice error={error} />
-      {!!error && <Button onPress={() => setRetry(retry + 1)}>Reload conversation</Button>}
+      {!!error && <Button onPress={() => setRetry(retry + 1)}>重新加载对话</Button>}
       <Button
         primary
         icon={Reply}
@@ -286,7 +286,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
             label="Cc"
             value={cc}
             onChangeText={setCc}
-            placeholder="Optional"
+            placeholder="可选"
             autoCapitalize="none"
           />
         </View>
@@ -295,7 +295,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
             label="Bcc"
             value={bcc}
             onChangeText={setBcc}
-            placeholder="Optional"
+            placeholder="可选"
             autoCapitalize="none"
           />
         </View>
@@ -304,19 +304,19 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
         label="Subject"
         value={subject}
         onChangeText={setSubject}
-        placeholder="What’s on your mind?"
+        placeholder="你在想什么？"
       />
       <Field
         label="Message"
         value={body}
         onChangeText={setBody}
         multiline
-        placeholder="Start your message…"
+        placeholder="开始你的消息…"
         style={{ minHeight: 210 }}
       />
       {w.files.length > 0 && (
         <Card style={{ padding: 16, marginBottom: 18 }}>
-          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>Attachments</Text>
+          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>附件</Text>
           {w.files.map((f) => (
             <CheckRow
               key={f.id}
@@ -447,7 +447,7 @@ function EventEditor({
         label="Event title"
         value={title}
         onChangeText={setTitle}
-        placeholder="What are you making time for?"
+        placeholder="你要为什么安排时间？"
       />
       <CheckRow
         label="All-day event"
@@ -494,24 +494,24 @@ function EventEditor({
         label="Location or meeting link"
         value={location}
         onChangeText={setLocation}
-        placeholder="Optional"
+        placeholder="可选"
       />
       <Field
         label="Attendees"
         value={attendees}
         onChangeText={setAttendees}
-        placeholder="Email addresses, separated by commas"
+        placeholder="邮箱地址，用逗号分隔"
       />
       <Field
         label="Notes"
         value={description}
         onChangeText={setDescription}
         multiline
-        placeholder="Anything else to keep in mind?"
+        placeholder="还有其他要注意的吗？"
       />
       {!!conflicts.length && (
         <Card style={{ backgroundColor: colors.orange, padding: 16, marginBottom: 16 }}>
-          <Text style={s.heading}>This time overlaps</Text>
+          <Text style={s.heading}>这个时间重叠了</Text>
           {conflicts.map((c) => (
             <Text key={c.id} style={s.muted}>
               {c.title} · {timeLabel(c.start, c.timeZone)}–{timeLabel(c.end, c.timeZone)}
@@ -622,7 +622,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
               {String(d.body || "")}
             </Text>
             <View style={s.divider} />
-            <Text style={s.label}>Attachments</Text>
+            <Text style={s.label}>附件</Text>
             {Array.isArray(d.attachmentIds) && d.attachmentIds.length ? (
               d.attachmentIds.map((id) => {
                 const file = w.files.find((f) => f.id === id);
@@ -633,7 +633,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
                 );
               })
             ) : (
-              <Text style={s.muted}>No attachments</Text>
+              <Text style={s.muted}>无附件</Text>
             )}
           </>
         ) : (
@@ -942,7 +942,7 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
       {loading ? (
         <View style={[s.row, { gap: 10, paddingVertical: 24 }]}>
           {error ? (
-            <Button onPress={() => setRetry(retry + 1)}>Retry connection</Button>
+            <Button onPress={() => setRetry(retry + 1)}>重试连接</Button>
           ) : (
             <>
               <ActivityIndicator color={colors.blueDark} />

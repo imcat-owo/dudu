@@ -141,7 +141,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
           <>
             <ErrorNotice error={mainError} />
             {mainError ? (
-              <Button onPress={retry}>Retry main chat</Button>
+              <Button onPress={retry}>重试主聊天</Button>
             ) : (
               <ActivityIndicator color={colors.blueDark} />
             )}
@@ -168,7 +168,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               New side chat
             </Button>
             <View style={[s.between, { marginTop: 12 }]}>
-              <Text style={s.heading}>Side chats</Text>
+              <Text style={s.heading}>侧边聊天</Text>
               <Button small onPress={() => setArchived(!archived)}>
                 {archived ? "Show active" : "Archived"}
               </Button>

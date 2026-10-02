@@ -158,7 +158,7 @@ export function TodayScreen() {
               ]}
             >
               <Check size={14} color="#739174" />
-              <Text style={s.small}>A lighter day</Text>
+              <Text style={s.small}>轻松的一天</Text>
             </View>
             <View
               style={[
@@ -264,7 +264,7 @@ export function TodayScreen() {
             ]}
           >
             <Plus size={15} color={colors.muted} />
-            <Text style={s.small}>Make time for something</Text>
+            <Text style={s.small}>安排点时间</Text>
           </Pressable>
         </Card>
         <Card style={{ flex: 1 }}>
@@ -487,7 +487,7 @@ export function MailScreen() {
           <Search size={16} color={colors.muted} />
           <TextInput
             accessibilityLabel="Search mail"
-            placeholder="Search your inbox"
+            placeholder="搜索收件箱"
             placeholderTextColor={colors.muted}
             value={query}
             onChangeText={setQuery}
@@ -698,7 +698,7 @@ export function CalendarScreen() {
       </View>
       {calendars.length > 0 && (
         <View style={{ gap: 9 }}>
-          <Text style={s.label}>Your calendars</Text>
+          <Text style={s.label}>你的日历</Text>
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {calendars.map((c) => (
               <Button
@@ -844,8 +844,8 @@ export function BrowserScreen() {
         <View style={[s.row, { gap: 12, marginBottom: 15 }]}>
           <Globe2 size={22} color={colors.blueDark} />
           <View>
-            <Text style={s.heading}>A place for your open tabs</Text>
-            <Text style={s.muted}>Browse in a private, persistent workspace session.</Text>
+            <Text style={s.heading}>打开标签页的位置</Text>
+            <Text style={s.muted}>在私密、持久的工作区会话中浏览。</Text>
           </View>
         </View>
         <View style={[s.row, { gap: 10 }]}>
@@ -1285,7 +1285,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   </View>
                   <Text style={[s.text, { flex: 1 }]}>{row.name}</Text>
                   {row.connected && row.group === "google" && w.mode === "sample" && (
-                    <Text style={s.small}>Local data</Text>
+                    <Text style={s.small}>本地数据</Text>
                   )}
                   {row.connected ? (
                     <ChevronRight size={18} color="#A4A7AA" />

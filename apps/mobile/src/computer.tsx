@@ -70,7 +70,7 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>Browser</Text>
+          <Text style={[s.text, { fontWeight: "600" }]}>浏览器</Text>
           <Text numberOfLines={1} style={s.small}>
             {browser.status === "closed"
               ? "Session saved"
@@ -230,7 +230,7 @@ export function ComputerSheet() {
           </>
         ) : tab === "Files" ? (
           <>
-            <Text style={s.heading}>Documents</Text>
+            <Text style={s.heading}>文档</Text>
             <Text style={s.small}>PDFs saved from mail, browser downloads, and your uploads.</Text>
             {workspace.files.map((file) => (
               <LinkRow

@@ -196,8 +196,8 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
         {preferredOption && !selectedId && (
           <Text style={s.small}>Previous preference: {preferredOption.label}</Text>
         )}
-        {stale && <Text style={s.small}>Earlier choices</Text>}
-        {selectedId && <Text style={s.small}>Choice submitted</Text>}
+        {stale && <Text style={s.small}>之前的选择</Text>}
+        {selectedId && <Text style={s.small}>选择已提交</Text>}
       </View>
       {panel.type === "clarification" ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

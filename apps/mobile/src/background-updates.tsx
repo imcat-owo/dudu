@@ -30,7 +30,7 @@ export function BackgroundUpdates() {
       <View style={[s.between, { gap: 12 }]}>
         <View style={[s.row, { gap: 7 }]}>
           <Bell size={14} color={colors.blueDark} />
-          <Text style={s.small}>An update for you</Text>
+          <Text style={s.small}>给你的更新</Text>
         </View>
         <Pressable
           accessibilityRole="button"

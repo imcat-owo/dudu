@@ -100,7 +100,7 @@ export function BrowserToolCard({
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1, gap: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>Browser</Text>
+          <Text style={[s.text, { fontWeight: "600" }]}>浏览器</Text>
           <Text numberOfLines={1} style={[s.small, { fontSize: 12 }]}>
             {working
               ? "Reading the page…"
