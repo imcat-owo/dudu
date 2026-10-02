@@ -141,7 +141,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
       {loading && (
         <View style={[s.row, { gap: 10, paddingBottom: 20 }]}>
           <ActivityIndicator color={colors.blueDark} />
-          <Text style={s.muted}>Loading the conversation…</Text>
+          <Text style={s.muted}>加载对话中…</Text>
         </View>
       )}
       {thread.map((message) => (
@@ -354,7 +354,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
         </Button>
       </View>
       <Text style={[s.small, { marginTop: 13 }]}>
-        You’ll review the exact recipients, message, and attachments before anything is sent.
+        你会核对具体的收件人、消息和附件 before anything is sent.
       </Text>
     </Sheet>
   );
@@ -481,7 +481,7 @@ function EventEditor({
       <DateTimeEditor label="Ends" value={end} onChange={setEnd} timeZone={zone} allDay={allDay} />
       {allDay && (
         <Text style={[s.small, { marginBottom: 15 }]}>
-          The end date is the day after the last day of your event.
+          结束日期是你活动最后一天的后一天。
         </Text>
       )}
       <Field
@@ -803,7 +803,7 @@ function FileDetail({ file: f }: { file: Artifact }) {
         <Card>
           <SectionHeading title="填写此表单" />
           <Text style={[s.muted, { marginBottom: 18 }]}>
-            Add your details below. Saving creates a new copy and keeps the original intact.
+            在下面填写详情。保存会创建新副本并保留 the original intact.
           </Text>
           {f.fields.map((field) =>
             field.type === "unsupported" ? (
@@ -946,7 +946,7 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
           ) : (
             <>
               <ActivityIndicator color={colors.blueDark} />
-              <Text style={s.muted}>Connecting to your browser…</Text>
+              <Text style={s.muted}>连接浏览器中…</Text>
             </>
           )}
         </View>

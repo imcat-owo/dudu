@@ -219,19 +219,19 @@ export function ComputerSheet() {
               ))}
             {!workspace.browsers.length && (
               <Text style={s.muted}>
-                Open a page here or ask your agent to research something. Its browsing sessions will
+                在这里打开页面，或让你的 agent 去查点东西。s browsing sessions will
                 appear here.
               </Text>
             )}
             <Text style={s.small}>
-              Browsing sessions keep their own logins and downloads. Open one to take over, then
+              浏览会话有自己的登录和下载。打开 one to take over, then
               return to your conversation.
             </Text>
           </>
         ) : tab === "Files" ? (
           <>
             <Text style={s.heading}>文档</Text>
-            <Text style={s.small}>PDFs saved from mail, browser downloads, and your uploads.</Text>
+            <Text style={s.small}>从邮件保存的 PDF、浏览器下载和你的上传。</Text>
             {workspace.files.map((file) => (
               <LinkRow
                 key={file.id}

@@ -118,7 +118,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
     return (
       <View style={[s.row, { gap: 10, padding: 14 }]}>
         <ActivityIndicator size="small" color={colors.blueDark} />
-        <Text style={s.muted}>Preparing choices…</Text>
+        <Text style={s.muted}>准备选项中…</Text>
       </View>
     );
   }
@@ -191,8 +191,8 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
     <Card style={{ width: "100%", maxWidth: 440, padding: 17, gap: 13 }}>
       <View style={{ gap: 5 }}>
         <Text style={s.heading}>{panel.title}</Text>
-        {panel.mode === "sample" && <Text style={s.small}>Sample · scripted decisions</Text>}
-        {panel.mode === "live" && <Text style={s.small}>Live Jev · model decisions</Text>}
+        {panel.mode === "sample" && <Text style={s.small}>示例·预设决策</Text>}
+        {panel.mode === "live" && <Text style={s.small}>实时 Jev·模型决策</Text>}
         {preferredOption && !selectedId && (
           <Text style={s.small}>Previous preference: {preferredOption.label}</Text>
         )}

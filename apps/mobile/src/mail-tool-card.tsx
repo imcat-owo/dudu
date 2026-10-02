@@ -77,7 +77,7 @@ export function MailToolCard({
     .safeParse(value);
   if (!parsed.success) return <ErrorNotice error="The email could not be displayed." />;
   const message = parsed.data.messages.at(-1);
-  if (!message) return <Text style={s.muted}>No messages in this thread.</Text>;
+  if (!message) return <Text style={s.muted}>这个帖子里没有消息。</Text>;
   return (
     <Card
       style={{ padding: 18, gap: 14, backgroundColor: "#F0EFF2", maxWidth: 440, width: "100%" }}
@@ -100,7 +100,7 @@ export function MailToolCard({
       <Text style={s.muted} numberOfLines={3}>
         {message.body}
       </Text>
-      {parsed.data.truncated && <Text style={s.small}>Showing an excerpt of this thread.</Text>}
+      {parsed.data.truncated && <Text style={s.small}>显示这个帖子的摘要。</Text>}
       <Button small icon={Mail} onPress={() => open({ type: "mail", mail: message })}>
         Open email
       </Button>

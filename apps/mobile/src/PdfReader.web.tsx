@@ -46,7 +46,7 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
         src={`${url}#page=${page}&zoom=${zoom}`}
         style={{ height: 570, width: "100%", border: 0, borderRadius: 12, background: "#e7e9e3" }}
       />
-      <Text style={s.small}>Use the reader toolbar to download or print a copy.</Text>
+      <Text style={s.small}>用阅读器工具栏下载或打印。</Text>
     </View>
   );
 }

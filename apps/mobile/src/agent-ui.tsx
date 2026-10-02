@@ -85,7 +85,7 @@ export function AgentStatus() {
       )}
       {!data && !error && <ActivityIndicator color={colors.blueDark} />}
       {data && !data.worker.running && (
-        <Text style={s.small}>Worker is offline. Saved work will continue when it reconnects.</Text>
+        <Text style={s.small}>Worker 离线。重连后已保存的工作会继续。ts.</Text>
       )}
     </View>
   );
@@ -433,7 +433,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           {task.status === "waiting_approval" && (
             <Card style={{ backgroundColor: colors.lavender, gap: 12 }}>
               <Text style={s.heading}>等待你的审核</Text>
-              <Text style={s.muted}>Review the exact action and account before it proceeds.</Text>
+              <Text style={s.muted}>执行前请核对具体的操作和账号。</Text>
               <Button primary busy={busy} onPress={() => void review()}>
                 Review action
               </Button>
@@ -604,7 +604,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
             </View>
           ))}
           {!detail?.events.length && (
-            <Text style={s.muted}>The worker will record each step here.</Text>
+            <Text style={s.muted}>Worker 会在这里记录每一步。</Text>
           )}
         </View>
       )}
@@ -792,7 +792,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
           <Text style={{ fontSize: 25 }}>💸</Text>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[s.text, { fontWeight: "600" }]}>财务追踪</Text>
-            <Text style={s.small}>Spending, savings, and a plan for what’s next.</Text>
+            <Text style={s.small}>支出、储蓄，以及下一步的计划。</Text>
           </View>
           <ChevronRight size={17} color={colors.muted} />
         </View>
@@ -866,7 +866,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             })}
           {expanded && transactions.length > 100 && (
             <Text style={s.small}>
-              Showing the first 100 transactions. The totals include every row.
+              显示前 100 笔交易。总额包含所有 row.
             </Text>
           )}
         </View>
@@ -940,7 +940,7 @@ export function DelegateSheet() {
             ))}
           {!workspace.mail.some((mail) => mail.attachments.length) && (
             <Text style={s.muted}>
-              Connect mail in Apps and select a message with a PDF attachment.
+              在应用里连接邮箱，选择带 PDF 附件的邮件ent.
             </Text>
           )}
         </View>
@@ -967,14 +967,14 @@ export function DelegateSheet() {
             </Button>
           )}
           <Text style={[s.small, { marginVertical: 12 }]}>
-            Positive amounts are expenses; negative amounts are income. Imported data only. No bank
+            正数是支出；负数是收入。 Imported data only. No bank
             connection is implied.
           </Text>
         </>
       )}
       {kind === "agent" && !workspace.runtime.configured && (
         <Text style={[s.muted, { marginBottom: 16 }]}>
-          General tasks and plans require a configured model. Document jobs, page watches and
+          常规任务和计划需要配置模型。文档 jobs, page watches and
           spending summaries have guided workflows.
         </Text>
       )}
@@ -1188,7 +1188,7 @@ export function GoalsScreen() {
         ))}
         {!monitors.length && (
           <Text style={[s.muted, { paddingVertical: 10 }]}>
-            Ticket prices, a reservation, a page you’re watching.
+            票价、预订、你在关注的页面。
           </Text>
         )}
         {monitors.length > 3 && (
@@ -1236,7 +1236,7 @@ export function GoalsScreen() {
         ))}
         {!data?.goals.length && (
           <Text style={[s.muted, { paddingVertical: 10 }]}>
-            Big plans start with one small step.
+            大计划从一小步开始。
           </Text>
         )}
       </View>
@@ -1791,7 +1791,7 @@ export function AppsScreen() {
               onPress={() => setShowChatUpdates(!showChatUpdates)}
             />
             <Text style={s.small}>
-              Activity and notifications always keep the full record, including requests for
+              动态和通知始终保留完整记录，包括uding requests for
               approval.
             </Text>
             <Button
@@ -1806,7 +1806,7 @@ export function AppsScreen() {
           </Card>
           <Card style={{ gap: 12 }}>
             <SectionHeading title="记忆" />
-            <Text style={s.muted}>Context you can inspect, correct or forget.</Text>
+            <Text style={s.muted}>你可以查看、修正或忘记的上下文。</Text>
             {data?.memories.map((item) => (
               <MemoryRow key={item.id} memory={item} />
             ))}

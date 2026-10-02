@@ -278,7 +278,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               </Button>
             )}
             <Text style={s.small}>
-              Side chats keep their own conversation context. Your agent’s saved memory is shared.
+              侧边聊天有自己的对话上下文。你的 agent 的 saved memory is shared.
             </Text>
           </>
         ) : (
@@ -293,7 +293,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               }}
             />
             <Text style={s.muted}>
-              Your conversation is saved in this workspace. You can manage connections in Apps.
+              你的对话保存在这个工作区。你可以管理 connections in Apps.
             </Text>
           </>
         )}

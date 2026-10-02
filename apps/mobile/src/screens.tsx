@@ -93,7 +93,7 @@ export function TodayScreen() {
         <View style={{ flex: 1, gap: 15, zIndex: 1 }}>
           <View style={[s.row, { gap: 7 }]}>
             <Sparkles size={13} color={colors.blueDark} />
-            <Text style={[s.label, { color: colors.blueDark }]}>A little clarity, every day</Text>
+            <Text style={[s.label, { color: colors.blueDark }]}>每天清晰一点</Text>
           </View>
           <Text
             style={{
@@ -176,7 +176,7 @@ export function TodayScreen() {
               ]}
             >
               <CalendarDays size={17} color={colors.blueDark} />
-              <Text style={s.small}>Everything, together</Text>
+              <Text style={s.small}>一切，在一起</Text>
             </View>
           </View>
         )}
@@ -321,7 +321,7 @@ export function TodayScreen() {
         <Card style={{ flex: 1, backgroundColor: "#F0F0E7" }}>
           <SectionHeading title="帮你处理小事" />
           <Text style={[s.muted, { marginBottom: 15 }]}>
-            Start with a thought. We’ll take it from there.
+            从一个想法开始。剩下的交给我们。
           </Text>
           {[
             "What needs my attention today?",
@@ -375,7 +375,7 @@ export function TodayScreen() {
               ))}
           {!pending.length && !w.activity.length && (
             <Text style={s.muted}>
-              Your workspace is ready. Things you do here will appear in your activity.
+              你的工作区准备好了。在这里做的事会出现在our activity.
             </Text>
           )}
         </Card>
@@ -786,7 +786,7 @@ export function CalendarScreen() {
         {loading ? (
           <View style={[s.row, { gap: 10, paddingVertical: 35, justifyContent: "center" }]}>
             <ActivityIndicator size="small" color={colors.blueDark} />
-            <Text style={s.muted}>Checking your calendar…</Text>
+            <Text style={s.muted}>查看日历中…</Text>
           </View>
         ) : events.length ? (
           events.map((e, i) => (
@@ -969,7 +969,7 @@ export function FilesScreen() {
     <View style={{ gap: 20 }}>
       <View style={s.between}>
         <Text style={[s.muted, { flex: 1, marginRight: 15 }]}>
-          Documents, with a little room to work.
+          文档，还有一点工作空间。
         </Text>
         <Button primary icon={Upload} busy={busy} onPress={() => void upload()}>
           Import PDF
@@ -1305,7 +1305,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
           </View>
         );
       })}
-      {!rows.length && <Text style={s.muted}>No matching connectors.</Text>}
+      {!rows.length && <Text style={s.muted}>没有匹配的连接器。</Text>}
       {selected && (
         <Sheet
           title={selected === "google" ? "Google connections" : "OpenBot"}
@@ -1315,7 +1315,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
           {selected === "google" ? (
             <View style={{ gap: 18 }}>
               <Text style={s.muted}>
-                Bring Gmail and Google Calendar into your conversations. Choose read access, then
+                把 Gmail 和 Google 日历带进对话。选择ose read access, then
                 enable sending and editing when you need it.
               </Text>
               <View style={[s.row, { gap: 7, flexWrap: "wrap" }]}>
@@ -1364,11 +1364,11 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
           ) : (
             <View style={{ gap: 14 }}>
               <Text style={s.text}>
-                The OpenBot adapter is available in this open-source project. A live OpenBot backend
+                OpenBot 适配器在这个开源项目里有. A live OpenBot backend
                 has not been configured.
               </Text>
               <Text style={s.muted}>
-                Your current computer uses OpenMuse’s persistent Chromium worker. OpenBot
+                你当前的电脑用的是 OpenMuse 的持久 Chromiumrker. OpenBot
                 integration will expand the execution backend while keeping this interface.
               </Text>
             </View>

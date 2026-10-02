@@ -85,7 +85,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
     <Sheet title="设备权限" subtitle="What the assistant may access" onClose={onClose}>
       <View style={{ gap: 4 }}>
         <Text style={s.muted}>
-          The assistant has full access inside the app. Anything crossing the app boundary asks
+          助手在 App 内有完整权限。跨出 App 的ing the app boundary asks
           you first.
         </Text>
         {ORDER.map((kind) => {
@@ -124,7 +124,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
           );
         })}
         <Text style={[s.small, { marginTop: 12 }]}>
-          Bluetooth scanning needs the system Bluetooth permission on first use.
+          蓝牙扫描需要系统蓝牙权限 first use.
         </Text>
       </View>
     </Sheet>

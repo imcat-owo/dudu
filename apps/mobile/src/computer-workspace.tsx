@@ -228,7 +228,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                   Run command
                 </Button>
                 <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
-                  Runs on your computer. Network access is off. Use Browser for the web.
+                  在你的电脑上运行。网络已关闭。用浏览器r the web.
                 </Text>
               </View>
             ) : (
@@ -243,7 +243,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
             )}
             {!!commandRunning && (
               <Text style={s.muted}>
-                Working… The result will appear here. Stop the computer to end running commands.
+                运行中…结果会显示在这里。停止电脑以nd running commands.
               </Text>
             )}
             {snapshot.commands.length === 0 ? (
@@ -324,7 +324,7 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
           )}
           {run.truncated && (
             <Text style={s.small}>
-              Output reached the display limit. Write large results to a file.
+              输出达到显示上限。大结果请写入文件ile.
             </Text>
           )}
         </>
@@ -480,7 +480,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
       <ErrorNotice error={error} />
       {!!notice && <Text style={[s.small, { color: "#248258" }]}>{notice}</Text>}
       {!running && (
-        <Text style={s.muted}>Start the computer to browse or edit its saved files.</Text>
+        <Text style={s.muted}>启动电脑以浏览或编辑已保存的文件。</Text>
       )}
       {editor ? (
         <>
@@ -584,7 +584,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
             <Card>
               <Text style={s.heading}>选择已保存的 PDF</Text>
               <Text style={[s.small, { marginTop: 6 }]}>
-                Copies into this folder. A file with the same name will be replaced.
+                复制到这个文件夹。同名文件会被eplaced.
               </Text>
               {workspace.files.map((file) => (
                 <LinkRow
@@ -595,7 +595,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 />
               ))}
               {!workspace.files.length && (
-                <Text style={s.muted}>Add a document from mail or Files first.</Text>
+                <Text style={s.muted}>先从邮件或文件里添加文档。</Text>
               )}
             </Card>
           )}
