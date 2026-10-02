@@ -449,13 +449,13 @@ export function ChatScreen({
           }}
         >
           <Text style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? "#FFF" : colors.muted }}>
-            {incognitoOn ? "Incognito on" : "Incognito"}
+            {incognitoOn ? "隐身开" : "隐身"}
           </Text>
         </Pressable>
       </View>
       {incognitoOn && (
         <Text style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
-          History is not saved in incognito mode.
+          隐身模式下不保存历史记录。
         </Text>
       )}
       <ScrollView
@@ -895,12 +895,12 @@ export function ChatScreen({
               }
               placeholder={
                 !isReady
-                  ? "Connecting…"
+                  ? "连接中…"
                   : !loaded
                     ? historyError
                       ? "Conversation unavailable"
-                      : "Loading conversation…"
-                    : "Message…"
+                      : "加载对话中…"
+                    : "发消息…"
               }
               placeholderTextColor="#949B9F"
               selectionColor={colors.blueDark}
@@ -941,7 +941,7 @@ export function ChatScreen({
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={replying ? "Stop reply" : "Send message"}
+              accessibilityLabel={replying ? "停止回复" : "发送消息"}
               disabled={!replying && (!draft.trim() || !loaded || !isReady)}
               onPress={replying ? () => void stop() : send}
               style={({ pressed }) => ({

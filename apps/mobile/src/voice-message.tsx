@@ -131,7 +131,7 @@ export function VoiceBubble({
         setPlaying(true);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not play audio.");
+      setError(e instanceof Error ? e.message : "无法播放音频。");
       setPlaying(false);
     }
   }
@@ -156,7 +156,7 @@ export function VoiceBubble({
       <View style={[s.row, { gap: 10 }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={playing ? "Pause voice message" : "Play voice message"}
+          accessibilityLabel={playing ? "暂停语音" : "播放语音"}
           onPress={() => void toggle()}
           style={{
             width: 38,
