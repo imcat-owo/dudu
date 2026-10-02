@@ -263,7 +263,7 @@ export function ChatScreen({
         if (active) {
           setLoaded(false);
           setHistoryError(
-            `Could not load conversation. Your saved messages have not been changed. ${e instanceof Error ? e.message : String(e)}`,
+            `无法加载对话。你的已保存消息没有被改动。${e instanceof Error ? e.message : String(e)}`,
           );
         }
       }
@@ -287,7 +287,7 @@ export function ChatScreen({
   const run = useCallback(
     async (message?: QueuedMessage) => {
       if (runLock.current || agent.isRunning || !isReady || !loaded)
-        throw new Error("The conversation is not ready yet.");
+        throw new Error("对话还没准备好。");
       runLock.current = true;
       setBusy(true);
       setError("");
