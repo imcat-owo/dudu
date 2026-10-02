@@ -36,7 +36,12 @@ import {
   parseImageCommand,
   parseImageMessage,
 } from "./image-generation";
-import { parseVoiceMessage, VoiceBubble } from "./voice-message";
+import {
+  encodeVoiceMessage,
+  parseVoiceMessage,
+  VoiceBubble,
+  VoiceRecorderButton,
+} from "./voice-message";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
@@ -405,6 +410,13 @@ export function ChatScreen({
     setInputHeight(44);
     setAttachments([]);
     setPicking(false);
+  }
+  function sendVoice(uri: string, duration: number) {
+    if (!isReady || !loaded) return;
+    if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
+      queue.resume();
+    setShowResults(false);
+    enqueue(encodeVoiceMessage(uri, duration));
   }
   const messages = agent.messages || [];
   const latestPanelId = latestJevPanelId(messages, threadId);
@@ -922,6 +934,10 @@ export function ChatScreen({
                     }
                   : undefined
               }
+            />
+            <VoiceRecorderButton
+              onRecorded={(uri, duration) => sendVoice(uri, duration)}
+              disabled={!loaded || !isReady}
             />
             <Pressable
               accessibilityRole="button"

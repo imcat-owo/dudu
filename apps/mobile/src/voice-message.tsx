@@ -1,5 +1,5 @@
 import { Audio } from "expo-av";
-import { Pause, Play } from "lucide-react-native";
+import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { colors, s } from "./ui";
@@ -195,6 +195,189 @@ export function VoiceBubble({
       {!!error && (
         <Text style={[s.small, { color: colors.danger, marginTop: 6 }]}>{error}</Text>
       )}
+    </View>
+  );
+}
+
+/**
+ * WeChat-style hold-to-record voice message button.
+ * Press and hold to record, release to send.
+ * Calls onRecorded(uri, durationSeconds) when a valid recording finishes.
+ * All user-facing strings are in Simplified Chinese.
+ */
+export function VoiceRecorderButton({
+  onRecorded,
+  disabled,
+}: {
+  onRecorded: (uri: string, duration: number) => void;
+  disabled?: boolean;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [hint, setHint] = useState("");
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef(0);
+
+  function clearTimer() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  async function startRecording() {
+    setHint("");
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        setHint("需要麦克风权限才能录音");
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const rec = new Audio.Recording();
+      await rec.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      await rec.startAsync();
+      recordingRef.current = rec;
+      startTimeRef.current = Date.now();
+      setSeconds(0);
+      setRecording(true);
+      timerRef.current = setInterval(() => {
+        setSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 500);
+    } catch (e) {
+      setHint(e instanceof Error ? e.message : "录音启动失败");
+      setRecording(false);
+    }
+  }
+
+  async function stopRecording(cancelled: boolean) {
+    clearTimer();
+    const rec = recordingRef.current;
+    recordingRef.current = null;
+    setRecording(false);
+    if (!rec) {
+      setSeconds(0);
+      return;
+    }
+    try {
+      await rec.stopAndUnloadAsync();
+      const uri = rec.getURI();
+      // Use elapsed wall-clock time; getStatusAsync is unreliable after unload.
+      const duration = Math.max(
+        0,
+        Math.round((Date.now() - startTimeRef.current) / 1000),
+      );
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+      setSeconds(0);
+      if (cancelled || !uri) return;
+      if (duration < 1) {
+        setHint("录音太短");
+        return;
+      }
+      setHint("");
+      onRecorded(uri, duration);
+    } catch (e) {
+      setHint(e instanceof Error ? e.message : "录音保存失败");
+      setSeconds(0);
+    }
+  }
+
+  // Cleanup on unmount: stop any in-progress recording without sending.
+  useEffect(() => {
+    return () => {
+      clearTimer();
+      const rec = recordingRef.current;
+      recordingRef.current = null;
+      if (rec) {
+        void rec.stopAndUnloadAsync().catch(() => {});
+      }
+    };
+  }, []);
+
+  function formatTimer(totalSeconds: number): string {
+    const m = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  return (
+    <View style={{ alignItems: "center" }}>
+      {!!hint && !recording && (
+        <Text
+          style={[
+            s.small,
+            { color: colors.danger, marginBottom: 4, textAlign: "center" },
+          ]}
+        >
+          {hint}
+        </Text>
+      )}
+      {recording && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 52,
+            backgroundColor: "rgba(0,0,0,0.75)",
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            alignItems: "center",
+            zIndex: 10,
+          }}
+        >
+          <View style={[s.row, { gap: 8, alignItems: "center" }]}>
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: "#FF3B30",
+              }}
+            />
+            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
+              {formatTimer(seconds)}
+            </Text>
+          </View>
+          <Text style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>
+            松开发送
+          </Text>
+        </View>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={recording ? "松开发送语音" : "按住说话"}
+        disabled={disabled}
+        onPressIn={() => void startRecording()}
+        onPressOut={() => void stopRecording(false)}
+        style={({ pressed }) => ({
+          width: 44,
+          height: 44,
+          borderRadius: 24,
+          backgroundColor: recording
+            ? "#FF3B30"
+            : pressed
+              ? colors.sky
+              : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: disabled ? 0.4 : 1,
+        })}
+      >
+        <Mic
+          size={22}
+          color={recording ? "#FFFFFF" : colors.text}
+          strokeWidth={1.8}
+        />
+      </Pressable>
     </View>
   );
 }
