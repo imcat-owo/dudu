@@ -29,6 +29,13 @@ import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { runConversationTurn } from "./conversation-run";
 import { useIncognito } from "./incognito";
+import {
+  buildImageUrl,
+  encodeImageMessage,
+  ImageBubble,
+  parseImageCommand,
+  parseImageMessage,
+} from "./image-generation";
 import { parseVoiceMessage, VoiceBubble } from "./voice-message";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
@@ -385,12 +392,15 @@ export function ChatScreen({
       queue.resume();
     setShowResults(false);
     const files = w.files.filter((f) => attachments.includes(f.id));
-    enqueue(
-      text +
+    // /img <prompt> → generate an image via Pollinations, insert as image message.
+    const imagePrompt = parseImageCommand(text);
+    const outgoing = imagePrompt
+      ? encodeImageMessage(buildImageUrl(imagePrompt), imagePrompt)
+      : text +
         (files.length
           ? `\n\nAttached documents: ${files.map((f) => `${f.name} (artifact ID: ${f.id})`).join(", ")}`
-          : ""),
-    );
+          : "");
+    enqueue(outgoing);
     setDraft("");
     setInputHeight(44);
     setAttachments([]);
@@ -518,6 +528,8 @@ export function ChatScreen({
                 : "";
             const voice =
               typeof message.content === "string" ? parseVoiceMessage(message.content) : null;
+            const generatedImage =
+              typeof message.content === "string" ? parseImageMessage(message.content) : null;
             const toolCalls = "toolCalls" in message ? message.toolCalls || [] : [];
             return (
               <View
@@ -531,6 +543,8 @@ export function ChatScreen({
               >
                 {voice ? (
                   <VoiceBubble voice={voice} user={user} />
+                ) : generatedImage ? (
+                  <ImageBubble image={generatedImage} user={user} />
                 ) : (
                   !!text && (
                     <View
