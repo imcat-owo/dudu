@@ -226,6 +226,7 @@ export function ChatScreen({
   const [saveError, setSaveError] = useState("");
   const [historyError, setHistoryError] = useState("");
   const [historyAttempt, setHistoryAttempt] = useState(0);
+  const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
   useEffect(() => {
     if (!isReady) return;
     let active = true;
@@ -269,7 +270,6 @@ export function ChatScreen({
       if (richThreads) void agent.detachActiveRun().catch(() => {});
     };
   }, [agent, agentId, api, copilotkit, isReady, historyAttempt, richThreads, selection.existing, incognitoOn]);
-  const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
   const saveHistory = useCallback(async () => {
     // Incognito mode: never persist chat history.
     if (incognitoOn) {

@@ -150,30 +150,35 @@ export async function scanBluetoothDevices(timeoutMs = 8000): Promise<BleDevice[
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { BleManager } = require("react-native-ble-plx") as typeof import("react-native-ble-plx");
   const manager = new BleManager();
-  const state = await manager.state();
-  if (state !== "PoweredOn") {
-    manager.destroy();
-    throw new Error(`Bluetooth is ${state}. Turn it on and try again.`);
-  }
-  const found = new Map<string, BleDevice>();
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+  try {
+    const state = await manager.state();
+    if (state !== "PoweredOn") {
+      throw new Error(`Bluetooth is ${state}. Turn it on and try again.`);
+    }
+    const found = new Map<string, BleDevice>();
+    try {
+      return await new Promise<BleDevice[]>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          manager.stopDeviceScan();
+          resolve([...found.values()]);
+        }, timeoutMs);
+        manager.startDeviceScan(null, null, (error, device) => {
+          if (error) {
+            clearTimeout(timer);
+            reject(error);
+            return;
+          }
+          if (device?.id && !found.has(device.id)) {
+            found.set(device.id, { id: device.id, name: device.name, rssi: device.rssi });
+          }
+        });
+      });
+    } finally {
       manager.stopDeviceScan();
-      manager.destroy();
-      resolve([...found.values()]);
-    }, timeoutMs);
-    manager.startDeviceScan(null, null, (error, device) => {
-      if (error) {
-        clearTimeout(timer);
-        manager.destroy();
-        reject(error);
-        return;
-      }
-      if (device?.id && !found.has(device.id)) {
-        found.set(device.id, { id: device.id, name: device.name, rssi: device.rssi });
-      }
-    });
-  });
+    }
+  } finally {
+    manager.destroy();
+  }
 }
 
 export const requesters: Record<PermissionKind, () => Promise<PermissionStatus>> = {
