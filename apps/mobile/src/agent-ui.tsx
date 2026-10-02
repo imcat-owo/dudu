@@ -783,7 +783,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 >
                   {amount(artifact.data[key])}
                 </Text>
-                <Text style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>source currency</Text>
+                <Text style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>原币种</Text>
               </View>
             ))}
           </View>
@@ -823,10 +823,10 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             );
           })}
           <Text style={s.small}>
-            Amounts use your source currency. This summary covers the imported dates.
+            金额使用原币种。本汇总覆盖导入的日期范围。
           </Text>
           {goalSaved ? (
-            <Text style={s.text}>Your savings goal is saved in Goals.</Text>
+            <Text style={s.text}>你的储蓄目标已保存在目标里。</Text>
           ) : (
             <View style={{ gap: 10 }}>
               <Field
