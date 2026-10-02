@@ -807,7 +807,7 @@ export function ChatScreen({
                   />
                 ))
               ) : (
-                <Text style={s.muted}>Import a PDF in Files to use it in a conversation.</Text>
+                <Text style={s.muted}>在文件里导入 PDF，就可以在对话中使用。</Text>
               )}
             </ScrollView>
             <Button
@@ -815,7 +815,7 @@ export function ChatScreen({
               onPress={() => setPicking(false)}
               style={{ alignSelf: "flex-end", marginTop: 8 }}
             >
-              Done
+              完成
             </Button>
           </Card>
         )}

@@ -680,7 +680,7 @@ export function ArtifactCard({ artifact }: { artifact: AgentArtifact }) {
         </View>
       ))}
       <Button small onPress={() => setExpanded(!expanded)}>
-        {expanded ? "Show summary" : "Explore full result"}
+        {expanded ? "收起" : "展开全部"}
       </Button>
     </Card>
   );
@@ -699,9 +699,9 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
     try {
       await mutate("/goals", {
         title: goalTitle.trim(),
-        category: "Finances",
-        description: `Inspired by ${artifact.title}: ${artifact.summary}`,
-        milestones: ["Choose a savings target", "Review spending each week"],
+        category: "财务",
+        description: `来自 ${artifact.title}：${artifact.summary}`,
+        milestones: ["定个储蓄目标", "每周看看花销"],
       });
       setGoalSaved(true);
     } catch (error) {
