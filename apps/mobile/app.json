@@ -7,13 +7,27 @@
     "orientation": "default",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": true, "bundleIdentifier": "app.openmuse.mobile" },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.openmuse.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "OpenMuse needs microphone access for voice messages.",
+        "NSPhotoLibraryUsageDescription": "OpenMuse needs photo library access to read and save photos.",
+        "NSLocationWhenInUseUsageDescription": "OpenMuse needs location access when you ask for it.",
+        "NSBluetoothAlwaysUsageDescription": "OpenMuse needs Bluetooth to discover nearby devices.",
+        "NSBluetoothPeripheralUsageDescription": "OpenMuse needs Bluetooth to connect to devices."
+      }
+    },
     "android": { "package": "app.openmuse.mobile" },
     "web": { "bundler": "metro", "name": "OpenMuse — a little room for everything" },
     "plugins": [
       "expo-document-picker",
       "@config-plugins/react-native-blob-util",
-      "@config-plugins/react-native-pdf"
+      "@config-plugins/react-native-pdf",
+      "expo-media-library",
+      "expo-location",
+      "expo-notifications",
+      "expo-av"
     ]
   }
 }

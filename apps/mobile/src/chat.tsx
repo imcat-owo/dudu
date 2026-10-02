@@ -28,6 +28,8 @@ import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { runConversationTurn } from "./conversation-run";
+import { useIncognito } from "./incognito";
+import { parseVoiceMessage, VoiceBubble } from "./voice-message";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
@@ -229,7 +231,10 @@ export function ChatScreen({
     });
     async function hydrate() {
       try {
-        if (richThreads) {
+        if (incognitoOn) {
+          // Incognito: start with an empty conversation, never load saved history.
+          if (active) agent.setMessages([]);
+        } else if (richThreads) {
           if (selection.existing)
             await runConversationTurn(
               agentId,
@@ -256,11 +261,17 @@ export function ChatScreen({
       replay.unsubscribe();
       if (richThreads) void agent.detachActiveRun().catch(() => {});
     };
-  }, [agent, agentId, api, copilotkit, isReady, historyAttempt, richThreads, selection.existing]);
+  }, [agent, agentId, api, copilotkit, isReady, historyAttempt, richThreads, selection.existing, incognitoOn]);
+  const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
   const saveHistory = useCallback(async () => {
+    // Incognito mode: never persist chat history.
+    if (incognitoOn) {
+      setSaveError("");
+      return;
+    }
     if (!richThreads) await api.request("/api/conversation", { messages: agent.messages }, "PUT");
     setSaveError("");
-  }, [agent, api, richThreads]);
+  }, [agent, api, richThreads, incognitoOn]);
   const run = useCallback(
     async (message?: QueuedMessage) => {
       if (runLock.current || agent.isRunning || !isReady || !loaded)
@@ -399,6 +410,32 @@ export function ChatScreen({
   const replying = busy || agent.isRunning;
   return (
     <View style={{ flex: 1 }}>
+      <View style={[s.row, { justifyContent: "flex-end", paddingHorizontal: 16, paddingTop: 8 }]}>
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel="Incognito chat"
+          accessibilityState={{ checked: incognitoOn }}
+          onPress={toggleIncognito}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 16,
+            backgroundColor: incognitoOn ? "#2B2B2E" : "#F1F2F3",
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? "#FFF" : colors.muted }}>
+            {incognitoOn ? "Incognito on" : "Incognito"}
+          </Text>
+        </Pressable>
+      </View>
+      {incognitoOn && (
+        <Text style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
+          History is not saved in incognito mode.
+        </Text>
+      )}
       <ScrollView
         ref={list}
         showsVerticalScrollIndicator={false}
@@ -479,6 +516,8 @@ export function ChatScreen({
                     )
                   : message.content
                 : "";
+            const voice =
+              typeof message.content === "string" ? parseVoiceMessage(message.content) : null;
             const toolCalls = "toolCalls" in message ? message.toolCalls || [] : [];
             return (
               <View
@@ -490,25 +529,29 @@ export function ChatScreen({
                   gap: 8,
                 }}
               >
-                {!!text && (
-                  <View
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 13,
-                      borderRadius: 22,
-                      borderBottomRightRadius: user ? 7 : 22,
-                      borderBottomLeftRadius: user ? 22 : 7,
-                      backgroundColor: user ? colors.blue : "#EEEEF0",
-                    }}
-                  >
-                    {user ? (
-                      <Text selectable style={[s.text, { fontSize: 16, lineHeight: 24 }]}>
-                        {text}
-                      </Text>
-                    ) : (
-                      <AssistantResponse content={text} />
-                    )}
-                  </View>
+                {voice ? (
+                  <VoiceBubble voice={voice} user={user} />
+                ) : (
+                  !!text && (
+                    <View
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 13,
+                        borderRadius: 22,
+                        borderBottomRightRadius: user ? 7 : 22,
+                        borderBottomLeftRadius: user ? 22 : 7,
+                        backgroundColor: user ? colors.blue : "#EEEEF0",
+                      }}
+                    >
+                      {user ? (
+                        <Text selectable style={[s.text, { fontSize: 16, lineHeight: 24 }]}>
+                          {text}
+                        </Text>
+                      ) : (
+                        <AssistantResponse content={text} />
+                      )}
+                    </View>
+                  )
                 )}
                 <JevInteractionContext.Provider
                   value={{

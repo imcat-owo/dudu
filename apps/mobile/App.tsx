@@ -39,6 +39,7 @@ import { ComputerDraftProvider } from "./src/computer-drafts";
 import { Details } from "./src/details";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
+import { IncognitoProvider } from "./src/incognito";
 import { Button, Card, colors, ErrorNotice, Field, IconButton, Mascot, s } from "./src/ui";
 import { type Detail, useWorkspace, WorkspaceContext } from "./src/workspace";
 
@@ -214,13 +215,15 @@ function WorkspaceApp({ token }: { token: string }) {
       <AgentWorkspaceProvider>
         <ComputerDraftProvider key={token}>
           <ThreadsProvider>
-            <WorkspaceShell
-              detail={detail}
-              toast={toast}
-              clearToast={() => setToast("")}
-              error={error}
-              prompt={prompt}
-            />
+            <IncognitoProvider>
+              <WorkspaceShell
+                detail={detail}
+                toast={toast}
+                clearToast={() => setToast("")}
+                error={error}
+                prompt={prompt}
+              />
+            </IncognitoProvider>
           </ThreadsProvider>
         </ComputerDraftProvider>
       </AgentWorkspaceProvider>
