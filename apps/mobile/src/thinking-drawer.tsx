@@ -82,8 +82,11 @@ export function ThinkingStatus({
       ]),
     );
     loop.start();
-    return () => loop.stop();
-  }, [streaming, thinking, pulse]);
+    return () => {
+      loop.stop();
+      pulse.setValue(1);
+    };
+  }, [streaming, pulse]);
 
   if (!thinking) return null;
   return (
