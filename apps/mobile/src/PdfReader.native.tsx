@@ -2,13 +2,15 @@ import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import Pdf from "react-native-pdf";
-import { Button, colors, ErrorNotice, s } from "./ui";
+import {Button, useColors, ErrorNotice, useStyles} from "./ui";
 export interface PdfReaderProps {
   url: string;
   token: string;
   pageCount: number;
 }
 export default function PdfReader({ url, token, pageCount }: PdfReaderProps) {
+  const colors = useColors();
+  const s = useStyles();
   const ref = useRef<React.ComponentRef<typeof Pdf>>(null);
   const [page, setPage] = useState(1);
   const [scale, setScale] = useState(1);
