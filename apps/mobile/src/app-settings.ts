@@ -16,12 +16,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 export type FontSizeOption = "system" | "small" | "standard" | "large";
 
-export const FONT_SIZE_OPTIONS: FontSizeOption[] = [
-  "system",
-  "small",
-  "standard",
-  "large",
-];
+export const FONT_SIZE_OPTIONS: FontSizeOption[] = ["system", "small", "standard", "large"];
 
 /** Scale multipliers for the explicit options. "system" follows the OS text-size setting. */
 export const FONT_SCALES: Record<Exclude<FontSizeOption, "system">, number> = {
