@@ -64,7 +64,7 @@ export class SshDockerBackend implements SandboxBackend {
   }
 
   /** Set (or replace) the connection config. Stored by the manager in SecureStore. */
-  setConfig(config: SshConfig): void {
+  setConfig(config: SshConfig | null): void {
     this.config = config;
   }
 
