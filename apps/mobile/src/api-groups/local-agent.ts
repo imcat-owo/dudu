@@ -15,6 +15,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
+import { createOurSpaceTools } from "../our-space/tools.js";
+import { ourSpaceStore } from "../our-space/instance.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import {
@@ -301,6 +303,11 @@ export function createLocalAgent(opts: {
   toolContext?: ToolContext;
   /** Device implementations for capability tools (injected by the app layer). */
   toolDeps?: ToolDeps;
+  /**
+   * Our Space store. Defaults to the shared AsyncStorage-backed singleton
+   * (so UI and AI tools see the same data); injectable for tests.
+   */
+  ourSpaceStore?: import("../our-space/store.js").OurSpaceStore;
 }): ChatAgent {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
@@ -384,6 +391,7 @@ export function createLocalAgent(opts: {
       // changed tool set takes effect without recreating the agent).
       const tools = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
+        ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...sandboxTools(sandboxManager),
       ];
       const registry = createToolRegistry(tools);
