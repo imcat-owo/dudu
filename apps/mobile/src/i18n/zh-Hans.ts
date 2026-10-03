@@ -225,7 +225,7 @@ const zhHans = {
   "backup.backupDone": "备份已生成",
   "backup.errors.empty": "文件是空的",
   "backup.errors.not-json": "不是有效的 JSON 文件",
-  "backup.errors.bad-kind": "不是 嘟嘟 备份文件",
+  "backup.errors.bad-kind": "不是嘟嘟备份文件",
   "backup.errors.unsupported-version": "备份版本太新，App 需要更新",
   "backup.errors.invalid-shape": "备份文件损坏",
   "perm.sheetSubtitle": "助手可以访问的内容",
@@ -653,7 +653,7 @@ const zhHans = {
   "conn.agentComputer": "Agent 电脑",
   "conn.openbotNote1": "OpenBot 适配器在这个开源项目里有，但还没配置可用的 OpenBot 后端。",
   "conn.openbotNote2":
-    "你当前的电脑用的是 嘟嘟 的持久 Chromium。OpenBot 集成以后会扩展执行后端，界面保持不变。",
+    "你当前的电脑用的是嘟嘟的持久 Chromium。OpenBot 集成以后会扩展执行后端，界面保持不变。",
   "a11y.manageConn": "管理{name}",
 
   // ---- dates (ui.tsx) ----

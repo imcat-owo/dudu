@@ -228,7 +228,7 @@ export const enStrings: Record<StringKey, string> = {
   "backup.backupDone": "Backup ready",
   "backup.errors.empty": "File is empty",
   "backup.errors.not-json": "Not a valid JSON file",
-  "backup.errors.bad-kind": "Not an Dudu backup file",
+  "backup.errors.bad-kind": "Not a Dudu backup file",
   "backup.errors.unsupported-version": "Backup is from a newer app version",
   "backup.errors.invalid-shape": "Backup file is corrupt",
   "perm.sheetSubtitle": "What the assistant may access",

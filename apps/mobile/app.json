@@ -42,7 +42,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "允许 OpenMuse 使用相机扫描二维码以导入主题。"
+          "cameraPermission": "允许嘟嘟使用相机扫描二维码以导入主题。"
         }
       ]
     ]
