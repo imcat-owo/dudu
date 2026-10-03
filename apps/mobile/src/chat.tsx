@@ -51,6 +51,7 @@ import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { useTheme } from "./theme/ThemeContext";
+import { ThinkingDrawer, ThinkingStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
@@ -278,6 +279,7 @@ export function ChatScreen({
   // processed by the local agent at runTurn time.
   const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
   const [transcribing, setTranscribing] = useState(false);
+  const [thinkingViewing, setThinkingViewing] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
   const [queue] = useState(() => new ConversationQueue());
@@ -662,8 +664,16 @@ export function ChatScreen({
             </View>
           </View>
         ) : (
-          visible.map((message) => {
+          visible.map((message, index) => {
             const user = message.role === "user";
+            // Thinking text rides on the message (local direct mode only).
+            // Cloud/CopilotKit messages never carry it — no button then.
+            const thinking =
+              !user && typeof message.thinking === "string" && message.thinking
+                ? message.thinking
+                : undefined;
+            const thinkingStreaming =
+              !!thinking && (busy || agent.isRunning) && index === visible.length - 1;
             const text =
               typeof message.content === "string"
                 ? user
@@ -689,7 +699,9 @@ export function ChatScreen({
             const radius = bubble.radius ?? 16;
             // Tool-call-only assistant messages have no bubble — render the
             // avatar row only when there is visible bubble content.
-            const hasBubble = !!voice || !!generatedImage || !!text || !!userImages;
+            // A thinking-only message (reasoning streamed, reply not yet)
+            // still renders its inline thinking status.
+            const hasBubble = !!voice || !!generatedImage || !!text || !!userImages || !!thinking;
             return (
               <View key={message.id} style={{ gap: 6 }}>
                 {hasBubble && (
@@ -703,6 +715,13 @@ export function ChatScreen({
                   >
                     {!user && <ChatAvatar who="assistant" />}
                     <View style={{ maxWidth: "80%" }}>
+                      {!!thinking && (
+                        <ThinkingStatus
+                          thinking={thinking}
+                          streaming={thinkingStreaming}
+                          onOpen={() => setThinkingViewing(thinking)}
+                        />
+                      )}
                       {voice ? (
                         <VoiceBubble voice={voice} user={user} />
                       ) : generatedImage ? (
@@ -1229,6 +1248,11 @@ export function ChatScreen({
           </View>
         </View>
       </KeyboardAvoidingView>
+      <ThinkingDrawer
+        visible={thinkingViewing !== null}
+        thinking={thinkingViewing ?? ""}
+        onClose={() => setThinkingViewing(null)}
+      />
     </View>
   );
 }

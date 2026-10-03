@@ -932,6 +932,11 @@ export const enStrings: Record<StringKey, string> = {
   "chatmode.cloudDesc": "Via backend CopilotKit — needs a deployed backend",
   "chat.activeGroup": "{name} · {model}",
 
+  // ---- thinking drawer ----
+  "thinking.thinking": "Thinking…",
+  "thinking.title": "Thinking",
+  "thinking.open": "View thinking process",
+
   // ---- voice (TTS / STT) ----
   "voice.title": "Voice",
   "voice.ttsTitle": "Speech synthesis (TTS)",

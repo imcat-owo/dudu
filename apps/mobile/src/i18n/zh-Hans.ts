@@ -906,6 +906,11 @@ const zhHans = {
   "chatmode.cloudDesc": "经后端 CopilotKit，需后端已部署",
   "chat.activeGroup": "{name} · {model}",
 
+  // ---- thinking drawer ----
+  "thinking.thinking": "思考中…",
+  "thinking.title": "思考过程",
+  "thinking.open": "查看思考过程",
+
   // ---- voice (TTS / STT) ----
   "voice.title": "语音",
   "voice.ttsTitle": "语音合成（TTS）",
