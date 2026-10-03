@@ -75,7 +75,7 @@ export function TaskBuddyVideo({ status, size }: { status: TaskStatus; size?: nu
       <Image source={soraSource()} resizeMode="cover" style={StyleSheet.absoluteFill} />
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, status === "running" && { transform: [{ scaleX: -1 }] }]}
         contentFit="cover"
         nativeControls={false}
         allowsFullscreen={false}
