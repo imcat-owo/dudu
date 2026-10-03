@@ -13,13 +13,14 @@
 
 import { Check, Plus, Trash2, X } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, Card, Chip, Field, useColors, useStyles } from "../ui";
 import { testConnection } from "./direct-transport";
 import { type ChatMode, useChatMode, useSetChatMode } from "./mode";
 import { groupStore, useApiGroups } from "./store";
+import { VoiceSettingsSection } from "../voice/voice-settings";
 import {
   type ApiGroup,
   type ApiVendor,
@@ -223,6 +224,37 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
         autoCorrect={false}
       />
 
+      <TText style={[s.small, { fontWeight: "600" }]}>{t("vision.title")}</TText>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: 4,
+        }}
+      >
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <TText style={{ fontWeight: "600" }}>{t("vision.native")}</TText>
+          <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+            {t("vision.nativeDesc")}
+          </TText>
+        </View>
+        <Switch
+          value={draft.vision?.native ?? false}
+          onValueChange={(v) => set("vision", { native: v, model: draft.vision?.model })}
+        />
+      </View>
+      <Field
+        label={t("vision.model")}
+        value={draft.vision?.model ?? ""}
+        onChangeText={(v) =>
+          set("vision", { native: draft.vision?.native ?? false, model: v || undefined })
+        }
+        placeholder={draft.model || t("vision.modelDesc")}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
       <TText style={[s.small, { fontWeight: "600" }]}>{t("apigroup.headers")}</TText>
       {headerEntries.map(([k, v]) => (
         <View key={k} style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
@@ -370,6 +402,8 @@ export function ApiSettingsScreen() {
           );
         })
       )}
+
+      <VoiceSettingsSection />
 
       <Modal
         visible={editing !== null}
