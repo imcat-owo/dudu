@@ -528,7 +528,7 @@ export function ChatScreen({
           <TText style={[s.small, { color: colors.muted, marginBottom: 12 }]}>
             {t("apigroup.subtitle")}
           </TText>
-          <Button primary onPress={() => navigate("apps")}>
+          <Button primary onPress={() => navigate("connections")}>
             {t("apigroup.add")}
           </Button>
         </Card>
