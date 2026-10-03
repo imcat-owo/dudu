@@ -31,6 +31,13 @@ export interface LocalChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  /**
+   * Reasoning/thinking text streamed separately from the visible reply
+   * (reasoning models). Only present when the model actually returned it —
+   * never synthesized. Shown via the thinking drawer UI, never inlined
+   * into the visible content.
+   */
+  thinking?: string;
 }
 
 export interface ChatAgent {
@@ -40,7 +47,12 @@ export interface ChatAgent {
     unsubscribe(): void;
   };
   setMessages(messages: LocalChatMessage[]): void;
-  addMessage(m: { id: string; role: "user" | "assistant" | "system"; content: string }): void;
+  addMessage(m: {
+    id: string;
+    role: "user" | "assistant" | "system";
+    content: string;
+    thinking?: string;
+  }): void;
   /** Send pending user messages and stream the reply. */
   runTurn(): Promise<void>;
   /** Abort an in-flight turn. */
@@ -204,7 +216,15 @@ export function createLocalAgent(opts: {
       void saveLocalHistory(opts.threadId, messages);
     },
     addMessage(m) {
-      messages = [...messages, { id: m.id, role: m.role, content: m.content }];
+      messages = [
+        ...messages,
+        {
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          ...(m.thinking ? { thinking: m.thinking } : {}),
+        },
+      ];
       emit();
     },
     async runTurn(): Promise<void> {
@@ -217,6 +237,7 @@ export function createLocalAgent(opts: {
 
       const replyId = newId("asst");
       let replyText = "";
+      let thinkingText = "";
       // Insert the (initially empty) assistant message so the UI streams in place.
       messages = [...messages, { id: replyId, role: "assistant", content: "" }];
       emit();
@@ -239,6 +260,13 @@ export function createLocalAgent(opts: {
           onToken: (delta) => {
             replyText += delta;
             messages = messages.map((m) => (m.id === replyId ? { ...m, content: replyText } : m));
+            emit();
+          },
+          onThinking: (delta) => {
+            thinkingText += delta;
+            messages = messages.map((m) =>
+              m.id === replyId ? { ...m, thinking: thinkingText } : m,
+            );
             emit();
           },
           onDone: () => {},

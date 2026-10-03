@@ -57,6 +57,8 @@ function requestBody(group: ApiGroup, messages: ChatMessage[], stream: boolean):
 
 interface SseCallbacks {
   onToken: (delta: string) => void;
+  /** Reasoning/thinking deltas, when the model streams them separately. */
+  onThinking?: (delta: string) => void;
   onDone: () => void;
   onError: (error: Error) => void;
   signal?: AbortSignal;
@@ -87,10 +89,39 @@ export function parseSseData(groupName: string, data: string): string | null {
   return typeof content === "string" ? content : null;
 }
 
+/**
+ * Parse one SSE `data:` payload for reasoning/thinking content.
+ * Covers the two wire shapes seen in the wild on OpenAI-compatible
+ * endpoints: `delta.reasoning_content` (DeepSeek-R1 via OpenRouter and
+ * friends) and `delta.thinking` (proxies that map Anthropic thinking
+ * blocks onto the chat-completions shape). Returns the thinking delta,
+ * or null when the frame carries none. Never throws on shape issues —
+ * thinking is best-effort; the reply must not die because a proxy sent
+ * a weird delta.
+ */
+export function parseSseThinking(data: string): string | null {
+  if (data === "[DONE]") return null;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(data);
+  } catch {
+    return null; // incomplete chunk — the incremental parser holds the tail
+  }
+  const delta = (payload as { choices?: Array<{ delta?: Record<string, unknown> }> }).choices?.[0]
+    ?.delta;
+  if (!delta || typeof delta !== "object") return null;
+  const reasoning = delta.reasoning_content;
+  if (typeof reasoning === "string" && reasoning) return reasoning;
+  const thinking = delta.thinking;
+  if (typeof thinking === "string" && thinking) return thinking;
+  return null;
+}
+
 /** Incremental SSE line parser — feed it text chunks, it emits deltas. */
 export function createSseParser(
   groupName: string,
   onToken: (delta: string) => void,
+  onThinking?: (delta: string) => void,
 ): { push(chunk: string): void } {
   let buffer = "";
   return {
@@ -105,6 +136,10 @@ export function createSseParser(
         if (!data) continue;
         const delta = parseSseData(groupName, data);
         if (delta) onToken(delta);
+        if (onThinking) {
+          const thinking = parseSseThinking(data);
+          if (thinking) onThinking(thinking);
+        }
       }
     },
   };
@@ -133,7 +168,7 @@ export function streamChat(
   callbacks: SseCallbacks,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const parser = createSseParser(group.name, callbacks.onToken);
+    const parser = createSseParser(group.name, callbacks.onToken, callbacks.onThinking);
     const xhr = new XMLHttpRequest();
     let settled = false;
     let seen = 0;
@@ -273,7 +308,9 @@ export function streamChat(
           const text = await res.text();
           if (!res.ok) throw statusError(group, res.status, text);
           const parsed = JSON.parse(text) as {
-            choices?: Array<{ message?: { content?: unknown } }>;
+            choices?: Array<{
+              message?: { content?: unknown; reasoning_content?: unknown; thinking?: unknown };
+            }>;
             error?: { message?: string } | string;
           };
           if (parsed.error)
@@ -283,8 +320,17 @@ export function streamChat(
                 ? parsed.error
                 : (parsed.error.message ?? "unknown error"),
             );
-          const content = parsed.choices?.[0]?.message?.content;
+          const msg = parsed.choices?.[0]?.message;
+          const content = msg?.content;
           if (typeof content === "string" && content) callbacks.onToken(content);
+          // Non-streaming responses carry thinking on the message, not the delta.
+          if (callbacks.onThinking) {
+            const thinking =
+              (typeof msg?.reasoning_content === "string" && msg.reasoning_content) ||
+              (typeof msg?.thinking === "string" && msg.thinking) ||
+              null;
+            if (thinking) callbacks.onThinking(thinking);
+          }
           succeed();
         })
         .catch((e: unknown) => {
