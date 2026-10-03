@@ -32,6 +32,11 @@ export interface ApiGroup {
   apiKey?: string;
   /** Model name sent as `model` in the request body. */
   model: string;
+  /**
+   * Embedding model for the knowledge base (`/v1/embeddings`). Optional —
+   * defaults to `text-embedding-3-small` when unset.
+   */
+  embeddingModel?: string;
   /** Extra HTTP headers (for proxies/gateways). Values are secrets too. */
   headers: Record<string, string>;
   /** Unix ms of creation — used for stable list ordering. */

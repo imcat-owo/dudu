@@ -1250,6 +1250,26 @@ const zhHans = {
   "skill.nameRequired": "起个名字吧",
   "skill.deleteTitle": "删掉这个本事？",
   "skill.deleteConfirm": "确定删掉「{name}」？",
+
+  // ---- knowledge base ----
+  "kb.title": "知识库",
+  "kb.subtitle": "传些文档给我，以后问起来，我能翻出来答你。",
+  "kb.upload": "上传文档",
+  "kb.empty": "知识库空空的",
+  "kb.emptyDetail": "传个 txt 或 md 文档进来，我读完记下来，你问我就翻。",
+  "kb.status.ready": "{count} 段 · 就绪",
+  "kb.status.indexing": "正在读…",
+  "kb.status.failed": "没读进去，删掉重传试试",
+  "kb.deleteTitle": "删掉这篇文档？",
+  "kb.deleteConfirm": "确定删掉「{name}」？里面的段落也会一起删掉。",
+  "kb.unsupportedSoon": "PDF 和 Word 暂时还读不了，先传 txt 或 md 吧，后面会支持的。",
+  "kb.unsupportedType": "这个格式我还不认，只吃 txt 和 md。",
+  "kb.noApiGroup": "还没配 API 分组，我得靠它来读文档，先去配一个吧。",
+  "kb.emptyDocument": "这个文档是空的，没什么可记的。",
+  "kb.indexFailed": "读文档的时候卡住了：{reason}",
+  "kb.progress.chunking": "正在切分…",
+  "kb.progress.embedding": "正在记住… {done}/{total}",
+  "kb.formatsNote": "现在只支持 txt / md。PDF 和 Word 后面会支持。",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

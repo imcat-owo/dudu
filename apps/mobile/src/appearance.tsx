@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import {
+  BookOpen,
   ImagePlus,
   MonitorSmartphone,
   Moon,
@@ -43,6 +44,7 @@ import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
+import { KnowledgeSheet } from "./knowledge/knowledge-ui";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
 import { NativeAppsSheet } from "./native-apps-ui";
@@ -65,8 +67,8 @@ import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
-const CUSTOMS_KEY = "openmuse.theme.customPresets.v1";
-const APPEARANCE_DIR = "openmuse/appearance";
+const CUSTOMS_KEY = "dudu.theme.customPresets.v1";
+const APPEARANCE_DIR = "dudu/appearance";
 
 /** Picker palette data — the colors the user chooses from. Not UI chrome. */
 const SWATCHES = [
@@ -124,6 +126,7 @@ export function AppearanceScreen() {
   const [permOpen, setPermOpen] = useState(false);
   const [nappOpen, setNappOpen] = useState(false);
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
   const [sandboxOpen, setSandboxOpen] = useState(false);
 
   // Load user-saved custom presets (after the built-ins).
@@ -872,6 +875,17 @@ export function AppearanceScreen() {
         </Button>
       </View>
       {skillsOpen ? <SkillsSheet onClose={() => setSkillsOpen(false)} /> : null}
+
+      <View>
+        <SectionHeading title={t("kb.title")} />
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+          {t("kb.subtitle")}
+        </TText>
+        <Button icon={BookOpen} onPress={() => setKbOpen(true)}>
+          {t("kb.title")}
+        </Button>
+      </View>
+      {kbOpen ? <KnowledgeSheet onClose={() => setKbOpen(false)} /> : null}
 
       <View>
         <SectionHeading title={t("sandbox.title")} />

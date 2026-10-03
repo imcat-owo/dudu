@@ -1292,4 +1292,26 @@ export const enStrings: Record<StringKey, string> = {
   "skill.nameRequired": "Give it a name first",
   "skill.deleteTitle": "Delete this skill?",
   "skill.deleteConfirm": 'Delete "{name}"?',
+
+  // ---- knowledge base ----
+  "kb.title": "Knowledge Base",
+  "kb.subtitle": "Upload documents for me — later, I can look things up and answer.",
+  "kb.upload": "Upload document",
+  "kb.empty": "Knowledge base is empty",
+  "kb.emptyDetail":
+    "Upload a txt or md document. I'll read it and remember, so you can ask me about it later.",
+  "kb.status.ready": "{count} chunks · ready",
+  "kb.status.indexing": "Reading…",
+  "kb.status.failed": "Couldn't read it — try deleting and re-uploading",
+  "kb.deleteTitle": "Delete this document?",
+  "kb.deleteConfirm": 'Delete "{name}"? Its chunks will go too.',
+  "kb.unsupportedSoon":
+    "PDF and Word aren't readable yet — upload txt or md for now, support is coming.",
+  "kb.unsupportedType": "I don't recognize this format yet — txt and md only.",
+  "kb.noApiGroup": "No API group configured yet — I need one to read documents. Set one up first.",
+  "kb.emptyDocument": "This document is empty — nothing to remember.",
+  "kb.indexFailed": "Got stuck reading the document: {reason}",
+  "kb.progress.chunking": "Splitting…",
+  "kb.progress.embedding": "Memorizing… {done}/{total}",
+  "kb.formatsNote": "txt / md only for now. PDF and Word support is coming.",
 };

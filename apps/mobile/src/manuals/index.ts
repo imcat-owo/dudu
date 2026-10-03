@@ -23,6 +23,7 @@
 
 import { API_GROUPS_MANUAL } from "./api-groups.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
+import { KNOWLEDGE_MANUAL } from "./knowledge.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
 import { MEMORY_MANUAL } from "./memory.js";
 import { MUSIC_ROOM_MANUAL } from "./music-room.js";
@@ -64,6 +65,7 @@ export const MANUALS: ManualEntry[] = [
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,
   SKILLS_MANUAL,
+  KNOWLEDGE_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {

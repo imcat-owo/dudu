@@ -14,6 +14,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
+import { knowledgeStore } from "../knowledge/instance.js";
+import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
 import { memoryStore } from "../memory/instance.js";
@@ -120,7 +122,7 @@ export interface ChatAgent {
 }
 
 function historyKey(threadId: string): string {
-  return `openmuse.local-chat.${threadId}.v1`;
+  return `dudu.local-chat.${threadId}.v1`;
 }
 
 /**
@@ -430,6 +432,7 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createMemoryTools(memStore),
+        ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {
           // "我们的歌": the AI truly remembers which songs are special.
@@ -668,7 +671,9 @@ export function createLocalAgent(opts: {
                 "tools proven unsupported",
               )
               .catch(() => null);
-            noticeText = noticeText ? `${noticeText}\n${t("adapt.toolsOff")}` : (t("adapt.toolsOff") as string);
+            noticeText = noticeText
+              ? `${noticeText}\n${t("adapt.toolsOff")}`
+              : (t("adapt.toolsOff") as string);
             renderReply();
             return true;
           }
@@ -682,7 +687,9 @@ export function createLocalAgent(opts: {
                 "thinking proven unsupported",
               )
               .catch(() => null);
-            noticeText = noticeText ? `${noticeText}\n${t("adapt.thinkingOff")}` : (t("adapt.thinkingOff") as string);
+            noticeText = noticeText
+              ? `${noticeText}\n${t("adapt.thinkingOff")}`
+              : (t("adapt.thinkingOff") as string);
             renderReply();
             return true;
           }
@@ -727,7 +734,9 @@ export function createLocalAgent(opts: {
               const tail = wire.filter((m) => m.role !== "system").slice(-6);
               wire.length = 0;
               wire.push(...sys, ...tail);
-              noticeText = noticeText ? `${noticeText}\n${t("adapt.contextCompacted")}` : (t("adapt.contextCompacted") as string);
+              noticeText = noticeText
+                ? `${noticeText}\n${t("adapt.contextCompacted")}`
+                : (t("adapt.contextCompacted") as string);
               renderReply();
               continue;
             }
