@@ -3,6 +3,7 @@ import { Linking, Text, type TextStyle } from "react-native";
 import Markdown, { type MarkdownStyles, type RenderRules } from "react-native-markdown-renderer";
 import { useFontSizeSetting } from "./app-settings";
 import { assistantMarkdown, isSafeAssistantUrl } from "./assistant-markdown";
+import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { ErrorNotice, useColors } from "./ui";
 
@@ -51,7 +52,9 @@ export function AssistantResponse({ content }: { content: string }) {
       ),
       image: (node) => (
         <Text key={node.key} selectable style={{ color: colors.muted }}>
-          {node.attributes.alt ? `[Image: ${node.attributes.alt}]` : "[Image]"}
+          {node.attributes.alt
+            ? t("chat.imageAlt", { alt: node.attributes.alt })
+            : t("chat.imageFallback")}
         </Text>
       ),
       code_block: renderCodeBlock,

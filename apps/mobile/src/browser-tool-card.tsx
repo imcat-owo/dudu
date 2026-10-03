@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Image, Text, View } from "react-native";
 import { z } from "zod";
 import type { BrowserSession } from "../../../packages/domain/src";
+import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -24,11 +25,11 @@ function resultValue(result: unknown) {
 }
 
 function siteLabel(url: unknown) {
-  if (typeof url !== "string") return "Opening a page";
+  if (typeof url !== "string") return t("browsercard.opening");
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    return "Opening a page";
+    return t("browsercard.opening");
   }
 }
 
@@ -91,7 +92,7 @@ export function BrowserToolCard({
   const failure = toolError.success
     ? toolError.data.error
     : !loading && !visited
-      ? "The browser did not return a page. Try your request again."
+      ? t("browsercard.noPage")
       : "";
   return (
     <Card
@@ -105,23 +106,23 @@ export function BrowserToolCard({
           <Text style={[s.text, { fontWeight: "600" }]}>浏览器</Text>
           <Text numberOfLines={1} style={[s.small, { fontSize: 12 }]}>
             {working
-              ? "Reading the page…"
+              ? t("browsercard.reading")
               : loading
-                ? "Browsing paused"
+                ? t("browsercard.paused")
                 : failure
-                  ? "Couldn’t read the page"
+                  ? t("browsercard.couldntRead")
                   : siteLabel(visited?.url)}
           </Text>
         </View>
         {working ? (
           <ActivityIndicator size="small" color={colors.blueDark} />
         ) : visited ? (
-          <Check size={17} color="#47896C" accessibilityLabel="Page read" />
+          <Check size={17} color="#47896C" accessibilityLabel={t("browsercard.pageRead")} />
         ) : null}
       </View>
       {preview ? (
         <Image
-          accessibilityLabel={`Browser preview: ${visited?.title}`}
+          accessibilityLabel={t("browsercard.preview", { title: visited?.title ?? "" })}
           source={{ uri: api.url(preview) }}
           style={{
             width: "100%",
@@ -149,14 +150,14 @@ export function BrowserToolCard({
           ) : visited ? (
             <Text style={s.small}>
               {browser && browser.url !== visited.url
-                ? "Page visited. The browser has moved on."
+                ? t("browsercard.visited")
                 : browser?.status === "closed"
-                  ? "Session saved. Take control to reopen it."
+                  ? t("browsercard.sessionSaved")
                   : browser?.status === "error"
-                    ? "Session needs attention. Take control to reconnect."
+                    ? t("browsercard.needsAttention")
                     : previewFailed
-                      ? "Preview unavailable. You can still take control."
-                      : "Connecting to the saved session…"}
+                      ? t("browsercard.previewUnavailable")
+                      : t("browsercard.connecting")}
             </Text>
           ) : null}
         </View>

@@ -2,6 +2,7 @@ import { Check, ExternalLink } from "lucide-react-native";
 import { createContext, useContext, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
 import type { JevOption, JevPanel } from "../../../packages/domain/src/jev";
+import { t } from "./i18n";
 import {
   choiceAvailability,
   parseJevResult,
@@ -29,10 +30,10 @@ export const JevInteractionContext = createContext<JevInteraction>({
   canRetry: false,
   confirmedSelection: () => null,
   send: async () => {
-    throw new Error("Open an active conversation to choose an option.");
+    throw new Error(t("jev.openConversation"));
   },
   retry: async () => {
-    throw new Error("Open an active conversation to retry a choice.");
+    throw new Error(t("jev.openConversationRetry"));
   },
 });
 
@@ -42,7 +43,7 @@ function SourceLink({ title, url }: { title: string; url: string }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`Source: ${title}`}
+      accessibilityLabel={t("jev.source", { title })}
       onPress={() => void Linking.openURL(url)}
       style={({ pressed }) => [s.row, { gap: 4, opacity: pressed ? 0.65 : 1 }]}
     >
@@ -74,11 +75,11 @@ function ChoiceButton({
   const colors = useColors();
   const s = useStyles();
   if (panel.type === "comparison") {
-    const caption = /exhibit/i.test(panel.title) ? "Choose this exhibit" : "Choose this option";
+    const caption = /exhibit/i.test(panel.title) ? t("jev.chooseExhibit") : t("jev.chooseOption");
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${caption}: ${option.label} (option ${position})`}
+        accessibilityLabel={t("jev.chooseA11y", { caption, label: option.label, position })}
         accessibilityState={{ disabled: disabled || pending, busy: pending, selected }}
         disabled={disabled || pending}
         onPress={() => onChoose(option.id)}
@@ -130,7 +131,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
   }
 
   const parsed = parseJevResult(result);
-  if (!parsed) return <ErrorNotice error="The choices could not be displayed. Please retry." />;
+  if (!parsed) return <ErrorNotice error={t("jev.couldntDisplay")} />;
   if (parsed.error) return <ErrorNotice error={parsed.error} />;
   const panel = parsed.panel;
   if (!panel) return null;

@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 export function browserAddress(value: string): string {
   const input = value.trim();
   try {
@@ -8,7 +9,7 @@ export function browserAddress(value: string): string {
       url.password ||
       /\s/.test(input)
     )
-      throw new Error("Invalid address");
+      throw new Error(t("browser.invalidAddress"));
     return url.href;
   } catch {
     throw new Error("Enter a website address, like copilotkit.ai or https://news.ycombinator.com.");

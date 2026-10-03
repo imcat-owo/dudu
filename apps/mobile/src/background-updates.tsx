@@ -2,6 +2,7 @@ import { ArrowRight, Bell, X } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useAgentWorkspace } from "./agent-workspace";
+import { t } from "./i18n";
 import { Button, Card, ErrorNotice, resultSummary, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -36,7 +37,7 @@ export function BackgroundUpdates() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Dismiss background update"
+          accessibilityLabel={t("a11y.dismissUpdate")}
           disabled={busy}
           onPress={() => void dismiss()}
           hitSlop={10}

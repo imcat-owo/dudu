@@ -3,6 +3,7 @@ import { useContext } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { z } from "zod";
 import { BrowserRunContext } from "./browser-tool-card";
+import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -52,7 +53,11 @@ export function MailToolCard({
           <Mail size={16} color={colors.muted} />
         )}
         <Text style={s.muted}>
-          {!active ? "Mail reading paused" : search ? "Checking your inbox…" : "Reading the email…"}
+          {!active
+            ? t("mailcard.paused")
+            : search
+              ? t("mailcard.checkingInbox")
+              : t("mailcard.readingEmail")}
         </Text>
       </View>
     );
@@ -60,16 +65,19 @@ export function MailToolCard({
     const parsed = z
       .object({ matches: z.array(z.object({ id: z.string() })), truncated: z.boolean() })
       .safeParse(value);
-    if (!parsed.success)
-      return <ErrorNotice error="The mailbox did not return readable results." />;
+    if (!parsed.success) return <ErrorNotice error={t("mailcard.noResults")} />;
     const count = parsed.data.matches.length;
     return (
       <View style={[s.row, { gap: 9, padding: 12 }]}>
         <Search size={16} color={colors.muted} />
         <Text style={s.muted}>
           {count
-            ? `Found ${parsed.data.truncated ? "at least " : ""}${count} ${count === 1 ? "email" : "emails"}`
-            : "No matching emails"}
+            ? parsed.data.truncated
+              ? t("mailcard.foundAtLeast", { count })
+              : count === 1
+                ? t("mailcard.foundOne")
+                : t("mailcard.foundMany", { count })
+            : t("mailcard.noMatch")}
         </Text>
       </View>
     );
@@ -77,7 +85,7 @@ export function MailToolCard({
   const parsed = z
     .object({ messages: z.array(messageSchema), truncated: z.boolean() })
     .safeParse(value);
-  if (!parsed.success) return <ErrorNotice error="The email could not be displayed." />;
+  if (!parsed.success) return <ErrorNotice error={t("mailcard.couldntDisplay")} />;
   const message = parsed.data.messages.at(-1);
   if (!message) return <Text style={s.muted}>这个帖子里没有消息。</Text>;
   return (
@@ -93,8 +101,8 @@ export function MailToolCard({
           <Text style={s.small}>
             Email ·{" "}
             {parsed.data.messages.length === 1
-              ? "1 message"
-              : `${parsed.data.messages.length} messages`}
+              ? t("mailcard.oneMessage")
+              : t("mailcard.messages", { count: parsed.data.messages.length })}
           </Text>
         </View>
       </View>
@@ -104,7 +112,7 @@ export function MailToolCard({
       </Text>
       {parsed.data.truncated && <Text style={s.small}>显示这个帖子的摘要。</Text>}
       <Button small icon={Mail} onPress={() => open({ type: "mail", mail: message })}>
-        Open email
+        {t("mailcard.openEmail")}
       </Button>
     </Card>
   );

@@ -444,7 +444,7 @@ export function Sheet({
               <Text style={s.title}>{title}</Text>
               {!!subtitle && <Text style={s.muted}>{subtitle}</Text>}
             </View>
-            <IconButton icon={X} label="Close details" onPress={onClose} />
+            <IconButton icon={X} label={t("ui.closeDetails")} onPress={onClose} />
           </View>
           <ScrollView
             keyboardShouldPersistTaps="handled"

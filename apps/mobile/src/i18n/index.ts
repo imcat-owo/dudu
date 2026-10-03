@@ -12,7 +12,6 @@
  * (complete Chinese) and en.ts (same keys), then t("your.key").
  */
 
-import { getLocales } from "expo-localization";
 import { useMemo } from "react";
 import { enStrings } from "./en";
 import { type AppLocale, resolveLocale } from "./locale";
@@ -24,6 +23,12 @@ const packs = { "zh-Hans": zhHansStrings, en: enStrings } as const;
 
 function detectLocale(): AppLocale {
   try {
+    // Guarded require: expo-localization pulls in react-native, which plain
+    // node test runners cannot transform. In that environment the require
+    // throws and we fall back to English; on device it loads normally.
+    const { getLocales } = require("expo-localization") as {
+      getLocales: () => Array<{ languageTag?: string }>;
+    };
     const tag = getLocales()[0]?.languageTag;
     return resolveLocale(tag);
   } catch {

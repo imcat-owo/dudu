@@ -540,11 +540,11 @@ export function ChatScreen({
               {[
                 {
                   text: t("chat.suggest.hn"),
-                  action: () => enqueue("Check out Hacker News for cool stuff"),
+                  action: () => enqueue(t("chat.suggest.hn")),
                 },
                 {
                   text: t("chat.suggest.summarize"),
-                  action: () => enqueue("Summarize copilotkit.ai"),
+                  action: () => enqueue(t("chat.suggest.summarize")),
                 },
                 { text: t("chat.suggest.watch"), action: () => navigate("goals") },
               ].map((item) => (

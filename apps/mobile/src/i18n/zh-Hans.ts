@@ -766,6 +766,7 @@ const zhHans = {
   "mailcard.couldntDisplay": "这封邮件显示不了。",
   "mailcard.oneMessage": "1 条消息",
   "mailcard.messages": "{count} 条消息",
+  "mailcard.openEmail": "打开邮件",
 
   // ---- jev choice card ----
   "jev.unknownChoice": "未知选项",
@@ -813,6 +814,10 @@ const zhHans = {
   "scope.calListReadonly": "读取日历列表",
   "scope.calEvents": "管理日历事件",
   "scope.calReadonly": "读取日历",
+  "a11y.statusAvatar": "{status} 头像",
+  "a11y.hexInput": "{label} 十六进制",
+  "chat.imageAlt": "[图片：{alt}]",
+  "chat.imageFallback": "[图片]",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

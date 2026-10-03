@@ -71,7 +71,7 @@ export async function checkPhotoPermission(): Promise<PermissionStatus> {
 
 export async function readRecentPhotos(limit = 10): Promise<{ uri: string; id: string }[]> {
   const { status } = await MediaLibrary.requestPermissionsAsync();
-  if (status !== "granted") throw new Error("Photo library permission denied.");
+  if (status !== "granted") throw new Error(t("perm.photoDenied"));
   const result = await MediaLibrary.getAssetsAsync({
     first: limit,
     sortBy: ["creationTime"],
@@ -101,7 +101,7 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
 
 export async function readLocation(): Promise<{ latitude: number; longitude: number }> {
   const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== "granted") throw new Error("Location permission denied.");
+  if (status !== "granted") throw new Error(t("perm.locationDenied"));
   const pos = await Location.getCurrentPositionAsync({});
   return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
 }
@@ -143,7 +143,7 @@ export async function checkBluetoothAvailable(): Promise<boolean> {
 }
 
 export async function scanBluetoothDevices(timeoutMs = 8000): Promise<BleDevice[]> {
-  throw new Error("Bluetooth scanning is not available in this build.");
+  throw new Error(t("perm.bluetoothUnavailable"));
 }
 
 export const requesters: Record<PermissionKind, () => Promise<PermissionStatus>> = {

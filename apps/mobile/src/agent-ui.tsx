@@ -522,7 +522,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                       onChangeText={setFieldJson}
                       multiline
                       autoCapitalize="none"
-                      placeholder={'{"full_name":"Your name","consent":true}'}
+                      placeholder={t("agent.fieldsJsonExample")}
                     />
                   )}
                 </>
@@ -1388,7 +1388,7 @@ function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void })
     setError("");
     try {
       const task = await delegate({
-        title: `Plan: ${goal.title}`,
+        title: t("agent.planTitle", { title: goal.title }),
         prompt: `Create a practical plan for this goal: ${goal.title}. ${goal.description}`,
         kind: "plan",
         goalId: goal.id,
@@ -1805,7 +1805,7 @@ export function AppsScreen() {
                 <Pressable
                   key={item}
                   accessibilityRole="radio"
-                  accessibilityLabel={`${statusLabel(item)} avatar`}
+                  accessibilityLabel={t("a11y.statusAvatar", { status: statusLabel(item) })}
                   accessibilityState={{ checked: avatar === item }}
                   onPress={() => setAvatar(item)}
                   style={{
@@ -1858,7 +1858,7 @@ export function AppsScreen() {
               busy={busy}
               disabled={!memory.trim()}
               onPress={() =>
-                void save("/memories", { text: memory.trim(), source: "User added in Apps" })
+                void save("/memories", { text: memory.trim(), source: t("memory.addedInApps") })
               }
             >
               {t("agent.remember")}

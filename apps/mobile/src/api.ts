@@ -1,7 +1,8 @@
-
-export const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL || "https://muse.paw.os.kg"
-).replace(/\/$/, "");
+import { t } from "./i18n";
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || "https://muse.paw.os.kg").replace(
+  /\/$/,
+  "",
+);
 
 export class MuseApi {
   constructor(readonly token: string) {}
@@ -19,7 +20,9 @@ export class MuseApi {
     const payload = await response.json();
     if (!response.ok)
       throw new Error(
-        typeof payload.error === "string" ? payload.error : `Request failed (${response.status})`,
+        typeof payload.error === "string"
+          ? payload.error
+          : t("api.requestFailed", { status: response.status }),
       );
     return payload;
   }
@@ -37,6 +40,6 @@ export async function createSession(
     body: JSON.stringify({ accessKey }),
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Could not open your workspace.");
+  if (!response.ok) throw new Error(payload.error || t("api.workspaceOpenFailed"));
   return payload;
 }

@@ -5,6 +5,7 @@ import type { Artifact, BrowserSession } from "../../../packages/domain/src";
 import type { AgentArtifact, AgentTask } from "../../../packages/domain/src/agent";
 import { ArtifactCard, TaskCard } from "./agent-ui";
 import { BrowserThreadCard } from "./computer";
+import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -15,7 +16,7 @@ export function FileThreadCard({ file }: { file: Artifact }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open PDF: ${file.name}`}
+      accessibilityLabel={t("artifact.openPdf", { name: file.name })}
       onPress={() => open({ type: "file", file })}
       style={{ width: "100%", maxWidth: 440 }}
     >

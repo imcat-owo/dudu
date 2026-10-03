@@ -788,6 +788,7 @@ export const enStrings: Record<StringKey, string> = {
   "mailcard.couldntDisplay": "The email could not be displayed.",
   "mailcard.oneMessage": "1 message",
   "mailcard.messages": "{count} messages",
+  "mailcard.openEmail": "Open email",
 
   // ---- jev choice card ----
   "jev.unknownChoice": "Unknown choice",
@@ -836,4 +837,8 @@ export const enStrings: Record<StringKey, string> = {
   "scope.calListReadonly": "Read calendar list",
   "scope.calEvents": "Manage calendar events",
   "scope.calReadonly": "Read calendars",
+  "a11y.statusAvatar": "{status} avatar",
+  "a11y.hexInput": "{label} hex",
+  "chat.imageAlt": "[Image: {alt}]",
+  "chat.imageFallback": "[Image]",
 };

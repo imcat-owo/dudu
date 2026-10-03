@@ -117,7 +117,7 @@ export function TodayScreen() {
             {t("today.makeSpace")}
           </Text>
           <Button
-            onPress={() => ask("Help me plan my day")}
+            onPress={() => ask(t("today.planDay"))}
             icon={Sparkles}
             primary
             style={{ alignSelf: "flex-start", marginTop: 5 }}
@@ -775,7 +775,7 @@ export function CalendarScreen() {
           </Button>
         </View>
         <Text style={[s.small, { marginTop: 7, marginBottom: 13 }]}>
-          {t("cal.tzNote", { name: selected?.name || "Your calendar", zone })}
+          {t("cal.tzNote", { name: selected?.name || t("cal.fallbackName"), zone })}
         </Text>
         <ErrorNotice error={error} />
         {!!error && (
@@ -1344,7 +1344,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                 }
               />
               <SettingsLine
-                label="Rich Threads"
+                label={t("conn.richThreads")}
                 value={w.runtime.richThreads ? "CopilotKit Intelligence" : t("conn.notConnected")}
               />
               <Button
@@ -1385,12 +1385,12 @@ function SettingsLine({ label, value }: { label: string; value: string }) {
 function capabilityLabel(value: string) {
   const scope = value.split("/").at(-1) || value;
   const names: Record<string, string> = {
-    "gmail.readonly": "Read Gmail",
-    "gmail.send": "Send Gmail",
-    "calendar.events.readonly": "Read calendar events",
-    "calendar.calendarlist.readonly": "Read calendar list",
-    "calendar.events": "Manage calendar events",
-    "calendar.readonly": "Read calendars",
+    "gmail.readonly": t("scope.gmailReadonly"),
+    "gmail.send": t("scope.gmailSend"),
+    "calendar.events.readonly": t("scope.calEventsReadonly"),
+    "calendar.calendarlist.readonly": t("scope.calListReadonly"),
+    "calendar.events": t("scope.calEvents"),
+    "calendar.readonly": t("scope.calReadonly"),
   };
   return names[scope] || scope;
 }

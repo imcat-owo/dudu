@@ -524,7 +524,7 @@ export function AppearanceScreen() {
                   autoCorrect={false}
                   placeholder={t("appearance.hexHint")}
                   placeholderTextColor={tokens.text.accent}
-                  accessibilityLabel={`${row.label} hex`}
+                  accessibilityLabel={t("a11y.hexInput", { label: row.label })}
                   style={{
                     flex: 1,
                     color: fg,

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
+import { t } from "./i18n";
 import { Button, useStyles } from "./ui";
 
 interface PdfReaderProps {
@@ -43,7 +44,7 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
       </View>
       <iframe
         key={`${page}:${zoom}`}
-        title="PDF document reader"
+        title={t("web.pdfTitle")}
         src={`${url}#page=${page}&zoom=${zoom}`}
         style={{ height: 570, width: "100%", border: 0, borderRadius: 12, background: "#e7e9e3" }}
       />
