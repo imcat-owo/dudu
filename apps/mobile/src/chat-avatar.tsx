@@ -7,8 +7,9 @@
  *   assistant → Mascot (the theme's default assistant face)
  *   user      → lucide User icon in a token-colored disc
  *
- * Compact by design (owner direction 2026-10-03): 30pt base, mildly scaled
- * with the font-size setting. No hardcoded colors — everything from tokens.
+ * Compact by design (owner direction 2026-10-03): base size comes from the
+ * theme bundle (bundle.avatar.size, design §9), mildly scaled with the
+ * font-size setting. No hardcoded colors — everything from tokens.
  */
 import { User } from "lucide-react-native";
 import { useState } from "react";
@@ -18,14 +19,15 @@ import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { Mascot, useColors } from "./ui";
 
-const AVATAR_BASE = 30;
+/** Fallback diameter (pt) when the theme bundle doesn't set avatar.size. */
+const DEFAULT_AVATAR_SIZE = 30;
 
 export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   const colors = useColors();
   const { bundle } = useTheme();
   const { scale } = useFontSizeSetting();
   const [failedUri, setFailedUri] = useState<string | null>(null);
-  const size = Math.round(AVATAR_BASE * scale);
+  const size = Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * scale);
   const rawUri = who === "assistant" ? bundle.avatar?.assistant : bundle.avatar?.user;
   // Remember WHICH uri failed, not just that one failed: picking a new
   // avatar in Settings retries the new URI, while the same dead URI stays
