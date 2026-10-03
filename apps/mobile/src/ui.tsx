@@ -237,10 +237,8 @@ export function useColors(): UIPalette {
  * Reactive stylesheet: rebuilt when the palette or the font-size setting
  * changes. Replaces the old static `s` export.
  *
- * Note: the font-size option itself is per-component state in app-settings
- * (no shared context), so changing the option live in Settings does not
- * propagate until remount — the saved option applies on next launch.
- * Wiring a shared font-size context is a follow-up.
+ * The font-size option lives in a shared module-level store (app-settings),
+ * so changing the option in Settings propagates live to every consumer.
  */
 export function useStyles(): ThemedStyles {
   const colors = useColors();

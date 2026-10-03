@@ -6,9 +6,13 @@
  *
  * Font size defaults to compact ("small"). Owner explicitly dislikes
  * oversized "elderly phone" style UI — refined, delicate, compact is the goal.
+ *
+ * The option lives in a module-level store (useSyncExternalStore) so every
+ * consumer re-renders live when the option changes in Settings — no remount
+ * needed.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 export type FontSizeOption = "system" | "small" | "standard" | "large";
 
@@ -34,6 +38,38 @@ function isFontSizeOption(raw: string | null): raw is FontSizeOption {
   return raw === "system" || raw === "small" || raw === "standard" || raw === "large";
 }
 
+let current: FontSizeOption = DEFAULT_FONT_SIZE_OPTION;
+let loaded = false;
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+// Load the saved option once; late subscribers still get the value via getSnapshot.
+if (!loaded) {
+  loaded = true;
+  AsyncStorage.getItem(STORAGE_KEY)
+    .then((raw) => {
+      if (isFontSizeOption(raw) && raw !== current) {
+        current = raw;
+        emit();
+      }
+    })
+    .catch(() => {});
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getSnapshot(): FontSizeOption {
+  return current;
+}
+
 export function useFontSizeSetting(): {
   option: FontSizeOption;
   /** Numeric multiplier to apply to base font sizes. 1 when following system. */
@@ -42,18 +78,13 @@ export function useFontSizeSetting(): {
   followSystem: boolean;
   setOption: (o: FontSizeOption) => Promise<void>;
 } {
-  const [option, setOptionState] = useState<FontSizeOption>(DEFAULT_FONT_SIZE_OPTION);
-
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (isFontSizeOption(raw)) setOptionState(raw);
-      })
-      .catch(() => {});
-  }, []);
+  const option = useSyncExternalStore(subscribe, getSnapshot);
 
   const setOption = useCallback(async (o: FontSizeOption) => {
-    setOptionState(o);
+    if (o !== current) {
+      current = o;
+      emit();
+    }
     try {
       await AsyncStorage.setItem(STORAGE_KEY, o);
     } catch {
