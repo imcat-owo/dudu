@@ -22,6 +22,7 @@
  */
 
 import { API_GROUPS_MANUAL } from "./api-groups.js";
+import { BROWSER_MANUAL } from "./browser.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
 import { KNOWLEDGE_MANUAL } from "./knowledge.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
@@ -59,6 +60,7 @@ export const MANUALS: ManualEntry[] = [
   VISION_MANUAL,
   THEMES_MANUAL,
   API_GROUPS_MANUAL,
+  BROWSER_MANUAL,
   SANDBOX_MANUAL,
   OUR_SPACE_MANUAL,
   MEMORY_MANUAL,

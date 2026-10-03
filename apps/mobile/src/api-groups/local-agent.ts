@@ -16,6 +16,7 @@ import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
+import { createBrowserTools } from "../browser/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
 import { memoryStore } from "../memory/instance.js";
@@ -433,6 +434,7 @@ export function createLocalAgent(opts: {
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
+        ...createBrowserTools(),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {
           // "我们的歌": the AI truly remembers which songs are special.

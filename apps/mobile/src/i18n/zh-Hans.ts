@@ -598,6 +598,8 @@ const zhHans = {
   "browser.untitled": "浏览器会话",
   "browser.startWithSite": "从一个网站开始",
   "browser.startDetail": "在上面打开会话，把浏览收在一起。配置好浏览器 worker 后会有实时预览。",
+  "browser.aiBrowserTitle": "AI 浏览器",
+  "browser.aiBrowserDetail": "嘟嘟用这个浏览器帮你看网页、点按钮、填表单。你说话，它动手。",
 
   // ---- files screen ----
   "files.tagline": "文档，还有一点工作空间。",

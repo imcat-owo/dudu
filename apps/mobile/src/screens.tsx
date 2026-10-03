@@ -1,5 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import AIBrowserView from "./browser/AIBrowserView";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -918,6 +919,13 @@ export function BrowserScreen() {
             detail={t("browser.startDetail")}
           />
         )}
+      </Card>
+      <Card>
+        <SectionHeading title={t("browser.aiBrowserTitle")} />
+        <TText style={s.muted}>{t("browser.aiBrowserDetail")}</TText>
+        <View style={{ height: 400, marginTop: 12 }}>
+          <AIBrowserView visible />
+        </View>
       </Card>
     </View>
   );

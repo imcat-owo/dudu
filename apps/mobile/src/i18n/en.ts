@@ -615,6 +615,8 @@ export const enStrings: Record<StringKey, string> = {
   "browser.startWithSite": "Start with a website",
   "browser.startDetail":
     "Open a session above to keep your browsing together. Live previews appear when the browser worker is configured.",
+  "browser.aiBrowserTitle": "AI Browser",
+  "browser.aiBrowserDetail": "Dudu uses this browser to read pages, click buttons, and fill forms for you. You talk, it acts.",
 
   // ---- files screen ----
   "files.tagline": "Documents, with a little room to work.",
