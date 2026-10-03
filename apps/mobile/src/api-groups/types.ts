@@ -23,8 +23,10 @@ export interface ApiGroup {
   vendor: ApiVendor;
   /** Base URL, e.g. https://api.openai.com/v1 (no trailing slash). */
   baseUrl: string;
-  /** Secret. Stored in SecureStore, never logged, never in repo. */
-  apiKey: string;
+  /** Secret. Stored in SecureStore, never logged, never in repo. Optional:
+   * keyless local endpoints (Ollama-style) don't need one — no Authorization
+   * header is sent when absent. */
+  apiKey?: string;
   /** Model name sent as `model` in the request body. */
   model: string;
   /** Extra HTTP headers (for proxies/gateways). Values are secrets too. */
@@ -97,7 +99,6 @@ export function validateGroup(
   const url = g.baseUrl.trim().replace(/\/$/, "");
   if (!url) return "baseUrlRequired";
   if (!/^https?:\/\//i.test(url)) return "baseUrlInvalid";
-  if (!g.apiKey.trim()) return "apiKeyRequired";
   if (!g.model.trim()) return "modelRequired";
   return null;
 }

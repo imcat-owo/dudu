@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createSseParser, GroupError, parseSseData } from "../src/api-groups/direct-transport.js";
+import { createSseParser, GroupError, parseSseData, streamChat } from "../src/api-groups/direct-transport.js";
 import { createGroupStore, type SecureBackend } from "../src/api-groups/store.js";
 import {
   type ApiGroup,
@@ -41,12 +41,15 @@ describe("validateGroup", () => {
   it("accepts a complete group", () => {
     assert.equal(validateGroup(sampleGroup()), null);
   });
-  it("rejects missing name / url / key / model in order", () => {
+  it("rejects missing name / url / model in order; key is optional", () => {
     assert.equal(validateGroup(sampleGroup({ name: " " })), "nameRequired");
     assert.equal(validateGroup(sampleGroup({ baseUrl: "" })), "baseUrlRequired");
     assert.equal(validateGroup(sampleGroup({ baseUrl: "not-a-url" })), "baseUrlInvalid");
-    assert.equal(validateGroup(sampleGroup({ apiKey: "" })), "apiKeyRequired");
     assert.equal(validateGroup(sampleGroup({ model: "  " })), "modelRequired");
+  });
+  it("accepts a keyless group (Ollama-style local endpoint)", () => {
+    assert.equal(validateGroup(sampleGroup({ apiKey: "" })), null);
+    assert.equal(validateGroup(sampleGroup({ apiKey: undefined })), null);
   });
   it("normalizeBaseUrl strips trailing slashes", () => {
     assert.equal(normalizeBaseUrl("https://x.com/v1///"), "https://x.com/v1");
@@ -135,5 +138,120 @@ describe("createGroupStore", () => {
     // ensureLoaded runs on creation; give it a tick.
     await new Promise((r) => setTimeout(r, 20));
     assert.deepEqual(store.getSnapshot().groups, []);
+  });
+});
+
+describe("streamChat 8s fallback (P0: promise must settle)", () => {
+  // Fake XHR that never fires any event — simulates a server that accepts
+  // the request but never streams, triggering the 8s fallback path.
+  class SilentXHR {
+    onprogress: (() => void) | null = null;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    ontimeout: (() => void) | null = null;
+    timeout = 0;
+    responseText = "";
+    status = 200;
+    open() {}
+    setRequestHeader() {}
+    send() {
+      /* silent: no events ever */
+    }
+    abort() {}
+  }
+
+  function stubGlobals(fetchImpl: () => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>) {
+    const g = globalThis as Record<string, unknown>;
+    const saved = {
+      xhr: g.XMLHttpRequest,
+      fetch: g.fetch,
+      setTimeout: g.setTimeout,
+      clearTimeout: g.clearTimeout,
+    };
+    const timers: Array<{ cb: () => void; ms: number }> = [];
+    g.XMLHttpRequest = SilentXHR;
+    g.fetch = fetchImpl;
+    g.setTimeout = ((cb: () => void, ms?: number) => {
+      timers.push({ cb, ms: ms ?? 0 });
+      return timers.length;
+    }) as typeof setTimeout;
+    g.clearTimeout = (() => {}) as typeof clearTimeout;
+    return {
+      timers,
+      restore() {
+        g.XMLHttpRequest = saved.xhr;
+        g.fetch = saved.fetch;
+        g.setTimeout = saved.setTimeout;
+        g.clearTimeout = saved.clearTimeout;
+      },
+    };
+  }
+
+  function fireFallback(timers: Array<{ cb: () => void; ms: number }>) {
+    const t = timers.find((x) => x.ms === 8000);
+    assert.ok(t, "8s fallback timer must be scheduled");
+    t!.cb();
+  }
+
+  it("resolves via fallback when XHR never streams (fallback success)", async () => {
+    const { timers, restore } = stubGlobals(async () => ({
+      ok: true,
+      text: async () =>
+        JSON.stringify({ choices: [{ message: { content: "fallback hello" } }] }),
+    }));
+    try {
+      const tokens: string[] = [];
+      let done = false;
+      let err: unknown = null;
+      const p = streamChat(
+        sampleGroup(),
+        [{ role: "user", content: "hi" }],
+        {
+          onToken: (t) => tokens.push(t),
+          onDone: () => {
+            done = true;
+          },
+          onError: (e) => {
+            err = e;
+          },
+        },
+      );
+      fireFallback(timers);
+      await p; // must resolve — used to hang forever (P0)
+      assert.equal(err, null);
+      assert.equal(done, true);
+      assert.deepEqual(tokens, ["fallback hello"]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("rejects via fallback when the fallback fetch fails", async () => {
+    const { timers, restore } = stubGlobals(async () => {
+      throw new Error("connection refused");
+    });
+    try {
+      let done = false;
+      let err: unknown = null;
+      const p = streamChat(
+        sampleGroup(),
+        [{ role: "user", content: "hi" }],
+        {
+          onToken: () => {},
+          onDone: () => {
+            done = true;
+          },
+          onError: (e) => {
+            err = e;
+          },
+        },
+      );
+      fireFallback(timers);
+      await assert.rejects(p, /connection refused/); // must reject — used to hang forever (P0)
+      assert.equal(done, false);
+      assert.ok(err instanceof Error);
+    } finally {
+      restore();
+    }
   });
 });

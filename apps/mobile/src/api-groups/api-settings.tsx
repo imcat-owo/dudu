@@ -84,8 +84,14 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
   function pickVendor(v: ApiVendor) {
     setVendor(v);
     const preset = VENDOR_PRESETS.find((p) => p.vendor === v);
-    // Switching tabs refills the URL (Kelivo pattern); user edits stay editable.
-    if (preset) setDraft((d) => ({ ...d, vendor: v, baseUrl: preset.baseUrl }));
+    if (!preset) return;
+    setDraft((d) => {
+      // Don't clobber a hand-typed URL: only refill when the field is empty
+      // or still holds some other preset's URL (P3).
+      const cur = d.baseUrl.trim();
+      const isPreset = VENDOR_PRESETS.some((p) => p.baseUrl === cur);
+      return isPreset || !cur ? { ...d, vendor: v, baseUrl: preset.baseUrl } : { ...d, vendor: v };
+    });
   }
 
   function set<K extends keyof ApiGroup>(key: K, value: ApiGroup[K]) {
@@ -201,7 +207,7 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
       />
       <Field
         label={t("apigroup.apiKey")}
-        value={draft.apiKey}
+        value={draft.apiKey ?? ""}
         onChangeText={(v) => set("apiKey", v)}
         placeholder={t("apigroup.apiKeyPh")}
         secureTextEntry
