@@ -4,6 +4,7 @@ import {
   Bell,
   Check,
   Lightbulb,
+  LogOut,
   type LucideIcon,
   Menu,
   MessageCircle,
@@ -33,41 +34,51 @@ import {
 } from "./src/agent-ui";
 import { AgentWorkspaceProvider, useAgentWorkspace } from "./src/agent-workspace";
 import { API_URL, createSession, MuseApi } from "./src/api";
+import { AppearanceScreen } from "./src/appearance";
 import { ChatScreen, WorkspaceTools } from "./src/chat";
 import { ComputerEntry } from "./src/computer";
 import { ComputerDraftProvider } from "./src/computer-drafts";
 import { Details } from "./src/details";
-import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
-import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
+import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
-import { Button, Card, colors, ErrorNotice, Field, IconButton, Mascot, s } from "./src/ui";
+import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
+import { tokenStore } from "./src/session-store";
+import { ThemeProvider } from "./src/theme/ThemeContext";
+import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
+import { Button, Card, useColors, ErrorNotice, Field, IconButton, Mascot, useStyles } from "./src/ui";
 import { type Detail, useWorkspace, WorkspaceContext } from "./src/workspace";
 
 const nav: { id: Section; label: string; icon: LucideIcon }[] = [
-  { id: "chat", label: "Chat", icon: MessageCircle },
-  { id: "activity", label: "Activity", icon: PanelsTopLeft },
-  { id: "ideas", label: "Ideas", icon: Lightbulb },
-  { id: "goals", label: "Goals", icon: SquareCheck },
-  { id: "apps", label: "Apps", icon: Shapes },
+  { id: "chat", label: t("tab.chat"), icon: MessageCircle },
+  { id: "activity", label: t("tab.activity"), icon: PanelsTopLeft },
+  { id: "ideas", label: t("tab.ideas"), icon: Lightbulb },
+  { id: "goals", label: t("tab.goals"), icon: SquareCheck },
+  { id: "apps", label: t("tab.apps"), icon: Shapes },
 ];
 const titles: Partial<Record<Section, { title: string; subtitle: string }>> = {
-  activity: { title: "Activity", subtitle: "Plans, progress, decisions and results." },
-  ideas: { title: "Ideas", subtitle: "Useful next steps, grounded in your world." },
+  activity: { title: t("section.activity.title"), subtitle: t("section.activity.subtitle") },
+  ideas: { title: t("section.ideas.title"), subtitle: t("section.ideas.subtitle") },
   goals: {
-    title: "Goals",
-    subtitle: "Longer-term goals and things to keep an eye on.",
+    title: t("section.goals.title"),
+    subtitle: t("section.goals.subtitle"),
   },
   apps: {
-    title: "Apps",
-    subtitle: "Connections, capabilities and what your agent remembers.",
+    title: t("section.apps.title"),
+    subtitle: t("section.apps.subtitle"),
   },
-  connections: { title: "Apps", subtitle: "Connections and capabilities." },
-  mail: { title: "Mail", subtitle: "The conversations behind your work." },
-  calendar: { title: "Calendar", subtitle: "Time for what matters." },
-  browser: { title: "Browser", subtitle: "Your connected browsing sessions." },
-  files: { title: "Files", subtitle: "Documents, forms and filled copies." },
+  appearance: { title: t("appearance.title"), subtitle: t("appearance.subtitle") },
+  connections: {
+    title: t("section.connections.title"),
+    subtitle: t("section.connections.subtitle"),
+  },
+  mail: { title: t("section.mail.title"), subtitle: t("section.mail.subtitle") },
+  calendar: { title: t("section.calendar.title"), subtitle: t("section.calendar.subtitle") },
+  browser: { title: t("section.browser.title"), subtitle: t("section.browser.subtitle") },
+  files: { title: t("section.files.title"), subtitle: t("section.files.subtitle") },
 };
 export default function App() {
+  const colors = useColors();
+  const s = useStyles();
   const [token, setToken] = useState("");
   const [accessKey, setAccessKey] = useState("");
   const [busy, setBusy] = useState(true);
@@ -78,15 +89,51 @@ export default function App() {
     try {
       const session = await createSession(key);
       setToken(session.token);
+      await tokenStore.save(session.token);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }, []);
-  useEffect(() => {
-    void connect();
+  // Cold start: if a token was persisted, validate it once with a lightweight
+  // authenticated request. Valid -> skip the login screen; expired/invalid ->
+  // delete it and fall through to a fresh session. No stored token -> same
+  // auto-connect as before (zero taps for the no-key local case).
+  // Network errors keep the stored token and show an error instead.
+  const restore = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const stored = await tokenStore.load();
+      if (!stored) {
+        await connect();
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/workspace`, {
+        headers: { Authorization: `Bearer ${stored}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        await tokenStore.clear();
+        await connect();
+        return;
+      }
+      if (!response.ok) throw new Error(`Could not reach your workspace (${response.status}).`);
+      setToken(stored);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }, [connect]);
+  const logout = useCallback(async () => {
+    await tokenStore.clear();
+    setError("");
+    setToken("");
+  }, []);
+  useEffect(() => {
+    void restore();
+  }, [restore]);
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -95,7 +142,7 @@ export default function App() {
           runtimeUrl={`${API_URL}/api/copilotkit`}
           headers={{ Authorization: `Bearer ${token}` }}
         >
-          <WorkspaceApp token={token} />
+          <WorkspaceApp token={token} onLogout={() => void logout()} />
         </CopilotKitProvider>
       ) : (
         <SafeAreaView
@@ -112,27 +159,26 @@ export default function App() {
             <Text
               style={{ fontSize: 32, color: colors.text, letterSpacing: -1, fontWeight: "500" }}
             >
-              欢迎来到 OpenMuse。
+              {t("auth.welcome")}
             </Text>
-            <Text style={[s.muted, { textAlign: "center" }]}>给你的一天留个小房间。</Text>
+            <Text style={[s.muted, { textAlign: "center" }]}>{t("app.tagline")}</Text>
             {busy ? (
               <ActivityIndicator color={colors.blueDark} />
             ) : (
               <Card style={{ width: "100%" }}>
                 <ErrorNotice error={error} />
                 <Field
-                  label="工作区访问密钥"
+                  label={t("auth.accessKeyLabel")}
                   value={accessKey}
                   onChangeText={setAccessKey}
                   secureTextEntry
-                  placeholder="连接线上工作区需要"
+                  placeholder={t("auth.accessKeyPlaceholder")}
                 />
                 <Button primary onPress={() => void connect(accessKey || undefined)}>
-                  Open workspace
+                  {t("auth.openWorkspace")}
                 </Button>
                 <Text style={[s.small, { marginTop: 15 }]}>
-                  本地工作区无需密钥。请确保 OpenMuse 服务器正在运行于{" "}
-                  {API_URL}.
+                  {t("auth.noKeyNote", { url: API_URL })}
                 </Text>
               </Card>
             )}
@@ -142,7 +188,9 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
-function WorkspaceApp({ token }: { token: string }) {
+function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void }) {
+  const colors = useColors();
+  const s = useStyles();
   const api = useMemo(() => new MuseApi(token), [token]);
   const [workspace, setWorkspace] = useState<Workspace>();
   const [section, setSection] = useState<Section>("chat");
@@ -216,13 +264,16 @@ function WorkspaceApp({ token }: { token: string }) {
         <ComputerDraftProvider key={token}>
           <ThreadsProvider>
             <IncognitoProvider>
-              <WorkspaceShell
-                detail={detail}
-                toast={toast}
-                clearToast={() => setToast("")}
-                error={error}
-                prompt={prompt}
-              />
+              <ThemeProvider apiToken={token}>
+                <WorkspaceShell
+                  detail={detail}
+                  toast={toast}
+                  clearToast={() => setToast("")}
+                  error={error}
+                  prompt={prompt}
+                  onLogout={onLogout}
+                />
+              </ThemeProvider>
             </IncognitoProvider>
           </ThreadsProvider>
         </ComputerDraftProvider>
@@ -236,13 +287,17 @@ function WorkspaceShell({
   clearToast,
   error,
   prompt,
+  onLogout,
 }: {
   detail?: Detail;
   toast: string;
   clearToast: () => void;
   error: string;
   prompt?: { id: number; text: string };
+  onLogout: () => void;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace, section, navigate, open } = useWorkspace();
   const { data } = useAgentWorkspace();
   const {
@@ -267,13 +322,13 @@ function WorkspaceShell({
   const agentName = data?.identity.name || "OpenMuse";
   const status = activeTask
     ? activeTask.status === "waiting_approval"
-      ? `Ready to review · ${activeTask.title}`
+      ? t("status.readyReview", { title: activeTask.title })
       : activeTask.status === "waiting_input"
-        ? `Needs your input · ${activeTask.title}`
+        ? t("status.needsInput", { title: activeTask.title })
         : activeTask.plan.find((step) => step.status === "running")?.title || activeTask.title
     : data?.tasks.some((task) => task.status === "queued")
-      ? "Picking up your next task…"
-      : "Here when you need me";
+      ? t("status.nextTask")
+      : t("status.idle");
   const title = titles[section] || titles.apps;
   const Screen =
     section === "mail"
@@ -290,8 +345,10 @@ function WorkspaceShell({
                 ? IdeasScreen
                 : section === "goals"
                   ? GoalsScreen
-                  : AppsScreen;
-  const utility = ["mail", "calendar", "browser", "files"].includes(section);
+                  : section === "appearance"
+                    ? AppearanceScreen
+                    : AppsScreen;
+  const utility = ["mail", "calendar", "browser", "files", "appearance"].includes(section);
   return (
     <>
       <WorkspaceTools />
@@ -307,7 +364,7 @@ function WorkspaceShell({
             <View style={{ position: "absolute", left: 0, top: 16 }}>
               <IconButton
                 icon={Menu}
-                label="Open conversations and menu"
+                label={t("a11y.openMenu")}
                 onPress={() => setThreadsOpen(true)}
               />
             </View>
@@ -342,26 +399,29 @@ function WorkspaceShell({
               </Pressable>
               {section === "chat" && <ComputerEntry />}
             </View>
-            <View style={{ position: "absolute", right: 0, top: 16 }}>
-              <IconButton
-                icon={Bell}
-                label={`Notifications, ${pending} unread or pending`}
-                onPress={() => open({ type: "notifications" })}
-              />
-              {pending > 0 && (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 4,
-                    position: "absolute",
-                    top: 7,
-                    right: 9,
-                    backgroundColor: colors.blueDark,
-                  }}
+            <View style={{ position: "absolute", right: 0, top: 16, flexDirection: "row", gap: 8 }}>
+              <IconButton icon={LogOut} label={t("auth.logout")} onPress={onLogout} />
+              <View>
+                <IconButton
+                  icon={Bell}
+                  label={`Notifications, ${pending} unread or pending`}
+                  onPress={() => open({ type: "notifications" })}
                 />
-              )}
+                {pending > 0 && (
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 4,
+                      position: "absolute",
+                      top: 7,
+                      right: 9,
+                      backgroundColor: colors.blueDark,
+                    }}
+                  />
+                )}
+              </View>
             </View>
           </View>
           <View style={{ flex: 1, minHeight: 0 }}>
@@ -496,7 +556,7 @@ function WorkspaceShell({
               <Text style={{ color: "#FFF", fontSize: 13, flexShrink: 1 }}>{toast}</Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Dismiss notification"
+                accessibilityLabel={t("a11y.dismissNotification")}
                 onPress={clearToast}
               >
                 <X size={16} color="#FFF" />
