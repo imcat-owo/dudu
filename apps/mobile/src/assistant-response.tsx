@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { Linking, Text, type TextStyle } from "react-native";
 import Markdown, { type MarkdownStyles, type RenderRules } from "react-native-markdown-renderer";
+import { useFontSizeSetting } from "./app-settings";
 import { assistantMarkdown, isSafeAssistantUrl } from "./assistant-markdown";
+import { useTheme } from "./theme/ThemeContext";
 import { ErrorNotice, useColors } from "./ui";
 
 const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles) => (
@@ -12,6 +14,8 @@ const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles)
 
 export function AssistantResponse({ content }: { content: string }) {
   const colors = useColors();
+  const { tokens } = useTheme();
+  const { scale } = useFontSizeSetting();
   const [linkError, setLinkError] = useState("");
   const onLinkPress = useCallback((url: string) => {
     if (!isSafeAssistantUrl(url)) return false;
@@ -23,18 +27,21 @@ export function AssistantResponse({ content }: { content: string }) {
   }, []);
 
   const { mdStyle, mdRules } = useMemo(() => {
-    const textStyle = { color: colors.text, fontSize: 16, lineHeight: 24 };
+    // Compact base type (15pt, matching s.text) scaled by the font-size setting.
+    const fs = (base: number): number => Math.round(base * scale * 10) / 10;
+    const fg = tokens.aiBubble.fg;
+    const textStyle = { color: fg, fontSize: fs(15), lineHeight: fs(22) };
     const mdStyle: Partial<MarkdownStyles> = {
       text: textStyle,
       paragraph: { marginTop: 0, marginBottom: 6 },
       list: { marginBottom: 6 },
       headingContainer: { marginTop: 8, marginBottom: 4 },
-      heading1: { fontSize: 21, lineHeight: 27 },
-      heading2: { fontSize: 19, lineHeight: 25 },
-      heading3: { fontSize: 17, lineHeight: 23 },
+      heading1: { fontSize: fs(19), lineHeight: fs(25), color: fg },
+      heading2: { fontSize: fs(17), lineHeight: fs(23), color: fg },
+      heading3: { fontSize: fs(16), lineHeight: fs(22), color: fg },
       link: { color: colors.blueDark, textDecorationLine: "underline" },
-      codeInline: { backgroundColor: colors.line, color: colors.text },
-      codeBlock: { backgroundColor: colors.line, color: colors.text },
+      codeInline: { backgroundColor: colors.line, color: fg },
+      codeBlock: { backgroundColor: colors.line, color: fg },
     };
     const mdRules: RenderRules = {
       textgroup: (node, children) => (
@@ -51,7 +58,7 @@ export function AssistantResponse({ content }: { content: string }) {
       fence: renderCodeBlock,
     };
     return { mdStyle, mdRules };
-  }, [colors]);
+  }, [colors, tokens, scale]);
 
   return (
     <>

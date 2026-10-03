@@ -25,6 +25,7 @@ import { useAgentWorkspace } from "./agent-workspace";
 import { AssistantResponse } from "./assistant-response";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
+import { ChatAvatar } from "./chat-avatar";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { runConversationTurn } from "./conversation-run";
@@ -40,6 +41,7 @@ import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
+import { useTheme } from "./theme/ThemeContext";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
@@ -213,6 +215,7 @@ export function ChatScreen({
 }) {
   const colors = useColors();
   const s = useStyles();
+  const { tokens } = useTheme();
   const { api, workspace: w, refresh, navigate } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
   const { enabled: richThreads, mainId, claimPrompt } = useMuseThread();
@@ -487,7 +490,7 @@ export function ChatScreen({
       <ScrollView
         ref={list}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ gap: 13, paddingTop: 15, paddingBottom: 20, flexGrow: 1 }}
+        contentContainerStyle={{ gap: 8, paddingTop: 10, paddingBottom: 16, flexGrow: 1 }}
         onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
           const nearEnd = contentSize.height - contentOffset.y - layoutMeasurement.height < 100;
           followLatest.current = nearEnd;
@@ -521,8 +524,8 @@ export function ChatScreen({
           >
             <Text
               style={{
-                fontSize: 28,
-                letterSpacing: -1,
+                fontSize: 22,
+                letterSpacing: -0.5,
                 color: colors.text,
                 textAlign: "center",
                 maxWidth: 350,
@@ -568,89 +571,102 @@ export function ChatScreen({
             const generatedImage =
               typeof message.content === "string" ? parseImageMessage(message.content) : null;
             const toolCalls = "toolCalls" in message ? message.toolCalls || [] : [];
+            // Social-app row: AI avatar + bubble on the left, user bubble + avatar
+            // on the right. Compact by default (owner direction 2026-10-03):
+            // tighter bubbles, tighter spacing, smaller type — all from tokens.
+            const bubble = user ? tokens.userBubble : tokens.aiBubble;
+            const radius = bubble.radius ?? 16;
             return (
-              <View
-                key={message.id}
-                style={{
-                  alignSelf: user ? "flex-end" : "flex-start",
-                  maxWidth: user ? "85%" : "95%",
-                  width: toolCalls.length ? "95%" : undefined,
-                  gap: 8,
-                }}
-              >
-                {voice ? (
-                  <VoiceBubble voice={voice} user={user} />
-                ) : generatedImage ? (
-                  <ImageBubble image={generatedImage} user={user} />
-                ) : (
-                  !!text && (
-                    <View
-                      style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 13,
-                        borderRadius: 22,
-                        borderBottomRightRadius: user ? 7 : 22,
-                        borderBottomLeftRadius: user ? 22 : 7,
-                        backgroundColor: user ? colors.blue : colors.line,
-                      }}
-                    >
-                      {user ? (
-                        <Text
-                          selectable
-                          style={[s.text, { fontSize: 16, lineHeight: 24, color: colors.onBlue }]}
-                        >
-                          {text}
-                        </Text>
-                      ) : (
-                        <AssistantResponse content={text} />
-                      )}
-                    </View>
-                  )
-                )}
-                <JevInteractionContext.Provider
-                  value={{
-                    threadId,
-                    busy:
-                      busy ||
-                      agent.isRunning ||
-                      !loaded ||
-                      !isReady ||
-                      !!outbox.pending.length ||
-                      outbox.paused ||
-                      !!saveError,
-                    latestPanelId,
-                    latestUserText,
-                    send: sendChoice,
-                    retry: (text) => sendChoice(text, true),
-                    canRetry:
-                      loaded &&
-                      isReady &&
-                      !busy &&
-                      !agent.isRunning &&
-                      !outbox.running &&
-                      !outbox.pending.length &&
-                      !saveError,
-                    confirmedSelection: (panelId) => confirmedJevSelection(messages, panelId),
+              <View key={message.id} style={{ gap: 6 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    justifyContent: user ? "flex-end" : "flex-start",
+                    gap: 8,
                   }}
                 >
-                  <BrowserRunContext
+                  {!user && <ChatAvatar who="assistant" />}
+                  <View style={{ maxWidth: "80%" }}>
+                    {voice ? (
+                      <VoiceBubble voice={voice} user={user} />
+                    ) : generatedImage ? (
+                      <ImageBubble image={generatedImage} user={user} />
+                    ) : (
+                      !!text && (
+                        <View
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 9,
+                            borderRadius: radius,
+                            borderBottomRightRadius: user ? 6 : radius,
+                            borderBottomLeftRadius: user ? radius : 6,
+                            backgroundColor: bubble.bg,
+                          }}
+                        >
+                          {user ? (
+                            <Text selectable style={[s.text, { color: bubble.fg }]}>
+                              {text}
+                            </Text>
+                          ) : (
+                            <AssistantResponse content={text} />
+                          )}
+                        </View>
+                      )
+                    )}
+                  </View>
+                  {user && <ChatAvatar who="user" />}
+                </View>
+                {!!toolCalls.length && (
+                  <JevInteractionContext.Provider
                     value={{
-                      running: busy || agent.isRunning,
-                      active:
-                        (busy || agent.isRunning) && messages.indexOf(message) > latestUserIndex,
+                      threadId,
+                      busy:
+                        busy ||
+                        agent.isRunning ||
+                        !loaded ||
+                        !isReady ||
+                        !!outbox.pending.length ||
+                        outbox.paused ||
+                        !!saveError,
+                      latestPanelId,
+                      latestUserText,
+                      send: sendChoice,
+                      retry: (text) => sendChoice(text, true),
+                      canRetry:
+                        loaded &&
+                        isReady &&
+                        !busy &&
+                        !agent.isRunning &&
+                        !outbox.running &&
+                        !outbox.pending.length &&
+                        !saveError,
+                      confirmedSelection: (panelId) => confirmedJevSelection(messages, panelId),
                     }}
                   >
-                    {toolCalls.map((toolCall) => {
-                      const toolMessage = messages.find(
-                        (candidate): candidate is ToolMessage =>
-                          candidate.role === "tool" && candidate.toolCallId === toolCall.id,
-                      );
-                      return (
-                        <View key={toolCall.id}>{renderToolCall({ toolCall, toolMessage })}</View>
-                      );
-                    })}
-                  </BrowserRunContext>
-                </JevInteractionContext.Provider>
+                    <BrowserRunContext
+                      value={{
+                        running: busy || agent.isRunning,
+                        active:
+                          (busy || agent.isRunning) && messages.indexOf(message) > latestUserIndex,
+                      }}
+                    >
+                      <View style={{ gap: 8, paddingHorizontal: 4 }}>
+                        {toolCalls.map((toolCall) => {
+                          const toolMessage = messages.find(
+                            (candidate): candidate is ToolMessage =>
+                              candidate.role === "tool" && candidate.toolCallId === toolCall.id,
+                          );
+                          return (
+                            <View key={toolCall.id}>
+                              {renderToolCall({ toolCall, toolMessage })}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </BrowserRunContext>
+                  </JevInteractionContext.Provider>
+                )}
               </View>
             );
           })
@@ -702,31 +718,40 @@ export function ChatScreen({
         {(!richThreads || selection.id === mainId) && <BackgroundUpdates />}
         {(busy || agent.isRunning) && (
           <View
-            accessibilityLabel={t("a11y.agentWorking")}
-            style={[
-              s.row,
-              {
-                alignSelf: "flex-start",
-                gap: 7,
-                paddingHorizontal: 19,
-                paddingVertical: 18,
-                backgroundColor: colors.line,
-                borderRadius: 28,
-              },
-            ]}
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              justifyContent: "flex-start",
+              gap: 8,
+            }}
           >
-            {[0.4, 0.75, 0.5].map((opacity) => (
-              <View
-                key={opacity}
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: colors.muted,
-                  opacity,
-                }}
-              />
-            ))}
+            <ChatAvatar who="assistant" />
+            <View
+              accessibilityLabel={t("a11y.agentWorking")}
+              style={[
+                s.row,
+                {
+                  gap: 5,
+                  paddingHorizontal: 14,
+                  paddingVertical: 11,
+                  backgroundColor: tokens.aiBubble.bg,
+                  borderRadius: tokens.aiBubble.radius ?? 16,
+                },
+              ]}
+            >
+              {[0.4, 0.75, 0.5].map((opacity) => (
+                <View
+                  key={opacity}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: tokens.aiBubble.fg,
+                    opacity,
+                  }}
+                />
+              ))}
+            </View>
           </View>
         )}
         <ErrorNotice error={error} />
