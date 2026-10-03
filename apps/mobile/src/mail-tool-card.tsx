@@ -3,7 +3,7 @@ import { useContext } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { z } from "zod";
 import { BrowserRunContext } from "./browser-tool-card";
-import { Button, Card, colors, ErrorNotice, s } from "./ui";
+import {Button, Card, useColors, ErrorNotice, useStyles} from "./ui";
 import { useWorkspace } from "./workspace";
 
 const messageSchema = z.object({
@@ -29,6 +29,8 @@ export function MailToolCard({
   loading: boolean;
   search?: boolean;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { open } = useWorkspace();
   const { active } = useContext(BrowserRunContext);
   let value = result;
