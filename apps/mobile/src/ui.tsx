@@ -16,13 +16,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFontSizeSetting } from "./app-settings";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { DEFAULT_MASCOT_INDEX } from "./mascot";
 import { mascotSource } from "./mascot-assets";
 import { clampFg, type ResolvedMode } from "./theme/derive";
 import { useTheme } from "./theme/ThemeContext";
 import type { SurfaceId, SurfaceTokens } from "./theme/types";
-import { TText } from "./font";
 
 /**
  * Legacy palette shape, now derived live from theme tokens.
@@ -361,19 +361,24 @@ export function Empty({
   title,
   detail,
   children,
+  ambientVideo,
 }: {
   icon: LucideIcon;
   title: string;
   detail: string;
   children?: ReactNode;
+  /** Optional living Sora video instead of the static icon (e.g. knowledge base). */
+  ambientVideo?: ReactNode;
 }) {
   const colors = useColors();
   const s = useStyles();
   return (
     <View style={{ alignItems: "center", padding: 40, gap: 13 }}>
-      <View style={[s.iconBox, { width: 55, height: 55, borderRadius: 18 }]}>
-        <Icon size={24} color={colors.blueDark} />
-      </View>
+      {ambientVideo ?? (
+        <View style={[s.iconBox, { width: 55, height: 55, borderRadius: 18 }]}>
+          <Icon size={24} color={colors.blueDark} />
+        </View>
+      )}
       <TText style={s.heading}>{title}</TText>
       <TText style={[s.muted, { textAlign: "center", maxWidth: 360 }]}>{detail}</TText>
       {children}

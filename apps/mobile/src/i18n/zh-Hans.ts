@@ -114,6 +114,7 @@ const zhHans = {
   "music.together.listening": "一起听歌中",
   "music.together.off": "自己听",
   "music.nowPlaying": "正在播放",
+  "music.djWorking": "小梦打碟中",
   "music.nothingPlaying": "安安静静的。点一首，或者跟我说「放首歌」。",
   "music.noAudio": "这首还没音频，放不了。去歌曲信息里加一下吧。",
   "music.queue": "接下来播放",

@@ -16,6 +16,7 @@ import { useApiGroups } from "../api-groups/store";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { taskProgressStore } from "../our-space/task-progress-instance";
+import { SoraAmbient } from "../sora-ambient";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
 import { type IndexProgress, indexDocument } from "./indexer";
 import { knowledgeStore } from "./instance";
@@ -176,7 +177,12 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
         </View>
       )}
       {docs.length === 0 && !busy ? (
-        <Empty icon={BookOpen} title={t("kb.empty")} detail={t("kb.emptyDetail")}>
+        <Empty
+          icon={BookOpen}
+          title={t("kb.empty")}
+          detail={t("kb.emptyDetail")}
+          ambientVideo={<SoraAmbient video="idle" slot="knowledge" size={64} />}
+        >
           <Button onPress={() => void pickAndIndex()} disabled={busy}>
             {t("kb.upload")}
           </Button>

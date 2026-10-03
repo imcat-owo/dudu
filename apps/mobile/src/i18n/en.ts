@@ -113,6 +113,7 @@ export const enStrings: Record<StringKey, string> = {
   "music.together.listening": "Listening together",
   "music.together.off": "Solo",
   "music.nowPlaying": "Now playing",
+  "music.djWorking": "Dudu is DJing",
   "music.nothingPlaying": "Quiet in here. Pick a song, or tell me to play one.",
   "music.noAudio": "This song has no audio attached yet — add audio in the song info to play it.",
   "music.queue": "Coming up",

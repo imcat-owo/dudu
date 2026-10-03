@@ -70,6 +70,8 @@ import type {
 import { taskBuddyVideoStore } from "./our-space/task-buddy-video-instance";
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
+import { SoraAmbient } from "./sora-ambient";
+import { ambientVideoStore } from "./sora-ambient-video-instance";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
 
@@ -210,24 +212,14 @@ function todayLine(): string {
   });
 }
 
-/** Warm, inviting empty state — each tab gets its own icon and breath. */
+/** Warm, inviting empty state — Sora waits with you instead of a dead icon. */
 function EmptyState({ icon: Icon, text }: { icon: typeof Heart; text: string }) {
   const colors = useColors();
-  const { tokens } = useTheme();
+  void Icon;
   return (
     <View style={{ paddingVertical: 56, paddingHorizontal: 36, alignItems: "center" }}>
-      <View
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 36,
-          backgroundColor: colors.sky,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 18,
-        }}
-      >
-        <Icon size={30} color={tokens.accent.fg} strokeWidth={1.4} />
+      <View style={{ marginBottom: 18 }}>
+        <SoraAmbient video="idle" slot="ourspace" size={72} />
       </View>
       <TText
         style={{
@@ -299,6 +291,7 @@ function StatusView() {
   useEffect(() => {
     void taskProgressStore.load().catch(() => null);
     void taskBuddyVideoStore.load().catch(() => null);
+    void ambientVideoStore.load().catch(() => null);
   }, []);
 
   if (!status) return <EmptyState icon={Activity} text={t("space.status.empty")} />;

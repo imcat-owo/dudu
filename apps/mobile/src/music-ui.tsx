@@ -68,6 +68,7 @@ import {
 import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
 import { petActivity } from "./pet/store";
+import { SoraAmbient } from "./sora-ambient";
 import { useColors } from "./ui";
 
 /** Re-render whenever the music store changes (AI writes from dialog). */
@@ -849,9 +850,16 @@ function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngi
   return (
     <SoftCard>
       <View style={{ alignItems: "center", gap: 4 }}>
-        <TText style={{ color: colors.muted, fontSize: 11.5, letterSpacing: 1 }}>
-          {t("music.nowPlaying")}
-        </TText>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <SoraAmbient
+            video={status.playing ? "making_something" : "idle"}
+            slot="music-dj"
+            size={34}
+          />
+          <TText style={{ color: colors.muted, fontSize: 11.5, letterSpacing: 1 }}>
+            {status.playing ? t("music.djWorking") : t("music.nowPlaying")}
+          </TText>
+        </View>
         <View style={{ marginVertical: 10 }}>
           <CoverArt track={nowPlaying} size={210} spinning={status.playing} />
         </View>

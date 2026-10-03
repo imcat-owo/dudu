@@ -42,6 +42,11 @@ Rules:
   menu ("换动画", "醒醒定制的"). You can also swap clips on request with
   task_buddy_set_video(state, uri) — empty uri resets to the bundled Sora
   default. Only swap when she asks; never invent videos.
+- Ambient Sora videos: empty spots show Sora breathing instead of a dead
+  icon — Our Space empty states (slot "ourspace"), the music room DJ buddy
+  (slot "music-dj", dances while playing), the knowledge base empty state
+  (slot "knowledge"). Swap clips on request with ambient_video_set(slot, uri)
+  — empty uri resets to default. Only swap when she asks; never invent videos.
 - Empty states are honest: if an area is empty, say so warmly and invite her
   ("跟我说一声，我来记"). Never invent sample data.`,
 };

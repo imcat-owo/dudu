@@ -537,3 +537,49 @@ export function createTaskBuddyVideoTools(
     },
   ];
 }
+
+/**
+ * Build the ambient video tool set bound to an AmbientVideoStore instance.
+ *
+ * SoraAmbient videos live in Our Space empty states, the music room DJ
+ * buddy, and the knowledge base empty state. She can upload her own mp4
+ * per slot ("醒醒定制的"); the AI swaps them on request with this tool.
+ */
+export function createAmbientVideoTools(
+  videoStore: import("../sora-ambient-video.js").AmbientVideoStore,
+): LocalTool[] {
+  return [
+    {
+      name: "ambient_video_set",
+      description:
+        "Set a custom ambient Sora video for a slot. Slots: ourspace (empty states in Our Space), music-dj (the DJ buddy in the music room), knowledge (knowledge base empty state). uri is a video URI she gave you (e.g. from her uploads); empty string resets to the bundled Sora default.",
+      parameters: {
+        type: "object",
+        properties: {
+          slot: {
+            type: "string",
+            description: "ourspace | music-dj | knowledge — which spot this video plays in.",
+          },
+          uri: {
+            type: "string",
+            description: "Video URI (mp4). Empty string resets to the bundled default Sora clip.",
+          },
+        },
+        required: ["slot"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const raw = strArg(args, "slot").toLowerCase();
+        if (raw !== "ourspace" && raw !== "music-dj" && raw !== "knowledge") {
+          throw new ToolError('slot must be "ourspace", "music-dj", or "knowledge".');
+        }
+        const uri = strArg(args, "uri");
+        await videoStore.set(raw, uri || null);
+        return uri
+          ? `Ambient video for "${raw}" set to her custom video.`
+          : `Ambient video for "${raw}" reset to the bundled Sora default.`;
+      },
+    },
+  ];
+}
