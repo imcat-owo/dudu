@@ -226,6 +226,12 @@ export const enStrings: Record<StringKey, string> = {
   "term.truncatedNote":
     "Output reached the display limit. Write large results to a file to view them.",
   "term.emptyFolderTitle": "A little creative space",
+  "term.workspaceFiles": "Workspace files",
+  "term.runCommand": "Run command",
+  "term.runNote": "Runs on your computer. Network is off — use the browser for the web.",
+  "term.newCommand": "New command",
+  "term.useStraightQuotes": "Use straight quotes",
+  "term.refreshFiles": "Refresh files",
 
   // ---- mail & details (details.tsx) ----
   "detail.homeTitle": "Your workspace",

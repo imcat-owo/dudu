@@ -21,6 +21,7 @@ import type {
 } from "../../../packages/domain/src/computer";
 import { useComputerDraft } from "./computer-drafts";
 import { Button, Card, colors, Empty, ErrorNotice, Field, LinkRow, s, timeLabel } from "./ui";
+import { t } from "./i18n";
 import { useWorkspace } from "./workspace";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
@@ -125,17 +126,17 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
         <View style={[s.row, { gap: 12 }]}>
           <Terminal size={24} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={s.heading}>你的 Linux 工作区</Text>
+            <Text style={s.heading}>{t("term.title")}</Text>
             <Text style={s.muted}>
               {running
-                ? "Running · files persist when stopped"
+                ? t("term.running")
                 : snapshot?.status === "stopped"
-                  ? "Stopped · your files are saved"
+                  ? t("term.stopped")
                   : snapshot?.status === "unconfigured"
-                    ? "Set up the computer to get started"
+                    ? t("term.setup")
                     : snapshot?.status === "error"
-                      ? "Connection needs attention"
-                      : "Connecting…"}
+                      ? t("term.attention")
+                      : t("term.connecting")}
             </Text>
           </View>
           {!snapshot && !error && <ActivityIndicator color={colors.blueDark} />}
@@ -145,11 +146,11 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {running ? (
               <Button icon={Power} busy={busy} onPress={() => void control("stop")}>
-                Stop computer
+                {t("term.stop")}
               </Button>
             ) : (
               <Button primary icon={Play} busy={busy} onPress={() => void control("start")}>
-                Start computer
+                {t("term.start")}
               </Button>
             )}
             <Button
@@ -161,7 +162,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                   .catch((e) => setError(message(e)))
               }
             >
-              Refresh
+              {t("common.refresh")}
             </Button>
           </View>
         )}
@@ -175,7 +176,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
               .catch((e) => setError(message(e)))
           }
         >
-          Retry connection
+          {t("term.retryConnection")}
         </Button>
       )}
       {snapshot?.enabled && (
@@ -184,10 +185,10 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
             {editingCommand || command.length > 0 || snapshot.commands.length === 0 ? (
               <View style={{ borderRadius: 22, backgroundColor: "#F1F3F4", padding: 18, gap: 8 }}>
                 <Text style={{ color: colors.muted, fontSize: 12, fontFamily: mono }}>
-                  TERMINAL
+                  {t("term.paneLabel")}
                 </Text>
                 <Field
-                  label="Working directory"
+                  label={t("term.workdir")}
                   value={cwd}
                   onChangeText={setCwd}
                   autoCapitalize="none"
@@ -195,7 +196,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                   style={{ fontFamily: mono }}
                 />
                 <Field
-                  label="Command"
+                  label={t("term.command")}
                   value={command}
                   onChangeText={setCommand}
                   placeholder="pwd"
@@ -215,7 +216,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                       setCommand((text) => text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"'))
                     }
                   >
-                    Use straight quotes
+                    {t("term.useStraightQuotes")}
                   </Button>
                 )}
                 <Button
@@ -225,10 +226,10 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                   disabled={!running || !command.trim() || busy}
                   onPress={() => void run()}
                 >
-                  Run command
+                  {t("term.runCommand")}
                 </Button>
                 <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
-                  在你的电脑上运行。网络已关闭。用浏览器r the web.
+                  {t("term.runNote")}
                 </Text>
               </View>
             ) : (
@@ -238,19 +239,19 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                 disabled={!running || busy || !!commandRunning}
                 onPress={() => setEditingCommand(true)}
               >
-                New command
+                {t("term.newCommand")}
               </Button>
             )}
             {!!commandRunning && (
               <Text style={s.muted}>
-                运行中…结果会显示在这里。停止电脑以nd running commands.
+                {t("term.runningNote")}
               </Text>
             )}
             {snapshot.commands.length === 0 ? (
               <Empty
                 icon={Terminal}
-                title="Ready for your first command"
-                detail="Run scripts, work with files, or ask your agent to create something here."
+                title={t("term.readyTitle")}
+                detail={t("term.readyDetail")}
               />
             ) : (
               [...snapshot.commands]
@@ -260,7 +261,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
             )}
             {snapshot.commands.length > 5 && (
               <Button small onPress={() => setShowHistory(!showHistory)}>
-                {showHistory ? "Show recent commands" : "Earlier commands"}
+                {showHistory ? t("term.showRecent") : t("term.earlier")}
               </Button>
             )}
           </View>
@@ -320,18 +321,18 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
             </Text>
           )}
           {!run.stdout && !run.stderr && run.status !== "running" && (
-            <Text style={s.small}>无输出</Text>
+            <Text style={s.small}>{t("term.noOutput")}</Text>
           )}
           {run.truncated && (
             <Text style={s.small}>
-              输出达到显示上限。大结果请写入文件ile.
+              {t("term.truncatedNote")}
             </Text>
           )}
         </>
       )}
       {!!(run.stdout || run.stderr) && (
         <Button small onPress={() => setExpanded(!expanded)}>
-          {expanded ? "Hide output" : "Show output"}
+          {expanded ? t("term.hideOutput") : t("term.showOutput")}
         </Button>
       )}
     </Card>
@@ -410,7 +411,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
         path: `${path}/${file.name.replace(/[\\/]/g, "_")}`,
       });
       setImporting(false);
-      setNotice("Document copied to your computer.");
+      setNotice(t("term.docCopied"));
       setRetry((value) => value + 1);
     } catch (e) {
       setError(message(e));
@@ -446,7 +447,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
             ? { ...current, saved: sent.text, savedPath: sent.path }
             : current,
         );
-      setNotice("File saved to your computer.");
+      setNotice(t("term.fileSaved"));
       setRetry((value) => value + 1);
     } catch (e) {
       setError(message(e));
@@ -471,7 +472,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
   return (
     <View style={{ gap: 12 }}>
       <View style={s.between}>
-        <Text style={s.heading}>工作区文件</Text>
+        <Text style={s.heading}>{t("term.workspaceFiles")}</Text>
         {(busy || loading) && <ActivityIndicator color={colors.blueDark} />}
       </View>
       <Text selectable style={[s.small, { fontFamily: mono }]}>
@@ -480,12 +481,12 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
       <ErrorNotice error={error} />
       {!!notice && <Text style={[s.small, { color: "#248258" }]}>{notice}</Text>}
       {!running && (
-        <Text style={s.muted}>启动电脑以浏览或编辑已保存的文件。</Text>
+        <Text style={s.muted}>{t("term.startToBrowse")}</Text>
       )}
       {editor ? (
         <>
           <Field
-            label="File path"
+            label={t("term.filePath")}
             value={editor.path}
             onChangeText={(value) => setEditor({ ...editor, path: value })}
             autoCorrect={false}
@@ -493,7 +494,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
             style={{ fontFamily: mono }}
           />
           <Field
-            label="File contents"
+            label={t("term.fileContents")}
             value={editor.text}
             onChangeText={(value) => setEditor({ ...editor, text: value })}
             multiline
@@ -512,7 +513,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
               disabled={!running || !editor.path.trim()}
               onPress={() => void save()}
             >
-              Save file
+              {t("term.saveFile")}
             </Button>
             <Button
               disabled={busy}
@@ -522,7 +523,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 setNotice("");
               }}
             >
-              {dirty ? "Discard edits" : "Back to files"}
+              {dirty ? t("term.discard") : t("term.backToFiles")}
             </Button>
           </View>
         </>
@@ -536,7 +537,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 icon={ArrowLeft}
                 onPress={() => setPath(path.slice(0, path.lastIndexOf("/")) || "/workspace")}
               >
-                Up
+                {t("term.up")}
               </Button>
             )}
             <Button
@@ -553,7 +554,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 });
               }}
             >
-              New file
+              {t("term.newFile")}
             </Button>
             <Button
               small
@@ -561,7 +562,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
               icon={FolderPlus}
               onPress={() => setFolder("")}
             >
-              New folder
+              {t("term.newFolder")}
             </Button>
             <Button
               small
@@ -569,7 +570,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
               icon={RefreshCw}
               onPress={() => setRetry(retry + 1)}
             >
-              Refresh files
+              {t("term.refreshFiles")}
             </Button>
             <Button
               small
@@ -577,14 +578,14 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
               icon={Upload}
               onPress={() => setImporting(!importing)}
             >
-              {importing ? "Hide documents" : "Copy a document here"}
+              {importing ? t("term.hideDocs") : t("term.copyDocHere")}
             </Button>
           </View>
           {importing && (
             <Card>
-              <Text style={s.heading}>选择已保存的 PDF</Text>
+              <Text style={s.heading}>{t("term.pickPdf")}</Text>
               <Text style={[s.small, { marginTop: 6 }]}>
-                复制到这个文件夹。同名文件会被eplaced.
+                {t("term.copyNote")}
               </Text>
               {workspace.files.map((file) => (
                 <LinkRow
@@ -595,14 +596,14 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 />
               ))}
               {!workspace.files.length && (
-                <Text style={s.muted}>先从邮件或文件里添加文档。</Text>
+                <Text style={s.muted}>{t("term.addDocFirst")}</Text>
               )}
             </Card>
           )}
           {folder !== undefined && (
             <Card style={{ gap: 8 }}>
               <Field
-                label="Folder name"
+                label={t("term.folderName")}
                 value={folder}
                 onChangeText={setFolder}
                 autoCapitalize="none"
@@ -615,10 +616,10 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                   busy={busy}
                   onPress={() => void mkdir()}
                 >
-                  Create folder
+                  {t("term.createFolder")}
                 </Button>
                 <Button disabled={busy} onPress={() => setFolder(undefined)}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </View>
             </Card>
@@ -632,9 +633,9 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                 title={entry.name}
                 detail={
                   entry.type === "directory"
-                    ? "Folder"
+                    ? t("term.folder")
                     : entry.type === "symlink"
-                      ? "Symbolic link"
+                      ? t("term.symlink")
                       : `${Math.max(1, Math.ceil(entry.size / 1024))} KB`
                 }
                 onPress={() => {
@@ -655,8 +656,8 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
             directory.entries.length === 0 && (
               <Empty
                 icon={Folder}
-                title="一点创作空间"
-                detail="Add a file here, or ask your agent to make one in its workspace."
+                title={t("term.emptyFolderTitle")}
+                detail={t("term.addFileHint")}
               />
             )}
         </>

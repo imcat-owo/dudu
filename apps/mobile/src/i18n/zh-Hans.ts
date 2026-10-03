@@ -224,6 +224,12 @@ const zhHans = {
   "term.noOutput": "无输出",
   "term.truncatedNote": "输出达到显示上限。大结果请写入文件再看。",
   "term.emptyFolderTitle": "一点创作空间",
+  "term.workspaceFiles": "工作区文件",
+  "term.runCommand": "运行命令",
+  "term.runNote": "在你的电脑上运行。网络已关闭，上网用浏览器。",
+  "term.newCommand": "新建命令",
+  "term.useStraightQuotes": "用直引号",
+  "term.refreshFiles": "刷新文件",
 
   // ---- mail & details (details.tsx) ----
   "detail.homeTitle": "你的工作区",
