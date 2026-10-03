@@ -9,6 +9,8 @@
  *
  * Docker commands use stable `--format` templates (documented Docker CLI).
  */
+
+import { type SshTransport, UnavailableSshTransport } from "./transport";
 import type {
   SandboxBackend,
   SandboxCommandResult,
@@ -17,7 +19,6 @@ import type {
   SandboxOutputChunk,
   SshConfig,
 } from "./types";
-import { UnavailableSshTransport, type SshTransport } from "./transport";
 
 /** Parse one `docker ps --format '{{json .}}'` line into an environment. */
 export function parseDockerPsLine(line: string): SandboxEnvironment | null {
@@ -165,7 +166,10 @@ export class SshDockerBackend implements SandboxBackend {
       else stderr += chunk.data;
       const idx = stdout.indexOf(marker);
       if (idx >= 0) {
-        const tail = stdout.slice(idx + marker.length + 1).split("\n")[0].trim();
+        const tail = stdout
+          .slice(idx + marker.length + 1)
+          .split("\n")[0]
+          .trim();
         const code = Number.parseInt(tail, 10);
         stdout = stdout.slice(0, idx);
         settleResult(Number.isNaN(code) ? -1 : code);

@@ -15,6 +15,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
+import { sandboxManager } from "../sandbox/manager";
+import { sandboxTools } from "../sandbox/sandbox-tools";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -380,7 +382,10 @@ export function createLocalAgent(opts: {
 
       // Tool setup: registry + system prompt (built once per turn so a
       // changed tool set takes effect without recreating the agent).
-      const tools = opts.tools ?? createLocalTools(opts.toolDeps);
+      const tools = opts.tools ?? [
+        ...createLocalTools(opts.toolDeps),
+        ...sandboxTools(sandboxManager),
+      ];
       const registry = createToolRegistry(tools);
       const toolCtx: ToolContext = opts.toolContext ?? {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.

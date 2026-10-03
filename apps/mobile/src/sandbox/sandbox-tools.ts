@@ -12,7 +12,7 @@
  * authorize gate — she approves each time (or via saved preference).
  * Failures get the proactive manual note via manualId.
  */
-import { ToolError, type LocalTool } from "../api-groups/local-tools";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import type { SandboxManager } from "./manager";
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -34,7 +34,8 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
         properties: {
           container: {
             type: "string",
-            description: "Container/environment id (from sandbox_containers). Omit to use the first running one.",
+            description:
+              "Container/environment id (from sandbox_containers). Omit to use the first running one.",
           },
           command: { type: "string", description: "Shell command to run." },
         },
@@ -45,7 +46,9 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
       run: async (args, ctx) => {
         const backend = active();
         if (backend.connectionState() !== "connected") {
-          throw new ToolError("Sandbox is not connected. Ask her to connect it in the sandbox settings first.");
+          throw new ToolError(
+            "Sandbox is not connected. Ask her to connect it in the sandbox settings first.",
+          );
         }
         const ok = await ctx.authorize({
           capability: "sandbox",
@@ -56,7 +59,8 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
         let envId = args.container as string | undefined;
         if (!envId) {
           const envs = await backend.listEnvironments();
-          const running = envs.find((e) => e.status === "running" || e.status === "booted") ?? envs[0];
+          const running =
+            envs.find((e) => e.status === "running" || e.status === "booted") ?? envs[0];
           if (!running) throw new ToolError("No sandbox environments available.");
           envId = running.id;
         }
@@ -85,7 +89,9 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
         if (!ok) throw new ToolError("She did not approve this.");
         const envs = await backend.listEnvironments();
         if (!envs.length) return "No environments.";
-        return envs.map((e) => `${e.id} | ${e.name} | ${e.status}${e.image ? ` | ${e.image}` : ""}`).join("\n");
+        return envs
+          .map((e) => `${e.id} | ${e.name} | ${e.status}${e.image ? ` | ${e.image}` : ""}`)
+          .join("\n");
       },
     },
     {
@@ -100,8 +106,10 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
       manualId: "sandbox",
       run: async (args, ctx) => {
         const backend = active();
-        if (backend.id !== "cloud") throw new ToolError("Container start/stop is only for the cloud backend.");
-        if (backend.connectionState() !== "connected") throw new ToolError("Sandbox is not connected.");
+        if (backend.id !== "cloud")
+          throw new ToolError("Container start/stop is only for the cloud backend.");
+        if (backend.connectionState() !== "connected")
+          throw new ToolError("Sandbox is not connected.");
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: `Start container ${strArg(args, "container")}`,
@@ -124,8 +132,10 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
       manualId: "sandbox",
       run: async (args, ctx) => {
         const backend = active();
-        if (backend.id !== "cloud") throw new ToolError("Container start/stop is only for the cloud backend.");
-        if (backend.connectionState() !== "connected") throw new ToolError("Sandbox is not connected.");
+        if (backend.id !== "cloud")
+          throw new ToolError("Container start/stop is only for the cloud backend.");
+        if (backend.connectionState() !== "connected")
+          throw new ToolError("Sandbox is not connected.");
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: `Stop container ${strArg(args, "container")}`,

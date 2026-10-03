@@ -25,6 +25,7 @@ import { API_GROUPS_MANUAL } from "./api-groups.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
 import { PERMISSIONS_MANUAL } from "./permissions.js";
+import { SANDBOX_MANUAL } from "./sandbox.js";
 import { THEMES_MANUAL } from "./themes.js";
 import { THINKING_DRAWER_MANUAL } from "./thinking-drawer.js";
 import { VISION_MANUAL } from "./vision.js";
@@ -52,6 +53,7 @@ export const MANUALS: ManualEntry[] = [
   VISION_MANUAL,
   THEMES_MANUAL,
   API_GROUPS_MANUAL,
+  SANDBOX_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {

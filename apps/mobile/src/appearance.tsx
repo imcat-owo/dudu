@@ -26,6 +26,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Sun,
+  Terminal,
   Trash2,
   User,
   X,
@@ -35,13 +36,14 @@ import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "rea
 import { API_URL } from "./api";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
+import { BackupSection } from "./backup-ui";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
-import { BackupSection } from "./backup-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
+import { SandboxSheet } from "./sandbox/sandbox-ui";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
 import { useTheme } from "./theme/ThemeContext";
@@ -114,6 +116,7 @@ export function AppearanceScreen() {
   const [busy, setBusy] = useState(false);
   const [wheelSlot, setWheelSlot] = useState<keyof DraftSeed>("primary");
   const [permOpen, setPermOpen] = useState(false);
+  const [sandboxOpen, setSandboxOpen] = useState(false);
 
   // Load user-saved custom presets (after the built-ins).
   useEffect(() => {
@@ -837,6 +840,17 @@ export function AppearanceScreen() {
         </Button>
       </View>
       {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
+
+      <View>
+        <SectionHeading title={t("sandbox.title")} />
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+          {t("sandbox.backend.cloud")} / {t("sandbox.backend.local")}
+        </TText>
+        <Button icon={Terminal} onPress={() => setSandboxOpen(true)}>
+          {t("sandbox.title")}
+        </Button>
+      </View>
+      {sandboxOpen ? <SandboxSheet onClose={() => setSandboxOpen(false)} /> : null}
 
       <BackupSection />
     </View>

@@ -6,10 +6,11 @@
  *   the repo, never hardcoded. Lazy expo-secure-store import so this module
  *   stays importable in node tests (same pattern as session-store.ts).
  */
-import type { SandboxBackend, SandboxBackendId, SshConfig } from "./types";
-import { SshDockerBackend } from "./backend-ssh-docker";
+
 import { IshSandboxBackend } from "./backend-ish";
+import { SshDockerBackend } from "./backend-ssh-docker";
 import { UnavailableSshTransport } from "./transport";
+import type { SandboxBackend, SandboxBackendId, SshConfig } from "./types";
 
 const ACTIVE_KEY = "openmuse.sandbox.activeBackend.v1";
 const SSH_CONFIG_KEY = "openmuse.sandbox.sshConfig.v1";
@@ -120,8 +121,8 @@ export class SandboxManager {
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    this.secure = await loadSecureStore();
-    this.prefs = await loadPrefs();
+    if (!this.secure) this.secure = await loadSecureStore();
+    if (!this.prefs) this.prefs = await loadPrefs();
     try {
       const raw = await this.prefs.getItem(ACTIVE_KEY);
       if (isBackendId(raw)) this.activeId = raw;

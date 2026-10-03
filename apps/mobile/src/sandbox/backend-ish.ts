@@ -117,7 +117,9 @@ export class IshSandboxBackend implements SandboxBackend {
   /** iSH is a single environment: the Alpine guest. */
   async listEnvironments(): Promise<SandboxEnvironment[]> {
     this.requireConnected();
-    return [{ id: "alpine", name: "Alpine Linux (iSH)", status: "booted", image: "alpine/aarch64" }];
+    return [
+      { id: "alpine", name: "Alpine Linux (iSH)", status: "booted", image: "alpine/aarch64" },
+    ];
   }
 
   async startEnvironment(id: string): Promise<void> {
