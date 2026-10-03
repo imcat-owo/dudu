@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { Button, s } from "./ui";
+import {Button, useStyles} from "./ui";
 
 interface PdfReaderProps {
   url: string;
@@ -9,6 +9,7 @@ interface PdfReaderProps {
   pageCount: number;
 }
 export default function PdfReader({ url, pageCount }: PdfReaderProps) {
+  const s = useStyles();
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   return (
