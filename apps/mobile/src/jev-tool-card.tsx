@@ -8,7 +8,7 @@ import {
   retryChoiceAvailable,
   selectionText,
 } from "./jev-actions";
-import { Button, Card, colors, ErrorNotice, s } from "./ui";
+import {Button, Card, useColors, ErrorNotice, useStyles} from "./ui";
 
 type JevInteraction = {
   threadId: string | null;
@@ -37,6 +37,8 @@ export const JevInteractionContext = createContext<JevInteraction>({
 });
 
 function SourceLink({ title, url }: { title: string; url: string }) {
+  const colors = useColors();
+  const s = useStyles();
   return (
     <Pressable
       accessibilityRole="link"
@@ -69,6 +71,8 @@ function ChoiceButton({
   position: number;
   onChoose: (optionId: string) => void;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   if (panel.type === "comparison") {
     const caption = /exhibit/i.test(panel.title) ? "Choose this exhibit" : "Choose this option";
     return (
@@ -108,6 +112,8 @@ function ChoiceButton({
 }
 
 export function JevToolCard({ result, loading }: { result: unknown; loading: boolean }) {
+  const colors = useColors();
+  const s = useStyles();
   const interaction = useContext(JevInteractionContext);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
