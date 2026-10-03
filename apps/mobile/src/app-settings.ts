@@ -36,6 +36,10 @@ function isFontSizeOption(raw: string | null): raw is FontSizeOption {
 let current: FontSizeOption = DEFAULT_FONT_SIZE_OPTION;
 let loaded = false;
 const listeners = new Set<() => void>();
+// Generation guard (review P2, 2026-10-03): the import-time AsyncStorage
+// load may resolve after the user already changed the option — a stale load
+// must never clobber the newer in-memory value.
+let generation = 0;
 
 function emit() {
   for (const listener of listeners) listener();
@@ -44,8 +48,10 @@ function emit() {
 // Load the saved option once; late subscribers still get the value via getSnapshot.
 if (!loaded) {
   loaded = true;
+  const seen = generation;
   AsyncStorage.getItem(STORAGE_KEY)
     .then((raw) => {
+      if (seen !== generation) return; // a setOption won the race — keep it
       if (isFontSizeOption(raw) && raw !== current) {
         current = raw;
         emit();
@@ -76,6 +82,7 @@ export function useFontSizeSetting(): {
   const option = useSyncExternalStore(subscribe, getSnapshot);
 
   const setOption = useCallback(async (o: FontSizeOption) => {
+    generation += 1;
     if (o !== current) {
       current = o;
       emit();
