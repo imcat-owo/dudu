@@ -17,10 +17,10 @@ import * as Font from "expo-font";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { Text, type TextProps } from "react-native";
 
-const FONT_STORAGE_KEY = "openmuse.font.v1";
-const FONT_DIR = "openmuse/fonts";
+const FONT_STORAGE_KEY = "dudu.font.v1";
+const FONT_DIR = "dudu/fonts";
 /** The fontFamily name the uploaded font is registered under. */
-export const CUSTOM_FONT_FAMILY = "OpenMuseCustom";
+export const CUSTOM_FONT_FAMILY = "DuduCustom";
 
 type FontState = {
   /** Registered fontFamily, or null for the system font. */

@@ -66,7 +66,7 @@ export function BackupSection() {
       const FileSystem = await import("expo-file-system/legacy");
       const Sharing = await import("expo-sharing");
       const stamp = new Date().toISOString().slice(0, 10);
-      const path = `${FileSystem.cacheDirectory}openmuse-backup-${stamp}.json`;
+      const path = `${FileSystem.cacheDirectory}dudu-backup-${stamp}.json`;
       await FileSystem.writeAsStringAsync(path, json);
       await markBackedUp(AsyncStorage);
       setLastAt(new Date().toISOString());

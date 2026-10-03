@@ -285,7 +285,7 @@ export function makeThemeBundle(opts: NewBundleOptions): ThemeBundle {
   const now = new Date().toISOString();
   const resolved: ResolvedMode = opts.mode === "dark" ? "dark" : "light";
   return {
-    kind: "openmuse-theme-bundle",
+    kind: "dudu-theme-bundle",
     version: 1,
     id: opts.id,
     name: opts.name,

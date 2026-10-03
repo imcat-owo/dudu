@@ -197,8 +197,8 @@ class LocalMusicSource implements MusicSource {
 // apple-music: MusicKit via @wwdrew/expo-apple-music (guarded import)
 // ---------------------------------------------------------------------------
 
-const APPLE_TOKEN_KEY = "openmuse.music.v1.apple-music.user-token";
-const APPLE_STATE_KEY = "openmuse.music.v1.apple-music.auth-state";
+const APPLE_TOKEN_KEY = "dudu.music.v1.apple-music.user-token";
+const APPLE_STATE_KEY = "dudu.music.v1.apple-music.auth-state";
 
 type AppleBridge = typeof import("@wwdrew/expo-apple-music");
 

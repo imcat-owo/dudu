@@ -18,7 +18,7 @@ export type ChatMode = "local" | "cloud";
 
 export const DEFAULT_CHAT_MODE: ChatMode = "local";
 
-const STORAGE_KEY = "openmuse.settings.chatMode.v1";
+const STORAGE_KEY = "dudu.settings.chatMode.v1";
 
 function isChatMode(raw: string | null): raw is ChatMode {
   return raw === "local" || raw === "cloud";

@@ -271,7 +271,7 @@ export function ChatScreen({
   const richThreads = mode === "local" ? false : threadsEnabled;
   const selection = thread || { id: "local", existing: false };
   const threadId = richThreads ? selection.id : "local-main";
-  const agentId = `openmuse-${threadId}`;
+  const agentId = `dudu-${threadId}`;
   const { agent, isReady } = useChatAgent({ agentId, threadId });
   const renderToolCall = useSafeRenderToolCall();
   const { active: activeGroup } = useApiGroups();

@@ -14,8 +14,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
 import type { ApiGroup } from "./types";
 
-const GROUPS_KEY = "openmuse.api-groups.v1";
-const ACTIVE_ID_KEY = "openmuse.api-groups.active.v1";
+const GROUPS_KEY = "dudu.api-groups.v1";
+const ACTIVE_ID_KEY = "dudu.api-groups.active.v1";
 
 export interface SecureBackend {
   getItem(key: string): Promise<string | null>;

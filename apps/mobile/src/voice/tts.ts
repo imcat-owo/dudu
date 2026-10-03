@@ -42,7 +42,7 @@ function hashText(s: string): string {
 
 async function cacheDir(): Promise<string> {
   const fs = await loadFs();
-  const dir = `${fs.cacheDirectory ?? fs.documentDirectory}openmuse-tts/`;
+  const dir = `${fs.cacheDirectory ?? fs.documentDirectory}dudu-tts/`;
   const info = await fs.getInfoAsync(dir);
   if (!info.exists) await fs.makeDirectoryAsync(dir, { intermediates: true });
   return dir;

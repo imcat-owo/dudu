@@ -125,15 +125,15 @@ export interface MusicStorage {
 }
 
 const KEYS = {
-  tracks: "openmuse.music.v1.tracks",
-  playlists: "openmuse.music.v1.playlists",
-  comments: "openmuse.music.v1.comments",
-  memories: "openmuse.music.v1.memories",
-  queue: "openmuse.music.v1.queue",
-  nowPlaying: "openmuse.music.v1.now",
-  intent: "openmuse.music.v1.intent",
-  together: "openmuse.music.v1.together",
-  selectedLyric: "openmuse.music.v1.selectedLyric",
+  tracks: "dudu.music.v1.tracks",
+  playlists: "dudu.music.v1.playlists",
+  comments: "dudu.music.v1.comments",
+  memories: "dudu.music.v1.memories",
+  queue: "dudu.music.v1.queue",
+  nowPlaying: "dudu.music.v1.now",
+  intent: "dudu.music.v1.intent",
+  together: "dudu.music.v1.together",
+  selectedLyric: "dudu.music.v1.selectedLyric",
 } as const;
 
 export const SHARED_PLAYLIST_ID = "pl-shared";

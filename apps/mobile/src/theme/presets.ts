@@ -8,7 +8,7 @@
 import { makeThemeBundle } from "./derive";
 import type { ThemeBundle } from "./types";
 
-const BUILT_IN_AUTHOR = "openmuse";
+const BUILT_IN_AUTHOR = "dudu";
 
 export const PRESETS: readonly ThemeBundle[] = [
   makeThemeBundle({

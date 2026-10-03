@@ -33,18 +33,18 @@ function fakeSecure(seed: Record<string, string> = {}): SecureKV {
 }
 
 const SEED: Record<string, string> = {
-  "openmuse.local-chat.thread1.v1": JSON.stringify([
+  "dudu.local-chat.thread1.v1": JSON.stringify([
     { role: "user", content: "hi" },
     { role: "assistant", content: "hello" },
   ]),
-  "openmuse.local-chat.thread2.v1": JSON.stringify([{ role: "user", content: "x" }]),
-  "openmuse.api-groups.active.v1": JSON.stringify("g1"),
-  "openmuse.theme.bundle.v1": JSON.stringify({ kind: "openmuse-theme-bundle", version: 1 }),
-  "openmuse.aiAuth.v1": JSON.stringify({ bluetooth: "ask" }),
+  "dudu.local-chat.thread2.v1": JSON.stringify([{ role: "user", content: "x" }]),
+  "dudu.api-groups.active.v1": JSON.stringify("g1"),
+  "dudu.theme.bundle.v1": JSON.stringify({ kind: "dudu-theme-bundle", version: 1 }),
+  "dudu.aiAuth.v1": JSON.stringify({ bluetooth: "ask" }),
 };
 
 const SECURE_SEED: Record<string, string> = {
-  "openmuse.api-groups.v1": JSON.stringify([
+  "dudu.api-groups.v1": JSON.stringify([
     {
       id: "g1",
       name: "main",
@@ -58,14 +58,14 @@ const SECURE_SEED: Record<string, string> = {
   ]),
   // Production layout: TTS/STT configs live in SecureStore (voice/store.ts),
   // never in plain AsyncStorage.
-  "openmuse.tts.v1": JSON.stringify({
+  "dudu.tts.v1": JSON.stringify({
     provider: "custom",
     voice: "v1",
     customUrl: "https://tts.example.com/speak?key=SECRET-URL-KEY&voice=v1",
     customKey: "SECRET-TTS",
     customModel: "m",
   }),
-  "openmuse.stt.v1": JSON.stringify({
+  "dudu.stt.v1": JSON.stringify({
     provider: "custom",
     customUrl: "https://stt.example.com/transcribe",
     customKey: "SECRET-STT",
@@ -80,7 +80,7 @@ describe("collectBackup", () => {
     assert.equal(b.version, BACKUP_VERSION);
     assert.equal(b.chat.threads.length, 2);
     assert.equal(b.apiGroups.length, 1);
-    assert.equal(b.plain["openmuse.api-groups.active.v1"], "g1");
+    assert.equal(b.plain["dudu.api-groups.active.v1"], "g1");
     assert.ok(b.exportedAt);
   });
 
@@ -92,10 +92,10 @@ describe("collectBackup", () => {
     assert.equal(g.baseUrl, "https://api.example.com/v1");
     assert.equal(b.secretsExcluded.apiKeys, 1);
     // TTS/STT come from the SecureStore fake (production layout).
-    const tts = b.plain["openmuse.tts.v1"] as Record<string, unknown>;
+    const tts = b.plain["dudu.tts.v1"] as Record<string, unknown>;
     assert.ok(!("customKey" in tts), "customKey must be stripped");
     assert.equal(b.secretsExcluded.ttsKeys, 1);
-    const stt = b.plain["openmuse.stt.v1"] as Record<string, unknown>;
+    const stt = b.plain["dudu.stt.v1"] as Record<string, unknown>;
     assert.ok(!("customKey" in stt), "stt customKey must be stripped");
     assert.equal(b.secretsExcluded.sttKeys, 1);
     // URL query-string secrets are sanitized; safe params survive.
@@ -119,10 +119,10 @@ describe("collectBackup", () => {
     // production never writes it there.
     const kv = fakeKV({
       ...SEED,
-      "openmuse.tts.v1": JSON.stringify({ provider: "x", customKey: "WRONG-BACKEND" }),
+      "dudu.tts.v1": JSON.stringify({ provider: "x", customKey: "WRONG-BACKEND" }),
     });
     const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
-    const tts = b.plain["openmuse.tts.v1"] as Record<string, unknown>;
+    const tts = b.plain["dudu.tts.v1"] as Record<string, unknown>;
     assert.ok(!("customKey" in tts));
     const json = serializeBackup(b);
     assert.ok(!json.includes("WRONG-BACKEND"));
@@ -177,21 +177,21 @@ describe("applyBackup", () => {
     const kv = fakeKV();
     const secure = fakeSecure();
     await applyBackup(b, kv, secure);
-    const t1 = JSON.parse((await kv.getItem("openmuse.local-chat.thread1.v1")) ?? "[]");
+    const t1 = JSON.parse((await kv.getItem("dudu.local-chat.thread1.v1")) ?? "[]");
     assert.equal(t1.length, 2);
-    const groups = JSON.parse((await secure.getItem("openmuse.api-groups.v1")) ?? "[]");
+    const groups = JSON.parse((await secure.getItem("dudu.api-groups.v1")) ?? "[]");
     assert.equal(groups.length, 1);
     assert.ok(!("apiKey" in groups[0]), "restored groups stay keyless");
-    assert.equal(await kv.getItem("openmuse.api-groups.active.v1"), JSON.stringify("g1"));
+    assert.equal(await kv.getItem("dudu.api-groups.active.v1"), JSON.stringify("g1"));
   });
 
   it("replaces old threads instead of merging", async () => {
     const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
     const kv = fakeKV({
-      "openmuse.local-chat.oldthread.v1": JSON.stringify([{ role: "user", content: "old" }]),
+      "dudu.local-chat.oldthread.v1": JSON.stringify([{ role: "user", content: "old" }]),
     });
     await applyBackup(b, kv, fakeSecure());
-    const old = JSON.parse((await kv.getItem("openmuse.local-chat.oldthread.v1")) ?? "[]");
+    const old = JSON.parse((await kv.getItem("dudu.local-chat.oldthread.v1")) ?? "[]");
     assert.deepEqual(old, [], "stale threads are cleared");
   });
 
@@ -208,36 +208,36 @@ describe("applyBackup", () => {
     const kv = fakeKV();
     const secure = fakeSecure();
     await applyBackup(b, kv, secure);
-    assert.equal(await kv.getItem("openmuse.tts.v1"), null, "must not land in AsyncStorage");
-    assert.equal(await kv.getItem("openmuse.stt.v1"), null, "must not land in AsyncStorage");
-    const tts = JSON.parse((await secure.getItem("openmuse.tts.v1")) ?? "{}");
+    assert.equal(await kv.getItem("dudu.tts.v1"), null, "must not land in AsyncStorage");
+    assert.equal(await kv.getItem("dudu.stt.v1"), null, "must not land in AsyncStorage");
+    const tts = JSON.parse((await secure.getItem("dudu.tts.v1")) ?? "{}");
     assert.equal(tts.provider, "custom");
     assert.ok(!("customKey" in tts), "restored voice configs stay keyless");
-    const stt = JSON.parse((await secure.getItem("openmuse.stt.v1")) ?? "{}");
+    const stt = JSON.parse((await secure.getItem("dudu.stt.v1")) ?? "{}");
     assert.equal(stt.provider, "custom");
   });
 
   it("does not touch same-prefix keys without the .v1 suffix", async () => {
     const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
     const kv = fakeKV({
-      "openmuse.local-chat.notes.txt": "do not touch",
-      "openmuse.local-chat.thread1.v1": JSON.stringify([{ role: "user", content: "old" }]),
+      "dudu.local-chat.notes.txt": "do not touch",
+      "dudu.local-chat.thread1.v1": JSON.stringify([{ role: "user", content: "old" }]),
     });
     await applyBackup(b, kv, fakeSecure());
-    assert.equal(await kv.getItem("openmuse.local-chat.notes.txt"), "do not touch");
+    assert.equal(await kv.getItem("dudu.local-chat.notes.txt"), "do not touch");
     // thread1 IS in the backup, so it gets the backup's messages
-    const t1 = JSON.parse((await kv.getItem("openmuse.local-chat.thread1.v1")) ?? "[]");
+    const t1 = JSON.parse((await kv.getItem("dudu.local-chat.thread1.v1")) ?? "[]");
     assert.equal(t1.length, 2);
   });
 
   it("does not write last-backup timestamp on restore", async () => {
     const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
     const kv = fakeKV({
-      "openmuse.backup.lastAt.v1": JSON.stringify("2020-01-01T00:00:00.000Z"),
+      "dudu.backup.lastAt.v1": JSON.stringify("2020-01-01T00:00:00.000Z"),
     });
     await applyBackup(b, kv, fakeSecure());
     assert.equal(
-      await kv.getItem("openmuse.backup.lastAt.v1"),
+      await kv.getItem("dudu.backup.lastAt.v1"),
       JSON.stringify("2020-01-01T00:00:00.000Z"),
       "restore must not masquerade as a backup",
     );
@@ -246,12 +246,12 @@ describe("applyBackup", () => {
   it("clears stale threads only after writing new ones (no data loss window)", async () => {
     const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
     const kv = fakeKV({
-      "openmuse.local-chat.stale.v1": JSON.stringify([{ role: "user", content: "stale" }]),
+      "dudu.local-chat.stale.v1": JSON.stringify([{ role: "user", content: "stale" }]),
     });
     await applyBackup(b, kv, fakeSecure());
-    const stale = JSON.parse((await kv.getItem("openmuse.local-chat.stale.v1")) ?? "[]");
+    const stale = JSON.parse((await kv.getItem("dudu.local-chat.stale.v1")) ?? "[]");
     assert.deepEqual(stale, [], "stale threads are cleared");
-    const t1 = JSON.parse((await kv.getItem("openmuse.local-chat.thread1.v1")) ?? "[]");
+    const t1 = JSON.parse((await kv.getItem("dudu.local-chat.thread1.v1")) ?? "[]");
     assert.equal(t1.length, 2, "backup threads are written");
   });
 });

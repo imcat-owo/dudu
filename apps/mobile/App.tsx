@@ -358,7 +358,7 @@ function WorkspaceShell({
     data?.tasks.find(
       (task) => task.status === "waiting_approval" || task.status === "waiting_input",
     ) || data?.tasks.find((task) => task.status === "running");
-  const agentName = data?.identity.name || "OpenMuse";
+  const agentName = data?.identity.name || "Dudu";
   const status = activeTask
     ? activeTask.status === "waiting_approval"
       ? t("status.readyReview", { title: activeTask.title })

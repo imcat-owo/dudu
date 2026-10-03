@@ -2,7 +2,7 @@
  * Theme pack import/export — pure logic (theme-design.md §7).
  *
  * The share format is the ThemeBundle JSON itself:
- *   { "kind": "openmuse-theme-bundle", "version": 1, ... }
+ *   { "kind": "dudu-theme-bundle", "version": 1, ... }
  * Unknown fields are ignored on import (forward compatibility);
  * the version is checked and rejected loudly when unsupported.
  *
@@ -43,7 +43,7 @@ export function parseImportBundle(text: string): ImportResult {
     // Give a slightly more helpful detail when kind/version are the problem.
     const o = parsed as Record<string, unknown>;
     const detail =
-      o.kind !== "openmuse-theme-bundle"
+      o.kind !== "dudu-theme-bundle"
         ? `kind=${JSON.stringify(o.kind)}`
         : `version=${JSON.stringify(o.version)}`;
     return { ok: false, code: "invalid-bundle", detail };

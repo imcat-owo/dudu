@@ -153,7 +153,7 @@ describe("pet store", () => {
     assert.equal(s.location, "space");
   });
   it("corrupted storage falls back to defaults", async () => {
-    const storage = fakeStorage({ "openmuse.pet.v1.state": "not-json{{" });
+    const storage = fakeStorage({ "dudu.pet.v1.state": "not-json{{" });
     const store = new PetStore(storage);
     const s = await store.load();
     assert.deepEqual({ ...s, updatedAt: 0 }, { ...defaultPetState(), updatedAt: 0 });

@@ -22,9 +22,9 @@ import {
   type VoiceSettings,
 } from "./types";
 
-const TTS_KEY = "openmuse.tts.v1";
-const STT_KEY = "openmuse.stt.v1";
-const VOICE_SETTINGS_KEY = "openmuse.voice-settings.v1";
+const TTS_KEY = "dudu.tts.v1";
+const STT_KEY = "dudu.stt.v1";
+const VOICE_SETTINGS_KEY = "dudu.voice-settings.v1";
 
 export interface SecureBackend {
   getItem(key: string): Promise<string | null>;

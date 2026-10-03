@@ -1,5 +1,5 @@
 /**
- * ThemeProvider — runtime theming for OpenMuse mobile (theme-design.md §§2,6).
+ * ThemeProvider — runtime theming for Dudu mobile (theme-design.md §§2,6).
  *
  * - bundle: the effective bundle (a staged try-on wins over confirmed)
  * - resolvedMode: "light" | "dark", from bundle.mode + useColorScheme()
@@ -32,8 +32,8 @@ import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./deriv
 import { defaultPreset } from "./presets";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
-export const THEME_STORAGE_KEY = "openmuse.theme.bundle.v1";
-const THEME_HISTORY_KEY = "openmuse.theme.history.v1";
+export const THEME_STORAGE_KEY = "dudu.theme.bundle.v1";
+const THEME_HISTORY_KEY = "dudu.theme.history.v1";
 const SERVER_POLL_MS = 30_000;
 /** Local history cap (theme-design.md §6.2: keep the last 20 confirmed). */
 export const THEME_HISTORY_LIMIT = 20;

@@ -27,7 +27,7 @@ export interface AiAuthBackend {
   setItem(key: string, value: string): Promise<void>;
 }
 
-const STORAGE_KEY = "openmuse.aiAuth.v1";
+const STORAGE_KEY = "dudu.aiAuth.v1";
 
 function storageKeyFor(id: CapabilityId): string {
   return `${STORAGE_KEY}.${id}`;

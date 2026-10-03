@@ -51,7 +51,7 @@ export const PET_DEFAULT_POS: Record<PetLocation, PetFreePos> = {
   space: { fx: 0.5, fy: 0.14 },
 };
 
-export const PET_STORAGE_KEY = "openmuse.pet.v1.state";
+export const PET_STORAGE_KEY = "dudu.pet.v1.state";
 
 function clamp01(v: number): number {
   if (!Number.isFinite(v)) return 0.5;

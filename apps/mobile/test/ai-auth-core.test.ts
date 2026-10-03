@@ -52,13 +52,13 @@ describe("createAiAuthStore", () => {
     const store = createAiAuthStore(backend);
     await store.setPreference("photos", "always");
     assert.equal(store.getSnapshot().photos, "always");
-    assert.equal(backend.store.get("openmuse.aiAuth.v1.photos"), "always");
+    assert.equal(backend.store.get("dudu.aiAuth.v1.photos"), "always");
     // Other capabilities untouched.
     assert.equal(store.getSnapshot().location, "ask");
   });
 
   it("loads saved preferences on init", async () => {
-    const backend = memoryBackend({ "openmuse.aiAuth.v1.location": "never" });
+    const backend = memoryBackend({ "dudu.aiAuth.v1.location": "never" });
     const store = createAiAuthStore(backend);
     // Let the async init load run.
     await new Promise((r) => setTimeout(r, 20));
@@ -67,7 +67,7 @@ describe("createAiAuthStore", () => {
   });
 
   it("ignores corrupt stored values", async () => {
-    const backend = memoryBackend({ "openmuse.aiAuth.v1.photos": "sometimes" });
+    const backend = memoryBackend({ "dudu.aiAuth.v1.photos": "sometimes" });
     const store = createAiAuthStore(backend);
     await new Promise((r) => setTimeout(r, 20));
     assert.equal(store.getSnapshot().photos, "ask");

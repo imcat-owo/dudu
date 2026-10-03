@@ -123,7 +123,7 @@ describe("createGroupStore", () => {
     assert.equal(snap.activeId, "g_test1"); // falls back to the survivor
 
     // Secrets went to the secure backend only.
-    const stored = secure.data.get("openmuse.api-groups.v1") ?? "";
+    const stored = secure.data.get("dudu.api-groups.v1") ?? "";
     assert.ok(stored.includes("sk-test"), "key persisted in secure backend");
   });
 
@@ -139,7 +139,7 @@ describe("createGroupStore", () => {
 
   it("corrupt JSON parses to an empty list, never throws", async () => {
     const secure = fakeSecure();
-    secure.data.set("openmuse.api-groups.v1", "not json{{{");
+    secure.data.set("dudu.api-groups.v1", "not json{{{");
     const store = createGroupStore(secure);
     // ensureLoaded runs on creation; give it a tick.
     await new Promise((r) => setTimeout(r, 20));
@@ -153,7 +153,7 @@ describe("createGroupStore", () => {
     assert.equal(store.getSnapshot().groups.length, 1);
     // Simulate applyBackup writing directly to the backend behind the store's back.
     secure.data.set(
-      "openmuse.api-groups.v1",
+      "dudu.api-groups.v1",
       JSON.stringify([sampleGroup({ id: "g_new", name: "restored", apiKey: "" })]),
     );
     assert.equal(store.getSnapshot().groups.length, 1, "stale mirror before refresh");

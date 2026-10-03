@@ -126,7 +126,7 @@ describe("voice store", () => {
     const snap = store.getSnapshot();
     assert.equal(snap.tts.customKey, "sk-secret");
     // Key went to SecureStore, not AsyncStorage (which the fake doesn't model).
-    assert.equal(secure.data.get("openmuse.tts.v1")?.includes("sk-secret"), true);
+    assert.equal(secure.data.get("dudu.tts.v1")?.includes("sk-secret"), true);
   });
 
   it("settings persist mic mode", async () => {
@@ -137,7 +137,7 @@ describe("voice store", () => {
 
   it("corrupted stored json falls back to defaults", async () => {
     const secure = fakeSecure();
-    secure.data.set("openmuse.tts.v1", "not-json{{{");
+    secure.data.set("dudu.tts.v1", "not-json{{{");
     const store = createVoiceStore(secure);
     // Wait a tick for the kick-off load.
     await new Promise((r) => setTimeout(r, 10));
@@ -157,7 +157,7 @@ describe("voice store", () => {
     assert.equal(store.getSnapshot().tts.voice, "old");
     // Simulate applyBackup writing directly to SecureStore behind the store's back.
     secure.data.set(
-      "openmuse.tts.v1",
+      "dudu.tts.v1",
       JSON.stringify({
         provider: "custom",
         voice: "restored",

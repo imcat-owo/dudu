@@ -4,9 +4,9 @@
  * Implements the approved 3-table logical schema on the injectable KV backend
  * (AsyncStorage in production, Map-backed fake in tests):
  *
- *   user_profile  -> KV "openmuse.memory.v1.profile"  (JSON: Record<key, ProfileEntry>)
- *   memories      -> KV "openmuse.memory.v1.memories" (JSON: MemoryRecord[])
- *   memory_events -> KV "openmuse.memory.v1.events"   (JSON: MemoryEvent[], capped)
+ *   user_profile  -> KV "dudu.memory.v1.profile"  (JSON: Record<key, ProfileEntry>)
+ *   memories      -> KV "dudu.memory.v1.memories" (JSON: MemoryRecord[])
+ *   memory_events -> KV "dudu.memory.v1.events"   (JSON: MemoryEvent[], capped)
  *
  * The MemoryStore interface is storage-agnostic: replacing the KV backend
  * with expo-sqlite later changes only the two private load/save helpers.
@@ -35,9 +35,9 @@ export interface MemoryStorage {
 }
 
 const KEYS = {
-  profile: "openmuse.memory.v1.profile",
-  memories: "openmuse.memory.v1.memories",
-  events: "openmuse.memory.v1.events",
+  profile: "dudu.memory.v1.profile",
+  memories: "dudu.memory.v1.memories",
+  events: "dudu.memory.v1.events",
 } as const;
 
 /** Cap the audit log so it can't grow storage unbounded. */
@@ -111,7 +111,7 @@ export class MemoryStore {
   /** User-facing kill switch for background memory extraction (default on). */
   async getAutoExtract(): Promise<boolean> {
     try {
-      const raw = await this.storage.getItem("openmuse.memory.v1.autoExtract");
+      const raw = await this.storage.getItem("dudu.memory.v1.autoExtract");
       return raw !== "0";
     } catch {
       return true;
@@ -119,7 +119,7 @@ export class MemoryStore {
   }
 
   async setAutoExtract(on: boolean): Promise<void> {
-    await this.storage.setItem("openmuse.memory.v1.autoExtract", on ? "1" : "0");
+    await this.storage.setItem("dudu.memory.v1.autoExtract", on ? "1" : "0");
     this.emit();
   }
 

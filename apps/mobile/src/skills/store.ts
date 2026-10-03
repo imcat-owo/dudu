@@ -37,7 +37,7 @@ export interface SkillStorage {
   setItem(key: string, value: string): Promise<void>;
 }
 
-const SKILLS_KEY = "openmuse.skills.v1.list";
+const SKILLS_KEY = "dudu.skills.v1.list";
 
 function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

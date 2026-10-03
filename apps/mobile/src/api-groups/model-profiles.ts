@@ -27,7 +27,7 @@ export interface ModelProfile {
   updatedAt: number;
 }
 
-const PROFILES_KEY = "openmuse.model-profiles.v1";
+const PROFILES_KEY = "dudu.model-profiles.v1";
 
 export function profileKey(baseUrl: string, model: string): string {
   return `${baseUrl.trim().replace(/\/+$/, "").toLowerCase()}::${model.trim()}`;

@@ -27,7 +27,7 @@ export const FONT_SCALES: Record<Exclude<FontSizeOption, "system">, number> = {
 
 export const DEFAULT_FONT_SIZE_OPTION: FontSizeOption = "small";
 
-const STORAGE_KEY = "openmuse.settings.fontSize.v1";
+const STORAGE_KEY = "dudu.settings.fontSize.v1";
 
 function isFontSizeOption(raw: string | null): raw is FontSizeOption {
   return raw === "system" || raw === "small" || raw === "standard" || raw === "large";

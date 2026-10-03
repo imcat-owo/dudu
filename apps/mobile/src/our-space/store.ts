@@ -106,16 +106,16 @@ export interface OurSpaceStorage {
 }
 
 const KEYS = {
-  diary: "openmuse.ourspace.v1.diary",
-  timeline: "openmuse.ourspace.v1.timeline",
-  tellLater: "openmuse.ourspace.v1.telllater",
-  status: "openmuse.ourspace.v1.status",
+  diary: "dudu.ourspace.v1.diary",
+  timeline: "dudu.ourspace.v1.timeline",
+  tellLater: "dudu.ourspace.v1.telllater",
+  status: "dudu.ourspace.v1.status",
   // v2 additions (new keys — v1 data untouched)
-  couple: "openmuse.ourspace.v2.couple",
-  feed: "openmuse.ourspace.v2.feed",
-  replies: "openmuse.ourspace.v2.replies",
-  anniversaries: "openmuse.ourspace.v2.anniversaries",
-  works: "openmuse.ourspace.v2.works",
+  couple: "dudu.ourspace.v2.couple",
+  feed: "dudu.ourspace.v2.feed",
+  replies: "dudu.ourspace.v2.replies",
+  anniversaries: "dudu.ourspace.v2.anniversaries",
+  works: "dudu.ourspace.v2.works",
 } as const;
 
 function newId(): string {

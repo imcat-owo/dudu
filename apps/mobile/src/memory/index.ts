@@ -84,7 +84,7 @@ export function extractMemoriesAsync(
 }
 
 /** Storage key for the auto-extract user preference. */
-export const AUTO_EXTRACT_KEY = "openmuse.memory.v1.autoExtract";
+export const AUTO_EXTRACT_KEY = "dudu.memory.v1.autoExtract";
 
 /** Read the user's auto-extract preference (default true). */
 export async function getAutoExtract(storage: MemoryStorage): Promise<boolean> {

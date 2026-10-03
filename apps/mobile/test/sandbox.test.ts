@@ -27,10 +27,10 @@ function fakeTransport(script: Record<string, SandboxCommandResult>): SshTranspo
         write: (data: string) => {
           if (closed) return;
           // Simulate docker exec: echo back a fake result + exit marker.
-          const m = data.match(/__OPENMUSE_EXIT_(\d+)__/);
+          const m = data.match(/__DUDU_EXIT_(\d+)__/);
           if (m) {
             onChunk({ stream: "stdout", data: "hello\n" });
-            onChunk({ stream: "stdout", data: `__OPENMUSE_EXIT_${m[1]}__:0\n` });
+            onChunk({ stream: "stdout", data: `__DUDU_EXIT_${m[1]}__:0\n` });
           }
         },
         resize: () => {},
@@ -115,7 +115,7 @@ describe("SshDockerBackend", () => {
     const r = await b.runCommand("c1", "echo hello", (c) => chunks.push(c));
     assert.equal(r.exitCode, 0);
     assert.ok(r.stdout.includes("hello"));
-    assert.ok(!r.stdout.includes("__OPENMUSE_EXIT_"));
+    assert.ok(!r.stdout.includes("__DUDU_EXIT_"));
     assert.ok(chunks.length > 0);
   });
 
@@ -218,9 +218,9 @@ describe("SandboxManager", () => {
       password: "p",
     });
     assert.equal(m.hasSshConfig(), true);
-    assert.ok(store.has("openmuse.sandbox.sshConfig.v1"));
+    assert.ok(store.has("dudu.sandbox.sshConfig.v1"));
     // password must be in the secure store, and the key must mention nothing else
-    assert.ok(store.get("openmuse.sandbox.sshConfig.v1")!.includes('"password":"p"'));
+    assert.ok(store.get("dudu.sandbox.sshConfig.v1")!.includes('"password":"p"'));
     await m.clearSshConfig();
     assert.equal(m.hasSshConfig(), false);
   });

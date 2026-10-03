@@ -89,7 +89,7 @@ describe("presets", () => {
 
   it("rejects malformed bundles", () => {
     assert.equal(isThemeBundle(null), false);
-    assert.equal(isThemeBundle({ kind: "openmuse-theme-bundle" }), false);
+    assert.equal(isThemeBundle({ kind: "dudu-theme-bundle" }), false);
     assert.equal(
       isThemeBundle({ ...PRESETS[0], surfaces: {} }),
       false,

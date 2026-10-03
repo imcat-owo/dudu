@@ -130,7 +130,7 @@ export class SshDockerBackend implements SandboxBackend {
   ): Promise<SandboxCommandResult> {
     this.requireConnected();
     const startedAt = Date.now();
-    const marker = `__OPENMUSE_EXIT_${Date.now()}__`;
+    const marker = `__DUDU_EXIT_${Date.now()}__`;
     let stdout = "";
     let stderr = "";
     let settled = false;

@@ -56,7 +56,7 @@ export type ThemeSeed = {
 };
 
 export type ThemeBundle = {
-  kind: "openmuse-theme-bundle";
+  kind: "dudu-theme-bundle";
   version: 1;
   id: string;
   /**
@@ -118,7 +118,7 @@ function isSurfaceTokens(v: unknown): v is SurfaceTokens {
  */
 export function isThemeBundle(v: unknown): v is ThemeBundle {
   if (!isObject(v)) return false;
-  if (v.kind !== "openmuse-theme-bundle" || v.version !== 1) return false;
+  if (v.kind !== "dudu-theme-bundle" || v.version !== 1) return false;
   if (!isNonEmptyString(v.id) || !isNonEmptyString(v.name)) return false;
   if (v.author !== undefined && typeof v.author !== "string") return false;
   if (v.mode !== "light" && v.mode !== "dark" && v.mode !== "system") return false;

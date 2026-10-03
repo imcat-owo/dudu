@@ -12,8 +12,8 @@ import { SshDockerBackend } from "./backend-ssh-docker";
 import { UnavailableSshTransport } from "./transport";
 import type { SandboxBackend, SandboxBackendId, SshConfig } from "./types";
 
-const ACTIVE_KEY = "openmuse.sandbox.activeBackend.v1";
-const SSH_CONFIG_KEY = "openmuse.sandbox.sshConfig.v1";
+const ACTIVE_KEY = "dudu.sandbox.activeBackend.v1";
+const SSH_CONFIG_KEY = "dudu.sandbox.sshConfig.v1";
 
 export interface SecureBackend {
   getItem(key: string): Promise<string | null>;

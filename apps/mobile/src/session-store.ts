@@ -14,7 +14,7 @@
  * The expo-secure-store import is lazy (dynamic import) so this module stays
  * importable in plain node test environments; tests inject a fake backend.
  */
-const TOKEN_KEY = "openmuse.session.token";
+const TOKEN_KEY = "dudu.session.token";
 
 export interface TokenBackend {
   getItem(key: string): Promise<string | null>;

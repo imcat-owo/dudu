@@ -2,7 +2,7 @@
  * Backup & restore — pure logic, aligned with Kelivo.
  *
  * One-tap export produces a single versioned JSON file:
- *   { "kind": "openmuse-backup", "version": 1, "exportedAt": ..., ... }
+ *   { "kind": "dudu-backup", "version": 1, "exportedAt": ..., ... }
  *
  * Included: chat threads, API group configs (WITHOUT keys), theme bundles,
  * voice/vision configs (WITHOUT keys), permission + AI-auth preferences,
@@ -20,7 +20,7 @@
  * fail with a human-readable error code — never half-apply.
  */
 
-export const BACKUP_KIND = "openmuse-backup";
+export const BACKUP_KIND = "dudu-backup";
 export const BACKUP_VERSION = 1;
 
 /** Minimal storage surface. AsyncStorage in production, fakes in tests. */
@@ -36,21 +36,21 @@ export interface SecureKV {
 }
 
 // Storage keys mirrored from their source modules (single place for backup).
-const CHAT_PREFIX = "openmuse.local-chat.";
+const CHAT_PREFIX = "dudu.local-chat.";
 const CHAT_SUFFIX = ".v1";
-const GROUPS_KEY = "openmuse.api-groups.v1";
-const ACTIVE_ID_KEY = "openmuse.api-groups.active.v1";
-const CHAT_MODE_KEY = "openmuse.settings.chatMode.v1";
-const THEME_BUNDLE_KEY = "openmuse.theme.bundle.v1";
-const THEME_HISTORY_KEY = "openmuse.theme.history.v1";
-const CUSTOMS_KEY = "openmuse.theme.customPresets.v1";
-const FONT_KEY = "openmuse.font.v1";
-const FONT_SIZE_KEY = "openmuse.settings.fontSize.v1";
-const TTS_KEY = "openmuse.tts.v1";
-const STT_KEY = "openmuse.stt.v1";
-const VOICE_SETTINGS_KEY = "openmuse.voice-settings.v1";
-const AI_AUTH_KEY = "openmuse.aiAuth.v1";
-const LAST_BACKUP_KEY = "openmuse.backup.lastAt.v1";
+const GROUPS_KEY = "dudu.api-groups.v1";
+const ACTIVE_ID_KEY = "dudu.api-groups.active.v1";
+const CHAT_MODE_KEY = "dudu.settings.chatMode.v1";
+const THEME_BUNDLE_KEY = "dudu.theme.bundle.v1";
+const THEME_HISTORY_KEY = "dudu.theme.history.v1";
+const CUSTOMS_KEY = "dudu.theme.customPresets.v1";
+const FONT_KEY = "dudu.font.v1";
+const FONT_SIZE_KEY = "dudu.settings.fontSize.v1";
+const TTS_KEY = "dudu.tts.v1";
+const STT_KEY = "dudu.stt.v1";
+const VOICE_SETTINGS_KEY = "dudu.voice-settings.v1";
+const AI_AUTH_KEY = "dudu.aiAuth.v1";
+const LAST_BACKUP_KEY = "dudu.backup.lastAt.v1";
 
 const PLAIN_KEYS = [
   ACTIVE_ID_KEY,
