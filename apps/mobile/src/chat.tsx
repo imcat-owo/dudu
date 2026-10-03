@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import { messageToolActions } from "./activity-drawer-model";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
 import { AnimatedAvatar } from "./animated-avatar";
@@ -51,7 +52,7 @@ import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { useTheme } from "./theme/ThemeContext";
-import { ThinkingDrawer, ThinkingStatus } from "./thinking-drawer";
+import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
@@ -281,7 +282,7 @@ export function ChatScreen({
   const [transcribing, setTranscribing] = useState(false);
   // Thinking drawer: track the message id (not a text snapshot) so the
   // drawer content live-updates while thinking is still streaming in.
-  const [thinkingId, setThinkingId] = useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
   const [queue] = useState(() => new ConversationQueue());
@@ -694,6 +695,8 @@ export function ChatScreen({
                 ? parseUserMessageWithImages(message.content)
                 : null;
             const toolCalls = "toolCalls" in message ? message.toolCalls || [] : [];
+            // Drawer actions for this message (unified thinking + tool view).
+            const toolActions = messageToolActions(message, messages);
             // Social-app row: AI avatar + bubble on the left, user bubble + avatar
             // on the right. Compact by default (owner direction 2026-10-03):
             // tighter bubbles, tighter spacing, smaller type — all from tokens.
@@ -721,7 +724,7 @@ export function ChatScreen({
                         <ThinkingStatus
                           thinking={thinking}
                           streaming={thinkingStreaming}
-                          onOpen={() => setThinkingId(message.id)}
+                          onOpen={() => setActivityId(message.id)}
                         />
                       )}
                       {voice ? (
@@ -782,6 +785,14 @@ export function ChatScreen({
                       )}
                     </View>
                     {user && <ChatAvatar who="user" />}
+                  </View>
+                )}
+                {!!toolActions.length && (
+                  <View style={{ paddingHorizontal: 4 }}>
+                    <ToolActionsStatus
+                      count={toolActions.length}
+                      onOpen={() => setActivityId(message.id)}
+                    />
                   </View>
                 )}
                 {!!toolCalls.length && (
@@ -1251,13 +1262,21 @@ export function ChatScreen({
         </View>
       </KeyboardAvoidingView>
       <ThinkingDrawer
-        visible={thinkingId !== null}
+        visible={activityId !== null}
         thinking={
-          (thinkingId
-            ? (messages.find((m) => m.id === thinkingId)?.thinking as string | undefined)
+          (activityId
+            ? (messages.find((m) => m.id === activityId)?.thinking as string | undefined)
             : undefined) ?? ""
         }
-        onClose={() => setThinkingId(null)}
+        actions={
+          activityId
+            ? messageToolActions(
+                messages.find((m) => m.id === activityId),
+                messages,
+              )
+            : []
+        }
+        onClose={() => setActivityId(null)}
       />
     </View>
   );
