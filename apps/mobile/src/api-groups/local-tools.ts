@@ -17,8 +17,9 @@
  * MCP transports — the registry accepts providers so they plug in cleanly.
  */
 
-import type { CapabilityId } from "../capabilities";
 import type { AiAuthRequest } from "../ai-authorization";
+import type { CapabilityId } from "../capabilities";
+import { getManual, MANUALS } from "../manuals/index.js";
 import type { WireToolDef } from "./direct-transport";
 
 /** JSON Schema (subset) for tool input parameters. */
@@ -58,8 +59,17 @@ export interface LocalTool {
   parameters: ToolParametersSchema;
   /** Set for out-of-app tools — triggers the authorize gate before run. */
   capability?: CapabilityId;
+  /**
+   * Manual id for the proactive note system (纸条机制): when this tool
+   * FAILS, the agent appends a one-line note pointing at the manual —
+   * unless the model already read it this turn.
+   */
+  manualId?: string;
   run: (args: Record<string, unknown>, ctx: ToolContext) => Promise<string>;
 }
+
+/** Name of the on-demand manual reader tool (also used for read-tracking). */
+export const READ_MANUAL_TOOL_NAME = "read_manual";
 
 export class ToolError extends Error {
   constructor(message: string) {
@@ -84,9 +94,7 @@ function numArg(args: Record<string, unknown>, name: string, fallback: number): 
  */
 export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
   const now = deps.now ?? (() => new Date());
-  const appInfo =
-    deps.appInfo ??
-    (() => ({ name: "OpenMuse", version: "dev", platform: "ios" }));
+  const appInfo = deps.appInfo ?? (() => ({ name: "OpenMuse", version: "dev", platform: "ios" }));
 
   const tools: LocalTool[] = [
     {
@@ -130,6 +138,7 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
         additionalProperties: false,
       },
       capability: "photos",
+      manualId: "permissions",
       run: async (args, ctx) => {
         const ok = await ctx.authorize({
           capability: "photos",
@@ -153,6 +162,7 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
         "Get her current location (latitude and longitude). This is sensitive private data — the system will ask her for permission before running.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       capability: "location",
+      manualId: "permissions",
       run: async (_args, ctx) => {
         const ok = await ctx.authorize({
           capability: "location",
@@ -174,6 +184,7 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
         "Read the current clipboard text. The clipboard may contain sensitive info like passwords — the system will ask her for permission before running.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       capability: "clipboard",
+      manualId: "permissions",
       run: async (_args, ctx) => {
         const ok = await ctx.authorize({
           capability: "clipboard",
@@ -202,6 +213,7 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
         additionalProperties: false,
       },
       capability: "clipboard",
+      manualId: "permissions",
       run: async (args, ctx) => {
         const ok = await ctx.authorize({
           capability: "clipboard",
@@ -217,6 +229,36 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
     });
   }
 
+  // --- Proactive manual notes (纸条机制): on-demand manual reader. ---
+  // The index lives in the system prompt; the model calls this when unsure.
+
+  tools.push({
+    name: READ_MANUAL_TOOL_NAME,
+    description:
+      "Read the full manual for an app feature. The system prompt lists available manuals with their ids. Call this BEFORE acting when you are unsure how a feature works. If you already know it, do not call — save the tokens.",
+    parameters: {
+      type: "object",
+      properties: {
+        manual_id: {
+          type: "string",
+          description: `Manual id from the manuals index (e.g. "permissions"). Available: ${MANUALS.map((m) => m.id).join(", ")}.`,
+        },
+      },
+      required: ["manual_id"],
+      additionalProperties: false,
+    },
+    run: async (args) => {
+      const id = strArg(args, "manual_id");
+      const m = getManual(id);
+      if (!m) {
+        throw new ToolError(
+          `Unknown manual: "${id}". Available: ${MANUALS.map((mm) => mm.id).join(", ")}.`,
+        );
+      }
+      return `# ${m.title}\n\n${m.body}`;
+    },
+  });
+
   return tools;
 }
 
@@ -228,11 +270,7 @@ export interface ToolRegistry {
   /** OpenAI function-calling definitions for the chat request. */
   definitions: () => FunctionToolDef[];
   /** Execute a tool call by name. Unknown tools and auth denials throw ToolError. */
-  execute: (
-    name: string,
-    args: Record<string, unknown>,
-    ctx: ToolContext,
-  ) => Promise<string>;
+  execute: (name: string, args: Record<string, unknown>, ctx: ToolContext) => Promise<string>;
   /** All registered tool names (for logging/debugging). */
   names: () => string[];
 }
