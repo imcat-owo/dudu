@@ -41,24 +41,7 @@ import type {
 import { API_URL } from "./api";
 import { localDateTime, zonedInstant } from "./date-time";
 import { t } from "./i18n";
-import {
-  Button,
-  Card,
-  Chip,
-  colors,
-  dateLabel,
-  Empty,
-  ErrorNotice,
-  IconButton,
-  LinkRow,
-  Mascot,
-  relativeDate,
-  resultSummary,
-  SectionHeading,
-  Sheet,
-  s,
-  timeLabel,
-} from "./ui";
+import {Button, Card, Chip, useColors, dateLabel, Empty, ErrorNotice, IconButton, LinkRow, Mascot, relativeDate, resultSummary, SectionHeading, Sheet, useStyles, timeLabel, } from "./ui";
 import { useWorkspace } from "./workspace";
 
 function todayDate() {
@@ -69,6 +52,8 @@ function eventDate(event: CalendarEvent) {
   return event.allDay ? event.start : localDateTime(event.start, event.timeZone).date;
 }
 export function TodayScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, navigate, open, ask } = useWorkspace();
   const wide = useWindowDimensions().width > 1180;
   const pending = w.actions.filter((a) => a.status === "awaiting_review");
@@ -377,6 +362,7 @@ export function TodayScreen() {
   );
 }
 function Avatar({ name, index = 0 }: { name: string; index?: number }) {
+  const colors = useColors();
   return (
     <View
       style={{
@@ -407,6 +393,8 @@ export function AgendaRow({
   index?: number;
   neighbors?: CalendarEvent[];
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { open } = useWorkspace();
   return (
     <Pressable
@@ -443,6 +431,8 @@ export function AgendaRow({
   );
 }
 export function MailScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, open } = useWorkspace();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("all");
@@ -583,6 +573,8 @@ function plusDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 export function CalendarScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, open } = useWorkspace();
   const [date, setDate] = useState(todayDate());
   const [all, setAll] = useState(false);
@@ -807,6 +799,8 @@ export function CalendarScreen() {
   );
 }
 export function BrowserScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, open } = useWorkspace();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -911,6 +905,8 @@ export function BrowserScreen() {
   );
 }
 export function FilesScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, open } = useWorkspace();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1035,6 +1031,8 @@ export function FilesScreen() {
   );
 }
 export function ActivityScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, open } = useWorkspace();
   const [filter, setFilter] = useState("all");
   const pending = w.actions.filter((a) => a.status === "awaiting_review");
@@ -1151,6 +1149,8 @@ export function ActivityScreen() {
   );
 }
 export function ConnectionsScreen({ query = "" }: { query?: string }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, notify, open } = useWorkspace();
   const [selected, setSelected] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -1350,6 +1350,8 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
   );
 }
 function SettingsLine({ label, value }: { label: string; value: string }) {
+  const colors = useColors();
+  const s = useStyles();
   return (
     <View
       style={[
