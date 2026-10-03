@@ -12,11 +12,11 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
-import { createBrowserTools } from "../browser/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
 import { memoryStore } from "../memory/instance.js";
@@ -69,7 +69,8 @@ export interface LocalToolCall {
 export interface LocalChatMessage {
   id: string;
   role: "user" | "assistant" | "system" | "tool";
-  content: string;
+  /** Plain text, or content blocks (tool screenshot results carry image_url). */
+  content: string | ChatContentBlock[];
   /**
    * Reasoning/thinking text streamed separately from the visible reply
    * (reasoning models). Only present when the model actually returned it —
@@ -84,6 +85,15 @@ export interface LocalChatMessage {
 }
 
 /** Max tool-calling iterations per turn — hard cap, no infinite loops. */
+
+/**
+ * Extract plain text from message content (string or content blocks).
+ * Used where downstream code needs a string (memory relevance, prompts).
+ */
+export function contentToText(content: string | ChatContentBlock[]): string {
+  if (typeof content === "string") return content;
+  return content.map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
+}
 export const MAX_TOOL_ITERATIONS = 10;
 
 /**
@@ -303,6 +313,34 @@ export async function toWireUserMessage(
     parts.push(formatDescriptionBlock(img.name, description));
   }
   return { role: "user", content: parts.join("\n\n") };
+}
+
+/**
+ * Convert a browser_screenshot tool result into vision content the model
+ * can actually see. Same two paths as user-sent photos:
+ * - Native vision: text + image_url content blocks in one message.
+ * - Describe pipeline: vision model describes, chat model reads text.
+ * - No vision config at all: throw loudly — never pretend the AI saw it.
+ */
+async function screenshotToolContent(
+  group: ApiGroup,
+  imageUri: string,
+): Promise<ChatContentBlock[]> {
+  const vision = group.vision;
+  if (!vision) {
+    throw new GroupError(
+      group.name,
+      "截图下来了，但这个模型看不了图：请在分组设置里打开“聊天模型直接看图”或填写识图模型",
+    );
+  }
+  if (vision.native) {
+    const block = await nativeImageBlock(imageUri);
+    return [{ type: "text", text: "这是当前浏览器页面的截图：" }, block];
+  }
+  const description = await describeImage(group, imageUri, "描述这个浏览器页面截图");
+  return [
+    { type: "text", text: `浏览器页面截图（模型直接看图未开，已转文字描述）：\n${description}` },
+  ];
 }
 
 export function createLocalAgent(opts: {
@@ -580,7 +618,9 @@ export function createLocalAgent(opts: {
       };
       // Memory read path: profile + top-k relevant memories for this turn.
       // The last user message drives relevance; empty section when no memories.
-      const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      const lastUserText = contentToText(
+        [...messages].reverse().find((m) => m.role === "user")?.content ?? "",
+      );
       const memorySection = await buildMemorySection(memStore, lastUserText);
       // Skills index: one line per enabled skill (token-minimal, same pattern
       // as the manual index). Empty string when she has no enabled skills.
@@ -614,9 +654,9 @@ export function createLocalAgent(opts: {
       wire.push({ role: "system", content: systemPrompt });
       for (const m of messages) {
         if (m.role === "user") {
-          wire.push(await toWireUserMessage(group, m.content, visionCache));
+          wire.push(await toWireUserMessage(group, contentToText(m.content), visionCache));
         } else if (m.role === "assistant") {
-          const entry: ChatMessage = { role: "assistant", content: m.content };
+          const entry: ChatMessage = { role: "assistant", content: contentToText(m.content) };
           if (m.toolCalls && m.toolCalls.length > 0) {
             entry.tool_calls = m.toolCalls.map((tc) => ({
               id: tc.id,
@@ -811,11 +851,26 @@ export function createLocalAgent(opts: {
               }
             }
             const toolMsgId = newId("tool");
+            // Screenshot results carry a real image: convert the marker
+            // into vision content the model can actually see. Follows the
+            // same two paths as user-sent photos (native image_url vs
+            // describe pipeline). If the model can't see at all, say so
+            // honestly instead of pretending.
+            let toolContent: string | ChatContentBlock[] = result;
+            const shotMatch = /^(\[SCREENSHOT\])\n(\S+)\s*$/.exec(result.trim());
+            if (shotMatch) {
+              const shotUri = shotMatch[2];
+              try {
+                toolContent = await screenshotToolContent(activeGroup, shotUri);
+              } catch (e) {
+                toolContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
+              }
+            }
             messages = [
               ...messages,
-              { id: toolMsgId, role: "tool", content: result, toolCallId: tc.id },
+              { id: toolMsgId, role: "tool", content: toolContent, toolCallId: tc.id },
             ];
-            wire.push({ role: "tool", content: result, tool_call_id: tc.id });
+            wire.push({ role: "tool", content: toolContent, tool_call_id: tc.id });
             emit();
           }
           // Loop: the model sees tool results and either answers or calls more.
@@ -828,8 +883,12 @@ export function createLocalAgent(opts: {
         // Memory write path: async extraction, OFF the critical path.
         // Incognito turns never enter the pipeline (gated inside).
         // Fire-and-forget: extraction must never break the chat.
-        const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-        const lastAsst = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+        const lastUser = contentToText(
+          [...messages].reverse().find((m) => m.role === "user")?.content ?? "",
+        );
+        const lastAsst = contentToText(
+          [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "",
+        );
         if (lastUser || lastAsst) {
           // User kill-switch for auto-extract (checked async, fire-and-forget).
           void memStore

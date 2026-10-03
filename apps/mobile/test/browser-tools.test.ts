@@ -24,6 +24,9 @@ function makeFakeWebView(): BrowserWebViewRef & { lastJs: string } {
     goBack() {},
     goForward() {},
     reload() {},
+    async captureScreenshot() {
+      return "file:///fake-screenshot.png";
+    },
   };
   return fake;
 }
@@ -87,4 +90,52 @@ test("controller correlates evaluate responses", async () => {
   assert.equal(r.ok, true);
   assert.equal(r.value, "fake-result");
   browserController.setWebView(null);
+});
+
+test("browser_screenshot returns SCREENSHOT marker with file URI", async () => {
+  const fake = makeFakeWebView();
+  browserController.setWebView(fake);
+  const tools = createBrowserTools();
+  const ctx = { authorize: async () => true };
+  const shot = tools.find((t) => t.name === "browser_screenshot");
+  assert.ok(shot);
+  const result = await shot.run({}, ctx);
+  assert.ok(result.startsWith("[SCREENSHOT]\n"));
+  assert.ok(result.includes("file:///fake-screenshot.png"));
+  browserController.setWebView(null);
+});
+
+test("browser_screenshot fails honestly when WebView not mounted", async () => {
+  browserController.setWebView(null);
+  const tools = createBrowserTools();
+  const ctx = { authorize: async () => true };
+  const shot = tools.find((t) => t.name === "browser_screenshot");
+  assert.ok(shot);
+  await assert.rejects(() => shot.run({}, ctx), /not ready|not mounted/);
+});
+
+test("browser_screenshot fails honestly when capture throws", async () => {
+  const fake = makeFakeWebView();
+  fake.captureScreenshot = async () => {
+    throw new Error("Screenshot not available — needs a dev build");
+  };
+  browserController.setWebView(fake);
+  const tools = createBrowserTools();
+  const ctx = { authorize: async () => true };
+  const shot = tools.find((t) => t.name === "browser_screenshot");
+  assert.ok(shot);
+  await assert.rejects(() => shot.run({}, ctx), /dev build/);
+  browserController.setWebView(null);
+});
+
+test("contentToText handles string and blocks", async () => {
+  const { contentToText } = await import("../src/api-groups/local-agent.js");
+  assert.equal(contentToText("hello"), "hello");
+  assert.equal(
+    contentToText([
+      { type: "text", text: "page shot:" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,xx" } },
+    ]),
+    "page shot:\n[image]",
+  );
 });

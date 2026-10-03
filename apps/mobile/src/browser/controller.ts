@@ -13,8 +13,9 @@
  *
  * Honest limits (do NOT fake these):
  * - If no WebView is mounted, every method throws "browser not ready".
- * - Screenshots need the view layer (react-native-view-shot); if the view
- *   can't capture, it reports honestly — the controller never invents pixels.
+ * - Screenshots need react-native-view-shot (native module, dev build only).
+ *   In Expo Go the native module is missing — captureScreenshot throws
+ *   honestly instead of faking pixels.
  */
 
 export interface BrowserEvalResult {
@@ -29,6 +30,8 @@ export interface BrowserWebViewRef {
   goBack: () => void;
   goForward: () => void;
   reload: () => void;
+  /** Capture the WebView as a PNG file. Resolves with the file URI. */
+  captureScreenshot: () => Promise<string>;
 }
 
 type PendingEval = {
@@ -109,6 +112,15 @@ class BrowserController {
 
   reload(): void {
     this.requireWebView().reload();
+  }
+
+  /**
+   * Capture the current page as a PNG file. Resolves with the file URI.
+   * Throws honestly when the view isn't mounted or capture fails —
+   * never invents pixels.
+   */
+  async captureScreenshot(): Promise<string> {
+    return this.requireWebView().captureScreenshot();
   }
 }
 

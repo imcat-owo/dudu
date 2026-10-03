@@ -5,6 +5,12 @@
  * browserController (src/browser/controller.ts). The WebView is mounted
  * by AIBrowserView; if it's not mounted, tools fail honestly — never fake.
  *
+ * browser_screenshot captures via react-native-view-shot (native module,
+ * dev build only) and returns a [SCREENSHOT] marker with the file URI;
+ * the agent loop (local-agent.ts) converts it into an image_url block
+ * for the model's vision. If the model can't see images, the describe
+ * pipeline kicks in — same as user-sent photos.
+ *
  * These tools do NOT need her authorization popup: browsing is in-app,
  * read-mostly, and she can see the browser view. Out-of-app actions
  * (downloading files, opening external apps) are not offered.
@@ -203,6 +209,24 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       run: async () => {
         browserController.goForward();
         return "Went forward. Use browser_snapshot to see the page.";
+      },
+    },
+    {
+      name: "browser_screenshot",
+      description:
+        "Take a screenshot of the current browser page. You SEE the image — use it when the layout, visuals, or something snapshot text can't capture matters. Needs a dev build (not Expo Go).",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "browser",
+      run: async () => {
+        let uri: string;
+        try {
+          uri = await browserController.captureScreenshot();
+        } catch (e) {
+          throw new Error(e instanceof Error ? e.message : "Screenshot failed.");
+        }
+        // Marker the agent loop converts into an image_url block for vision.
+        // Never fake pixels: uri is a real file from react-native-view-shot.
+        return `[SCREENSHOT]\n${uri}`;
       },
     },
   ];
