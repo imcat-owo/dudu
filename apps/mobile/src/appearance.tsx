@@ -49,6 +49,7 @@ import {
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 import { ShareSection } from "./theme-share-ui";
 import { TText, useFont } from "./font";
+import { ColorWheel } from "./color-wheel";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -107,6 +108,7 @@ export function AppearanceScreen() {
   const [customName, setCustomName] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [wheelSlot, setWheelSlot] = useState<keyof DraftSeed>("primary");
 
   // Load user-saved custom presets (after the built-ins).
   useEffect(() => {
@@ -608,6 +610,56 @@ export function AppearanceScreen() {
 
           <View style={{ gap: 8 }}>
             <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+              {t("appearance.wheelHint")}
+            </TText>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(
+                [
+                  { key: "primary", label: t("appearance.primary") },
+                  { key: "secondary", label: t("appearance.secondary") },
+                  { key: "accent", label: t("appearance.accent") },
+                ] as const
+              ).map((slot) => {
+                const selected = wheelSlot === slot.key;
+                return (
+                  <Pressable
+                    key={slot.key}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={slot.label}
+                    onPress={() => setWheelSlot(slot.key)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 14,
+                      borderRadius: 20,
+                      backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
+                      borderWidth: 1,
+                      borderColor: selected
+                        ? tokens.accent.accent
+                        : (tokens.card.border ?? tokens.card.bg),
+                    }}
+                  >
+                    <TText
+                      style={{
+                        color: selected ? tokens.accent.fg : fg,
+                        fontSize: 12,
+                        fontWeight: selected ? "600" : "400",
+                      }}
+                    >
+                      {slot.label}
+                    </TText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <ColorWheel
+              color={validHex(draft[wheelSlot]) ?? "#808080"}
+              onChange={(hex) => commitColor(wheelSlot, hex)}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
               {t("appearance.preview")}
             </TText>
             <View style={{ gap: 8 }}>
@@ -784,7 +836,7 @@ function HistorySection() {
             {t("appearance.historyEmpty")}
           </TText>
         ) : (
-          history.map((entry, i) => {
+          history.map((entry) => {
             const when = new Date(entry.savedAt);
             const stamp = Number.isNaN(when.getTime())
               ? entry.savedAt
