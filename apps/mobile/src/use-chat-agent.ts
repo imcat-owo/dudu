@@ -19,7 +19,7 @@ import {
   useAgent,
   useCopilotKit,
 } from "@copilotkit/react-native/headless";
-import { useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   createLocalAgent,
   type LocalChatMessage,
@@ -119,8 +119,21 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
   agent: ChatAgent;
   isReady: boolean;
 } {
+  // biome-ignore lint/correctness/useHookAtTopLevel: useLocalAgent runs only in useChatAgent's local branch; remount-on-mode-change (key={mode}) keeps hook order stable.
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+  // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
   const ref = useRef<ChatAgent | null>(null);
+  // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
+  const cleanupRef = useRef<(() => void) | null>(null);
+  // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
+  useEffect(() => {
+    // Unmount = mode switch (whole tree remounts): cancel any in-flight
+    // turn and drop the render bridge subscription (P3).
+    return () => {
+      cleanupRef.current?.();
+      void ref.current?.stop().catch(() => {});
+    };
+  }, []);
   if (!ref.current) {
     const local = createLocalAgent({
       threadId,
@@ -130,7 +143,8 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
     });
     // Bridge LocalAgent notifications into React renders
     // (cloud mode gets this from useAgent internally).
-    local.subscribe({ onMessagesChanged: () => forceUpdate() });
+    const sub = local.subscribe({ onMessagesChanged: () => forceUpdate() });
+    cleanupRef.current = () => sub.unsubscribe();
     const agent: ChatAgent = {
       get messages() {
         return local.messages as AgentMessage[];
@@ -173,21 +187,24 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
 }
 
 /**
- * Mode-aware agent hook. Remount on mode change (key={mode} at call site).
+ * Mode-aware agent hook. The caller MUST remount on mode change (key={mode}).
+ *
+ * The two branches call different hooks, so this intentionally breaks the
+ * unconditional-hooks rule: it is safe only because the whole tree remounts
+ * when `mode` flips, making hook order stable within each mode's lifetime.
+ * (eslint-disable comments do not apply to biome; the suppressions below
+ * are biome's own ignore syntax with this discipline documented.)
  */
-// eslint-disable-next-line react-hooks/rules-of-hooks
 export function useChatAgent(opts: { agentId: string; threadId: string }): {
   agent: ChatAgent;
   isReady: boolean;
 } {
   const mode = useChatMode();
-  // Each branch is hook-consistent within its own lifetime; the caller
-  // remounts when mode flips.
   if (mode === "cloud") {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // biome-ignore lint/correctness/useHookAtTopLevel: remount-on-mode-change (see above).
     return useCloudAgent(opts);
   }
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // biome-ignore lint/correctness/useHookAtTopLevel: remount-on-mode-change (see above).
   return useLocalAgent(opts);
 }
 
