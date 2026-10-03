@@ -9,7 +9,7 @@ import {
   requesters,
 } from "./device-permissions";
 import { t } from "./i18n";
-import { Button, colors, Sheet, s } from "./ui";
+import {Button, useColors, Sheet, useStyles} from "./ui";
 
 const ICONS: Record<PermissionKind, typeof Mic> = {
   audio: Mic,
@@ -43,6 +43,8 @@ function statusText(status: PermissionStatus): string {
 }
 
 export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
+  const colors = useColors();
+  const s = useStyles();
   const [statuses, setStatuses] = useState<Record<PermissionKind, PermissionStatus>>({
     audio: "undetermined",
     photos: "undetermined",
