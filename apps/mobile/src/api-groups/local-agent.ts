@@ -28,14 +28,17 @@ import { ourSpaceStore } from "../our-space/instance.js";
 import { taskBuddyVideoStore } from "../our-space/task-buddy-video-instance.js";
 import { taskProgressStore } from "../our-space/task-progress-instance.js";
 import {
+  createAmbientVideoTools,
   createOurSpaceTools,
   createTaskBuddyVideoTools,
   createTaskProgressTools,
 } from "../our-space/tools.js";
+import { recentInteraction } from "../pet/interactions.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
+import { ambientVideoStore } from "../sora-ambient-video-instance.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -255,7 +258,31 @@ export function buildLocalSystemPrompt(
   parts.push(
     `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })} (Asia/Shanghai).`,
   );
+  // Pet touch — she can feel the desktop pet (桌宠）: pinching its cheek,
+  // holding its hand, patting its head. One subtle line so she can react
+  // naturally; nothing when she hasn't touched it recently.
+  parts.push(petTouchNote());
   return parts.join("\n");
+}
+
+/**
+ * One-line note about her most recent touch on the desktop pet (last
+ * 3 minutes), so the AI can feel it and react like a person would.
+ * Empty string when there's nothing recent — no noise, no spam.
+ */
+function petTouchNote(): string {
+  const ev = recentInteraction();
+  if (!ev) return "";
+  switch (ev.type) {
+    case "pinch":
+      return "她刚才揪了揪你的脸（桌宠）——可以像被揪住一样小小地反应一下，别大惊小怪。";
+    case "reach":
+      return "她刚才长按着你，像隔着屏幕想牵你的手——可以把手伸过去回应她，温柔一点。";
+    case "headpat":
+      return "她刚才拍了拍你的头——可以开心地蹭一下，别太夸张。";
+    case "headphones":
+      return "她放起了音乐，你戴上了耳机（桌宠）——听歌的时候可以陪她一起晃，别刷屏。";
+  }
 }
 
 /**
@@ -478,6 +505,7 @@ export function createLocalAgent(opts: {
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
+        ...createAmbientVideoTools(ambientVideoStore),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),

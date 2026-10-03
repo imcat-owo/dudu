@@ -11,7 +11,7 @@
  * - Mood is derived: dragged > happy (2.5s after drop/tap) > AI-busy >
  *   music-bopping > sleepy (90s idle) > idle.
  */
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer, type VideoSource, VideoView } from "expo-video";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -26,7 +26,13 @@ import { avatarVideoSource, soraSource } from "./avatar-assets";
 import type { AvatarState } from "./avatar-state";
 import { t } from "./i18n";
 import { mascotSource } from "./mascot-assets";
-import { petStore } from "./pet/instance";
+import { petInteractionVideos, petStore } from "./pet/instance";
+import {
+  INTERACTION_DEFAULT_CLIP,
+  isOneShotInteraction,
+  logInteraction,
+  type PetInteraction,
+} from "./pet/interactions";
 import { getAiBubbleMessageId, hitTestAt, measureZone } from "./pet/registry";
 import {
   type PetMood,
@@ -53,7 +59,25 @@ function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
-function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: number }) {
+function interactionVideoSource(interaction: PetInteraction): VideoSource {
+  const custom = petInteractionVideos.get(interaction);
+  if (custom) return { uri: custom };
+  return avatarVideoSource(INTERACTION_DEFAULT_CLIP[interaction] as AvatarState);
+}
+
+function PetFace({
+  skin,
+  mood,
+  size,
+  interaction,
+  onInteractionEnd,
+}: {
+  skin: PetSkin;
+  mood: PetMood;
+  size: number;
+  interaction: PetInteraction | null;
+  onInteractionEnd: () => void;
+}) {
   const videoState = MOOD_VIDEO[mood];
   const player = useVideoPlayer(
     videoState ? avatarVideoSource(videoState) : avatarVideoSource("idle"),
@@ -78,6 +102,50 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
       }
     }
   }, [videoState, skin, player]);
+
+  // ---- Interaction layer: plays on top of the mood video (sora skin only).
+  // Crossfades in/out; one-shot interactions (head pat) hand back on playToEnd.
+  const interactionPlayer = useVideoPlayer(avatarVideoSource("idle"), (p) => {
+    p.muted = true;
+  });
+  const [, setVideoVersion] = useState(0);
+  useEffect(() => petInteractionVideos.subscribe(() => setVideoVersion((v) => v + 1)), []);
+
+  useEffect(() => {
+    if (!interaction) {
+      try {
+        interactionPlayer.pause();
+      } catch {
+        // player not ready yet — harmless
+      }
+      return;
+    }
+    try {
+      interactionPlayer.replace(interactionVideoSource(interaction));
+      interactionPlayer.loop = !isOneShotInteraction(interaction);
+      interactionPlayer.play();
+    } catch {
+      // swap failed → mood video stays visible underneath
+    }
+  }, [interaction, interactionPlayer]);
+
+  useEffect(() => {
+    if (interaction !== "headpat") return;
+    const sub = interactionPlayer.addListener("playToEnd", () => {
+      onInteractionEnd();
+    });
+    return () => sub.remove();
+  }, [interaction, interactionPlayer, onInteractionEnd]);
+
+  const interactionOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(interactionOpacity, {
+      toValue: interaction ? 1 : 0,
+      duration: 280,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [interaction, interactionOpacity]);
 
   // Built-in motion for static skins / states without a video.
   const breathe = useRef(new Animated.Value(0)).current;
@@ -112,6 +180,7 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
 
   const showVideo =
     (skin.kind === "sora" || (skin.kind === "custom" && !!skin.videoUri)) && videoState !== null;
+  const showInteraction = interaction !== null && skin.kind === "sora";
   const dimmed = mood === "sleepy" || mood === "dragged";
 
   return (
@@ -137,7 +206,11 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
       >
         {skin.kind === "custom" ? (
           <>
-            <Image source={{ uri: skin.imageUri }} resizeMode="cover" style={StyleSheet.absoluteFill} />
+            <Image
+              source={{ uri: skin.imageUri }}
+              resizeMode="cover"
+              style={StyleSheet.absoluteFill}
+            />
             {showVideo && skin.videoUri && (
               <VideoView
                 player={player}
@@ -159,6 +232,17 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
                 nativeControls={false}
                 allowsPictureInPicture={false}
               />
+            )}
+            {showInteraction && (
+              <Animated.View style={[StyleSheet.absoluteFill, { opacity: interactionOpacity }]}>
+                <VideoView
+                  player={interactionPlayer}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  nativeControls={false}
+                  allowsPictureInPicture={false}
+                />
+              </Animated.View>
             )}
           </>
         ) : (
@@ -184,16 +268,52 @@ export function PetOverlay({
   const [pet, setPet] = useState<PetPersisted | null>(null);
   const [activity, setActivity] = useState(petActivity.snapshot());
   const [dragging, setDragging] = useState(false);
+  const [interaction, setInteraction] = useState<PetInteraction | null>(null);
   const [, setTick] = useState(0);
   const lastHappyAt = useRef(0);
   const lastInteractAt = useRef(Date.now());
+  const lastTapAt = useRef(0);
   const pan = useRef(new Animated.ValueXY()).current;
   const panStart = useRef({ x: 0, y: 0 });
   /** Last known absolute pet position (updated on spring completion / drag). */
   const posRef = useRef({ x: 0, y: 0 });
   const movedFar = useRef(false);
+  /** Mirror of `interaction` for use inside the PanResponder (stale closures). */
+  const interactionRef = useRef<PetInteraction | null>(null);
+  /** Long-press (reach out) timer + whether it fired this touch. */
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
   const stateRef = useRef<PetPersisted | null>(null);
   stateRef.current = pet;
+
+  const setInteractionBoth = useCallback((v: PetInteraction | null) => {
+    interactionRef.current = v;
+    setInteraction(v);
+  }, []);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  /** After an interaction ends, fall back to headphones if music is playing. */
+  const maybeRestoreHeadphones = useCallback(() => {
+    if (petActivity.snapshot().musicPlaying && interactionRef.current === null) {
+      interactionRef.current = "headphones";
+      setInteraction("headphones");
+    }
+  }, []);
+
+  const handleInteractionEnd = useCallback(() => {
+    // One-shot (head pat) finished → hand back to mood / headphones.
+    if (interactionRef.current === "headpat") {
+      interactionRef.current = null;
+      setInteraction(null);
+      maybeRestoreHeadphones();
+    }
+  }, [maybeRestoreHeadphones]);
 
   useEffect(() => {
     void petStore.load().then((s) => {
@@ -208,6 +328,7 @@ export function PetOverlay({
     });
     const unsub = petStore.subscribe(() => setPet({ ...petStore.get() }));
     const unsubAct = petActivity.subscribe((a) => setActivity(a));
+    void petInteractionVideos.load();
     const timer = setInterval(() => setTick((n) => n + 1), 5000);
     return () => {
       unsub();
@@ -216,6 +337,19 @@ export function PetOverlay({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Music playing → headphones interaction (unless a touch interaction owns the pet).
+  useEffect(() => {
+    if (activity.musicPlaying && interactionRef.current === null) {
+      interactionRef.current = "headphones";
+      setInteraction("headphones");
+      logInteraction("headphones");
+    } else if (!activity.musicPlaying && interactionRef.current === "headphones") {
+      interactionRef.current = null;
+      setInteraction(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity.musicPlaying]);
 
   const mood: PetMood = useMemo(
     () =>
@@ -318,8 +452,21 @@ export function PetOverlay({
         onMoveShouldSetPanResponder: (_e, gs) => Math.abs(gs.dx) + Math.abs(gs.dy) > 5,
         onPanResponderGrant: () => {
           movedFar.current = false;
+          longPressFired.current = false;
           setDragging(true);
           lastInteractAt.current = Date.now();
+          // Long-press (no drag): she holds still ~500ms → pet reaches out
+          // its hand to touch her finger. Cancelled as soon as she moves.
+          cancelLongPress();
+          longPressTimer.current = setTimeout(() => {
+            longPressTimer.current = null;
+            if (!movedFar.current && interactionRef.current === null) {
+              longPressFired.current = true;
+              setInteractionBoth("reach");
+              logInteraction("reach");
+              lastInteractAt.current = Date.now();
+            }
+          }, 500);
           // Stop any in-flight spring and pick up from the true position.
           pan.stopAnimation((v: { x: number; y: number }) => {
             panStart.current = { x: v.x, y: v.y };
@@ -329,7 +476,17 @@ export function PetOverlay({
           });
         },
         onPanResponderMove: (_e, gs) => {
-          if (Math.abs(gs.dx) + Math.abs(gs.dy) > 5) movedFar.current = true;
+          const dist = Math.abs(gs.dx) + Math.abs(gs.dy);
+          if (dist > 5) movedFar.current = true;
+          if (dist > 10) {
+            // It's a drag, not a long-press → pinch her cheek.
+            cancelLongPress();
+            longPressFired.current = false;
+            if (interactionRef.current !== "pinch") {
+              setInteractionBoth("pinch");
+              logInteraction("pinch");
+            }
+          }
           const nx = clamp(panStart.current.x + gs.dx, 0, maxX);
           const ny = clamp(panStart.current.y + gs.dy, 0, maxY);
           pan.setValue({ x: nx - panStart.current.x, y: ny - panStart.current.y });
@@ -337,17 +494,35 @@ export function PetOverlay({
         onPanResponderRelease: (_e, gs) => {
           pan.flattenOffset();
           setDragging(false);
+          cancelLongPress();
           lastInteractAt.current = Date.now();
           const absX = clamp(panStart.current.x + gs.dx, 0, maxX);
           const absY = clamp(panStart.current.y + gs.dy, 0, maxY);
           posRef.current = { x: absX, y: absY };
           const cx = clamp(absX + PET_SIZE / 2, 0, W);
           const cy = clamp(absY + PET_SIZE / 2, 0, H);
+          if (longPressFired.current) {
+            // Long-press release → hand goes back, not a tap.
+            longPressFired.current = false;
+            if (interactionRef.current === "reach") setInteractionBoth(null);
+            maybeRestoreHeadphones();
+            return;
+          }
           if (!movedFar.current) {
-            // Tap → happy bounce, stay where it is.
+            // Tap → single: happy bounce; double (within 350ms): head pat.
+            const now = Date.now();
+            if (now - lastTapAt.current < 350) {
+              lastTapAt.current = 0;
+              setInteractionBoth("headpat");
+              logInteraction("headpat");
+            } else {
+              lastTapAt.current = now;
+            }
             doHappy();
             return;
           }
+          if (interactionRef.current === "pinch") setInteractionBoth(null);
+          maybeRestoreHeadphones();
           void hitTestAt(cx, cy).then(async (zone) => {
             const fx = clamp(cx - PET_SIZE / 2, 0, maxX) / Math.max(1, maxX);
             const fy = clamp(cy - PET_SIZE / 2, 0, maxY) / Math.max(1, maxY);
@@ -368,7 +543,17 @@ export function PetOverlay({
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [W, H, maxX, maxY, doHappy, onNavigate],
+    [
+      W,
+      H,
+      maxX,
+      maxY,
+      doHappy,
+      onNavigate,
+      setInteractionBoth,
+      cancelLongPress,
+      maybeRestoreHeadphones,
+    ],
   );
 
   if (!pet || section !== pet.location) return null;
@@ -386,7 +571,13 @@ export function PetOverlay({
           transform: pan.getTranslateTransform(),
         }}
       >
-        <PetFace skin={pet.skin} mood={mood} size={PET_SIZE} />
+        <PetFace
+          skin={pet.skin}
+          mood={mood}
+          size={PET_SIZE}
+          interaction={interaction}
+          onInteractionEnd={handleInteractionEnd}
+        />
       </Animated.View>
     </View>
   );
