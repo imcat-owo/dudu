@@ -18,7 +18,7 @@
 |---|---|---|---|
 | 主题 token 架构（全局变量，无硬编码色） | ✅ 通过 | Polaris 北极星 | 2026-10-03 迁移完成：ui.tsx→token 派生（useColors/useStyles），20 个引用文件＋App.tsx 全迁移，38 处硬编码 hex→token；assistant-response.tsx 模块级样式移入组件。验证：tsc 零报错、biome 干净、全仓测试 296 通过（theme-ui 2 项走 harness 全过） |
 | 用户外观页基础（预设/取色/壁纸/字号） | 🔨 进行中 | Polaris＋Kelivo | 字号默认小，可调＋跟随系统 |
-| 聊天头像气泡（AI 头像＋用户头像，左右） | 🔨 进行中 | 社交软件 | AI 可改＋可自定义；小尺寸精致风，拒绝老年机式大字大泡；字号 App 内可调 |
+| 聊天头像气泡（AI 头像＋用户头像，左右） | ✅ 通过 | 社交软件 | 2026-10-03：AI头像＋气泡左、用户气泡＋头像右；ChatAvatar读主题包avatar（外观页可换，坏图回退）；精致小尺寸（气泡12/9、字15、间距8）；字号走App设置（system/small/standard/large，默认small，改完即时生效）；语音/图片气泡同token配色；9个commit；tsc/biome干净、测试37过 |
 
 ## Phase 1b 主题进阶（1a 通过后再做）
 | 功能 | 状态 | 对齐目标 | 备注 |
