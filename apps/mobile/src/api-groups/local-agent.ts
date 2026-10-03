@@ -13,7 +13,8 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildCapabilityPromptSection } from "../capabilities";
-import { t, type StringKey } from "../i18n";
+import { type StringKey, t } from "../i18n";
+import { buildManualIndex, manualNote } from "../manuals/index.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -32,6 +33,7 @@ import {
   createLocalTools,
   createToolRegistry,
   type LocalTool,
+  READ_MANUAL_TOOL_NAME,
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
@@ -201,6 +203,14 @@ export function buildLocalSystemPrompt(
     "Capabilities (out-of-app actions — the system asks her for permission before these run; if she denies, you get a tool error, explain it honestly and move on):",
   );
   parts.push(buildCapabilityPromptSection(resolve));
+  // 纸条机制: token-minimal manual index, injected every turn. The model
+  // reads it and decides semantically when a manual is relevant — no
+  // keyword lists. Unsure -> read_manual("<id>") first; know it -> skip.
+  parts.push("Manuals (proactive notes — one line each; full text via read_manual):");
+  parts.push(buildManualIndex());
+  parts.push(
+    'If you are unsure how a feature works, call read_manual("<id>") BEFORE acting. If you already know it, do not read — save the tokens.',
+  );
   return parts.join("\n");
 }
 
@@ -425,9 +435,7 @@ export function createLocalAgent(opts: {
             tools: wireTools,
             onToken: (delta) => {
               replyText += delta;
-              messages = messages.map((m) =>
-                m.id === replyId ? { ...m, content: replyText } : m,
-              );
+              messages = messages.map((m) => (m.id === replyId ? { ...m, content: replyText } : m));
               emit();
             },
             onThinking: (delta) => {
@@ -447,8 +455,7 @@ export function createLocalAgent(opts: {
         } catch (e) {
           // Mark the failure on the reply bubble so the user sees WHICH
           // group failed, then rethrow for the screen's error path.
-          const label =
-            e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
+          const label = e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
           messages = messages.map((m) =>
             m.id === replyId && !replyText ? { ...m, content: label } : m,
           );
@@ -463,9 +470,7 @@ export function createLocalAgent(opts: {
             type: "function" as const,
             function: { name: tc.name, arguments: tc.arguments },
           }));
-          messages = messages.map((m) =>
-            m.id === replyId ? { ...m, toolCalls: localCalls } : m,
-          );
+          messages = messages.map((m) => (m.id === replyId ? { ...m, toolCalls: localCalls } : m));
           // The wire needs the tool_calls on the assistant message for the
           // next iteration (OpenAI requires it before tool results).
           wire.push({
@@ -484,6 +489,8 @@ export function createLocalAgent(opts: {
 
       try {
         // Tool-calling loop: hard cap, no infinite loops.
+        // 纸条机制: manuals read this turn (so error notes don't repeat).
+        const readManuals = new Set<string>();
         for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
           const { toolCalls } = await runCompletion();
           if (toolCalls.length === 0) break;
@@ -494,10 +501,22 @@ export function createLocalAgent(opts: {
             try {
               const args = parseToolArgs(tc.arguments);
               result = await registry.execute(tc.name, args, toolCtx);
+              if (tc.name === READ_MANUAL_TOOL_NAME) {
+                const mid = args["manual_id"];
+                if (typeof mid === "string" && mid) readManuals.add(mid);
+              }
             } catch (e) {
               // Auth denials, unknown tools, executor failures — all become
               // tool ERRORS the model sees, never silent drops.
               result = `Error: ${e instanceof Error ? e.message : String(e)}`;
+              // Proactive note: point at the tool's manual on failure,
+              // unless the model already read it this turn. One line, tiny.
+              const failedTool = tools.find((t) => t.name === tc.name);
+              const noteId = failedTool?.manualId;
+              if (noteId && !readManuals.has(noteId)) {
+                const note = manualNote(noteId);
+                if (note) result += `\n${note}`;
+              }
             }
             const toolMsgId = newId("tool");
             messages = [
