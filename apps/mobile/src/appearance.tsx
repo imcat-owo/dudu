@@ -25,6 +25,7 @@ import {
   Moon,
   RotateCcw,
   ShieldCheck,
+  Smartphone,
   Sun,
   Terminal,
   Trash2,
@@ -39,6 +40,7 @@ import { soraSource } from "./avatar-assets";
 import { BackupSection } from "./backup-ui";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
+import { NativeAppsSheet } from "./native-apps-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
@@ -118,6 +120,7 @@ export function AppearanceScreen() {
   const [busy, setBusy] = useState(false);
   const [wheelSlot, setWheelSlot] = useState<keyof DraftSeed>("primary");
   const [permOpen, setPermOpen] = useState(false);
+  const [nappOpen, setNappOpen] = useState(false);
   const [sandboxOpen, setSandboxOpen] = useState(false);
 
   // Load user-saved custom presets (after the built-ins).
@@ -844,6 +847,17 @@ export function AppearanceScreen() {
         </Button>
       </View>
       {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
+
+      <View>
+        <SectionHeading title={t("napp.title")} />
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+          {t("napp.intro")}
+        </TText>
+        <Button icon={Smartphone} onPress={() => setNappOpen(true)}>
+          {t("napp.title")}
+        </Button>
+      </View>
+      {nappOpen ? <NativeAppsSheet onClose={() => setNappOpen(false)} /> : null}
 
       <View>
         <SectionHeading title={t("sandbox.title")} />

@@ -20,6 +20,7 @@ import { memoryStore } from "../memory/instance.js";
 import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
+import { createNativeAppTools } from "../native-apps-tools.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { createOurSpaceTools } from "../our-space/tools.js";
 import { sandboxManager } from "../sandbox/manager";
@@ -454,6 +455,99 @@ export function createLocalAgent(opts: {
           },
         }),
         ...sandboxTools(sandboxManager),
+        ...createNativeAppTools({
+          getAuthState: async (id) => {
+            const { checkers } = await import("../native-apps.js");
+            const fn = checkers[id as keyof typeof checkers];
+            return fn ? await fn() : "unavailable";
+          },
+          listTodayEvents: async () => {
+            const Calendar = await import("expo-calendar");
+            const { status } = await Calendar.getCalendarPermissionsAsync();
+            if (status !== "granted") throw new Error("日历未授权。");
+            const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+            const now = new Date();
+            const end = new Date(now);
+            end.setHours(23, 59, 59, 999);
+            const events = await Calendar.getEventsAsync(
+              calendars.map((c) => c.id),
+              now,
+              end,
+            );
+            return events.map((e) => ({
+              title: e.title,
+              start: new Date(e.startDate).toLocaleString(),
+              end: new Date(e.endDate).toLocaleString(),
+              id: e.id,
+            }));
+          },
+          createEvent: async (input) => {
+            const Calendar = await import("expo-calendar");
+            const { status } = await Calendar.getCalendarPermissionsAsync();
+            if (status !== "granted") throw new Error("日历未授权。");
+            const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+            const writable = calendars.find((c) => c.allowsModifications);
+            if (!writable) throw new Error("没有可写的日历。");
+            return Calendar.createEventAsync(writable.id, {
+              title: input.title,
+              startDate: new Date(input.start),
+              endDate: new Date(input.end),
+              notes: input.notes,
+            });
+          },
+          listReminders: async () => {
+            const Calendar = await import("expo-calendar");
+            const { status } = await Calendar.getRemindersPermissionsAsync();
+            if (status !== "granted") throw new Error("提醒事项未授权。");
+            const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.REMINDER);
+            const reminders = await Calendar.getRemindersAsync(
+              calendars.map((c) => c.id),
+              null,
+              null,
+              null,
+            );
+            return reminders.map((r) => ({
+              title: r.title ?? "",
+              due: r.dueDate ? new Date(r.dueDate).toLocaleString() : null,
+              id: r.id ?? "",
+              completed: r.completed ?? false,
+            }));
+          },
+          createReminder: async (input) => {
+            const Calendar = await import("expo-calendar");
+            const { status } = await Calendar.getRemindersPermissionsAsync();
+            if (status !== "granted") throw new Error("提醒事项未授权。");
+            const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.REMINDER);
+            const writable = calendars.find((c) => c.allowsModifications);
+            if (!writable) throw new Error("没有可写的提醒事项列表。");
+            return Calendar.createReminderAsync(writable.id, {
+              title: input.title,
+              dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+              notes: input.notes,
+            });
+          },
+          searchContacts: async (query) => {
+            const Contacts = await import("expo-contacts");
+            const { status } = await Contacts.getPermissionsAsync();
+            if (status !== "granted") throw new Error("通讯录未授权。");
+            const { data } = await Contacts.getContactsAsync({
+              fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+            });
+            const q = query.toLowerCase();
+            return data
+              .filter((c) => (c.name ?? "").toLowerCase().includes(q))
+              .slice(0, 10)
+              .map((c) => ({
+                name: c.name ?? "",
+                phone: c.phoneNumbers?.[0]?.number ?? null,
+                id: c.id ?? "",
+              }));
+          },
+          getTodaySteps: async () => {
+            const { readTodaySteps } = await import("../native-apps.js");
+            return readTodaySteps();
+          },
+        }),
       ];
       const registry = createToolRegistry(tools);
       const toolCtx: ToolContext = opts.toolContext ?? {

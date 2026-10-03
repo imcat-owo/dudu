@@ -15,7 +15,12 @@
         "NSPhotoLibraryUsageDescription": "嘟嘟 需要相册权限来读取和保存照片。",
         "NSLocationWhenInUseUsageDescription": "你在需要定位时，嘟嘟 会请求位置权限。",
         "NSBluetoothAlwaysUsageDescription": "嘟嘟 需要蓝牙权限来发现附近的设备。",
-        "NSBluetoothPeripheralUsageDescription": "嘟嘟 需要蓝牙权限来连接设备。"
+        "NSBluetoothPeripheralUsageDescription": "嘟嘟 需要蓝牙权限来连接设备。",
+        "NSCalendarsUsageDescription": "嘟嘟 想读取日历，帮你查日程、记约会。",
+        "NSRemindersUsageDescription": "嘟嘟 想用提醒事项，到点提醒你。",
+        "NSContactsUsageDescription": "嘟嘟 想看看通讯录，知道谁是谁。",
+        "NSHealthShareUsageDescription": "嘟嘟 想读取步数、睡眠这些健康数据，更懂你。",
+        "NSHealthUpdateUsageDescription": "嘟嘟 想写入健康数据。"
       }
     },
     "android": {
@@ -33,6 +38,14 @@
       "expo-location",
       "expo-notifications",
       "expo-audio",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "嘟嘟 想读取日历，帮你查日程、记约会。"
+        }
+      ],
+      "expo-contacts",
+      "./plugins/with-healthkit",
       [
         "@wwdrew/expo-apple-music",
         {

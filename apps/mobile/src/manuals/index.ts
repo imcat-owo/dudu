@@ -26,6 +26,7 @@ import { INCOGNITO_MANUAL } from "./incognito.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
 import { MEMORY_MANUAL } from "./memory.js";
 import { MUSIC_ROOM_MANUAL } from "./music-room.js";
+import { NATIVE_APPS_MANUAL } from "./native-apps.js";
 import { OUR_SPACE_MANUAL } from "./our-space.js";
 import { PERMISSIONS_MANUAL } from "./permissions.js";
 import { SANDBOX_MANUAL } from "./sandbox.js";
@@ -60,6 +61,7 @@ export const MANUALS: ManualEntry[] = [
   OUR_SPACE_MANUAL,
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
+  NATIVE_APPS_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {
