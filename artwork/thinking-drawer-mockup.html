@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking 小抽屉点开新页面（2026-10-03 她确认版）</title>
+<style>
+.ck-wrap{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif}
+.ck-phone{width:320px;background:#FAF9F6;border-radius:38px;border:1px solid #E5E1D8;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.ck-cap{text-align:center;font-size:13px;color:#8A8578;margin:10px 0 2px}
+.ck-status{display:flex;justify-content:space-between;padding:12px 22px 4px;font-size:12px;color:#6B6659}
+.ck-head{text-align:center;font-size:15px;font-weight:600;color:#3D3A33;padding:6px 0 10px;border-bottom:1px solid #EFECE4}
+.ck-body{padding:14px 14px 8px;min-height:420px;position:relative}
+.ck-user{display:flex;justify-content:flex-end;margin-bottom:14px}
+.ck-user span{background:#EFE9DC;color:#3D3A33;border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:14px;max-width:78%}
+.ck-cute{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #E7E2D5;border-radius:999px;padding:8px 14px;font-size:13px;color:#6E695C;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:10px}
+.ck-cute .ast{color:#C15F3C;font-size:15px;display:inline-block;animation:spin 5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ck-shimmer{font-size:13px;color:#8A8578;background:linear-gradient(100deg,#B9B2A2 30%,#5C574B 50%,#B9B2A2 70%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shim 2.2s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.ck-chev{color:#B9B2A2}
+.ck-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;border-top:1px solid #E7E2D5;box-shadow:0 -8px 30px rgba(0,0,0,.12);padding:8px 16px 18px;height:340px;overflow:hidden}
+.ck-grab{width:38px;height:4px;border-radius:2px;background:#D8D2C2;margin:4px auto 10px}
+.ck-sheet h4{margin:0;text-align:center;font-size:14px;color:#3D3A33}
+.ck-sheet .st{text-align:center;font-size:12px;color:#8A8578;margin:3px 0 10px}
+.ck-x{position:absolute;right:14px;top:16px;color:#8A8578;font-size:15px}
+.ck-back{position:absolute;left:14px;top:14px;color:#8A8578;font-size:17px}
+.ck-h{font-size:12px;font-weight:700;color:#B9B2A2;letter-spacing:1px;margin:12px 0 6px}
+.ck-kv{background:#FAF9F6;border:1px solid #EFECE4;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#6E695C;line-height:1.9;margin-bottom:4px}
+.ck-kv b{color:#3D3A33}
+.ck-out{background:#FAF9F6;border:1px solid #EFECE4;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#6E695C;line-height:1.7}
+.ck-composer{display:flex;align-items:center;gap:8px;margin:6px 14px 16px;background:#fff;border:1px solid #E7E2D5;border-radius:999px;padding:10px 16px;font-size:13.5px;color:#B9B2A2}
+.ck-send{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#D97757;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+</style>
+</head>
+<body>
+<div class="ck-wrap">
+<div><div class="ck-cap">点开行动 → 新页面（同高，全展开）</div><div class="ck-phone">
+<div class="ck-status"><span>9:41</span><span>5G ▮▮▮</span></div>
+<div class="ck-head">Claude</div>
+<div class="ck-body">
+<div class="ck-user"><span>帮我分析一下这段代码有没有 bug</span></div>
+<div><span class="ck-cute"><span class="ast">✳</span><span class="ck-shimmer">思考中…</span><span style="color:#B9B2A2;font-size:12px">看看在想什么</span><span class="ck-chev">›</span></span></div>
+<div class="ck-sheet"><div class="ck-grab"></div><span class="ck-back">‹</span><span class="ck-x">✕</span><h4>Read server.py</h4><div class="st">Completed</div>
+<div class="ck-h">输入</div>
+<div class="ck-kv"><b>path</b> /Users/x/project/server.py<br><b>offset</b> 1<br><b>limit</b> 300</div>
+<div class="ck-h">输出</div>
+<div class="ck-out">1 &nbsp;import os<br>2 &nbsp;from app import create_app<br>…<br>12 &nbsp;if not data: return<br>…<br>30 &nbsp;return process(data)<br><br>共 256 行，全部展示，不折叠。</div>
+</div>
+</div>
+<div class="ck-composer">问问 Claude…<span class="ck-send">↑</span></div>
+</div></div>
+</div>
+</body>
+</html>
