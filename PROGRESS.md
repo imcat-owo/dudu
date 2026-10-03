@@ -11,7 +11,7 @@
 | i18n 基础设施（跟随系统语言，中文完整） | ✅ 通过 | — | 2026-10-03 checkout 事故后全部重做：chat/computer/computer-workspace/details/screens/device-permissions-ui/device-permissions.ts/threads 共 8 个 commit（e1c16b1 起至 1ed5769）；新增键 event.exclusive、chat.notReady/historyLoadFailed/saveFailed、common.deny、perm.confirmAction、term.* 6 个；tsc 仅剩 ui.tsx 预先存在的报错、biome 干净、i18n 对等测试 5/5 |
 | 登录态持久化 | ✅ 通过 | — | SecureStore 存 session token，冷启动校验有效直接进、401/403 静默重连；src/session-store.ts＋测试 4/4（commit a6ec3a4） |
 | iOS 26 构建验证 | ✅ 代码侧完成 | — | Xcode 26.6 钉死＋expo-av→expo-audio 迁移落地，tsc/测试全绿；真机构建待下次 CI，语音真机待她装包点一遍 |
-| 338 处英文残留改写 | ⬜ 待做 | — | 等 i18n 落地 |
+| 338 处英文残留改写 | ✅ 通过 | — | 实查约100处用户可见英文全转t()（83新key），tsc/测试全绿 |
 
 ## Phase 1a 主题地基（最高优先级，先做）
 | 功能 | 状态 | 对齐目标 | 备注 |
@@ -27,7 +27,7 @@
 | AI 换肤工具（11 个，稳态四轴＋创意 CSS） | ⬜ 待做 | Polaris 北极星 | 按会话开关；先试穿后存档 |
 | 字体上传 | ⬜ 待做 | Kelivo | 默认跟系统 |
 | 主题包导入导出（JSON/二维码） | ⬜ 待做 | Polaris＋Kelivo | 分享 |
-| 新形象全套（mascot＋主题形象，风格统一） | 🔨 进行中 | 她的美术方向 | 出图工具已指定；先定角色稿再链式批量出 |
+| 新形象全套（mascot＋主题形象，风格统一） | 🔨 进行中 | 她的美术方向 | 大转向：v1作废，用她10张像素小恶魔贴纸原样不二改；devil-01默认AI头像，10张全进头像选择器（她已批准） |
 
 ## Phase 2 核心链路
 | 功能 | 状态 | 对齐目标 | 备注 |
