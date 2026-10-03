@@ -10,14 +10,14 @@
 |---|---|---|---|
 | i18n 基础设施（跟随系统语言，中文完整） | ✅ 通过 | — | 2026-10-03 checkout 事故后全部重做：chat/computer/computer-workspace/details/screens/device-permissions-ui/device-permissions.ts/threads 共 8 个 commit（e1c16b1 起至 1ed5769）；新增键 event.exclusive、chat.notReady/historyLoadFailed/saveFailed、common.deny、perm.confirmAction、term.* 6 个；tsc 仅剩 ui.tsx 预先存在的报错、biome 干净、i18n 对等测试 5/5 |
 | 登录态持久化 | ✅ 通过 | — | SecureStore 存 session token，冷启动校验有效直接进、401/403 静默重连；src/session-store.ts＋测试 4/4（commit a6ec3a4） |
-| iOS 26 构建验证 | 🔨 进行中 | — | Xcode SDK＋expo-av 迁移计划 |
+| iOS 26 构建验证 | ✅ 代码侧完成 | — | Xcode 26.6 钉死＋expo-av→expo-audio 迁移落地，tsc/测试全绿；真机构建待下次 CI，语音真机待她装包点一遍 |
 | 338 处英文残留改写 | ⬜ 待做 | — | 等 i18n 落地 |
 
 ## Phase 1a 主题地基（最高优先级，先做）
 | 功能 | 状态 | 对齐目标 | 备注 |
 |---|---|---|---|
 | 主题 token 架构（全局变量，无硬编码色） | ✅ 通过 | Polaris 北极星 | 2026-10-03 迁移完成：ui.tsx→token 派生（useColors/useStyles），20 个引用文件＋App.tsx 全迁移，38 处硬编码 hex→token；assistant-response.tsx 模块级样式移入组件。验证：tsc 零报错、biome 干净、全仓测试 296 通过（theme-ui 2 项走 harness 全过） |
-| 用户外观页基础（预设/取色/壁纸/字号） | 🔨 进行中 | Polaris＋Kelivo | 字号默认小，可调＋跟随系统 |
+| 用户外观页基础（预设/取色/壁纸/字号） | ✅ 通过 | Polaris＋Kelivo | 字号默认小，可调＋跟随系统；壁纸真渲染（P1-1修完）；DimSlider可拖；经整体复审 |
 | 聊天头像气泡（AI 头像＋用户头像，左右） | ✅ 通过 | 社交软件 | 2026-10-03：AI头像＋气泡左、用户气泡＋头像右；ChatAvatar读主题包avatar（外观页可换，坏图回退）；精致小尺寸（气泡12/9、字15、间距8）；字号走App设置（system/small/standard/large，默认small，改完即时生效）；语音/图片气泡同token配色；9个commit；tsc/biome干净、测试37过 |
 | 整套评审 findings 修复（P1-1/P2-1/P2-2/P3×9） | ✅ 通过 | — | 2026-10-03：壁纸真正渲染为App背景（WorkspaceShell挂载＋dim遮罩）；rollback同步PUT到服务端并更新serverVersion；server轮询不再打断试穿；applyBundle返回ok/local-only/invalid三态；avatar.size进token模型（ChatAvatar读取，system模式跟随OS字号）；DimSlider支持拖拽；气泡预览字号/placeholder/hex防抖/css保留等P3全修；13个commit（007ff6a起至5a342a2）；待复审 |
 
