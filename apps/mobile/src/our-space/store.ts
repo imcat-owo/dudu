@@ -333,11 +333,7 @@ export class OurSpaceStore {
     return newestFirst(all, (p) => p.createdAt).slice(0, Math.max(1, limit));
   }
 
-  async addFeedPost(
-    author: FeedAuthor,
-    text: string,
-    imageUri?: string,
-  ): Promise<FeedPost> {
+  async addFeedPost(author: FeedAuthor, text: string, imageUri?: string): Promise<FeedPost> {
     const t = text.trim();
     if (!t && !imageUri) throw new Error("Feed post needs text or an image.");
     const post: FeedPost = {
@@ -385,9 +381,7 @@ export class OurSpaceStore {
 
   async listReplies(postId: string): Promise<FeedReply[]> {
     const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
-    return all
-      .filter((r) => r.postId === postId)
-      .sort((a, b) => a.createdAt - b.createdAt);
+    return all.filter((r) => r.postId === postId).sort((a, b) => a.createdAt - b.createdAt);
   }
 
   async addReply(postId: string, author: FeedAuthor, text: string): Promise<FeedReply> {
@@ -419,14 +413,15 @@ export class OurSpaceStore {
     return all.slice().sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  async addAnniversary(
-    title: string,
-    date: string,
-    description = "",
-  ): Promise<Anniversary> {
+  async addAnniversary(title: string, date: string, description = ""): Promise<Anniversary> {
     const t = title.trim();
     if (!t) throw new Error("Anniversary title is required.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
+    const [y, m, d] = date.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+      throw new Error("Date is not a real calendar date.");
+    }
     const item: Anniversary = {
       id: newId(),
       title: t,
