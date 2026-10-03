@@ -765,6 +765,58 @@ export function AppearanceScreen() {
       </View>
 
       <ShareSection />
+
+      <HistorySection />
+    </View>
+  );
+}
+
+function HistorySection() {
+  const { history, stageBundle } = useTheme();
+  const colors = useColors();
+  const fg = colors.text;
+  return (
+    <View>
+      <SectionHeading title={t("appearance.historyLabel")} />
+      <Card style={{ gap: 8 }}>
+        {history.length === 0 ? (
+          <TText style={{ color: colors.muted, fontSize: 13 }}>
+            {t("appearance.historyEmpty")}
+          </TText>
+        ) : (
+          history.map((entry, i) => {
+            const when = new Date(entry.savedAt);
+            const stamp = Number.isNaN(when.getTime())
+              ? entry.savedAt
+              : `${when.getMonth() + 1}/${when.getDate()} ${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
+            return (
+              <View
+                key={`${entry.bundle.id}-${entry.savedAt}`}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+              >
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: entry.bundle.seed.primary,
+                  }}
+                />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <TText style={{ color: fg, fontSize: 13, fontWeight: "500" }} numberOfLines={1}>
+                    {displayName(entry.bundle)}
+                    {entry.bundle.meta.label ? ` · ${entry.bundle.meta.label}` : ""}
+                  </TText>
+                  <TText style={{ color: colors.muted, fontSize: 11 }}>{stamp}</TText>
+                </View>
+                <Button small onPress={() => stageBundle(entry.bundle)}>
+                  {t("appearance.historyRestore")}
+                </Button>
+              </View>
+            );
+          })
+        )}
+      </Card>
     </View>
   );
 }

@@ -57,6 +57,32 @@ test("validateThemeBundle rejects an unsupported bundle version", () => {
   if (!result.ok) assert.match(result.error, /99/);
 });
 
+test("theme history keeps the last 20 confirmed versions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "openmuse-theme-"));
+  try {
+    const db = await createStore({ dataDir: join(root, "postgres") });
+    try {
+      const store = new ThemeStore(db);
+      assert.deepEqual(await store.history("owner-h"), []);
+      for (let i = 1; i <= 22; i++) {
+        await store.save("owner-h", validBundle({ name: `v${i}` }) as ThemeBundle);
+      }
+      const history = await store.history("owner-h");
+      // 22 saves -> 21 archived (the first save had nothing before it), capped at 20.
+      assert.equal(history.length, 20);
+      // Newest first: versions 21..2.
+      assert.equal(history[0].version, 21);
+      assert.equal(history[0].bundle.name, "v21");
+      assert.equal(history[19].version, 2);
+      assert.ok(typeof history[0].savedAt === "string");
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("theme version starts at 0, bumps on each save, and is isolated per owner", async () => {
   const root = await mkdtemp(join(tmpdir(), "openmuse-theme-"));
   try {

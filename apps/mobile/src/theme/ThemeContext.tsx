@@ -32,7 +32,12 @@ import { defaultPreset } from "./presets";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
 export const THEME_STORAGE_KEY = "openmuse.theme.bundle.v1";
+const THEME_HISTORY_KEY = "openmuse.theme.history.v1";
 const SERVER_POLL_MS = 30_000;
+/** Local history cap (theme-design.md §6.2: keep the last 20 confirmed). */
+export const THEME_HISTORY_LIMIT = 20;
+
+export type ThemeHistoryEntry = { bundle: ThemeBundle; savedAt: string };
 
 /**
  * Result of applyBundle():
@@ -65,6 +70,8 @@ export type ThemeContextValue = {
   rollback: () => Promise<void>;
   /** Re-check /api/theme now and adopt the bundle if its version changed. */
   refreshFromServer: () => Promise<void>;
+  /** Last confirmed bundles, newest first (local, capped at 20). */
+  history: ThemeHistoryEntry[];
 };
 
 function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
@@ -81,6 +88,7 @@ function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
     applyBundle: async () => "invalid",
     rollback: async () => {},
     refreshFromServer: async () => {},
+    history: [],
   };
 }
 
@@ -101,6 +109,32 @@ async function persistLocal(bundle: ThemeBundle): Promise<void> {
   }
 }
 
+async function loadHistory(): Promise<ThemeHistoryEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(THEME_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is ThemeHistoryEntry =>
+        typeof e === "object" &&
+        e !== null &&
+        isThemeBundle((e as { bundle?: unknown }).bundle) &&
+        typeof (e as { savedAt?: unknown }).savedAt === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function persistHistory(entries: ThemeHistoryEntry[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(THEME_HISTORY_KEY, JSON.stringify(entries.slice(0, THEME_HISTORY_LIMIT)));
+  } catch {
+    // History is a nice-to-have; never break theming over it.
+  }
+}
+
 export function ThemeProvider({
   children,
   apiToken,
@@ -112,6 +146,7 @@ export function ThemeProvider({
   const [confirmed, setConfirmed] = useState<ThemeBundle>(defaultPreset);
   const [staged, setStaged] = useState<ThemeBundle | null>(null);
   const [serverVersion, setServerVersion] = useState<number | null>(null);
+  const [history, setHistory] = useState<ThemeHistoryEntry[]>([]);
 
   const confirmedRef = useRef(confirmed);
   const previousRef = useRef<ThemeBundle | null>(null);
@@ -155,6 +190,31 @@ export function ThemeProvider({
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // ---- local history: load on mount ----
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const entries = await loadHistory();
+      if (!cancelled) setHistory(entries);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Archive the outgoing confirmed bundle before it gets replaced. */
+  const archiveCurrent = useCallback(async () => {
+    const entry: ThemeHistoryEntry = {
+      bundle: confirmedRef.current,
+      savedAt: new Date().toISOString(),
+    };
+    setHistory((prev) => {
+      const next = [entry, ...prev].slice(0, THEME_HISTORY_LIMIT);
+      void persistHistory(next);
+      return next;
+    });
   }, []);
 
   // ---- server sync: /api/theme is optional, local cache is the fallback ----
@@ -214,6 +274,7 @@ export function ThemeProvider({
         meta: { ...bundle.meta, updatedAt: new Date().toISOString() },
       };
       previousRef.current = confirmedRef.current;
+      await archiveCurrent();
       setConfirmed(stamped);
       setStaged(null);
       await persistLocal(stamped);
@@ -242,7 +303,7 @@ export function ThemeProvider({
         return "local-only";
       }
     },
-    [apiToken],
+    [apiToken, archiveCurrent],
   );
 
   const rollback = useCallback(async (): Promise<void> => {
@@ -251,6 +312,7 @@ export function ThemeProvider({
       ...target,
       meta: { ...target.meta, updatedAt: new Date().toISOString() },
     };
+    await archiveCurrent();
     setStaged(null);
     setConfirmed(stamped);
     await persistLocal(stamped);
@@ -300,6 +362,7 @@ export function ThemeProvider({
       applyBundle,
       rollback,
       refreshFromServer,
+      history,
     }),
     [
       effective,
@@ -313,6 +376,7 @@ export function ThemeProvider({
       applyBundle,
       rollback,
       refreshFromServer,
+      history,
     ],
   );
 

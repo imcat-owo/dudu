@@ -48,6 +48,15 @@ export function validateThemeBundle(input: unknown): ThemeValidation {
 }
 
 const THEME_RECORD_ID = "current";
+const THEME_HISTORY_ID = "history";
+/** Keep the last N confirmed versions (theme-design.md §6.2). */
+export const THEME_HISTORY_LIMIT = 20;
+
+export type ThemeHistoryEntry = {
+  version: number;
+  bundle: ThemeBundle;
+  savedAt: string;
+};
 
 export class ThemeStore {
   constructor(private readonly db: Store) {}
@@ -60,9 +69,30 @@ export class ThemeStore {
     return { bundle: record?.bundle ?? null, version: record?.version ?? 0 };
   }
   async save(owner: string, bundle: ThemeBundle): Promise<number> {
-    const version = (await this.get(owner)).version + 1;
+    const current = await this.get(owner);
+    const version = current.version + 1;
+    // Archive the previous confirmed version before overwriting.
+    if (current.bundle) {
+      await this.pushHistory(owner, {
+        version: current.version,
+        bundle: current.bundle,
+        savedAt: new Date().toISOString(),
+      });
+    }
     await this.db.put(owner, "themes", { id: THEME_RECORD_ID, version, bundle });
     return version;
+  }
+  async history(owner: string): Promise<ThemeHistoryEntry[]> {
+    const record = await this.db.get<{ entries: ThemeHistoryEntry[] }>(
+      owner,
+      "themes",
+      THEME_HISTORY_ID,
+    );
+    return record?.entries ?? [];
+  }
+  private async pushHistory(owner: string, entry: ThemeHistoryEntry): Promise<void> {
+    const entries = [entry, ...(await this.history(owner))].slice(0, THEME_HISTORY_LIMIT);
+    await this.db.put(owner, "themes", { id: THEME_HISTORY_ID, entries });
   }
 }
 
@@ -70,6 +100,26 @@ export function themeRoutes(db: Store) {
   const store = new ThemeStore(db);
   const app = new Hono<{ Variables: { owner: string } }>();
   app.get("/", async (c) => c.json(await store.get(c.get("owner"))));
+  app.get("/history", async (c) => {
+    const entries = await store.history(c.get("owner"));
+    // Summaries only — the client fetches the full bundle when restoring.
+    return c.json({
+      entries: entries.map((e) => ({
+        version: e.version,
+        savedAt: e.savedAt,
+        name: (e.bundle as Record<string, unknown>).name ?? "",
+        label: ((e.bundle as Record<string, unknown>).meta as Record<string, unknown> | undefined)
+          ?.label ?? null,
+      })),
+    });
+  });
+  app.get("/history/:version", async (c) => {
+    const version = Number(c.req.param("version"));
+    const entries = await store.history(c.get("owner"));
+    const found = entries.find((e) => e.version === version);
+    if (!found) return c.json({ error: "version not found" }, 404);
+    return c.json({ version: found.version, bundle: found.bundle });
+  });
   app.put("/", async (c) => {
     const validation = validateThemeBundle((await c.req.json())?.bundle);
     if (!validation.ok) return c.json({ error: validation.error }, 400);
