@@ -97,3 +97,22 @@ export function useFontSizeSetting(): {
   const followSystem = option === "system";
   return { option, scale: followSystem ? 1 : FONT_SCALES[option], followSystem, setOption };
 }
+
+/**
+ * Re-read the font-size option from storage (e.g. after backup restore).
+ * Bumps the generation so a stale in-flight load can't clobber it.
+ */
+export async function refreshFontSizeOption(): Promise<void> {
+  const seen = ++generation;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (seen !== generation) return;
+    const next = isFontSizeOption(raw) ? raw : DEFAULT_FONT_SIZE_OPTION;
+    if (next !== current) {
+      current = next;
+      emit();
+    }
+  } catch {
+    // Non-fatal: keep the in-memory value.
+  }
+}

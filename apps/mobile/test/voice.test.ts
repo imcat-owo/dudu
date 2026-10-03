@@ -143,4 +143,31 @@ describe("voice store", () => {
     await new Promise((r) => setTimeout(r, 10));
     assert.equal(store.getSnapshot().tts.provider, "edge-tts");
   });
+
+  it("refresh() picks up externally changed storage (backup restore)", async () => {
+    const secure = fakeSecure();
+    const store = createVoiceStore(secure);
+    await store.setTts({
+      provider: "custom",
+      voice: "old",
+      customUrl: "https://old.example.com",
+      customKey: "",
+      customModel: "m",
+    });
+    assert.equal(store.getSnapshot().tts.voice, "old");
+    // Simulate applyBackup writing directly to SecureStore behind the store's back.
+    secure.data.set(
+      "openmuse.tts.v1",
+      JSON.stringify({
+        provider: "custom",
+        voice: "restored",
+        customUrl: "https://new.example.com",
+        customModel: "m",
+      }),
+    );
+    assert.equal(store.getSnapshot().tts.voice, "old", "stale mirror before refresh");
+    await store.refresh();
+    assert.equal(store.getSnapshot().tts.voice, "restored");
+    assert.equal(store.getSnapshot().tts.customUrl, "https://new.example.com");
+  });
 });

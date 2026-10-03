@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createSseParser, GroupError, parseSseData, parseSseThinking, streamChat } from "../src/api-groups/direct-transport.js";
+import {
+  createSseParser,
+  GroupError,
+  parseSseData,
+  parseSseThinking,
+  streamChat,
+} from "../src/api-groups/direct-transport.js";
 import { createGroupStore, type SecureBackend } from "../src/api-groups/store.js";
 import {
   type ApiGroup,
@@ -139,6 +145,25 @@ describe("createGroupStore", () => {
     await new Promise((r) => setTimeout(r, 20));
     assert.deepEqual(store.getSnapshot().groups, []);
   });
+
+  it("refresh() picks up externally changed storage (backup restore)", async () => {
+    const secure = fakeSecure();
+    const store = createGroupStore(secure);
+    await store.upsert(sampleGroup());
+    assert.equal(store.getSnapshot().groups.length, 1);
+    // Simulate applyBackup writing directly to the backend behind the store's back.
+    secure.data.set(
+      "openmuse.api-groups.v1",
+      JSON.stringify([sampleGroup({ id: "g_new", name: "restored", apiKey: "" })]),
+    );
+    assert.equal(store.getSnapshot().groups.length, 1, "stale mirror before refresh");
+    assert.equal(store.getSnapshot().groups[0].id, "g_test1");
+    await store.refresh();
+    const snap = store.getSnapshot();
+    assert.equal(snap.groups.length, 1);
+    assert.equal(snap.groups[0].id, "g_new");
+    assert.equal(snap.groups[0].name, "restored");
+  });
 });
 
 describe("streamChat 8s fallback (P0: promise must settle)", () => {
@@ -160,7 +185,9 @@ describe("streamChat 8s fallback (P0: promise must settle)", () => {
     abort() {}
   }
 
-  function stubGlobals(fetchImpl: () => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>) {
+  function stubGlobals(
+    fetchImpl: () => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>,
+  ) {
     const g = globalThis as Record<string, unknown>;
     const saved = {
       xhr: g.XMLHttpRequest,
@@ -196,26 +223,21 @@ describe("streamChat 8s fallback (P0: promise must settle)", () => {
   it("resolves via fallback when XHR never streams (fallback success)", async () => {
     const { timers, restore } = stubGlobals(async () => ({
       ok: true,
-      text: async () =>
-        JSON.stringify({ choices: [{ message: { content: "fallback hello" } }] }),
+      text: async () => JSON.stringify({ choices: [{ message: { content: "fallback hello" } }] }),
     }));
     try {
       const tokens: string[] = [];
       let done = false;
       let err: unknown = null;
-      const p = streamChat(
-        sampleGroup(),
-        [{ role: "user", content: "hi" }],
-        {
-          onToken: (t) => tokens.push(t),
-          onDone: () => {
-            done = true;
-          },
-          onError: (e) => {
-            err = e;
-          },
+      const p = streamChat(sampleGroup(), [{ role: "user", content: "hi" }], {
+        onToken: (t) => tokens.push(t),
+        onDone: () => {
+          done = true;
         },
-      );
+        onError: (e) => {
+          err = e;
+        },
+      });
       fireFallback(timers);
       await p; // must resolve — used to hang forever (P0)
       assert.equal(err, null);
@@ -233,19 +255,15 @@ describe("streamChat 8s fallback (P0: promise must settle)", () => {
     try {
       let done = false;
       let err: unknown = null;
-      const p = streamChat(
-        sampleGroup(),
-        [{ role: "user", content: "hi" }],
-        {
-          onToken: () => {},
-          onDone: () => {
-            done = true;
-          },
-          onError: (e) => {
-            err = e;
-          },
+      const p = streamChat(sampleGroup(), [{ role: "user", content: "hi" }], {
+        onToken: () => {},
+        onDone: () => {
+          done = true;
         },
-      );
+        onError: (e) => {
+          err = e;
+        },
+      });
       fireFallback(timers);
       await assert.rejects(p, /connection refused/); // must reject — used to hang forever (P0)
       assert.equal(done, false);
@@ -278,10 +296,7 @@ describe("parseSseThinking", () => {
     assert.equal(parseSseThinking("not json{{{"), null);
   });
   it("never throws on error payloads — thinking is best-effort", () => {
-    assert.equal(
-      parseSseThinking(JSON.stringify({ error: { message: "bad key" } })),
-      null,
-    );
+    assert.equal(parseSseThinking(JSON.stringify({ error: { message: "bad key" } })), null);
   });
 });
 

@@ -151,6 +151,17 @@ export function createGroupStore(secure?: SecureBackend) {
       if ((groups ?? []).some((g) => g.id === id)) await setActiveId(id);
     },
 
+    /**
+     * Re-read everything from storage and notify listeners.
+     * Used after backup restore so the UI picks up the restored data
+     * instead of showing the stale in-memory mirrors.
+     */
+    async refresh(): Promise<void> {
+      await loadPromise; // let any in-flight load settle first
+      loadPromise = null;
+      await ensureLoaded();
+    },
+
     /** Test hook: wipe everything (used by tests; not exposed in UI). */
     async __resetForTests(): Promise<void> {
       groups = [];

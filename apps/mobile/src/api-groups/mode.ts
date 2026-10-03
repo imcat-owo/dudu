@@ -74,3 +74,22 @@ export function useSetChatMode(): (mode: ChatMode) => Promise<void> {
     }
   }, []);
 }
+
+/**
+ * Re-read chat mode from storage (e.g. after backup restore).
+ * Bumps the generation so a stale in-flight load can't clobber it.
+ */
+export async function refreshChatMode(): Promise<void> {
+  const seen = ++generation;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (seen !== generation) return;
+    const next = isChatMode(raw) ? raw : DEFAULT_CHAT_MODE;
+    if (next !== current) {
+      current = next;
+      emit();
+    }
+  } catch {
+    // Non-fatal: keep the in-memory value.
+  }
+}

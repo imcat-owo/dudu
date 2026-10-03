@@ -4,21 +4,25 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Download, History, Upload } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
-import { Download, History, Upload } from "lucide-react-native";
-import { t } from "./i18n";
-import { TText } from "./font";
-import { Button, SectionHeading, useColors } from "./ui";
+import { refreshChatMode } from "./api-groups/mode";
+import { groupStore } from "./api-groups/store";
+import { refreshFontSizeOption } from "./app-settings";
 import {
   applyBackup,
+  type BackupParseError,
   collectBackup,
   getLastBackupAt,
   markBackedUp,
   parseBackup,
   serializeBackup,
-  type BackupParseError,
 } from "./backup";
+import { TText } from "./font";
+import { t } from "./i18n";
+import { Button, SectionHeading, useColors } from "./ui";
+import { voiceStore } from "./voice/store";
 
 function secureBackend() {
   return {
@@ -100,6 +104,12 @@ export function BackupSection() {
             void (async () => {
               try {
                 await applyBackup(parsed.backup, AsyncStorage, secureBackend());
+                // Refresh in-memory store mirrors so the UI shows the
+                // restored data immediately (no app restart needed).
+                await groupStore.refresh();
+                await voiceStore.refresh();
+                await refreshChatMode();
+                await refreshFontSizeOption();
                 setNotice(t("backup.restoreDone"));
               } catch (e) {
                 setNotice(e instanceof Error ? e.message : String(e));
@@ -128,8 +138,7 @@ export function BackupSection() {
         {t("backup.secretsNote")}
       </TText>
       <TText style={{ color: colors.muted, fontSize: 12, marginBottom: 10 }}>
-        {t("backup.lastBackup")}:{" "}
-        {lastAt ? new Date(lastAt).toLocaleString() : t("backup.never")}
+        {t("backup.lastBackup")}: {lastAt ? new Date(lastAt).toLocaleString() : t("backup.never")}
       </TText>
       <View style={{ flexDirection: "row", gap: 10 }}>
         <Button icon={Upload} onPress={() => void onBackup()} disabled={busy}>

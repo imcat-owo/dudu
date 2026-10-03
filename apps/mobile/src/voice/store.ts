@@ -151,6 +151,17 @@ export function createVoiceStore(secure?: SecureBackend) {
       emit();
     },
 
+    /**
+     * Re-read everything from storage and notify listeners.
+     * Used after backup restore so the UI picks up the restored data
+     * instead of showing the stale in-memory mirrors.
+     */
+    async refresh(): Promise<void> {
+      await loadPromise; // let any in-flight load settle first
+      loadPromise = null;
+      await ensureLoaded();
+    },
+
     /** Test hook: wipe everything. */
     async __resetForTests(): Promise<void> {
       tts = blankTtsConfig();
