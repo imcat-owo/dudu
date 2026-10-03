@@ -82,8 +82,8 @@ export function useFontSizeSetting(): {
   const option = useSyncExternalStore(subscribe, getSnapshot);
 
   const setOption = useCallback(async (o: FontSizeOption) => {
-    generation += 1;
     if (o !== current) {
+      generation += 1;
       current = o;
       emit();
     }

@@ -24,15 +24,13 @@ export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   const colors = useColors();
   const { bundle } = useTheme();
   const { scale } = useFontSizeSetting();
-  const [failed, setFailed] = useState(false);
+  const [failedUri, setFailedUri] = useState<string | null>(null);
   const size = Math.round(AVATAR_BASE * scale);
-  // A dead URI (e.g. from a server-synced bundle) falls back instead of
-  // rendering a broken image (review P2, 2026-10-03).
-  const uri = failed
-    ? undefined
-    : who === "assistant"
-      ? bundle.avatar?.assistant
-      : bundle.avatar?.user;
+  const rawUri = who === "assistant" ? bundle.avatar?.assistant : bundle.avatar?.user;
+  // Remember WHICH uri failed, not just that one failed: picking a new
+  // avatar in Settings retries the new URI, while the same dead URI stays
+  // on the fallback (re-review P2, 2026-10-03).
+  const uri = rawUri && rawUri !== failedUri ? rawUri : undefined;
 
   if (uri) {
     return (
@@ -40,7 +38,7 @@ export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
         accessibilityRole="image"
         accessibilityLabel={t(who === "assistant" ? "a11y.aiAvatar" : "a11y.userAvatar")}
         source={{ uri }}
-        onError={() => setFailed(true)}
+        onError={() => setFailedUri(rawUri ?? null)}
         style={{ width: size, height: size, borderRadius: size / 2 }}
       />
     );
