@@ -2,10 +2,12 @@ import { ArrowRight, Bell, X } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useAgentWorkspace } from "./agent-workspace";
-import { Button, Card, colors, ErrorNotice, resultSummary, s } from "./ui";
+import {Button, Card, useColors, ErrorNotice, resultSummary, useStyles} from "./ui";
 import { useWorkspace } from "./workspace";
 
 export function BackgroundUpdates() {
+  const colors = useColors();
+  const s = useStyles();
   const { data, mutate } = useAgentWorkspace();
   const { open } = useWorkspace();
   const [error, setError] = useState("");
