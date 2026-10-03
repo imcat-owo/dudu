@@ -32,6 +32,7 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
+import { soraSource } from "./avatar-assets";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
@@ -45,7 +46,7 @@ import {
   type ThemeBundle,
   type ThemeMode,
 } from "./theme/types";
-import { Button, Card, Field, Mascot, SectionHeading, useColors } from "./ui";
+import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -688,7 +689,13 @@ export function AppearanceScreen() {
             label={t("appearance.aiAvatar")}
             uri={bundle.avatar?.assistant}
             tokens={tokens}
-            fallback={<Mascot size={48} />}
+            fallback={
+              <Image
+                source={soraSource()}
+                resizeMode="cover"
+                style={{ width: 48, height: 48, borderRadius: 24 }}
+              />
+            }
             onPick={() => void pickAvatar("assistant")}
             onRestore={() => restoreAvatar("assistant")}
             canRestore={!!bundle.avatar?.assistant}

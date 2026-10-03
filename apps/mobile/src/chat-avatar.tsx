@@ -15,23 +15,32 @@ import { User } from "lucide-react-native";
 import { useState } from "react";
 import { Image, PixelRatio, View } from "react-native";
 import { useFontSizeSetting } from "./app-settings";
+import { soraSource } from "./avatar-assets";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
-import { Mascot, useColors } from "./ui";
+import { useColors } from "./ui";
 
 /** Fallback diameter (pt) when the theme bundle doesn't set avatar.size. */
 const DEFAULT_AVATAR_SIZE = 30;
 
+/**
+ * Standard avatar diameter (pt): theme bundle's avatar.size, scaled by the
+ * font-size setting. "system" follows the OS text size: RN Text scales
+ * automatically via allowFontScaling, but avatars are View/Image, so the
+ * OS font scale must be read explicitly (review P3-9, 2026-10-03).
+ */
+export function useAvatarSize(): number {
+  const { bundle } = useTheme();
+  const { scale, followSystem } = useFontSizeSetting();
+  const effectiveScale = followSystem ? PixelRatio.getFontScale() : scale;
+  return Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * effectiveScale);
+}
+
 export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   const colors = useColors();
   const { bundle } = useTheme();
-  const { scale, followSystem } = useFontSizeSetting();
   const [failedUri, setFailedUri] = useState<string | null>(null);
-  // "system" follows the OS text size: RN Text scales automatically via
-  // allowFontScaling, but the avatar is a View/Image, so it must read the
-  // OS font scale explicitly (review P3-9, 2026-10-03).
-  const effectiveScale = followSystem ? PixelRatio.getFontScale() : scale;
-  const size = Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * effectiveScale);
+  const size = useAvatarSize();
   const rawUri = who === "assistant" ? bundle.avatar?.assistant : bundle.avatar?.user;
   // Remember WHICH uri failed, not just that one failed: picking a new
   // avatar in Settings retries the new URI, while the same dead URI stays
@@ -51,14 +60,18 @@ export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   }
 
   if (who === "assistant") {
+    // Default assistant face: the Sora avatar (owner finalized 2026-10-03,
+    // "和 Muse 一样的"). Devil stickers stay selectable via Appearance →
+    // avatar; picking one sets bundle.avatar.assistant and takes the uri
+    // branch above.
     return (
-      <View
+      <Image
         accessibilityRole="image"
         accessibilityLabel={t("a11y.aiAvatar")}
-        style={{ width: size, height: size }}
-      >
-        <Mascot size={size} />
-      </View>
+        source={soraSource()}
+        resizeMode="cover"
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+      />
     );
   }
 

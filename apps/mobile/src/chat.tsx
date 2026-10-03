@@ -22,6 +22,7 @@ import {
 import { z } from "zod";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
+import { AnimatedAvatar } from "./animated-avatar";
 import { AssistantResponse } from "./assistant-response";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
@@ -730,7 +731,7 @@ export function ChatScreen({
               gap: 8,
             }}
           >
-            <ChatAvatar who="assistant" />
+            <AnimatedAvatar state="working" />
             <View
               accessibilityLabel={t("a11y.agentWorking")}
               style={[
