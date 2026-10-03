@@ -4,12 +4,14 @@ import {
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
+  ClipboardList,
   FileText,
   Globe2,
   Heart,
   Lightbulb,
   ListChecks,
   Mail,
+  Palette,
   Pause,
   Play,
   Plus,
@@ -17,6 +19,8 @@ import {
   Square,
   Target,
   Users,
+  UtensilsCrossed,
+  Wallet,
   X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -34,27 +38,41 @@ import type {
   RunEvent,
 } from "../../../packages/domain/src/agent";
 import { useAgentWorkspace } from "./agent-workspace";
+import { type StringKey, t } from "./i18n";
 import { ActivityScreen, ConnectionsScreen } from "./screens";
-import {
-  Button,
-  Card,
-  CheckRow,
-  Chip,
-  colors,
-  Empty,
-  ErrorNotice,
-  Field,
-  LinkRow,
-  Mascot,
-  resultSummary,
-  SectionHeading,
-  Sheet,
-  s,
-} from "./ui";
+import {Button, Card, CheckRow, Chip, useColors, Empty, ErrorNotice, Field, LinkRow, Mascot, resultSummary, SectionHeading, Sheet, useStyles, } from "./ui";
 import { useWorkspace } from "./workspace";
 
+const STATUS_KEYS: Record<string, StringKey> = {
+  queued: "agent.status.queued",
+  running: "agent.status.running",
+  scheduled: "agent.status.scheduled",
+  waiting_input: "agent.status.waiting_input",
+  waiting_approval: "agent.status.waiting_approval",
+  paused: "agent.status.paused",
+  failed: "agent.status.failed",
+  succeeded: "agent.status.succeeded",
+  cancelled: "agent.status.cancelled",
+  active: "agent.status.active",
+  completed: "agent.status.completed",
+  stopped: "agent.status.stopped",
+  new: "agent.status.new",
+  accepted: "agent.status.accepted",
+  waiting: "agent.status.waiting",
+  plan: "agent.kind.plan",
+  document: "agent.kind.document",
+  finance: "agent.kind.finance",
+  agent: "agent.kind.agent",
+  warm: "agent.tone.warm",
+  concise: "agent.tone.concise",
+  thoughtful: "agent.tone.thoughtful",
+  sky: "agent.avatar.sky",
+  sand: "agent.avatar.sand",
+  lilac: "agent.avatar.lilac",
+};
 export function statusLabel(value: string) {
-  return value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const key = STATUS_KEYS[value];
+  return key ? t(key) : value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 }
 function stamp(value?: string) {
   return value
@@ -64,7 +82,7 @@ function stamp(value?: string) {
         hour: "numeric",
         minute: "2-digit",
       })
-    : "Not checked yet";
+    : t("agent.notChecked");
 }
 function errorText(e: unknown) {
   return e instanceof Error ? e.message : String(e);
@@ -73,20 +91,20 @@ function activeTask(task: AgentTask) {
   return !["succeeded", "failed", "cancelled"].includes(task.status);
 }
 export function AgentStatus() {
+  const colors = useColors();
+  const s = useStyles();
   const { data, error, refresh } = useAgentWorkspace();
   if (data?.worker.running && !error) return null;
   return (
     <View style={{ gap: 8 }}>
-      <ErrorNotice error={error ? `Agent updates unavailable. ${error}` : ""} />
+      <ErrorNotice error={error ? t("agent.updatesUnavailable", { error }) : ""} />
       {!!error && (
         <Button small onPress={() => void refresh().catch(() => {})}>
-          Reconnect agent
+          {t("agent.reconnect")}
         </Button>
       )}
       {!data && !error && <ActivityIndicator color={colors.blueDark} />}
-      {data && !data.worker.running && (
-        <Text style={s.small}>Worker 离线。重连后已保存的工作会继续。ts.</Text>
-      )}
+      {data && !data.worker.running && <Text style={s.small}>{t("agent.workerOffline")}</Text>}
     </View>
   );
 }
@@ -99,6 +117,8 @@ export function TaskCard({
   compact?: boolean;
   onOpen?: () => void;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { open } = useWorkspace();
   const done = task.plan.filter((step) => step.status === "succeeded").length;
   const next = task.plan.find((step) => ["running", "waiting"].includes(step.status));
@@ -106,7 +126,7 @@ export function TaskCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open task: ${task.title}`}
+      accessibilityLabel={t("a11y.openTask", { title: task.title })}
       onPress={() => {
         onOpen?.();
         open({ type: "task", taskId: task.id });
@@ -133,7 +153,7 @@ export function TaskCard({
             <Text style={s.heading}>{task.title}</Text>
             <Text style={s.small}>
               {statusLabel(task.status)}
-              {task.plan.length ? ` · ${done}/${task.plan.length} steps` : ""}
+              {task.plan.length ? t("agent.steps", { done, total: task.plan.length }) : ""}
             </Text>
           </View>
           <ChevronRight size={17} color={colors.muted} />
@@ -157,7 +177,9 @@ export function TaskCard({
         )}
         {waiting && (
           <Text style={[s.small, { color: colors.blueDark, fontWeight: "600" }]}>
-            {task.status === "waiting_approval" ? "Review requested" : "Your input is needed"}
+            {task.status === "waiting_approval"
+              ? t("agent.reviewRequested")
+              : t("agent.inputNeeded")}
           </Text>
         )}
       </Card>
@@ -180,21 +202,22 @@ export function ChatWork() {
   );
 }
 export function AgentActivityScreen() {
+  const s = useStyles();
   const { data } = useAgentWorkspace();
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("all");
   const tasks = [...(data?.tasks || [])]
     .filter(
       (task) =>
-        filter === "All" || (filter === "In progress" ? activeTask(task) : !activeTask(task)),
+        filter === "all" || (filter === "in_progress" ? activeTask(task) : !activeTask(task)),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <View style={{ gap: 20 }}>
       <AgentStatus />
       <View style={[s.row, { gap: 8 }]}>
-        {["All", "In progress", "Finished"].map((item) => (
+        {(["all", "in_progress", "finished"] as const).map((item) => (
           <Button key={item} small primary={filter === item} onPress={() => setFilter(item)}>
-            {item}
+            {t(`agent.filter.${item}`)}
           </Button>
         ))}
       </View>
@@ -202,18 +225,16 @@ export function AgentActivityScreen() {
         <TaskCard key={task.id} task={task} />
       ))}
       {!tasks.length && (
-        <Empty
-          icon={ListChecks}
-          title="工作的地方"
-          detail="Delegate a task in Chat. Its plan, progress and results stay here."
-        />
+        <Empty icon={ListChecks} title="工作的地方" detail={t("agent.emptyDetail")} />
       )}
-      <SectionHeading title="Reviews & receipts" />
+      <SectionHeading title={t("agent.reviews")} />
       <ActivityScreen />
     </View>
   );
 }
 export function EvidenceList({ items }: { items: Evidence[] }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace, open } = useWorkspace();
   const [error, setError] = useState("");
   return (
@@ -234,7 +255,7 @@ export function EvidenceList({ items }: { items: Evidence[] }) {
                 void Linking.openURL(item.url || "").catch((e) => setError(errorText(e)))
               }
             >
-              Open source
+              {t("agent.openSource")}
             </Button>
           )}
           {item.kind === "mail" && workspace.mail.some((mail) => mail.id === item.id) && (
@@ -245,7 +266,7 @@ export function EvidenceList({ items }: { items: Evidence[] }) {
                 if (mail) open({ type: "mail", mail });
               }}
             >
-              View email
+              {t("agent.viewEmail")}
             </Button>
           )}
           {item.kind === "file" && workspace.files.some((file) => file.id === item.id) && (
@@ -256,7 +277,7 @@ export function EvidenceList({ items }: { items: Evidence[] }) {
                 if (file) open({ type: "file", file });
               }}
             >
-              View file
+              {t("agent.viewFile")}
             </Button>
           )}
         </View>
@@ -266,6 +287,8 @@ export function EvidenceList({ items }: { items: Evidence[] }) {
   );
 }
 export function TaskDetail({ taskId }: { taskId: string }) {
+  const colors = useColors();
+  const s = useStyles();
   const { api, workspace, close, open, refresh: refreshWorkspace } = useWorkspace();
   const { data, mutate } = useAgentWorkspace();
   const [detail, setDetail] = useState<{
@@ -333,11 +356,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
             (value) => typeof value !== "string" && typeof value !== "boolean",
           )
         )
-          throw new Error("Form fields must be a JSON object with text or true/false values.");
+          throw new Error(t("agent.fieldJsonError"));
         parsed = raw as Record<string, string | boolean>;
       }
       await act("input", {
-        answer: answer.trim() || "Provided the requested fields.",
+        answer: answer.trim() || t("agent.providedFields"),
         fields: parsed,
       });
     } catch (e) {
@@ -351,7 +374,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
       await refreshWorkspace();
       const snapshot = await api.request<typeof workspace>("/api/workspace");
       const action = snapshot.actions.find((item) => item.id === task?.actionId);
-      if (!action) throw new Error("This review is not available yet. Refresh and try again.");
+      if (!action) throw new Error(t("agent.reviewNotReady"));
       open({ type: "review", action });
     } catch (e) {
       setError(errorText(e));
@@ -371,9 +394,9 @@ export function TaskDetail({ taskId }: { taskId: string }) {
     .filter(Boolean);
   return (
     <Sheet
-      title={task?.title || "Task"}
+      title={task?.title || t("agent.task")}
       subtitle={
-        task ? `${statusLabel(task.status)} · ${stamp(task.updatedAt)}` : "Loading saved progress…"
+        task ? `${statusLabel(task.status)} · ${stamp(task.updatedAt)}` : t("agent.loadingProgress")
       }
       onClose={close}
     >
@@ -395,7 +418,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 busy={busy}
                 onPress={() => void act("control", { action: "pause" })}
               >
-                Pause
+                {t("agent.pause")}
               </Button>
             )}
             {task.status === "paused" && (
@@ -405,7 +428,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 busy={busy}
                 onPress={() => void act("control", { action: "resume" })}
               >
-                Resume
+                {t("agent.resume")}
               </Button>
             )}
             {task.status === "failed" && (
@@ -415,7 +438,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 busy={busy}
                 onPress={() => void act("control", { action: "retry" })}
               >
-                Retry task
+                {t("agent.retryTask")}
               </Button>
             )}
             {activeTask(task) && (
@@ -426,7 +449,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 busy={busy}
                 onPress={() => void act("control", { action: "cancel" })}
               >
-                Cancel task
+                {t("agent.cancelTask")}
               </Button>
             )}
           </View>
@@ -435,13 +458,13 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               <Text style={s.heading}>等待你的审核</Text>
               <Text style={s.muted}>执行前请核对具体的操作和账号。</Text>
               <Button primary busy={busy} onPress={() => void review()}>
-                Review action
+                {t("agent.reviewAction")}
               </Button>
             </Card>
           )}
           {task.status === "waiting_input" && (
             <Card style={{ backgroundColor: colors.sky, gap: 10 }}>
-              <Text style={s.heading}>{task.question || "A detail from you will help"}</Text>
+              <Text style={s.heading}>{task.question || t("agent.detailHelp")}</Text>
               {fieldNames.map((name) =>
                 missing.some(
                   (f) => typeof f === "object" && f && f.name === name && f.type === "checkbox",
@@ -465,7 +488,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               )}
               {!fieldNames.length && (
                 <Field
-                  label="Your answer"
+                  label={t("agent.yourAnswer")}
                   value={answer}
                   onChangeText={setAnswer}
                   multiline
@@ -475,11 +498,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               {task.kind === "document" && !fieldNames.length && (
                 <>
                   <Button small onPress={() => setShowFieldJson(!showFieldJson)}>
-                    Form field values
+                    {t("agent.formFieldValues")}
                   </Button>
                   {showFieldJson && (
                     <Field
-                      label="Fields (JSON: field name to value)"
+                      label={t("agent.fieldsJsonLabel")}
                       value={fieldJson}
                       onChangeText={setFieldJson}
                       multiline
@@ -495,7 +518,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 disabled={!answer.trim() && !Object.keys(fields).length && !fieldJson.trim()}
                 onPress={() => void submitInput()}
               >
-                Continue task
+                {t("agent.continueTask")}
               </Button>
             </Card>
           )}
@@ -533,11 +556,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           <ErrorNotice error={task.error ?? undefined} />
           {detail?.browsers?.map((browser) => (
             <Card key={browser.id} style={{ gap: 10 }}>
-              <Text style={s.heading}>{browser.title || "Agent browser"}</Text>
+              <Text style={s.heading}>{browser.title || t("agent.agentBrowser")}</Text>
               <Text style={s.small}>{browser.url}</Text>
               {browser.status === "active" && browser.previewUrl && (
                 <Image
-                  accessibilityLabel="Agent browser preview"
+                  accessibilityLabel={t("a11y.agentBrowserPreview")}
                   source={{ uri: api.url(browser.previewUrl) }}
                   style={{ width: "100%", aspectRatio: 1.6, borderRadius: 12 }}
                 />
@@ -561,8 +584,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 }}
               >
                 {["running", "scheduled", "queued"].includes(task.status)
-                  ? "Pause and open browser"
-                  : "Open browser"}
+                  ? t("agent.pauseOpenBrowser")
+                  : t("agent.openBrowser")}
               </Button>
             </Card>
           ))}
@@ -570,7 +593,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
             <LinkRow
               key={file.id}
               title={file.name}
-              detail={`${file.pageCount} pages · PDF`}
+              detail={t("agent.fileDetail", { count: file.pageCount })}
               icon={FileText}
               onPress={() => open({ type: "file", file })}
             />
@@ -603,9 +626,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               </Text>
             </View>
           ))}
-          {!detail?.events.length && (
-            <Text style={s.muted}>Worker 会在这里记录每一步。</Text>
-          )}
+          {!detail?.events.length && <Text style={s.muted}>Worker 会在这里记录每一步。</Text>}
         </View>
       )}
     </Sheet>
@@ -626,6 +647,8 @@ function display(value: unknown): string {
         : JSON.stringify(value, null, 2) || "";
 }
 export function ArtifactCard({ artifact }: { artifact: AgentArtifact }) {
+  const colors = useColors();
+  const s = useStyles();
   const [expanded, setExpanded] = useState(false);
   if (artifact.kind === "finance") return <FinanceArtifact artifact={artifact} />;
   const rows = Object.entries(artifact.data);
@@ -680,12 +703,14 @@ export function ArtifactCard({ artifact }: { artifact: AgentArtifact }) {
         </View>
       ))}
       <Button small onPress={() => setExpanded(!expanded)}>
-        {expanded ? "收起" : "展开全部"}
+        {expanded ? t("agent.collapse") : t("agent.expandAll")}
       </Button>
     </Card>
   );
 }
 function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
+  const colors = useColors();
+  const s = useStyles();
   const [details, setDetails] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const { mutate } = useAgentWorkspace();
@@ -725,7 +750,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Open finance tracker: ${artifact.title}`}
+        accessibilityLabel={t("a11y.openFinance", { title: artifact.title })}
         accessibilityState={{ expanded: details }}
         onPress={() => setDetails(!details)}
       >
@@ -751,17 +776,18 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             </Svg>
           </View>
           <Text style={{ color: "#D4DCFC", fontSize: 11, lineHeight: 18, marginBottom: 20 }}>
-            Read from your imported transactions.{"\n"}
+            {t("fin.readFrom")}
+            {"\n"}
             {String(period?.from ?? "")} — {String(period?.to ?? "")}
             {"\n"}
-            {transactions.length} transactions, categorized and summarized.
+            {t("fin.txCount", { count: transactions.length })}
           </Text>
           <View style={[s.row, { gap: 7 }]}>
             {(
               [
-                ["Income", "income"],
-                ["Spending", "spending"],
-                ["Remaining", "saved"],
+                [t("fin.income"), "income"],
+                [t("fin.spending"), "spending"],
+                [t("fin.remaining"), "saved"],
               ] as const
             ).map(([label, key]) => (
               <View
@@ -789,7 +815,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
           </View>
         </View>
         <View style={[s.row, { gap: 11, paddingHorizontal: 8, paddingTop: 13, paddingBottom: 4 }]}>
-          <Text style={{ fontSize: 25 }}>💸</Text>
+          <Wallet size={26} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[s.text, { fontWeight: "600" }]}>财务追踪</Text>
             <Text style={s.small}>支出、储蓄，以及下一步的计划。</Text>
@@ -822,15 +848,13 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
               </View>
             );
           })}
-          <Text style={s.small}>
-            金额使用原币种。本汇总覆盖导入的日期范围。
-          </Text>
+          <Text style={s.small}>金额使用原币种。本汇总覆盖导入的日期范围。</Text>
           {goalSaved ? (
             <Text style={s.text}>你的储蓄目标已保存在目标里。</Text>
           ) : (
             <View style={{ gap: 10 }}>
               <Field
-                label="Turn this into a savings goal"
+                label={t("fin.goalLabel")}
                 value={goalTitle}
                 onChangeText={setGoalTitle}
                 placeholder="你想为什么存钱？"
@@ -842,12 +866,12 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 disabled={!goalTitle.trim()}
                 onPress={() => void saveGoal()}
               >
-                Create savings goal
+                {t("fin.createGoal")}
               </Button>
             </View>
           )}
           <Button small onPress={() => setExpanded(!expanded)}>
-            {expanded ? "Hide transactions" : "View transactions"}
+            {expanded ? t("fin.hideTx") : t("fin.viewTx")}
           </Button>
           {expanded &&
             transactions.slice(0, 100).map((transaction) => {
@@ -864,17 +888,14 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 </View>
               ) : null;
             })}
-          {expanded && transactions.length > 100 && (
-            <Text style={s.small}>
-              显示前 100 笔交易。总额包含所有 row.
-            </Text>
-          )}
+          {expanded && transactions.length > 100 && <Text style={s.small}>{t("fin.top100")}</Text>}
         </View>
       )}
     </Card>
   );
 }
 export function DelegateSheet() {
+  const s = useStyles();
   const { workspace, close, open } = useWorkspace();
   const { delegate } = useAgentWorkspace();
   const [kind, setKind] = useState<AgentTask["kind"]>("plan");
@@ -900,29 +921,25 @@ export function DelegateSheet() {
     }
   }
   return (
-    <Sheet
-      title="交付成果"
-      subtitle="OpenMuse saves a plan and keeps working on the server."
-      onClose={close}
-    >
+    <Sheet title="交付成果" subtitle={t("agent.delegateSubtitle")} onClose={close}>
       <View style={[s.row, { flexWrap: "wrap", gap: 8, marginBottom: 20 }]}>
         {(["plan", "document", "finance", "agent"] as const).map((item) => (
           <Button small primary={kind === item} key={item} onPress={() => setKind(item)}>
-            {item === "agent" ? "General task" : statusLabel(item)}
+            {statusLabel(item)}
           </Button>
         ))}
       </View>
       <Field
-        label="What would you like done?"
+        label={t("agent.whatToDo")}
         value={prompt}
         onChangeText={setPrompt}
         multiline
         placeholder={
           kind === "document"
-            ? "Fill the attached form and prepare a reply for my review"
+            ? t("agent.promptDoc")
             : kind === "finance"
-              ? "Summarize my spending and suggest a savings plan"
-              : "Make a practical plan for my week"
+              ? t("agent.promptFinance")
+              : t("agent.promptPlan")
         }
       />
       {kind === "document" && (
@@ -939,16 +956,14 @@ export function DelegateSheet() {
               />
             ))}
           {!workspace.mail.some((mail) => mail.attachments.length) && (
-            <Text style={s.muted}>
-              在应用里连接邮箱，选择带 PDF 附件的邮件ent.
-            </Text>
+            <Text style={s.muted}>{t("agent.attachMailNote")}</Text>
           )}
         </View>
       )}
       {kind === "finance" && (
         <>
           <Field
-            label="Transaction CSV"
+            label={t("agent.csvLabel")}
             value={csv}
             onChangeText={setCsv}
             multiline
@@ -963,20 +978,14 @@ export function DelegateSheet() {
                 )
               }
             >
-              Try example transactions
+              {t("agent.tryExample")}
             </Button>
           )}
-          <Text style={[s.small, { marginVertical: 12 }]}>
-            正数是支出；负数是收入。 Imported data only. No bank
-            connection is implied.
-          </Text>
+          <Text style={[s.small, { marginVertical: 12 }]}>{t("agent.csvNote")}</Text>
         </>
       )}
       {kind === "agent" && !workspace.runtime.configured && (
-        <Text style={[s.muted, { marginBottom: 16 }]}>
-          常规任务和计划需要配置模型。文档 jobs, page watches and
-          spending summaries have guided workflows.
-        </Text>
+        <Text style={[s.muted, { marginBottom: 16 }]}>{t("agent.modelNote")}</Text>
       )}
       <ErrorNotice error={error} />
       <Button
@@ -989,12 +998,14 @@ export function DelegateSheet() {
         }
         onPress={() => void submit()}
       >
-        Delegate task
+        {t("agent.delegateTask")}
       </Button>
     </Sheet>
   );
 }
 export function IdeasScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { data, mutate } = useAgentWorkspace();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1016,7 +1027,7 @@ export function IdeasScreen() {
       <View style={s.between}>
         <Text style={s.small}>来自你连接的应用</Text>
         <Button small icon={RefreshCw} busy={busy} onPress={() => void refreshIdeas()}>
-          Find ideas
+          {t("agent.findIdeas")}
         </Button>
       </View>
       <ErrorNotice error={error} />
@@ -1024,11 +1035,7 @@ export function IdeasScreen() {
         <IdeaCard key={idea.id} idea={idea} />
       ))}
       {!ideas.length && (
-        <Empty
-          icon={Lightbulb}
-          title="Room for a good idea"
-          detail="Find ideas from the sources you have granted access to. Each suggestion includes its evidence."
-        />
+        <Empty icon={Lightbulb} title={t("agent.roomForIdea")} detail={t("agent.ideaNote")} />
       )}
       {(data?.ideas || [])
         .filter((idea) => idea.status === "accepted")
@@ -1053,11 +1060,13 @@ function TaskLink({ taskId, onOpen }: { taskId: string; onOpen?: () => void }) {
         open({ type: "task", taskId });
       }}
     >
-      View task
+      {t("agent.viewTask")}
     </Button>
   );
 }
 function IdeaCard({ idea }: { idea: Idea }) {
+  const colors = useColors();
+  const s = useStyles();
   const { mutate } = useAgentWorkspace();
   const { open } = useWorkspace();
   const [expanded, setExpanded] = useState(false);
@@ -1081,22 +1090,25 @@ function IdeaCard({ idea }: { idea: Idea }) {
     <View style={{ paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: colors.line }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`View idea: ${idea.title}`}
+        accessibilityLabel={t("a11y.viewIdea", { title: idea.title })}
         accessibilityState={{ expanded }}
         onPress={() => setExpanded(!expanded)}
         style={{ flexDirection: "row", gap: 14 }}
       >
-        <Text style={{ fontSize: 27, width: 34, paddingTop: 3 }}>
-          {/document|permission|form/i.test(idea.title)
-            ? "📋"
-            : /money|spend|saving/i.test(idea.title)
-              ? "💸"
-              : /goal|plan|training/i.test(idea.title)
-                ? "👟"
-                : /dinner|table/i.test(idea.title)
-                  ? "🍽️"
-                  : "💡"}
-        </Text>
+        <View style={{ width: 34, paddingTop: 3 }}>
+          {(() => {
+            const Icon = /document|permission|form/i.test(idea.title)
+              ? ClipboardList
+              : /money|spend|saving/i.test(idea.title)
+                ? Wallet
+                : /goal|plan|training/i.test(idea.title)
+                  ? Target
+                  : /dinner|table/i.test(idea.title)
+                    ? UtensilsCrossed
+                    : Lightbulb;
+            return <Icon size={24} color={colors.blueDark} />;
+          })()}
+        </View>
         <View style={{ flex: 1, gap: 5 }}>
           <Text style={[s.heading, { fontSize: 16, lineHeight: 23 }]}>{idea.title}</Text>
           <Text style={s.muted}>{idea.reason}</Text>
@@ -1107,7 +1119,7 @@ function IdeaCard({ idea }: { idea: Idea }) {
           <EvidenceList items={idea.evidence} />
           {editing && (
             <Field
-              label="What should OpenMuse do?"
+              label={t("agent.whatShouldDo")}
               value={prompt}
               onChangeText={setPrompt}
               multiline
@@ -1121,13 +1133,13 @@ function IdeaCard({ idea }: { idea: Idea }) {
               disabled={!prompt.trim()}
               onPress={() => void act("accept")}
             >
-              Start this
+              {t("agent.startThis")}
             </Button>
             <Button disabled={busy} onPress={() => setEditing(!editing)}>
-              {editing ? "Keep edits" : "Edit"}
+              {editing ? t("agent.keepEdits") : t("agent.edit")}
             </Button>
             <Button disabled={busy} onPress={() => void act("dismiss")}>
-              Dismiss
+              {t("agent.dismiss")}
             </Button>
           </View>
         </View>
@@ -1136,6 +1148,8 @@ function IdeaCard({ idea }: { idea: Idea }) {
   );
 }
 export function GoalsScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { data } = useAgentWorkspace();
   const [adding, setAdding] = useState<string>();
   const [selectedGoal, setSelectedGoal] = useState<string>();
@@ -1163,14 +1177,14 @@ export function GoalsScreen() {
             <Text style={[s.heading, { color: "#189A58" }]}>追踪</Text>
           </View>
           <Button small icon={Plus} onPress={() => setAdding("Tracking")}>
-            Track
+            {t("agent.track")}
           </Button>
         </View>
         {(showAll ? monitors : monitors.slice(0, 3)).map((item) => (
           <Pressable
             key={item.id}
             accessibilityRole="button"
-            accessibilityLabel={`Open tracking: ${item.title}`}
+            accessibilityLabel={t("a11y.openTracking", { title: item.title })}
             onPress={() => setSelectedMonitor(item.id)}
             style={[s.row, { gap: 12, paddingVertical: 13 }]}
           >
@@ -1179,7 +1193,7 @@ export function GoalsScreen() {
               <Text style={s.text}>{item.title}</Text>
               <Text numberOfLines={1} style={s.muted}>
                 {item.status === "active"
-                  ? `Checking every ${item.intervalMinutes} minutes`
+                  ? t("agent.checkEvery", { count: item.intervalMinutes })
                   : statusLabel(item.status)}
               </Text>
             </View>
@@ -1187,13 +1201,11 @@ export function GoalsScreen() {
           </Pressable>
         ))}
         {!monitors.length && (
-          <Text style={[s.muted, { paddingVertical: 10 }]}>
-            票价、预订、你在关注的页面。
-          </Text>
+          <Text style={[s.muted, { paddingVertical: 10 }]}>票价、预订、你在关注的页面。</Text>
         )}
         {monitors.length > 3 && (
           <Button small onPress={() => setShowAll(!showAll)}>
-            {showAll ? "Show less" : `Show ${monitors.length - 3} more`}
+            {showAll ? t("agent.showLess") : t("agent.showMore", { count: monitors.length - 3 })}
           </Button>
         )}
       </View>
@@ -1216,7 +1228,7 @@ export function GoalsScreen() {
           <Pressable
             key={item.id}
             accessibilityRole="button"
-            accessibilityLabel={`Open goal: ${item.title}`}
+            accessibilityLabel={t("a11y.openGoal", { title: item.title })}
             onPress={() => setSelectedGoal(item.id)}
             style={[s.row, { gap: 12, paddingVertical: 13 }]}
           >
@@ -1235,34 +1247,32 @@ export function GoalsScreen() {
           </Pressable>
         ))}
         {!data?.goals.length && (
-          <Text style={[s.muted, { paddingVertical: 10 }]}>
-            大计划从一小步开始。
-          </Text>
+          <Text style={[s.muted, { paddingVertical: 10 }]}>大计划从一小步开始。</Text>
         )}
       </View>
       <View style={{ height: 1, backgroundColor: colors.line }} />
       <Text style={s.heading}>创建目标</Text>
       {[
-        { name: "Health", icon: Heart },
-        { name: "Relationships", icon: Users },
-        { name: "Finances", icon: CircleDollarSign },
-        { name: "Something else", icon: Target },
+        { name: "Health", label: t("agent.cat.health"), icon: Heart },
+        { name: "Relationships", label: t("agent.cat.relationships"), icon: Users },
+        { name: "Finances", label: t("agent.cat.finances"), icon: CircleDollarSign },
+        { name: "Something else", label: t("agent.cat.other"), icon: Target },
       ].map((item) => (
         <Pressable
           key={item.name}
           accessibilityRole="button"
-          accessibilityLabel={`Create ${item.name.toLowerCase()} goal`}
+          accessibilityLabel={t("a11y.createGoal", { category: item.label })}
           onPress={() => setAdding(item.name)}
           style={[s.row, { gap: 12, minHeight: 38 }]}
         >
           <item.icon size={23} color="#989C9F" />
-          <Text style={[s.text, { flex: 1, color: "#666A6D" }]}>{item.name}</Text>
+          <Text style={[s.text, { flex: 1, color: "#666A6D" }]}>{item.label}</Text>
           <Plus size={18} color="#989C9F" />
         </Pressable>
       ))}
       {adding && (
         <Sheet
-          title={adding === "Tracking" ? "Track something" : "Create a goal"}
+          title={adding === "Tracking" ? t("agent.trackSomething") : t("agent.createGoal")}
           onClose={() => setAdding(undefined)}
         >
           {adding === "Tracking" ? (
@@ -1315,31 +1325,33 @@ function GoalForm({ onDone, category }: { onDone: () => void; category?: string 
   return (
     <Card>
       <Field
-        label="Your goal"
+        label={t("agent.goalTitle")}
         value={title}
         onChangeText={setTitle}
         placeholder="建立三个月的应急基金"
       />
       <Field
-        label="What does success look like?"
+        label={t("agent.successLook")}
         value={description}
         onChangeText={setDescription}
         multiline
       />
       <Field
-        label="Milestones (one per line)"
+        label={t("agent.milestones")}
         value={milestones}
         onChangeText={setMilestones}
         multiline
       />
       <ErrorNotice error={error} />
       <Button primary disabled={!title.trim()} busy={busy} onPress={() => void save()}>
-        Create goal
+        {t("agent.createGoal")}
       </Button>
     </Card>
   );
 }
 function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void }) {
+  const colors = useColors();
+  const s = useStyles();
   const { data, mutate, delegate } = useAgentWorkspace();
   const { open } = useWorkspace();
   const [busy, setBusy] = useState(false);
@@ -1385,7 +1397,7 @@ function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void })
       </View>
       <Text style={s.muted}>{goal.description}</Text>
       <Text style={s.small}>
-        {done} of {goal.milestones.length} milestones
+        {t("agent.milestoneProgress", { done, total: goal.milestones.length })}
       </Text>
       {goal.milestones.map((milestone) => (
         <CheckRow
@@ -1409,15 +1421,15 @@ function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void })
           busy={busy}
           onPress={() => void update({ status: goal.status === "active" ? "paused" : "active" })}
         >
-          {goal.status === "active" ? "Pause" : "Resume"}
+          {goal.status === "active" ? t("agent.pause") : t("agent.resume")}
         </Button>
         {goal.status !== "completed" && (
           <Button small busy={busy} onPress={() => void update({ status: "completed" })}>
-            Complete goal
+            {t("agent.completeGoal")}
           </Button>
         )}
         <Button small primary busy={busy} onPress={() => void plan()}>
-          Plan next steps
+          {t("agent.planNext")}
         </Button>
       </View>
       {data?.tasks
@@ -1429,6 +1441,7 @@ function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void })
   );
 }
 function MonitorForm({ onDone }: { onDone: () => void }) {
+  const s = useStyles();
   const { workspace } = useWorkspace();
   const { mutate } = useAgentWorkspace();
   const [title, setTitle] = useState("");
@@ -1445,9 +1458,8 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
     try {
       const minutes = Number(interval);
       if (!Number.isInteger(minutes) || minutes < 1 || minutes > 10080)
-        throw new Error("Use a check interval from 1 to 10080 minutes.");
-      if (!sample && !/^https?:\/\//i.test(url.trim()))
-        throw new Error("Enter an http or https address for a public page.");
+        throw new Error(t("agent.intervalError"));
+      if (!sample && !/^https?:\/\//i.test(url.trim())) throw new Error(t("agent.urlError"));
       await mutate("/monitors", {
         title: title.trim(),
         url: sample ? "sample://availability" : url.trim(),
@@ -1465,7 +1477,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <Field
-        label="What are you watching?"
+        label={t("agent.watchingWhat")}
         value={title}
         onChangeText={setTitle}
         placeholder="在我最喜欢的餐厅订个桌子"
@@ -1473,13 +1485,13 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
       {workspace.mode === "sample" && (
         <CheckRow
           checked={sample}
-          label="Try the built-in availability page"
+          label={t("agent.trySamplePage")}
           onPress={() => setSample(!sample)}
         />
       )}
       {!sample && (
         <Field
-          label="Public page URL"
+          label={t("agent.pageUrl")}
           value={url}
           onChangeText={setUrl}
           autoCapitalize="none"
@@ -1491,30 +1503,28 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
         {(["change", "contains", "price_below"] as const).map((item) => (
           <Button small primary={condition === item} key={item} onPress={() => setCondition(item)}>
             {item === "change"
-              ? "Page changes"
+              ? t("agent.condChange")
               : item === "contains"
-                ? "Text appears"
-                : "Price drops below"}
+                ? t("agent.condContains")
+                : t("agent.condPrice")}
           </Button>
         ))}
       </View>
       {condition !== "change" && (
         <Field
-          label={condition === "contains" ? "Text to look for" : "Target price"}
+          label={condition === "contains" ? t("agent.lookForText") : t("agent.targetPrice")}
           value={value}
           onChangeText={setValue}
         />
       )}
       <Field
-        label="Check every (minutes)"
+        label={t("agent.checkMinutes")}
         value={interval}
         onChangeText={setInterval}
         keyboardType="number-pad"
       />
       <Text style={[s.small, { marginBottom: 14 }]}>
-        {sample
-          ? "Changes to this built-in page stay in your workspace."
-          : "OpenMuse checks this public page on the server and saves meaningful changes in Notifications."}
+        {sample ? t("agent.sampleNote") : t("agent.monitorNote")}
       </Text>
       <ErrorNotice error={error} />
       <Button
@@ -1525,12 +1535,14 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
         }
         onPress={() => void save()}
       >
-        Start tracking
+        {t("agent.startTracking")}
       </Button>
     </Card>
   );
 }
 function MonitorCard({ monitor, onOpenTask }: { monitor: Monitor; onOpenTask?: () => void }) {
+  const colors = useColors();
+  const s = useStyles();
   const { mutate } = useAgentWorkspace();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1566,21 +1578,23 @@ function MonitorCard({ monitor, onOpenTask }: { monitor: Monitor; onOpenTask?: (
         <Chip tint={colors.sky}>{statusLabel(monitor.status)}</Chip>
       </View>
       <Text selectable style={s.small}>
-        {monitor.url.startsWith("sample:") ? "Built-in availability page" : monitor.url}
+        {monitor.url.startsWith("sample:") ? t("agent.samplePage") : monitor.url}
       </Text>
       <Text style={s.text}>
         {monitor.condition === "change"
-          ? "Watch for a page change"
+          ? t("agent.watchChange")
           : monitor.condition === "contains"
-            ? `Watch for “${monitor.value}”`
-            : `Price below ${monitor.value}`}
+            ? t("agent.watchContains", { value: monitor.value })
+            : t("agent.watchPrice", { value: monitor.value })}
       </Text>
       <Text style={s.small}>
-        Every {monitor.intervalMinutes} min · {monitor.checks} checks
+        {t("agent.checkStats", { minutes: monitor.intervalMinutes, checks: monitor.checks })}
       </Text>
       <Text style={s.small}>
-        Last check: {stamp(monitor.lastCheckedAt)}
-        {monitor.status === "active" ? `\nNext check: ${stamp(monitor.nextCheckAt)}` : ""}
+        {t("agent.lastCheck", { time: stamp(monitor.lastCheckedAt) })}
+        {monitor.status === "active"
+          ? `\n${t("agent.nextCheck", { time: stamp(monitor.nextCheckAt) })}`
+          : ""}
       </Text>
       {!!monitor.lastValue && (
         <Text selectable numberOfLines={5} style={s.muted}>
@@ -1595,19 +1609,19 @@ function MonitorCard({ monitor, onOpenTask }: { monitor: Monitor; onOpenTask?: (
             busy={busy}
             onPress={() => void act(monitor.status === "active" ? "pause" : "resume")}
           >
-            {monitor.status === "active" ? "Pause" : "Resume"}
+            {monitor.status === "active" ? t("agent.pause") : t("agent.resume")}
           </Button>
           <Button small busy={busy} onPress={() => void act("check")}>
-            Check now
+            {t("agent.checkNow")}
           </Button>
           <Button small danger busy={busy} onPress={() => void act("stop")}>
-            Stop tracking
+            {t("agent.stopTracking")}
           </Button>
         </View>
       )}
       {monitor.url.startsWith("sample:") && monitor.status !== "stopped" && (
         <Button small busy={busy} onPress={() => void changeSample()}>
-          Change availability
+          {t("agent.changeAvailability")}
         </Button>
       )}
       <TaskLink taskId={monitor.taskId} onOpen={onOpenTask} />
@@ -1615,6 +1629,8 @@ function MonitorCard({ monitor, onOpenTask }: { monitor: Monitor; onOpenTask?: (
   );
 }
 export function NotificationsSheet() {
+  const colors = useColors();
+  const s = useStyles();
   const { data, mutate } = useAgentWorkspace();
   const { close, open } = useWorkspace();
   const [error, setError] = useState("");
@@ -1627,11 +1643,7 @@ export function NotificationsSheet() {
     }
   }
   return (
-    <Sheet
-      title="通知"
-      subtitle="Results and decisions that need your attention."
-      onClose={close}
-    >
+    <Sheet title="通知" subtitle={t("agent.notifSubtitle")} onClose={close}>
       <View style={{ gap: 14 }}>
         <ErrorNotice error={error} />
         {data?.notifications.map((item) => (
@@ -1646,22 +1658,24 @@ export function NotificationsSheet() {
             <Text style={s.muted}>{item.body}</Text>
             <Text style={s.small}>{stamp(item.createdAt)}</Text>
             <Button small onPress={() => void read(item.id, item.taskId)}>
-              {item.taskId ? "View task" : item.read ? "Read" : "Mark read"}
+              {item.taskId
+                ? t("agent.viewTask")
+                : item.read
+                  ? t("agent.read")
+                  : t("agent.markRead")}
             </Button>
           </Card>
         ))}
         {!data?.notifications.length && (
-          <Empty
-            icon={Bell}
-            title="You're all caught up"
-            detail="Results, meaningful changes and requests for your input will appear here."
-          />
+          <Empty icon={Bell} title={t("activity.caughtUp")} detail={t("agent.notifEmpty")} />
         )}
       </View>
     </Sheet>
   );
 }
 export function AppsScreen() {
+  const colors = useColors();
+  const s = useStyles();
   const { navigate, open } = useWorkspace();
   const { data, mutate } = useAgentWorkspace();
   const [query, setQuery] = useState("");
@@ -1701,26 +1715,26 @@ export function AppsScreen() {
   const shortcuts = [
     {
       section: "mail" as const,
-      title: "Mail",
-      detail: "Read messages and prepare replies",
+      title: t("agent.shortcut.mail"),
+      detail: t("agent.shortcut.mailDetail"),
       icon: Mail,
     },
     {
       section: "calendar" as const,
-      title: "Calendar",
-      detail: "Events and reviewed invitations",
+      title: t("agent.shortcut.calendar"),
+      detail: t("agent.shortcut.calDetail"),
       icon: CalendarDays,
     },
     {
       section: "browser" as const,
-      title: "Agent computer",
-      detail: "Persistent browser sessions",
+      title: t("conn.agentComputer"),
+      detail: t("agent.shortcut.browserDetail"),
       icon: Globe2,
     },
     {
       section: "files" as const,
-      title: "Files",
-      detail: "PDFs, forms and filled copies",
+      title: t("agent.shortcut.files"),
+      detail: t("agent.shortcut.filesDetail"),
       icon: FileText,
     },
   ];
@@ -1728,7 +1742,7 @@ export function AppsScreen() {
     <View style={{ gap: 22 }}>
       <AgentStatus />
       <Field
-        label="Search apps"
+        label={t("agent.searchApps")}
         value={query}
         onChangeText={setQuery}
         placeholder="搜索连接器"
@@ -1752,13 +1766,25 @@ export function AppsScreen() {
             />
           ))}
       </Card>
+      {`${t("appearance.entryTitle")} ${t("appearance.entryDetail")}`
+        .toLowerCase()
+        .includes(query.toLowerCase()) && (
+        <Card style={{ paddingVertical: 3 }}>
+          <LinkRow
+            icon={Palette}
+            title={t("appearance.entryTitle")}
+            detail={t("appearance.entryDetail")}
+            onPress={() => navigate("appearance")}
+          />
+        </Card>
+      )}
       <Button onPress={() => setSettings(!settings)}>
-        {settings ? "Close agent settings" : "Personality & memory"}
+        {settings ? t("agent.closeSettings") : t("agent.personalityMemory")}
       </Button>
       {settings && (
         <>
           <Card style={{ gap: 10 }}>
-            <SectionHeading title="Your agent" />
+            <SectionHeading title={t("agent.yourAgent")} />
             <View style={[s.row, { gap: 16, justifyContent: "center", marginBottom: 12 }]}>
               {(["sky", "sand", "lilac"] as const).map((item) => (
                 <Pressable
@@ -1777,7 +1803,7 @@ export function AppsScreen() {
                 </Pressable>
               ))}
             </View>
-            <Field label="Name" value={name} onChangeText={setName} />
+            <Field label={t("agent.name")} value={name} onChangeText={setName} />
             <View style={[s.row, { gap: 8 }]}>
               {(["warm", "concise", "thoughtful"] as const).map((item) => (
                 <Button key={item} small primary={tone === item} onPress={() => setTone(item)}>
@@ -1786,14 +1812,11 @@ export function AppsScreen() {
               ))}
             </View>
             <CheckRow
-              label="Show background updates in chat"
+              label={t("agent.showUpdates")}
               checked={showChatUpdates}
               onPress={() => setShowChatUpdates(!showChatUpdates)}
             />
-            <Text style={s.small}>
-              动态和通知始终保留完整记录，包括uding requests for
-              approval.
-            </Text>
+            <Text style={s.small}>{t("agent.fullRecordNote")}</Text>
             <Button
               busy={busy}
               disabled={!name.trim()}
@@ -1801,7 +1824,7 @@ export function AppsScreen() {
                 void save("/identity", { name: name.trim(), tone, avatar, showChatUpdates })
               }
             >
-              Save preferences
+              {t("agent.savePrefs")}
             </Button>
           </Card>
           <Card style={{ gap: 12 }}>
@@ -1811,7 +1834,7 @@ export function AppsScreen() {
               <MemoryRow key={item.id} memory={item} />
             ))}
             <Field
-              label="Remember something about me"
+              label={t("agent.rememberLabel")}
               value={memory}
               onChangeText={setMemory}
               placeholder="我更喜欢早上的会议"
@@ -1823,7 +1846,7 @@ export function AppsScreen() {
                 void save("/memories", { text: memory.trim(), source: "User added in Apps" })
               }
             >
-              Remember
+              {t("agent.remember")}
             </Button>
           </Card>
         </>
@@ -1833,6 +1856,8 @@ export function AppsScreen() {
   );
 }
 function MemoryRow({ memory }: { memory: AgentMemory }) {
+  const colors = useColors();
+  const s = useStyles();
   const { mutate } = useAgentWorkspace();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(memory.text);
@@ -1855,7 +1880,7 @@ function MemoryRow({ memory }: { memory: AgentMemory }) {
       style={{ gap: 8, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.line }}
     >
       {editing ? (
-        <Field label="Memory" value={text} onChangeText={setText} />
+        <Field label={t("agent.memoryLabel")} value={text} onChangeText={setText} />
       ) : (
         <Text style={s.text}>{memory.text}</Text>
       )}
@@ -1865,15 +1890,15 @@ function MemoryRow({ memory }: { memory: AgentMemory }) {
       <View style={[s.row, { gap: 8 }]}>
         {editing ? (
           <Button small busy={busy} disabled={!text.trim()} onPress={() => void act(false)}>
-            Save correction
+            {t("agent.saveCorrection")}
           </Button>
         ) : (
           <Button small onPress={() => setEditing(true)}>
-            Edit
+            {t("agent.edit")}
           </Button>
         )}
         <Button small danger busy={busy} onPress={() => void act(true)}>
-          Forget
+          {t("agent.forget")}
         </Button>
       </View>
       <ErrorNotice error={error} />
