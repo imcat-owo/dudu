@@ -19,6 +19,7 @@ import { AgentService } from "./engine/service.ts";
 import { AppError } from "./errors.ts";
 import { Files } from "./files.ts";
 import { GoogleAuth } from "./google-auth.ts";
+import { themeRoutes } from "./theme-routes.ts";
 import { WorkspaceService } from "./workspace.ts";
 
 export async function createApp(
@@ -202,6 +203,7 @@ export async function createApp(
       201,
     );
   });
+  app.route("/api/theme", themeRoutes(db));
   app.get("/api/main-thread", async (c) => {
     const owner = c.get("owner");
     await db.insertIfAbsent(owner, "conversation-settings", {
