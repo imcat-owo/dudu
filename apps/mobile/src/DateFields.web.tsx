@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import {useColors, useStyles} from "./ui";
+import { useColors, useStyles } from "./ui";
 
 interface DateFieldsProps {
   label: string;

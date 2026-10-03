@@ -40,7 +40,22 @@ import type {
 import { useAgentWorkspace } from "./agent-workspace";
 import { type StringKey, t } from "./i18n";
 import { ActivityScreen, ConnectionsScreen } from "./screens";
-import {Button, Card, CheckRow, Chip, useColors, Empty, ErrorNotice, Field, LinkRow, Mascot, resultSummary, SectionHeading, Sheet, useStyles, } from "./ui";
+import {
+  Button,
+  Card,
+  CheckRow,
+  Chip,
+  Empty,
+  ErrorNotice,
+  Field,
+  LinkRow,
+  Mascot,
+  resultSummary,
+  SectionHeading,
+  Sheet,
+  useColors,
+  useStyles,
+} from "./ui";
 import { useWorkspace } from "./workspace";
 
 const STATUS_KEYS: Record<string, StringKey> = {

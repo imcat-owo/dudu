@@ -13,25 +13,30 @@
  *     stageBundle() and applyBundle() with a different preset, and rollback()
  *     restores the previously confirmed styles.
  *
- * react-native and friends are stubbed via node module customization hooks
- * (test harness only); react-test-renderer loads from an isolated /tmp install
- * so the repo's package.json is untouched.
+ * Full run needs the theme harness (react-native and friends are stubbed via
+ * node module customization hooks; react-test-renderer loads from an isolated
+ * install so the repo's package.json is untouched):
+ *
+ *   ln -sfn ~/workspace/phase1a-redo/mocks /tmp/mocks
+ *   ln -sfn ~/workspace/phase1a-redo/rtr /tmp/rtr
+ *   node --import /tmp/mocks/register.mjs --test apps/mobile/test/theme-ui.test.ts
+ *
+ * Under plain `pnpm test` (no harness) the two tests skip explicitly instead
+ * of crashing on the unresolvable react-native / react-test-renderer imports.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createElement as h, type ReactNode } from "react";
-import { act, create } from "react-test-renderer";
-import { deriveSurfaces } from "../src/theme/derive.ts";
-import { PRESETS } from "../src/theme/presets.ts";
-import { ThemeProvider, useTheme } from "../src/theme/ThemeContext.tsx";
-import type { ThemeBundle } from "../src/theme/types.ts";
-import { createThemedStyles, paletteFromTokens, useColors, useStyles } from "../src/ui.tsx";
 
-// react-test-renderer has no bundled types in this repo; describe the sliver
-// of its API this test uses so tsc stays happy (runtime comes from the harness).
-declare module "react-test-renderer" {
-  export function create(element: unknown): { unmount(): void };
-  export function act<T>(fn: () => T | Promise<T>): Promise<T>;
+// The harness registers resolve hooks mapping react-native / react-test-renderer
+// to stubs. Probe resolution directly: if the import fails, the hooks aren't
+// active and the tests skip explicitly instead of crashing.
+async function hasHarness(): Promise<boolean> {
+  try {
+    await import("react-test-renderer");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -50,7 +55,15 @@ function fsOf(style: unknown): number {
 }
 
 describe("ui theme migration", () => {
-  it("pipeline: different presets produce different rendered styles", () => {
+  it("pipeline: different presets produce different rendered styles", async (t) => {
+    if (!(await hasHarness())) {
+      t.skip("theme harness not present");
+      return;
+    }
+    const { deriveSurfaces } = await import("../src/theme/derive.ts");
+    const { PRESETS } = await import("../src/theme/presets.ts");
+    const { createThemedStyles, paletteFromTokens } = await import("../src/ui.tsx");
+
     const light = PRESETS[0]; // mint-frost, light
     const dark = PRESETS[3]; // lavender-night, dark
     const palL = paletteFromTokens(deriveSurfaces(light.seed, "light"), "light");
@@ -87,7 +100,19 @@ describe("ui theme migration", () => {
     );
   });
 
-  it("provider: stage/apply/rollback repaint a mounted themed component", async () => {
+  it("provider: stage/apply/rollback repaint a mounted themed component", async (t) => {
+    if (!(await hasHarness())) {
+      t.skip("theme harness not present");
+      return;
+    }
+    const { createElement: h } = await import("react");
+    type ReactNode = import("react").ReactNode;
+    const { act, create } = await import("react-test-renderer");
+    const { PRESETS } = await import("../src/theme/presets.ts");
+    const { ThemeProvider, useTheme } = await import("../src/theme/ThemeContext.tsx");
+    const { useColors, useStyles } = await import("../src/ui.tsx");
+    type ThemeBundle = import("../src/theme/types.ts").ThemeBundle;
+
     let seen: Record<string, string> = {};
     function Probe(): ReactNode {
       const colors = useColors();

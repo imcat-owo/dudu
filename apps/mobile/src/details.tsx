@@ -40,7 +40,23 @@ import DateTimeEditor from "./DateTimeEditor";
 import { localDateTime, zonedInstant } from "./date-time";
 import { type StringKey, t } from "./i18n";
 import PdfReader from "./PdfReader";
-import {Button, Card, CheckRow, Chip, useColors, dateLabel, Empty, ErrorNotice, Field, LinkRow, resultSummary, SectionHeading, Sheet, useStyles, timeLabel, } from "./ui";
+import {
+  Button,
+  Card,
+  CheckRow,
+  Chip,
+  dateLabel,
+  Empty,
+  ErrorNotice,
+  Field,
+  LinkRow,
+  resultSummary,
+  SectionHeading,
+  Sheet,
+  timeLabel,
+  useColors,
+  useStyles,
+} from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();

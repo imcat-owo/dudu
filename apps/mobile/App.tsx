@@ -45,7 +45,16 @@ import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/sc
 import { tokenStore } from "./src/session-store";
 import { ThemeProvider } from "./src/theme/ThemeContext";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
-import { Button, Card, useColors, ErrorNotice, Field, IconButton, Mascot, useStyles } from "./src/ui";
+import {
+  Button,
+  Card,
+  ErrorNotice,
+  Field,
+  IconButton,
+  Mascot,
+  useColors,
+  useStyles,
+} from "./src/ui";
 import { type Detail, useWorkspace, WorkspaceContext } from "./src/workspace";
 
 const nav: { id: Section; label: string; icon: LucideIcon }[] = [

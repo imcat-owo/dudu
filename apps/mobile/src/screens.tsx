@@ -41,7 +41,24 @@ import type {
 import { API_URL } from "./api";
 import { localDateTime, zonedInstant } from "./date-time";
 import { t } from "./i18n";
-import {Button, Card, Chip, useColors, dateLabel, Empty, ErrorNotice, IconButton, LinkRow, Mascot, relativeDate, resultSummary, SectionHeading, Sheet, useStyles, timeLabel, } from "./ui";
+import {
+  Button,
+  Card,
+  Chip,
+  dateLabel,
+  Empty,
+  ErrorNotice,
+  IconButton,
+  LinkRow,
+  Mascot,
+  relativeDate,
+  resultSummary,
+  SectionHeading,
+  Sheet,
+  timeLabel,
+  useColors,
+  useStyles,
+} from "./ui";
 import { useWorkspace } from "./workspace";
 
 function todayDate() {

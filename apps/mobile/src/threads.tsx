@@ -12,7 +12,7 @@ import {
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { t } from "./i18n";
-import {Button, useColors, ErrorNotice, Field, LinkRow, Sheet, useStyles} from "./ui";
+import { Button, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
 function newThreadId() {
@@ -295,9 +295,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
                 onClose();
               }}
             />
-            <Text style={s.muted}>
-              你的对话保存在这个工作区。你可以管理 connections in Apps.
-            </Text>
+            <Text style={s.muted}>你的对话保存在这个工作区。你可以管理 connections in Apps.</Text>
           </>
         )}
         <View style={s.divider} />

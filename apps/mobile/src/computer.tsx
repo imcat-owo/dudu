@@ -14,7 +14,7 @@ import { browserAddress } from "./browser-address";
 import { useComputerDraft } from "./computer-drafts";
 import { LinuxWorkspace } from "./computer-workspace";
 import { t } from "./i18n";
-import {Button, Card, useColors, ErrorNotice, Field, LinkRow, Sheet, useStyles} from "./ui";
+import { Button, Card, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
 export function ComputerEntry() {
@@ -93,7 +93,12 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
         <Image
           accessibilityLabel={t("a11y.browserPreview", { title: browser.title })}
           source={{ uri: browser.previewUrl }}
-          style={{ width: "100%", aspectRatio: 1.6, borderRadius: 11, backgroundColor: colors.card }}
+          style={{
+            width: "100%",
+            aspectRatio: 1.6,
+            borderRadius: 11,
+            backgroundColor: colors.card,
+          }}
           resizeMode="contain"
           onError={() => setFailed(true)}
         />

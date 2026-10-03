@@ -1,6 +1,6 @@
 import { Hct, hexFromArgb } from "@material/material-color-utilities";
 import { ArrowUpRight, Check, ChevronRight, type LucideIcon, X } from "lucide-react-native";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -67,11 +67,7 @@ export type UIPalette = {
 };
 
 function rgb(hex: string): [number, number, number] {
-  return [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as [
-    number,
-    number,
-    number,
-  ];
+  return [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 }
 
 /** Linear-RGB mix of two #rrggbb colors, t=0 -> a, t=1 -> b. */

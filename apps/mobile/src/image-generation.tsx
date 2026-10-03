@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
-import {useColors, useStyles} from "./ui";
+import { useColors, useStyles } from "./ui";
 
 export type ImageMessage = {
   uri: string;
@@ -121,10 +121,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
       )}
       {!!image.prompt && (
         <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text
-            numberOfLines={2}
-            style={{ fontSize: 12, color: colors.muted, lineHeight: 16 }}
-          >
+          <Text numberOfLines={2} style={{ fontSize: 12, color: colors.muted, lineHeight: 16 }}>
             {image.prompt}
           </Text>
         </View>

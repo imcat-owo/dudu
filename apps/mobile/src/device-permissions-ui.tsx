@@ -9,7 +9,7 @@ import {
   requesters,
 } from "./device-permissions";
 import { t } from "./i18n";
-import {Button, useColors, Sheet, useStyles} from "./ui";
+import { Button, Sheet, useColors, useStyles } from "./ui";
 
 const ICONS: Record<PermissionKind, typeof Mic> = {
   audio: Mic,

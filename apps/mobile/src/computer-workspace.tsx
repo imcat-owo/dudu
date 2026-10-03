@@ -21,7 +21,17 @@ import type {
 } from "../../../packages/domain/src/computer";
 import { useComputerDraft } from "./computer-drafts";
 import { t } from "./i18n";
-import {Button, Card, useColors, Empty, ErrorNotice, Field, LinkRow, useStyles, timeLabel} from "./ui";
+import {
+  Button,
+  Card,
+  Empty,
+  ErrorNotice,
+  Field,
+  LinkRow,
+  timeLabel,
+  useColors,
+  useStyles,
+} from "./ui";
 import { useWorkspace } from "./workspace";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";

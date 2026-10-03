@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import Pdf from "react-native-pdf";
-import {Button, useColors, ErrorNotice, useStyles} from "./ui";
+import { Button, ErrorNotice, useColors, useStyles } from "./ui";
 export interface PdfReaderProps {
   url: string;
   token: string;

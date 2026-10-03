@@ -42,7 +42,7 @@ import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
-import {Button, Card, CheckRow, useColors, ErrorNotice, useStyles} from "./ui";
+import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
 import {
   encodeVoiceMessage,
   parseVoiceMessage,
@@ -469,7 +469,11 @@ export function ChatScreen({
           }}
         >
           <Text
-            style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? colors.canvas : colors.muted }}
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: incognitoOn ? colors.canvas : colors.muted,
+            }}
           >
             {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
           </Text>
@@ -591,7 +595,10 @@ export function ChatScreen({
                       }}
                     >
                       {user ? (
-                        <Text selectable style={[s.text, { fontSize: 16, lineHeight: 24, color: colors.onBlue }]}>
+                        <Text
+                          selectable
+                          style={[s.text, { fontSize: 16, lineHeight: 24, color: colors.onBlue }]}
+                        >
                           {text}
                         </Text>
                       ) : (

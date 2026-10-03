@@ -2,7 +2,7 @@ import { Audio } from "expo-av";
 import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import {useColors, useStyles} from "./ui";
+import { useColors, useStyles } from "./ui";
 
 export type VoiceMessage = {
   uri: string;
@@ -77,13 +77,7 @@ async function createSound(uri: string): Promise<SoundLike> {
  * WeChat/QQ-style voice message bubble. Plays an audio file, shows a
  * play/pause button, duration, and a waveform progress bar.
  */
-export function VoiceBubble({
-  voice,
-  user,
-}: {
-  voice: VoiceMessage;
-  user: boolean;
-}) {
+export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolean }) {
   const colors = useColors();
   const s = useStyles();
   const [playing, setPlaying] = useState(false);
@@ -170,9 +164,17 @@ export function VoiceBubble({
           }}
         >
           {playing ? (
-            <Pause size={17} color={user ? colors.text : colors.onBlue} fill={user ? colors.text : colors.onBlue} />
+            <Pause
+              size={17}
+              color={user ? colors.text : colors.onBlue}
+              fill={user ? colors.text : colors.onBlue}
+            />
           ) : (
-            <Play size={17} color={user ? colors.text : colors.onBlue} fill={user ? colors.text : colors.onBlue} />
+            <Play
+              size={17}
+              color={user ? colors.text : colors.onBlue}
+              fill={user ? colors.text : colors.onBlue}
+            />
           )}
         </Pressable>
         <View style={{ flex: 1, gap: 4 }}>
@@ -194,9 +196,7 @@ export function VoiceBubble({
           </Text>
         </View>
       </View>
-      {!!error && (
-        <Text style={[s.small, { color: colors.danger, marginTop: 6 }]}>{error}</Text>
-      )}
+      {!!error && <Text style={[s.small, { color: colors.danger, marginTop: 6 }]}>{error}</Text>}
     </View>
   );
 }
@@ -243,9 +243,7 @@ export function VoiceRecorderButton({
         playsInSilentModeIOS: true,
       });
       const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
+      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await rec.startAsync();
       recordingRef.current = rec;
       startTimeRef.current = Date.now();
@@ -273,10 +271,7 @@ export function VoiceRecorderButton({
       await rec.stopAndUnloadAsync();
       const uri = rec.getURI();
       // Use elapsed wall-clock time; getStatusAsync is unreliable after unload.
-      const duration = Math.max(
-        0,
-        Math.round((Date.now() - startTimeRef.current) / 1000),
-      );
+      const duration = Math.max(0, Math.round((Date.now() - startTimeRef.current) / 1000));
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -316,12 +311,7 @@ export function VoiceRecorderButton({
   return (
     <View style={{ alignItems: "center" }}>
       {!!hint && !recording && (
-        <Text
-          style={[
-            s.small,
-            { color: colors.danger, marginBottom: 4, textAlign: "center" },
-          ]}
-        >
+        <Text style={[s.small, { color: colors.danger, marginBottom: 4, textAlign: "center" }]}>
           {hint}
         </Text>
       )}
@@ -351,9 +341,7 @@ export function VoiceRecorderButton({
               {formatTimer(seconds)}
             </Text>
           </View>
-          <Text style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>
-            松开发送
-          </Text>
+          <Text style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>松开发送</Text>
         </View>
       )}
       <Pressable
@@ -366,21 +354,13 @@ export function VoiceRecorderButton({
           width: 44,
           height: 44,
           borderRadius: 24,
-          backgroundColor: recording
-            ? "#FF3B30"
-            : pressed
-              ? colors.sky
-              : "transparent",
+          backgroundColor: recording ? "#FF3B30" : pressed ? colors.sky : "transparent",
           alignItems: "center",
           justifyContent: "center",
           opacity: disabled ? 0.4 : 1,
         })}
       >
-        <Mic
-          size={22}
-          color={recording ? "#FFFFFF" : colors.text}
-          strokeWidth={1.8}
-        />
+        <Mic size={22} color={recording ? "#FFFFFF" : colors.text} strokeWidth={1.8} />
       </Pressable>
     </View>
   );
