@@ -41,6 +41,7 @@ import {
   GroupError,
   streamChat,
 } from "./direct-transport";
+import { classifyError, type ErrorClass } from "./error-classifier";
 import {
   createLocalTools,
   createToolRegistry,
@@ -49,7 +50,8 @@ import {
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
-import type { ApiGroup } from "./types";
+import { modelProfileStore } from "./model-profiles";
+import type { ApiGroup, FeatureSwitch } from "./types";
 
 export interface LocalToolCall {
   id: string;
@@ -578,11 +580,28 @@ export function createLocalAgent(opts: {
       // Skills index: one line per enabled skill (token-minimal, same pattern
       // as the manual index). Empty string when she has no enabled skills.
       const skillSection = await (opts.skillStore ?? skillStore).buildSkillIndex();
+      // Intelligent API adaptation: resolve effective tools/thinking state.
+      // Precedence: her manual override (group) → learned profile → auto
+      // (optimistic ON — her rule: everything ON unless proven impossible).
+      const profile = await modelProfileStore
+        .getProfile(activeGroup.baseUrl, activeGroup.model)
+        .catch(() => null);
+      const resolveSwitch = (
+        override: FeatureSwitch | undefined,
+        learned: FeatureSwitch,
+      ): boolean => {
+        const v = override ?? learned;
+        return v !== "off"; // "auto" and "on" both mean ON (optimistic)
+      };
+      let toolsOn = resolveSwitch(activeGroup.toolsMode, profile?.tools ?? "auto");
+      let thinkingOn = resolveSwitch(activeGroup.thinkingMode, profile?.thinking ?? "auto");
       const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [
         memorySection,
         skillSection,
       ]);
-      const wireTools = registry.definitions();
+      const allWireTools = registry.definitions();
+      // wireTools is mutable: auto-fallback may clear it on retry.
+      let wireTools = toolsOn ? allWireTools : [];
 
       // Build the wire messages, resolving image attachments via vision.
       // History tool calls/results ride along so multi-turn tool use works.
@@ -624,38 +643,105 @@ export function createLocalAgent(opts: {
         messages = [...messages, { id: replyId, role: "assistant", content: "" }];
         emit();
 
-        try {
-          await streamChat(activeGroup, wire, {
-            signal: aborter?.signal,
-            tools: wireTools,
-            onToken: (delta) => {
-              replyText += delta;
-              messages = messages.map((m) => (m.id === replyId ? { ...m, content: replyText } : m));
-              emit();
-            },
-            onThinking: (delta) => {
-              thinkingText += delta;
-              messages = messages.map((m) =>
-                m.id === replyId ? { ...m, thinking: thinkingText } : m,
-              );
-              emit();
-            },
-            onToolCalls: (calls) => {
-              toolCalls = calls;
-            },
-            onDone: () => {},
-            // streamChat rejects on error — onError here is informational only.
-            onError: () => {},
-          });
-        } catch (e) {
-          // Mark the failure on the reply bubble so the user sees WHICH
-          // group failed, then rethrow for the screen's error path.
-          const label = e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
-          messages = messages.map((m) =>
-            m.id === replyId && !replyText ? { ...m, content: label } : m,
-          );
+        // Adaptation notices shown above the reply (never silent downgrades).
+        let noticeText = "";
+        const renderReply = () => {
+          const content = noticeText ? `${noticeText}\n\n${replyText}` : replyText;
+          messages = messages.map((m) => (m.id === replyId ? { ...m, content } : m));
           emit();
-          throw e;
+        };
+
+        /**
+         * Try to adapt to a classified failure. Returns true when we
+         * downgraded something and the caller should retry. Her manual
+         * "on" overrides are never auto-disabled.
+         */
+        async function tryAdapt(cls: ErrorClass): Promise<boolean> {
+          if (cls === "tools_unsupported" && toolsOn && activeGroup.toolsMode !== "on") {
+            toolsOn = false;
+            wireTools = [];
+            await modelProfileStore
+              .learned(
+                activeGroup.baseUrl,
+                activeGroup.model,
+                { tools: "off" },
+                "tools proven unsupported",
+              )
+              .catch(() => null);
+            noticeText = t("adapt.toolsOff") as string;
+            renderReply();
+            return true;
+          }
+          if (cls === "thinking_unsupported" && thinkingOn && activeGroup.thinkingMode !== "on") {
+            thinkingOn = false;
+            await modelProfileStore
+              .learned(
+                activeGroup.baseUrl,
+                activeGroup.model,
+                { thinking: "off" },
+                "thinking proven unsupported",
+              )
+              .catch(() => null);
+            noticeText = t("adapt.thinkingOff") as string;
+            renderReply();
+            return true;
+          }
+          return false;
+        }
+
+        // Retry loop: at most one adaptation per failure class, then give up
+        // honestly. context_too_long compacts the wire once.
+        let compacted = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await streamChat(activeGroup, wire, {
+              signal: aborter?.signal,
+              tools: wireTools,
+              onToken: (delta) => {
+                replyText += delta;
+                renderReply();
+              },
+              onThinking: thinkingOn
+                ? (delta) => {
+                    thinkingText += delta;
+                    messages = messages.map((m) =>
+                      m.id === replyId ? { ...m, thinking: thinkingText } : m,
+                    );
+                    emit();
+                  }
+                : undefined,
+              onToolCalls: (calls) => {
+                toolCalls = calls;
+              },
+              onDone: () => {},
+              // streamChat rejects on error — onError here is informational only.
+              onError: () => {},
+            });
+            break; // success
+          } catch (e) {
+            const cls = classifyError(e);
+            // Context too long: compact once (keep system + last 6), then retry.
+            if (cls === "context_too_long" && !compacted) {
+              compacted = true;
+              const sys = wire.filter((m) => m.role === "system");
+              const tail = wire.filter((m) => m.role !== "system").slice(-6);
+              wire.length = 0;
+              wire.push(...sys, ...tail);
+              noticeText = t("adapt.contextCompacted") as string;
+              renderReply();
+              continue;
+            }
+            if (await tryAdapt(cls)) continue;
+            // Mark the failure on the reply bubble so the user sees WHICH
+            // group failed, then rethrow for the screen's error path.
+            const label =
+              e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
+            messages = messages.map((m) =>
+              m.id === replyId && !replyText ? { ...m, content: label } : m,
+            );
+            emit();
+            throw e;
+          }
         }
 
         // Attach tool calls to the message so the drawer can show them.

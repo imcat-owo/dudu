@@ -14,6 +14,9 @@
 
 export type ApiVendor = "openai" | "anthropic" | "gemini" | "custom";
 
+/** Feature switch: "auto" = optimistic ON, downgrade only when proven. */
+export type FeatureSwitch = "on" | "off" | "auto";
+
 export interface ApiGroup {
   /** Stable id, generated on creation. */
   id: string;
@@ -38,6 +41,13 @@ export interface ApiGroup {
    * is treated as text-only and image attaches fail loudly with guidance.
    */
   vision?: VisionConfig;
+  /**
+   * Feature switches. "auto" (default) = optimistic: tools+thinking ON,
+   * auto-downgrade only when proven unsupported (see model-profiles.ts).
+   * "on"/"off" = her manual override, always respected.
+   */
+  toolsMode?: FeatureSwitch;
+  thinkingMode?: FeatureSwitch;
 }
 
 /**

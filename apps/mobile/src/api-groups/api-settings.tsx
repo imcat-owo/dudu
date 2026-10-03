@@ -12,15 +12,16 @@
  */
 
 import { Check, Plus, Trash2, X } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, Card, Chip, Field, useColors, useStyles } from "../ui";
+import { VoiceSettingsSection } from "../voice/voice-settings";
 import { testConnection } from "./direct-transport";
 import { type ChatMode, useChatMode, useSetChatMode } from "./mode";
+import { modelProfileStore } from "./model-profiles";
 import { groupStore, useApiGroups } from "./store";
-import { VoiceSettingsSection } from "../voice/voice-settings";
 import {
   type ApiGroup,
   type ApiVendor,
@@ -255,6 +256,9 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
         autoCorrect={false}
       />
 
+      <TText style={[s.small, { fontWeight: "600" }]}>{t("apigroup.capabilities")}</TText>
+      <CapabilitySection draft={draft} set={set} />
+
       <TText style={[s.small, { fontWeight: "600" }]}>{t("apigroup.headers")}</TText>
       {headerEntries.map(([k, v]) => (
         <View key={k} style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
@@ -339,6 +343,162 @@ function HeaderAdder({ onAdd, taken }: { onAdd: (k: string) => void; taken: Set<
       </Button>
     </View>
   );
+}
+
+/** Three-state segmented control: auto / on / off. */
+function TriSwitch({
+  label,
+  value,
+  onChange,
+  labels,
+}: {
+  label: string;
+  value: "auto" | "on" | "off";
+  onChange: (v: "auto" | "on" | "off") => void;
+  labels: { auto: string; on: string; off: string };
+}) {
+  const colors = useColors();
+  const order: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
+  return (
+    <View style={{ gap: 6 }}>
+      <TText style={{ fontWeight: "600" }}>{label}</TText>
+      <View style={{ flexDirection: "row", gap: 6 }}>
+        {order.map((v) => {
+          const active = value === v;
+          return (
+            <Pressable
+              key={v}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(v)}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: active ? colors.blueDark : colors.line,
+                backgroundColor: active ? colors.sky : colors.card,
+                alignItems: "center",
+              }}
+            >
+              <TText
+                style={{
+                  color: active ? colors.blueDark : colors.text,
+                  fontWeight: active ? "600" : "400",
+                  fontSize: 13,
+                }}
+              >
+                {labels[v]}
+              </TText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/** Capability detection + manual overrides + learned-profile reset. */
+function CapabilitySection({
+  draft,
+  set,
+}: {
+  draft: ApiGroup;
+  set: <K extends keyof ApiGroup>(key: K, value: ApiGroup[K]) => void;
+}) {
+  const colors = useColors();
+  const s = useStyles();
+  const [probing, setProbing] = useState(false);
+  const [caps, setCaps] = useState<{ tools: string; thinking: string } | null>(null);
+  const [profileNote, setProfileNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void modelProfileStore
+      .getProfile(draft.baseUrl, draft.model)
+      .then((p) => {
+        if (live) setProfileNote(p.note || null);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [draft.baseUrl, draft.model]);
+
+  async function onProbe() {
+    if (!draft.baseUrl.trim() || !draft.model.trim()) return;
+    setProbing(true);
+    setCaps(null);
+    try {
+      const { probeCapabilities } = await import("./capability-probe.js");
+      const c = await probeCapabilities(
+        { ...draft, baseUrl: draft.baseUrl.trim().replace(/\/+$/, "") },
+        fetch as never,
+      );
+      setCaps({
+        tools: t(`apigroup.cap.tools${capKey(c.tools)}` as Parameters<typeof t>[0]),
+        thinking: t(`apigroup.cap.thinking${capKey(c.thinking)}` as Parameters<typeof t>[0]),
+      });
+    } catch {
+      setCaps(null);
+    } finally {
+      setProbing(false);
+    }
+  }
+
+  async function onResetProfile() {
+    await modelProfileStore.resetProfile(draft.baseUrl, draft.model).catch(() => {});
+    setProfileNote(null);
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      <TriSwitch
+        label={t("apigroup.toolsMode")}
+        value={draft.toolsMode ?? "auto"}
+        onChange={(v) => set("toolsMode", v === "auto" ? undefined : v)}
+        labels={{
+          auto: t("apigroup.toolsMode.auto"),
+          on: t("apigroup.toolsMode.on"),
+          off: t("apigroup.toolsMode.off"),
+        }}
+      />
+      <TriSwitch
+        label={t("apigroup.thinkingMode")}
+        value={draft.thinkingMode ?? "auto"}
+        onChange={(v) => set("thinkingMode", v === "auto" ? undefined : v)}
+        labels={{
+          auto: t("apigroup.thinkingMode.auto"),
+          on: t("apigroup.thinkingMode.on"),
+          off: t("apigroup.thinkingMode.off"),
+        }}
+      />
+      {caps ? (
+        <TText style={[s.small, { color: colors.muted }]}>
+          {caps.tools} · {caps.thinking}
+        </TText>
+      ) : null}
+      {profileNote ? (
+        <TText style={[s.small, { color: colors.muted }]}>
+          {t("apigroup.profileNote")}：{profileNote}
+        </TText>
+      ) : null}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button small busy={probing} onPress={() => void onProbe()}>
+          {t(probing ? "apigroup.cap.probing" : "apigroup.cap.probe")}
+        </Button>
+        {profileNote ? (
+          <Button small onPress={() => void onResetProfile()}>
+            {t("apigroup.profileReset")}
+          </Button>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function capKey(c: string): string {
+  return c === "supported" ? "Yes" : c === "unsupported" ? "No" : "Unknown";
 }
 
 export function ApiSettingsScreen() {
