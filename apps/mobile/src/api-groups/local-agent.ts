@@ -63,9 +63,21 @@ function historyKey(threadId: string): string {
   return `openmuse.local-chat.${threadId}.v1`;
 }
 
-export async function loadLocalHistory(threadId: string): Promise<LocalChatMessage[]> {
+/**
+ * Minimal storage surface for chat history. AsyncStorage in production,
+ * injectable fakes in tests (AsyncStorage has no node implementation).
+ */
+export interface HistoryStore {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+}
+
+export async function loadLocalHistory(
+  threadId: string,
+  store: HistoryStore = AsyncStorage,
+): Promise<LocalChatMessage[]> {
   try {
-    const raw = await AsyncStorage.getItem(historyKey(threadId));
+    const raw = await store.getItem(historyKey(threadId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -81,11 +93,15 @@ export async function loadLocalHistory(threadId: string): Promise<LocalChatMessa
   }
 }
 
-async function saveLocalHistory(threadId: string, messages: LocalChatMessage[]): Promise<void> {
+async function saveLocalHistory(
+  threadId: string,
+  messages: LocalChatMessage[],
+  store: HistoryStore,
+): Promise<void> {
   try {
     // Cap history so one thread can't grow storage unbounded.
     const capped = messages.slice(-200);
-    await AsyncStorage.setItem(historyKey(threadId), JSON.stringify(capped));
+    await store.setItem(historyKey(threadId), JSON.stringify(capped));
   } catch {
     // History persistence is best-effort; the session keeps working.
   }
@@ -177,7 +193,25 @@ export function createLocalAgent(opts: {
   threadId: string;
   getGroup: () => ApiGroup | null;
   systemPrompt?: string;
+  /**
+   * When this returns true, the agent NEVER writes to history storage —
+   * not in setMessages, not after a turn. Fail-closed: incognito sessions
+   * leave zero trace on disk. Read at save time so toggles take effect
+   * without recreating the agent.
+   */
+  isIncognito?: () => boolean;
+  /** Storage backend for history. Defaults to AsyncStorage; injectable for tests. */
+  historyStore?: HistoryStore;
 }): ChatAgent {
+  const store: HistoryStore = opts.historyStore ?? AsyncStorage;
+  // Incognito check, evaluated fresh at every save point.
+  const incognito = () => opts.isIncognito?.() === true;
+  /** Persist unless incognito is on. Incognito never touches storage. */
+  function persist(msgs: LocalChatMessage[]): void {
+    if (incognito()) return;
+    void saveLocalHistory(opts.threadId, msgs, store);
+  }
+
   let messages: LocalChatMessage[] = [];
   let running = false;
   let aborter: AbortController | null = null;
@@ -213,7 +247,7 @@ export function createLocalAgent(opts: {
     setMessages(next: LocalChatMessage[]) {
       messages = [...next];
       emit();
-      void saveLocalHistory(opts.threadId, messages);
+      persist(messages);
     },
     addMessage(m) {
       messages = [
@@ -286,7 +320,7 @@ export function createLocalAgent(opts: {
         running = false;
         aborter = null;
         emit();
-        void saveLocalHistory(opts.threadId, messages);
+        persist(messages);
       }
     },
     async stop(): Promise<void> {
