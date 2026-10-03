@@ -21,13 +21,15 @@ import type {
 } from "../../../packages/domain/src/computer";
 import { useComputerDraft } from "./computer-drafts";
 import { t } from "./i18n";
-import { Button, Card, colors, Empty, ErrorNotice, Field, LinkRow, s, timeLabel } from "./ui";
+import {Button, Card, useColors, Empty, ErrorNotice, Field, LinkRow, useStyles, timeLabel} from "./ui";
 import { useWorkspace } from "./workspace";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
+  const colors = useColors();
+  const s = useStyles();
   const { api } = useWorkspace();
   const [snapshot, setSnapshot] = useState<ComputerSnapshot>();
   const [error, setError] = useState("");
@@ -267,6 +269,8 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
 }
 
 function CommandReceipt({ run }: { run: ComputerCommand }) {
+  const colors = useColors();
+  const s = useStyles();
   const [expanded, setExpanded] = useState(true);
   return (
     <Card style={{ gap: 10 }}>
@@ -328,6 +332,8 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
 }
 
 function ComputerFiles({ running, active }: { running: boolean; active: boolean }) {
+  const colors = useColors();
+  const s = useStyles();
   const { api, workspace, open, refresh } = useWorkspace();
   const [path, setPath] = useComputerDraft("path");
   const [directory, setDirectory] = useState<ComputerDirectory>();
