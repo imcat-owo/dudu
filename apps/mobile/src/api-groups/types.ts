@@ -33,6 +33,25 @@ export interface ApiGroup {
   headers: Record<string, string>;
   /** Unix ms of creation — used for stable list ordering. */
   createdAt: number;
+  /**
+   * Vision (image understanding) config. Optional — when absent, the group
+   * is treated as text-only and image attaches fail loudly with guidance.
+   */
+  vision?: VisionConfig;
+}
+
+/**
+ * How this group sees images.
+ * - native: the chat model itself accepts images (OpenAI `image_url`
+ *   content blocks) — zero extra calls.
+ * - otherwise: images go through the describe pipeline (4-part prompt) to
+ *   `model` (defaults to the group's chat model), and the description is
+ *   fed to the chat model as text.
+ */
+export interface VisionConfig {
+  native: boolean;
+  /** Vision model override. Defaults to the group's chat `model`. */
+  model?: string;
 }
 
 export interface ApiVendorPreset {
