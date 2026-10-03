@@ -1814,7 +1814,7 @@ export function AppsScreen() {
                     backgroundColor: avatar === item ? colors.sky : colors.canvas,
                   }}
                 >
-                  <Mascot size={62} variant={item} />
+                  <Mascot size={62} index={{ sky: 0, sand: 1, lilac: 2 }[item] ?? 0} />
                 </Pressable>
               ))}
             </View>

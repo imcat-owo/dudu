@@ -4,7 +4,6 @@ import { type ReactNode, useMemo } from "react";
 import {
   ActivityIndicator,
   Image,
-  type ImageSourcePropType,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +18,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFontSizeSetting } from "./app-settings";
 import { t } from "./i18n";
+import { DEFAULT_MASCOT_INDEX } from "./mascot";
+import { mascotSource } from "./mascot-assets";
 import { clampFg, type ResolvedMode } from "./theme/derive";
 import { useTheme } from "./theme/ThemeContext";
 import type { SurfaceId, SurfaceTokens } from "./theme/types";
@@ -552,40 +553,22 @@ export function LinkRow({
     </Pressable>
   );
 }
-/** OpenMuse's original capybara, shared by every assistant surface. */
+/** The owner's devil sticker mascot — the default assistant face, shared by every assistant surface. */
 export function Mascot({
   size = 42,
-  variant = "sky",
+  index = DEFAULT_MASCOT_INDEX,
 }: {
   size?: number;
-  variant?: "sky" | "sand" | "lilac";
+  index?: number;
 }) {
-  const colors = useColors();
-  const palette = {
-    sky: colors.sky,
-    sand: colors.orange,
-    lilac: colors.lavender,
-  }[variant];
   return (
-    <View accessibilityLabel="OpenMuse capybara" style={{ width: size, height: size }}>
-      <View
-        style={{
-          position: "absolute",
-          top: size * 0.15,
-          left: size * 0.12,
-          width: size * 0.76,
-          height: size * 0.76,
-          borderRadius: size,
-          backgroundColor: palette,
-        }}
-      />
-      <Image
-        source={require("../assets/capybara.png") as ImageSourcePropType}
-        resizeMode="contain"
-        style={{ width: size, height: size }}
-        accessible={false}
-      />
-    </View>
+    <Image
+      accessibilityRole="image"
+      accessibilityLabel={t("a11y.aiAvatar")}
+      source={mascotSource(index)}
+      resizeMode="cover"
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+    />
   );
 }
 export function dateLabel(value: string, options?: Intl.DateTimeFormatOptions) {

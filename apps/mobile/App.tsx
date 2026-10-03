@@ -415,7 +415,14 @@ function WorkspaceShell({
                   opacity: pressed ? 0.65 : 1,
                 })}
               >
-                <Mascot size={desktop ? 58 : 49} variant={data?.identity.avatar} />
+                <Mascot
+                  size={desktop ? 58 : 49}
+                  index={
+                    { sky: 0, sand: 1, lilac: 2 }[
+                      data?.identity.avatar as "sky" | "sand" | "lilac"
+                    ] ?? 0
+                  }
+                />
                 <Text
                   style={{
                     fontSize: 16,
