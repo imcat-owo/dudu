@@ -936,6 +936,15 @@ export const enStrings: Record<StringKey, string> = {
   "thinking.thinking": "Thinking…",
   "thinking.title": "Thinking",
   "thinking.open": "View thinking process",
+  "thinking.actionsTitle": "Actions",
+  "thinking.nActions": "{n} actions",
+  "thinking.openActions": "View actions",
+  "thinking.input": "Input",
+  "thinking.output": "Output",
+  "thinking.statusRunning": "Running",
+  "thinking.statusDone": "Completed",
+  "thinking.statusError": "Failed",
+  "thinking.backToList": "Back to actions",
 
   // ---- voice (TTS / STT) ----
   "voice.title": "Voice",

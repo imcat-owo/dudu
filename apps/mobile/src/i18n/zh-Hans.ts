@@ -910,6 +910,15 @@ const zhHans = {
   "thinking.thinking": "思考中…",
   "thinking.title": "思考过程",
   "thinking.open": "查看思考过程",
+  "thinking.actionsTitle": "行动",
+  "thinking.nActions": "{n} 个行动",
+  "thinking.openActions": "查看行动列表",
+  "thinking.input": "输入",
+  "thinking.output": "输出",
+  "thinking.statusRunning": "运行中",
+  "thinking.statusDone": "已完成",
+  "thinking.statusError": "出错",
+  "thinking.backToList": "返回行动列表",
 
   // ---- voice (TTS / STT) ----
   "voice.title": "语音",
