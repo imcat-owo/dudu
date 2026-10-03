@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
+import { ActivityIndicator, Image, View } from "react-native";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
+import { TText } from "./font";
 
 export type ImageMessage = {
   uri: string;
@@ -89,9 +90,9 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
     >
       {failed ? (
         <View style={{ padding: 20, alignItems: "center" }}>
-          <Text style={[s.muted, { textAlign: "center" }]}>
+          <TText style={[s.muted, { textAlign: "center" }]}>
             图片加载失败。{"\n"}用 /img 再试一次。
-          </Text>
+          </TText>
         </View>
       ) : (
         <View>
@@ -109,7 +110,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
               }}
             >
               <ActivityIndicator size="large" color={colors.blue} />
-              <Text style={[s.muted, { marginTop: 8 }]}>画画中…</Text>
+              <TText style={[s.muted, { marginTop: 8 }]}>画画中…</TText>
             </View>
           )}
           <Image
@@ -126,9 +127,9 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
       )}
       {!!image.prompt && (
         <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text numberOfLines={2} style={{ fontSize: 12, color: colors.muted, lineHeight: 16 }}>
+          <TText numberOfLines={2} style={{ fontSize: 12, color: colors.muted, lineHeight: 16 }}>
             {image.prompt}
-          </Text>
+          </TText>
         </View>
       )}
     </View>

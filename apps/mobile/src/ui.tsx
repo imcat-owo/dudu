@@ -8,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   type TextInputProps,
   useWindowDimensions,
@@ -23,6 +22,7 @@ import { mascotSource } from "./mascot-assets";
 import { clampFg, type ResolvedMode } from "./theme/derive";
 import { useTheme } from "./theme/ThemeContext";
 import type { SurfaceId, SurfaceTokens } from "./theme/types";
+import { TText } from "./font";
 
 /**
  * Legacy palette shape, now derived live from theme tokens.
@@ -291,7 +291,7 @@ export function Button({
       ) : Icon ? (
         <Icon size={15} color={fg} />
       ) : null}
-      <Text style={[s.buttonText, { color: fg }]}>{children}</Text>
+      <TText style={[s.buttonText, { color: fg }]}>{children}</TText>
     </Pressable>
   );
 }
@@ -333,7 +333,7 @@ export function Chip({ children, tint }: { children: ReactNode; tint?: string })
   const s = useStyles();
   return (
     <View style={[s.chip, tint ? { backgroundColor: tint } : null]}>
-      <Text style={s.chipText}>{children}</Text>
+      <TText style={s.chipText}>{children}</TText>
     </View>
   );
 }
@@ -342,7 +342,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
   const s = useStyles();
   return (
     <View style={s.field}>
-      <Text style={[s.small, { fontWeight: "600", color: colors.text }]}>{label}</Text>
+      <TText style={[s.small, { fontWeight: "600", color: colors.text }]}>{label}</TText>
       <TextInput
         placeholderTextColor={colors.muted}
         accessibilityLabel={label}
@@ -374,8 +374,8 @@ export function Empty({
       <View style={[s.iconBox, { width: 55, height: 55, borderRadius: 18 }]}>
         <Icon size={24} color={colors.blueDark} />
       </View>
-      <Text style={s.heading}>{title}</Text>
-      <Text style={[s.muted, { textAlign: "center", maxWidth: 360 }]}>{detail}</Text>
+      <TText style={s.heading}>{title}</TText>
+      <TText style={[s.muted, { textAlign: "center", maxWidth: 360 }]}>{detail}</TText>
       {children}
     </View>
   );
@@ -385,7 +385,7 @@ export function ErrorNotice({ error }: { error?: string }) {
   const s = useStyles();
   return error ? (
     <View accessibilityRole="alert" style={s.error}>
-      <Text style={[s.text, { color: colors.danger }]}>{error}</Text>
+      <TText style={[s.text, { color: colors.danger }]}>{error}</TText>
     </View>
   ) : null;
 }
@@ -442,8 +442,8 @@ export function Sheet({
             ]}
           >
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={s.title}>{title}</Text>
-              {!!subtitle && <Text style={s.muted}>{subtitle}</Text>}
+              <TText style={s.title}>{title}</TText>
+              {!!subtitle && <TText style={s.muted}>{subtitle}</TText>}
             </View>
             <IconButton icon={X} label={t("ui.closeDetails")} onPress={onClose} />
           </View>
@@ -490,7 +490,7 @@ export function CheckRow({
       >
         {checked && <Check size={13} color={colors.checkOn} />}
       </View>
-      <Text style={[s.text, { flex: 1 }]}>{label}</Text>
+      <TText style={[s.text, { flex: 1 }]}>{label}</TText>
     </Pressable>
   );
 }
@@ -507,10 +507,10 @@ export function SectionHeading({
   const s = useStyles();
   return (
     <View style={[s.between, { marginBottom: 19 }]}>
-      <Text style={s.heading}>{title}</Text>
+      <TText style={s.heading}>{title}</TText>
       {action && onPress && (
         <Pressable accessibilityRole="button" onPress={onPress} style={[s.row, { gap: 5 }]}>
-          <Text style={[s.small, { color: colors.text }]}>{action}</Text>
+          <TText style={[s.small, { color: colors.text }]}>{action}</TText>
           <ArrowUpRight size={13} color={colors.muted} />
         </Pressable>
       )}
@@ -546,8 +546,8 @@ export function LinkRow({
         <Icon size={19} color={colors.text} />
       </View>
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[s.text, { fontWeight: "500" }]}>{title}</Text>
-        {!!detail && <Text style={s.small}>{detail}</Text>}
+        <TText style={[s.text, { fontWeight: "500" }]}>{title}</TText>
+        {!!detail && <TText style={s.small}>{detail}</TText>}
       </View>
       <ChevronRight size={15} color={colors.muted} />
     </Pressable>

@@ -1,6 +1,7 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { t } from "./i18n";
 import { useColors, useStyles } from "./ui";
+import { TText } from "./font";
 
 interface DateFieldsProps {
   label: string;
@@ -27,7 +28,7 @@ export default function DateFields({ label, date, time, allDay, onChange }: Date
   return (
     <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
       <View style={{ flex: 1.2, gap: 7 }}>
-        <Text style={[s.small, { fontWeight: "600", color: colors.text }]}>{label} date</Text>
+        <TText style={[s.small, { fontWeight: "600", color: colors.text }]}>{label} date</TText>
         <input
           aria-label={t("datetime.dateLabel", { label })}
           type="date"
@@ -38,7 +39,7 @@ export default function DateFields({ label, date, time, allDay, onChange }: Date
       </View>
       {!allDay && (
         <View style={{ flex: 1, gap: 7 }}>
-          <Text style={[s.small, { fontWeight: "600", color: colors.text }]}>{label} time</Text>
+          <TText style={[s.small, { fontWeight: "600", color: colors.text }]}>{label} time</TText>
           <input
             aria-label={t("datetime.timeLabel", { label })}
             type="time"

@@ -45,6 +45,7 @@ import { IncognitoProvider } from "./src/incognito";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { FontProvider } from "./src/font";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
 import {
   Button,
@@ -275,14 +276,16 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
           <ThreadsProvider>
             <IncognitoProvider>
               <ThemeProvider apiToken={token}>
-                <WorkspaceShell
-                  detail={detail}
-                  toast={toast}
-                  clearToast={() => setToast("")}
-                  error={error}
-                  prompt={prompt}
-                  onLogout={onLogout}
-                />
+                <FontProvider>
+                  <WorkspaceShell
+                    detail={detail}
+                    toast={toast}
+                    clearToast={() => setToast("")}
+                    error={error}
+                    prompt={prompt}
+                    onLogout={onLogout}
+                  />
+                </FontProvider>
               </ThemeProvider>
             </IncognitoProvider>
           </ThreadsProvider>

@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { t } from "./i18n";
 import { Button, useStyles } from "./ui";
+import { TText } from "./font";
 
 interface PdfReaderProps {
   url: string;
@@ -20,9 +21,9 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
           <Button small icon={ChevronLeft} disabled={page <= 1} onPress={() => setPage(page - 1)}>
             Previous
           </Button>
-          <Text style={s.small}>
+          <TText style={s.small}>
             {page} / {pageCount}
-          </Text>
+          </TText>
           <Button
             small
             icon={ChevronRight}
@@ -36,7 +37,7 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
           <Button small icon={Minus} disabled={zoom <= 50} onPress={() => setZoom(zoom - 25)}>
             Zoom out
           </Button>
-          <Text style={s.small}>{zoom}%</Text>
+          <TText style={s.small}>{zoom}%</TText>
           <Button small icon={Plus} disabled={zoom >= 200} onPress={() => setZoom(zoom + 25)}>
             Zoom in
           </Button>
@@ -48,7 +49,7 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
         src={`${url}#page=${page}&zoom=${zoom}`}
         style={{ height: 570, width: "100%", border: 0, borderRadius: 12, background: "#e7e9e3" }}
       />
-      <Text style={s.small}>用阅读器工具栏下载或打印。</Text>
+      <TText style={s.small}>用阅读器工具栏下载或打印。</TText>
     </View>
   );
 }

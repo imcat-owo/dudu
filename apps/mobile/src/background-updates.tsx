@@ -1,10 +1,11 @@
 import { ArrowRight, Bell, X } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useAgentWorkspace } from "./agent-workspace";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, resultSummary, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 export function BackgroundUpdates() {
   const colors = useColors();
@@ -33,7 +34,7 @@ export function BackgroundUpdates() {
       <View style={[s.between, { gap: 12 }]}>
         <View style={[s.row, { gap: 7 }]}>
           <Bell size={14} color={colors.blueDark} />
-          <Text style={s.small}>给你的更新</Text>
+          <TText style={s.small}>给你的更新</TText>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -46,8 +47,8 @@ export function BackgroundUpdates() {
           <X size={16} color={colors.muted} />
         </Pressable>
       </View>
-      <Text style={s.heading}>{update.title}</Text>
-      <Text style={s.text}>{resultSummary(update.body)}</Text>
+      <TText style={s.heading}>{update.title}</TText>
+      <TText style={s.text}>{resultSummary(update.body)}</TText>
       <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
         <Button
           small

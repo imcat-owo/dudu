@@ -10,10 +10,11 @@ import {
   Settings2,
 } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { t } from "./i18n";
 import { Button, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 function newThreadId() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -171,7 +172,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               {t("threads.newSideChat")}
             </Button>
             <View style={[s.between, { marginTop: 12 }]}>
-              <Text style={s.heading}>侧边聊天</Text>
+              <TText style={s.heading}>侧边聊天</TText>
               <Button small onPress={() => setArchived(!archived)}>
                 {archived ? t("threads.showActive") : t("threads.archived")}
               </Button>
@@ -226,9 +227,9 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
                     style={[s.row, { gap: 10 }]}
                   >
                     <MessageCircle size={19} color={colors.text} />
-                    <Text style={[s.text, { flex: 1 }]}>
+                    <TText style={[s.text, { flex: 1 }]}>
                       {thread.name || t("threads.untitled")}
-                    </Text>
+                    </TText>
                   </Pressable>
                   {editing === thread.id && (
                     <Field
@@ -274,9 +275,9 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               !threads.threads.some(
                 (thread) => thread.id !== mainId && thread.archived === archived,
               ) && (
-                <Text style={s.muted}>
+                <TText style={s.muted}>
                   {archived ? t("threads.noArchived") : t("threads.emptyHint")}
-                </Text>
+                </TText>
               )}
             <ErrorNotice error={threads.fetchMoreError?.message} />
             {threads.hasMoreThreads && (
@@ -284,7 +285,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
                 {t("threads.loadMore")}
               </Button>
             )}
-            <Text style={s.small}>{t("threads.sideChatNote")}</Text>
+            <TText style={s.small}>{t("threads.sideChatNote")}</TText>
           </>
         ) : (
           <>
@@ -297,7 +298,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
                 onClose();
               }}
             />
-            <Text style={s.muted}>{t("threads.appsNote")}</Text>
+            <TText style={s.muted}>{t("threads.appsNote")}</TText>
           </>
         )}
         <View style={s.divider} />

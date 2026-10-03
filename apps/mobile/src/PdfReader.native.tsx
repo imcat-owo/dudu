@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import Pdf from "react-native-pdf";
 import { Button, ErrorNotice, useColors, useStyles } from "./ui";
+import { TText } from "./font";
 export interface PdfReaderProps {
   url: string;
   token: string;
@@ -28,9 +29,9 @@ export default function PdfReader({ url, token, pageCount }: PdfReaderProps) {
           >
             Previous
           </Button>
-          <Text style={s.small}>
+          <TText style={s.small}>
             {page} / {pages}
-          </Text>
+          </TText>
           <Button
             small
             icon={ChevronRight}

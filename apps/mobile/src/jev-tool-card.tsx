@@ -1,6 +1,6 @@
 import { Check, ExternalLink } from "lucide-react-native";
 import { createContext, useContext, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, View } from "react-native";
 import type { JevOption, JevPanel } from "../../../packages/domain/src/jev";
 import { t } from "./i18n";
 import {
@@ -10,6 +10,7 @@ import {
   selectionText,
 } from "./jev-actions";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
+import { TText } from "./font";
 
 type JevInteraction = {
   threadId: string | null;
@@ -47,9 +48,9 @@ function SourceLink({ title, url }: { title: string; url: string }) {
       onPress={() => void Linking.openURL(url)}
       style={({ pressed }) => [s.row, { gap: 4, opacity: pressed ? 0.65 : 1 }]}
     >
-      <Text style={[s.small, { color: colors.blueDark, textDecorationLine: "underline" }]}>
+      <TText style={[s.small, { color: colors.blueDark, textDecorationLine: "underline" }]}>
         {title}
-      </Text>
+      </TText>
       <ExternalLink size={12} color={colors.blueDark} />
     </Pressable>
   );
@@ -95,7 +96,7 @@ function ChoiceButton({
         ) : selected ? (
           <Check size={15} color={colors.text} />
         ) : null}
-        <Text style={s.buttonText}>{caption}</Text>
+        <TText style={s.buttonText}>{caption}</TText>
       </Pressable>
     );
   }
@@ -125,7 +126,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
     return (
       <View style={[s.row, { gap: 10, padding: 14 }]}>
         <ActivityIndicator size="small" color={colors.blueDark} />
-        <Text style={s.muted}>准备选项中…</Text>
+        <TText style={s.muted}>准备选项中…</TText>
       </View>
     );
   }
@@ -197,14 +198,14 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
   return (
     <Card style={{ width: "100%", maxWidth: 440, padding: 17, gap: 13 }}>
       <View style={{ gap: 5 }}>
-        <Text style={s.heading}>{panel.title}</Text>
-        {panel.mode === "sample" && <Text style={s.small}>示例·预设决策</Text>}
-        {panel.mode === "live" && <Text style={s.small}>实时 Jev·模型决策</Text>}
+        <TText style={s.heading}>{panel.title}</TText>
+        {panel.mode === "sample" && <TText style={s.small}>示例·预设决策</TText>}
+        {panel.mode === "live" && <TText style={s.small}>实时 Jev·模型决策</TText>}
         {preferredOption && !selectedId && (
-          <Text style={s.small}>Previous preference: {preferredOption.label}</Text>
+          <TText style={s.small}>Previous preference: {preferredOption.label}</TText>
         )}
-        {stale && <Text style={s.small}>之前的选择</Text>}
-        {selectedId && <Text style={s.small}>选择已提交</Text>}
+        {stale && <TText style={s.small}>之前的选择</TText>}
+        {selectedId && <TText style={s.small}>选择已提交</TText>}
       </View>
       {panel.type === "clarification" ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -228,11 +229,11 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
               key={option.id}
               style={{ borderRadius: 16, padding: 14, gap: 9, backgroundColor: colors.line }}
             >
-              <Text style={[s.text, { fontWeight: "600" }]}>{option.label}</Text>
+              <TText style={[s.text, { fontWeight: "600" }]}>{option.label}</TText>
               {!!option.details.length && (
-                <Text style={s.muted}>
+                <TText style={s.muted}>
                   {option.details.map((detail) => `• ${detail}`).join("\n")}
-                </Text>
+                </TText>
               )}
               <View style={{ gap: 5 }}>
                 {option.sources.map((source) => (

@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Pressable, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Artifact, BrowserSession } from "../../../packages/domain/src";
 import type {
@@ -57,6 +57,7 @@ import {
   useStyles,
 } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 const STATUS_KEYS: Record<string, StringKey> = {
   queued: "agent.status.queued",
@@ -119,7 +120,7 @@ export function AgentStatus() {
         </Button>
       )}
       {!data && !error && <ActivityIndicator color={colors.blueDark} />}
-      {data && !data.worker.running && <Text style={s.small}>{t("agent.workerOffline")}</Text>}
+      {data && !data.worker.running && <TText style={s.small}>{t("agent.workerOffline")}</TText>}
     </View>
   );
 }
@@ -165,11 +166,11 @@ export function TaskCard({
             <ListChecks size={18} color={colors.blueDark} />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={s.heading}>{task.title}</Text>
-            <Text style={s.small}>
+            <TText style={s.heading}>{task.title}</TText>
+            <TText style={s.small}>
               {statusLabel(task.status)}
               {task.plan.length ? t("agent.steps", { done, total: task.plan.length }) : ""}
-            </Text>
+            </TText>
           </View>
           <ChevronRight size={17} color={colors.muted} />
         </View>
@@ -186,16 +187,16 @@ export function TaskCard({
           </View>
         )}
         {(task.question || task.result || task.error || next?.title) && (
-          <Text numberOfLines={compact ? 2 : 4} style={s.muted}>
+          <TText numberOfLines={compact ? 2 : 4} style={s.muted}>
             {task.question || task.error || resultSummary(task.result || next?.title || "")}
-          </Text>
+          </TText>
         )}
         {waiting && (
-          <Text style={[s.small, { color: colors.blueDark, fontWeight: "600" }]}>
+          <TText style={[s.small, { color: colors.blueDark, fontWeight: "600" }]}>
             {task.status === "waiting_approval"
               ? t("agent.reviewRequested")
               : t("agent.inputNeeded")}
-          </Text>
+          </TText>
         )}
       </Card>
     </Pressable>
@@ -259,10 +260,10 @@ export function EvidenceList({ items }: { items: Evidence[] }) {
           key={item.id}
           style={{ borderLeftWidth: 2, borderLeftColor: colors.blue, paddingLeft: 12, gap: 4 }}
         >
-          <Text style={[s.small, { color: colors.text, fontWeight: "600" }]}>{item.title}</Text>
-          <Text selectable style={s.small}>
+          <TText style={[s.small, { color: colors.text, fontWeight: "600" }]}>{item.title}</TText>
+          <TText selectable style={s.small}>
             {item.excerpt}
-          </Text>
+          </TText>
           {item.url && /^https?:\/\//i.test(item.url) && (
             <Button
               small
@@ -420,9 +421,9 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         <ActivityIndicator color={colors.blueDark} />
       ) : (
         <View style={{ gap: 20 }}>
-          <Text selectable style={s.text}>
+          <TText selectable style={s.text}>
             {task.prompt}
-          </Text>
+          </TText>
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {["queued", "running", "scheduled", "waiting_input", "waiting_approval"].includes(
               task.status,
@@ -470,8 +471,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           </View>
           {task.status === "waiting_approval" && (
             <Card style={{ backgroundColor: colors.lavender, gap: 12 }}>
-              <Text style={s.heading}>等待你的审核</Text>
-              <Text style={s.muted}>执行前请核对具体的操作和账号。</Text>
+              <TText style={s.heading}>等待你的审核</TText>
+              <TText style={s.muted}>执行前请核对具体的操作和账号。</TText>
               <Button primary busy={busy} onPress={() => void review()}>
                 {t("agent.reviewAction")}
               </Button>
@@ -479,7 +480,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           )}
           {task.status === "waiting_input" && (
             <Card style={{ backgroundColor: colors.sky, gap: 10 }}>
-              <Text style={s.heading}>{task.question || t("agent.detailHelp")}</Text>
+              <TText style={s.heading}>{task.question || t("agent.detailHelp")}</TText>
               {fieldNames.map((name) =>
                 missing.some(
                   (f) => typeof f === "object" && f && f.name === name && f.type === "checkbox",
@@ -539,23 +540,23 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           )}
           {!!task.plan.length && (
             <Card style={{ gap: 15 }}>
-              <Text style={s.heading}>计划</Text>
+              <TText style={s.heading}>计划</TText>
               {task.plan.map((step, index) => (
                 <View key={step.id} style={[s.row, { gap: 10, alignItems: "flex-start" }]}>
-                  <Text
+                  <TText
                     style={[
                       s.text,
                       { color: step.status === "succeeded" ? colors.blueDark : colors.muted },
                     ]}
                   >
                     {step.status === "succeeded" ? "✓" : `${index + 1}.`}
-                  </Text>
+                  </TText>
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={s.text}>{step.title}</Text>
-                    <Text style={s.small}>
+                    <TText style={s.text}>{step.title}</TText>
+                    <TText style={s.small}>
                       {statusLabel(step.status)}
                       {step.detail ? ` · ${step.detail}` : ""}
-                    </Text>
+                    </TText>
                   </View>
                 </View>
               ))}
@@ -563,16 +564,16 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           )}
           {!!task.result && (
             <Card style={{ backgroundColor: colors.green }}>
-              <Text selectable style={s.text}>
+              <TText selectable style={s.text}>
                 {resultSummary(task.result)}
-              </Text>
+              </TText>
             </Card>
           )}
           <ErrorNotice error={task.error ?? undefined} />
           {detail?.browsers?.map((browser) => (
             <Card key={browser.id} style={{ gap: 10 }}>
-              <Text style={s.heading}>{browser.title || t("agent.agentBrowser")}</Text>
-              <Text style={s.small}>{browser.url}</Text>
+              <TText style={s.heading}>{browser.title || t("agent.agentBrowser")}</TText>
+              <TText style={s.small}>{browser.url}</TText>
               {browser.status === "active" && browser.previewUrl && (
                 <Image
                   accessibilityLabel={t("a11y.agentBrowserPreview")}
@@ -622,26 +623,26 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           ))}
           {!!task.evidence.length && (
             <View style={{ gap: 14 }}>
-              <Text style={s.heading}>来源</Text>
+              <TText style={s.heading}>来源</TText>
               <EvidenceList items={task.evidence} />
             </View>
           )}
-          <Text style={s.heading}>时间线</Text>
+          <TText style={s.heading}>时间线</TText>
           {detail?.events.map((event) => (
             <View
               key={event.id}
               style={{ gap: 4, paddingLeft: 14, borderLeftWidth: 2, borderLeftColor: colors.line }}
             >
-              <Text style={s.small}>
+              <TText style={s.small}>
                 {stamp(event.date)} · {statusLabel(event.kind)}
-              </Text>
-              <Text style={s.text}>{event.title}</Text>
-              <Text selectable style={s.muted}>
+              </TText>
+              <TText style={s.text}>{event.title}</TText>
+              <TText selectable style={s.muted}>
                 {event.detail}
-              </Text>
+              </TText>
             </View>
           ))}
-          {!detail?.events.length && <Text style={s.muted}>Worker 会在这里记录每一步。</Text>}
+          {!detail?.events.length && <TText style={s.muted}>Worker 会在这里记录每一步。</TText>}
         </View>
       )}
     </Sheet>
@@ -670,15 +671,15 @@ export function ArtifactCard({ artifact }: { artifact: AgentArtifact }) {
   return (
     <Card style={{ gap: 13, backgroundColor: colors.card }}>
       <View style={s.between}>
-        <Text style={s.heading}>{artifact.title}</Text>
+        <TText style={s.heading}>{artifact.title}</TText>
         <Chip>{statusLabel(artifact.kind)}</Chip>
       </View>
-      <Text selectable style={s.muted}>
+      <TText selectable style={s.muted}>
         {artifact.summary}
-      </Text>
+      </TText>
       {(expanded ? rows : rows.slice(0, 4)).map(([key, value]) => (
         <View key={key} style={{ gap: 6 }}>
-          <Text style={s.label}>{key.replace(/_/g, " ")}</Text>
+          <TText style={s.label}>{key.replace(/_/g, " ")}</TText>
           {Array.isArray(value) ? (
             value.slice(0, expanded ? 100 : 5).map((item) => {
               const row = record(item);
@@ -691,29 +692,29 @@ export function ArtifactCard({ artifact }: { artifact: AgentArtifact }) {
                     borderBottomColor: colors.line,
                   }}
                 >
-                  <Text selectable style={s.text}>
+                  <TText selectable style={s.text}>
                     {row
                       ? Object.entries(row)
                           .map(([name, val]) => `${name}: ${display(val)}`)
                           .join(" · ")
                       : display(item)}
-                  </Text>
+                  </TText>
                 </View>
               );
             })
           ) : record(value) ? (
             Object.entries(record(value) || {}).map(([name, val]) => (
               <View key={name} style={s.between}>
-                <Text style={s.muted}>{name}</Text>
-                <Text selectable style={s.text}>
+                <TText style={s.muted}>{name}</TText>
+                <TText selectable style={s.text}>
                   {display(val)}
-                </Text>
+                </TText>
               </View>
             ))
           ) : (
-            <Text selectable style={[s.text, { fontSize: typeof value === "number" ? 24 : 14 }]}>
+            <TText selectable style={[s.text, { fontSize: typeof value === "number" ? 24 : 14 }]}>
               {display(value)}
-            </Text>
+            </TText>
           )}
         </View>
       ))}
@@ -790,13 +791,13 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
               <Rect width="100%" height="100%" fill="url(#finance)" />
             </Svg>
           </View>
-          <Text style={{ color: "#D4DCFC", fontSize: 11, lineHeight: 18, marginBottom: 20 }}>
+          <TText style={{ color: "#D4DCFC", fontSize: 11, lineHeight: 18, marginBottom: 20 }}>
             {t("fin.readFrom")}
             {"\n"}
             {String(period?.from ?? "")} — {String(period?.to ?? "")}
             {"\n"}
             {t("fin.txCount", { count: transactions.length })}
-          </Text>
+          </TText>
           <View style={[s.row, { gap: 7 }]}>
             {(
               [
@@ -809,8 +810,8 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 key={key}
                 style={{ flex: 1, padding: 11, borderRadius: 12, backgroundColor: "#1D2025" }}
               >
-                <Text style={{ color: "#A4A7AD", fontSize: 9 }}>{label}</Text>
-                <Text
+                <TText style={{ color: "#A4A7AD", fontSize: 9 }}>{label}</TText>
+                <TText
                   selectable
                   numberOfLines={1}
                   adjustsFontSizeToFit
@@ -823,8 +824,8 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                   }}
                 >
                   {amount(artifact.data[key])}
-                </Text>
-                <Text style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>原币种</Text>
+                </TText>
+                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>原币种</TText>
               </View>
             ))}
           </View>
@@ -832,23 +833,23 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
         <View style={[s.row, { gap: 11, paddingHorizontal: 8, paddingTop: 13, paddingBottom: 4 }]}>
           <Wallet size={26} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[s.text, { fontWeight: "600" }]}>财务追踪</Text>
-            <Text style={s.small}>支出、储蓄，以及下一步的计划。</Text>
+            <TText style={[s.text, { fontWeight: "600" }]}>财务追踪</TText>
+            <TText style={s.small}>支出、储蓄，以及下一步的计划。</TText>
           </View>
           <ChevronRight size={17} color={colors.muted} />
         </View>
       </Pressable>
       {details && (
         <View style={{ gap: 16, padding: 10 }}>
-          <Text style={s.label}>你的钱花在哪了</Text>
+          <TText style={s.label}>你的钱花在哪了</TText>
           {categories.map((category) => {
             const row = record(category);
             if (!row) return null;
             return (
               <View key={String(row.name)} style={{ gap: 8 }}>
                 <View style={s.between}>
-                  <Text style={s.text}>{String(row.name)}</Text>
-                  <Text style={s.text}>{amount(row.amount)}</Text>
+                  <TText style={s.text}>{String(row.name)}</TText>
+                  <TText style={s.text}>{amount(row.amount)}</TText>
                 </View>
                 <View style={{ height: 7, backgroundColor: "#DFE8EB", borderRadius: 8 }}>
                   <View
@@ -863,9 +864,9 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
               </View>
             );
           })}
-          <Text style={s.small}>金额使用原币种。本汇总覆盖导入的日期范围。</Text>
+          <TText style={s.small}>金额使用原币种。本汇总覆盖导入的日期范围。</TText>
           {goalSaved ? (
-            <Text style={s.text}>你的储蓄目标已保存在目标里。</Text>
+            <TText style={s.text}>你的储蓄目标已保存在目标里。</TText>
           ) : (
             <View style={{ gap: 10 }}>
               <Field
@@ -894,16 +895,16 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
               return row ? (
                 <View key={String(row.id ?? display(row))} style={s.between}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.text}>{String(row.description)}</Text>
-                    <Text style={s.small}>
+                    <TText style={s.text}>{String(row.description)}</TText>
+                    <TText style={s.small}>
                       {String(row.date)} · {String(row.category)}
-                    </Text>
+                    </TText>
                   </View>
-                  <Text style={s.text}>{amount(row.amount)}</Text>
+                  <TText style={s.text}>{amount(row.amount)}</TText>
                 </View>
               ) : null;
             })}
-          {expanded && transactions.length > 100 && <Text style={s.small}>{t("fin.top100")}</Text>}
+          {expanded && transactions.length > 100 && <TText style={s.small}>{t("fin.top100")}</TText>}
         </View>
       )}
     </Card>
@@ -959,7 +960,7 @@ export function DelegateSheet() {
       />
       {kind === "document" && (
         <View style={{ gap: 8, marginBottom: 18 }}>
-          <Text style={s.heading}>选择带 PDF 的邮件</Text>
+          <TText style={s.heading}>选择带 PDF 的邮件</TText>
           {workspace.mail
             .filter((mail) => mail.attachments.length)
             .map((mail) => (
@@ -971,7 +972,7 @@ export function DelegateSheet() {
               />
             ))}
           {!workspace.mail.some((mail) => mail.attachments.length) && (
-            <Text style={s.muted}>{t("agent.attachMailNote")}</Text>
+            <TText style={s.muted}>{t("agent.attachMailNote")}</TText>
           )}
         </View>
       )}
@@ -996,11 +997,11 @@ export function DelegateSheet() {
               {t("agent.tryExample")}
             </Button>
           )}
-          <Text style={[s.small, { marginVertical: 12 }]}>{t("agent.csvNote")}</Text>
+          <TText style={[s.small, { marginVertical: 12 }]}>{t("agent.csvNote")}</TText>
         </>
       )}
       {kind === "agent" && !workspace.runtime.configured && (
-        <Text style={[s.muted, { marginBottom: 16 }]}>{t("agent.modelNote")}</Text>
+        <TText style={[s.muted, { marginBottom: 16 }]}>{t("agent.modelNote")}</TText>
       )}
       <ErrorNotice error={error} />
       <Button
@@ -1040,7 +1041,7 @@ export function IdeasScreen() {
     <View style={{ gap: 20 }}>
       <AgentStatus />
       <View style={s.between}>
-        <Text style={s.small}>来自你连接的应用</Text>
+        <TText style={s.small}>来自你连接的应用</TText>
         <Button small icon={RefreshCw} busy={busy} onPress={() => void refreshIdeas()}>
           {t("agent.findIdeas")}
         </Button>
@@ -1056,7 +1057,7 @@ export function IdeasScreen() {
         .filter((idea) => idea.status === "accepted")
         .map((idea) => (
           <Card key={idea.id} style={{ gap: 7 }}>
-            <Text style={s.heading}>{idea.title}</Text>
+            <TText style={s.heading}>{idea.title}</TText>
             <Chip tint={colors.green}>已开始</Chip>
             {!!idea.taskId && <TaskLink taskId={idea.taskId} />}
           </Card>
@@ -1125,8 +1126,8 @@ function IdeaCard({ idea }: { idea: Idea }) {
           })()}
         </View>
         <View style={{ flex: 1, gap: 5 }}>
-          <Text style={[s.heading, { fontSize: 16, lineHeight: 23 }]}>{idea.title}</Text>
-          <Text style={s.muted}>{idea.reason}</Text>
+          <TText style={[s.heading, { fontSize: 16, lineHeight: 23 }]}>{idea.title}</TText>
+          <TText style={s.muted}>{idea.reason}</TText>
         </View>
       </Pressable>
       {expanded && (
@@ -1189,7 +1190,7 @@ export function GoalsScreen() {
                 backgroundColor: "#24A46B",
               }}
             />
-            <Text style={[s.heading, { color: "#189A58" }]}>追踪</Text>
+            <TText style={[s.heading, { color: "#189A58" }]}>追踪</TText>
           </View>
           <Button small icon={Plus} onPress={() => setAdding("Tracking")}>
             {t("agent.track")}
@@ -1205,18 +1206,18 @@ export function GoalsScreen() {
           >
             <Square size={21} color="#A7AAAC" />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={s.text}>{item.title}</Text>
-              <Text numberOfLines={1} style={s.muted}>
+              <TText style={s.text}>{item.title}</TText>
+              <TText numberOfLines={1} style={s.muted}>
                 {item.status === "active"
                   ? t("agent.checkEvery", { count: item.intervalMinutes })
                   : statusLabel(item.status)}
-              </Text>
+              </TText>
             </View>
             <ChevronRight size={18} color="#A3A6A8" />
           </Pressable>
         ))}
         {!monitors.length && (
-          <Text style={[s.muted, { paddingVertical: 10 }]}>票价、预订、你在关注的页面。</Text>
+          <TText style={[s.muted, { paddingVertical: 10 }]}>票价、预订、你在关注的页面。</TText>
         )}
         {monitors.length > 3 && (
           <Button small onPress={() => setShowAll(!showAll)}>
@@ -1237,7 +1238,7 @@ export function GoalsScreen() {
               backgroundColor: "#3D9BDE",
             }}
           />
-          <Text style={[s.heading, { color: colors.blueDark }]}>目标</Text>
+          <TText style={[s.heading, { color: colors.blueDark }]}>目标</TText>
         </View>
         {data?.goals.map((item) => (
           <Pressable
@@ -1253,20 +1254,20 @@ export function GoalsScreen() {
               fill={item.status === "completed" ? colors.green : "transparent"}
             />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={s.text}>{item.title}</Text>
-              <Text numberOfLines={2} style={s.muted}>
+              <TText style={s.text}>{item.title}</TText>
+              <TText numberOfLines={2} style={s.muted}>
                 {item.description || statusLabel(item.status)}
-              </Text>
+              </TText>
             </View>
             <ChevronRight size={18} color="#A3A6A8" />
           </Pressable>
         ))}
         {!data?.goals.length && (
-          <Text style={[s.muted, { paddingVertical: 10 }]}>大计划从一小步开始。</Text>
+          <TText style={[s.muted, { paddingVertical: 10 }]}>大计划从一小步开始。</TText>
         )}
       </View>
       <View style={{ height: 1, backgroundColor: colors.line }} />
-      <Text style={s.heading}>创建目标</Text>
+      <TText style={s.heading}>创建目标</TText>
       {[
         { name: "Health", label: t("agent.cat.health"), icon: Heart },
         { name: "Relationships", label: t("agent.cat.relationships"), icon: Users },
@@ -1281,7 +1282,7 @@ export function GoalsScreen() {
           style={[s.row, { gap: 12, minHeight: 38 }]}
         >
           <item.icon size={23} color="#989C9F" />
-          <Text style={[s.text, { flex: 1, color: "#666A6D" }]}>{item.label}</Text>
+          <TText style={[s.text, { flex: 1, color: "#666A6D" }]}>{item.label}</TText>
           <Plus size={18} color="#989C9F" />
         </Pressable>
       ))}
@@ -1405,15 +1406,15 @@ function GoalCard({ goal, onOpenTask }: { goal: Goal; onOpenTask?: () => void })
   return (
     <Card style={{ gap: 12 }}>
       <View style={s.between}>
-        <Text style={[s.heading, { flex: 1 }]}>{goal.title}</Text>
+        <TText style={[s.heading, { flex: 1 }]}>{goal.title}</TText>
         <Chip tint={goal.status === "completed" ? colors.green : colors.sky}>
           {statusLabel(goal.status)}
         </Chip>
       </View>
-      <Text style={s.muted}>{goal.description}</Text>
-      <Text style={s.small}>
+      <TText style={s.muted}>{goal.description}</TText>
+      <TText style={s.small}>
         {t("agent.milestoneProgress", { done, total: goal.milestones.length })}
-      </Text>
+      </TText>
       {goal.milestones.map((milestone) => (
         <CheckRow
           key={milestone.id}
@@ -1513,7 +1514,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
           placeholder="https://example.com/product"
         />
       )}
-      <Text style={[s.small, { marginBottom: 10 }]}>当…时通知我</Text>
+      <TText style={[s.small, { marginBottom: 10 }]}>当…时通知我</TText>
       <View style={[s.row, { gap: 7, flexWrap: "wrap", marginBottom: 16 }]}>
         {(["change", "contains", "price_below"] as const).map((item) => (
           <Button small primary={condition === item} key={item} onPress={() => setCondition(item)}>
@@ -1538,9 +1539,9 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
         onChangeText={setInterval}
         keyboardType="number-pad"
       />
-      <Text style={[s.small, { marginBottom: 14 }]}>
+      <TText style={[s.small, { marginBottom: 14 }]}>
         {sample ? t("agent.sampleNote") : t("agent.monitorNote")}
-      </Text>
+      </TText>
       <ErrorNotice error={error} />
       <Button
         primary
@@ -1589,32 +1590,32 @@ function MonitorCard({ monitor, onOpenTask }: { monitor: Monitor; onOpenTask?: (
   return (
     <Card style={{ gap: 13 }}>
       <View style={s.between}>
-        <Text style={[s.heading, { flex: 1 }]}>{monitor.title}</Text>
+        <TText style={[s.heading, { flex: 1 }]}>{monitor.title}</TText>
         <Chip tint={colors.sky}>{statusLabel(monitor.status)}</Chip>
       </View>
-      <Text selectable style={s.small}>
+      <TText selectable style={s.small}>
         {monitor.url.startsWith("sample:") ? t("agent.samplePage") : monitor.url}
-      </Text>
-      <Text style={s.text}>
+      </TText>
+      <TText style={s.text}>
         {monitor.condition === "change"
           ? t("agent.watchChange")
           : monitor.condition === "contains"
             ? t("agent.watchContains", { value: monitor.value })
             : t("agent.watchPrice", { value: monitor.value })}
-      </Text>
-      <Text style={s.small}>
+      </TText>
+      <TText style={s.small}>
         {t("agent.checkStats", { minutes: monitor.intervalMinutes, checks: monitor.checks })}
-      </Text>
-      <Text style={s.small}>
+      </TText>
+      <TText style={s.small}>
         {t("agent.lastCheck", { time: stamp(monitor.lastCheckedAt) })}
         {monitor.status === "active"
           ? `\n${t("agent.nextCheck", { time: stamp(monitor.nextCheckAt) })}`
           : ""}
-      </Text>
+      </TText>
       {!!monitor.lastValue && (
-        <Text selectable numberOfLines={5} style={s.muted}>
+        <TText selectable numberOfLines={5} style={s.muted}>
           {monitor.lastValue}
-        </Text>
+        </TText>
       )}
       <ErrorNotice error={error || monitor.error} />
       {monitor.status !== "stopped" && (
@@ -1667,11 +1668,11 @@ export function NotificationsSheet() {
             style={{ gap: 8, backgroundColor: item.read ? colors.card : colors.sky }}
           >
             <View style={s.between}>
-              <Text style={s.heading}>{item.title}</Text>
+              <TText style={s.heading}>{item.title}</TText>
               {!item.read && <Chip>新建</Chip>}
             </View>
-            <Text style={s.muted}>{item.body}</Text>
-            <Text style={s.small}>{stamp(item.createdAt)}</Text>
+            <TText style={s.muted}>{item.body}</TText>
+            <TText style={s.small}>{stamp(item.createdAt)}</TText>
             <Button small onPress={() => void read(item.id, item.taskId)}>
               {item.taskId
                 ? t("agent.viewTask")
@@ -1763,7 +1764,7 @@ export function AppsScreen() {
         placeholder="搜索连接器"
       />
       <ConnectionsScreen query={query} />
-      <Text style={s.heading}>在你的电脑上</Text>
+      <TText style={s.heading}>在你的电脑上</TText>
       <Card style={{ paddingVertical: 3, backgroundColor: "#F4F5F6" }}>
         {shortcuts
           .filter((item) =>
@@ -1831,7 +1832,7 @@ export function AppsScreen() {
               checked={showChatUpdates}
               onPress={() => setShowChatUpdates(!showChatUpdates)}
             />
-            <Text style={s.small}>{t("agent.fullRecordNote")}</Text>
+            <TText style={s.small}>{t("agent.fullRecordNote")}</TText>
             <Button
               busy={busy}
               disabled={!name.trim()}
@@ -1844,7 +1845,7 @@ export function AppsScreen() {
           </Card>
           <Card style={{ gap: 12 }}>
             <SectionHeading title="记忆" />
-            <Text style={s.muted}>你可以查看、修正或忘记的上下文。</Text>
+            <TText style={s.muted}>你可以查看、修正或忘记的上下文。</TText>
             {data?.memories.map((item) => (
               <MemoryRow key={item.id} memory={item} />
             ))}
@@ -1897,11 +1898,11 @@ function MemoryRow({ memory }: { memory: AgentMemory }) {
       {editing ? (
         <Field label={t("agent.memoryLabel")} value={text} onChangeText={setText} />
       ) : (
-        <Text style={s.text}>{memory.text}</Text>
+        <TText style={s.text}>{memory.text}</TText>
       )}
-      <Text style={s.small}>
+      <TText style={s.small}>
         {memory.source} · {stamp(memory.createdAt)}
-      </Text>
+      </TText>
       <View style={[s.row, { gap: 8 }]}>
         {editing ? (
           <Button small busy={busy} disabled={!text.trim()} onPress={() => void act(false)}>

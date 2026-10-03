@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Linking, Platform, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Platform, View } from "react-native";
 import {
   type ActionProposal,
   type Artifact,
@@ -58,6 +58,7 @@ import {
   useStyles,
 } from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
+import { TText } from "./font";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();
   if (detail.type === "computer") return <ComputerSheet />;
@@ -148,27 +149,27 @@ function MailDetail({ mail: m }: { mail: Mail }) {
       {loading && (
         <View style={[s.row, { gap: 10, paddingBottom: 20 }]}>
           <ActivityIndicator color={colors.blueDark} />
-          <Text style={s.muted}>{t("chat.placeholder.loading")}</Text>
+          <TText style={s.muted}>{t("chat.placeholder.loading")}</TText>
         </View>
       )}
       {thread.map((message) => (
         <Card key={message.id} style={{ marginBottom: 16 }}>
           <View style={s.between}>
             <View style={{ gap: 4, flex: 1 }}>
-              <Text style={s.heading}>{message.sender}</Text>
-              <Text style={s.small}>{message.from}</Text>
-              <Text style={s.small}>
+              <TText style={s.heading}>{message.sender}</TText>
+              <TText style={s.small}>{message.from}</TText>
+              <TText style={s.small}>
                 {t("mail.to")}: {message.to.join(", ")}
-              </Text>
+              </TText>
             </View>
-            <Text style={s.small}>
+            <TText style={s.small}>
               {dateLabel(message.date)} · {timeLabel(message.date)}
-            </Text>
+            </TText>
           </View>
           <View style={s.divider} />
-          <Text selectable style={[s.text, { lineHeight: 25 }]}>
+          <TText selectable style={[s.text, { lineHeight: 25 }]}>
             {message.body}
-          </Text>
+          </TText>
           {message.attachments.map((id) => {
             const file = w.files.find((f) => f.id === id);
             return file ? (
@@ -328,9 +329,9 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
       />
       {w.files.length > 0 && (
         <Card style={{ padding: 16, marginBottom: 18 }}>
-          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>
+          <TText style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>
             {t("mail.attachments")}
-          </Text>
+          </TText>
           {w.files.map((f) => (
             <CheckRow
               key={f.id}
@@ -367,7 +368,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
           {t("mail.saveDraft")}
         </Button>
       </View>
-      <Text style={[s.small, { marginTop: 13 }]}>{t("mail.reviewNote")}</Text>
+      <TText style={[s.small, { marginTop: 13 }]}>{t("mail.reviewNote")}</TText>
     </Sheet>
   );
 }
@@ -497,7 +498,7 @@ function EventEditor({
         timeZone={zone}
         allDay={allDay}
       />
-      {allDay && <Text style={[s.small, { marginBottom: 15 }]}>{t("event.allDayNote")}</Text>}
+      {allDay && <TText style={[s.small, { marginBottom: 15 }]}>{t("event.allDayNote")}</TText>}
       <Field
         label={t("event.timeZone")}
         value={zone}
@@ -525,11 +526,11 @@ function EventEditor({
       />
       {!!conflicts.length && (
         <Card style={{ backgroundColor: colors.orange, padding: 16, marginBottom: 16 }}>
-          <Text style={s.heading}>{t("event.conflictTitle")}</Text>
+          <TText style={s.heading}>{t("event.conflictTitle")}</TText>
           {conflicts.map((c) => (
-            <Text key={c.id} style={s.muted}>
+            <TText key={c.id} style={s.muted}>
               {c.title} · {timeLabel(c.start, c.timeZone)}–{timeLabel(c.end, c.timeZone)}
-            </Text>
+            </TText>
           ))}
         </Card>
       )}
@@ -613,8 +614,8 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
           <ShieldCheck size={22} color={colors.text} />
         </View>
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={s.heading}>{action.title}</Text>
-          <Text style={s.small}>{action.kind.replace(".", " · ")}</Text>
+          <TText style={s.heading}>{action.title}</TText>
+          <TText style={s.small}>{action.kind.replace(".", " · ")}</TText>
         </View>
         <Chip tint={pending ? colors.lavender : colors.green}>
           {t(`review.status.${action.status}` as StringKey)}
@@ -629,22 +630,22 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
             <ReviewLine label={t("mail.bcc")} value={arrayText(d.bcc) || t("review.none")} />
             <ReviewLine label={t("mail.subject")} value={String(d.subject || "")} />
             <View style={s.divider} />
-            <Text selectable style={[s.text, { lineHeight: 25 }]}>
+            <TText selectable style={[s.text, { lineHeight: 25 }]}>
               {String(d.body || "")}
-            </Text>
+            </TText>
             <View style={s.divider} />
-            <Text style={s.label}>{t("mail.attachments")}</Text>
+            <TText style={s.label}>{t("mail.attachments")}</TText>
             {Array.isArray(d.attachmentIds) && d.attachmentIds.length ? (
               d.attachmentIds.map((id) => {
                 const file = w.files.find((f) => f.id === id);
                 return (
-                  <Text key={String(id)} style={s.text}>
+                  <TText key={String(id)} style={s.text}>
                     {file?.name || String(id)} · {t("review.version", { v: String(id).slice(-8) })}
-                  </Text>
+                  </TText>
                 );
               })
             ) : (
-              <Text style={s.muted}>{t("review.noAttachments")}</Text>
+              <TText style={s.muted}>{t("review.noAttachments")}</TText>
             )}
           </>
         ) : (
@@ -688,25 +689,25 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
               </>
             )}
             <ReviewLine label={t("review.calendar")} value={String(d.calendarId || "primary")} />
-            <Text style={s.small}>
+            <TText style={s.small}>
               {action.kind === "calendar.delete"
                 ? t("review.deleteWarning")
                 : t("review.updateWarning")}
-            </Text>
+            </TText>
           </>
         )}
       </Card>
       <ErrorNotice error={error || action.error} />
       {!!action.result && (
         <Card style={{ marginTop: 16, backgroundColor: colors.green, padding: 18 }}>
-          <Text selectable style={s.text}>
+          <TText selectable style={s.text}>
             {resultSummary(action.result)}
-          </Text>
+          </TText>
         </Card>
       )}
       {pending ? (
         <>
-          <Text style={[s.small, { marginVertical: 17 }]}>
+          <TText style={[s.small, { marginVertical: 17 }]}>
             {t("review.expiryNote", {
               date: new Date(action.expiresAt).toLocaleString(undefined, {
                 year: "numeric",
@@ -717,7 +718,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
                 timeZoneName: "short",
               }),
             })}
-          </Text>
+          </TText>
           <View style={[s.row, { gap: 10, flexWrap: "wrap" }]}>
             <Button primary icon={Check} busy={busy} onPress={() => void decide("approve")}>
               {w.mode === "sample"
@@ -751,10 +752,10 @@ function ReviewLine({ label, value }: { label: string; value: string }) {
   const s = useStyles();
   return (
     <View style={{ gap: 4 }}>
-      <Text style={s.label}>{label}</Text>
-      <Text selectable style={s.text}>
+      <TText style={s.label}>{label}</TText>
+      <TText selectable style={s.text}>
         {value}
-      </Text>
+      </TText>
     </View>
   );
 }
@@ -831,12 +832,12 @@ function FileDetail({ file: f }: { file: Artifact }) {
       {f.fields && f.fields.length > 0 && (
         <Card>
           <SectionHeading title={t("file.fillForm")} />
-          <Text style={[s.muted, { marginBottom: 18 }]}>{t("file.fillNote")}</Text>
+          <TText style={[s.muted, { marginBottom: 18 }]}>{t("file.fillNote")}</TText>
           {f.fields.map((field) =>
             field.type === "unsupported" ? (
-              <Text key={field.name} style={s.muted}>
+              <TText key={field.name} style={s.muted}>
                 {t("file.unsupportedField", { name: field.name })}
-              </Text>
+              </TText>
             ) : field.type === "checkbox" ? (
               <CheckRow
                 key={field.name}
@@ -859,10 +860,10 @@ function FileDetail({ file: f }: { file: Artifact }) {
         </Card>
       )}
       <ErrorNotice error={error} />
-      <Text style={[s.small, { marginTop: 15 }]}>
+      <TText style={[s.small, { marginTop: 15 }]}>
         {t("file.addedOn", { date: dateLabel(f.createdAt) })}
         {f.parentId ? t("file.filledCopy") : ""}
-      </Text>
+      </TText>
     </Sheet>
   );
 }
@@ -980,7 +981,7 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
           ) : (
             <>
               <ActivityIndicator color={colors.blueDark} />
-              <Text style={s.muted}>{t("browser.connectingBrowser")}</Text>
+              <TText style={s.muted}>{t("browser.connectingBrowser")}</TText>
             </>
           )}
         </View>

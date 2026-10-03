@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import DateFields from "./DateFields";
 import { isCompleteInstant, localDateTime, zonedInstant } from "./date-time";
 import { t } from "./i18n";
 import { useColors, useStyles } from "./ui";
+import { TText } from "./font";
 export default function DateTimeEditor({
   label,
   value,
@@ -54,7 +55,7 @@ export default function DateTimeEditor({
     <View>
       <DateFields label={label} date={date} time={time} allDay={allDay} onChange={change} />
       {!!error && (
-        <Text style={[s.small, { color: colors.danger, marginBottom: 12 }]}>{error}</Text>
+        <TText style={[s.small, { color: colors.danger, marginBottom: 12 }]}>{error}</TText>
       )}
     </View>
   );

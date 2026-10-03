@@ -8,7 +8,7 @@ import {
   Terminal,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { AppState, Image, Pressable, Text, View } from "react-native";
+import { AppState, Image, Pressable, View } from "react-native";
 import type { BrowserSession } from "../../../packages/domain/src";
 import { browserAddress } from "./browser-address";
 import { useComputerDraft } from "./computer-drafts";
@@ -16,6 +16,7 @@ import { LinuxWorkspace } from "./computer-workspace";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 export function ComputerEntry() {
   const colors = useColors();
@@ -43,14 +44,14 @@ export function ComputerEntry() {
       ]}
     >
       <Monitor size={13} color={colors.muted} />
-      <Text style={{ fontSize: 12, color: colors.muted }}>
+      <TText style={{ fontSize: 12, color: colors.muted }}>
         {t("computer.entry")}
         {!available
           ? t("computer.offline")
           : active
             ? t("computer.takeControlShort")
             : t("computer.ready")}
-      </Text>
+      </TText>
       <View
         style={{
           width: 5,
@@ -79,14 +80,14 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>{t("computer.tab.browser")}</Text>
-          <Text numberOfLines={1} style={s.small}>
+          <TText style={[s.text, { fontWeight: "600" }]}>{t("computer.tab.browser")}</TText>
+          <TText numberOfLines={1} style={s.small}>
             {browser.status === "closed"
               ? t("browser.sessionSaved")
               : browser.status === "error"
                 ? t("browser.needsAttention")
                 : browser.title}
-          </Text>
+          </TText>
         </View>
       </View>
       {browser.previewUrl && browser.status === "active" && !failed ? (
@@ -113,9 +114,9 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
           }}
         >
           <Globe2 size={30} color={colors.muted} />
-          <Text numberOfLines={2} style={[s.muted, { textAlign: "center" }]}>
+          <TText numberOfLines={2} style={[s.muted, { textAlign: "center" }]}>
             {failed ? t("browser.previewUnavailable") : browser.url}
-          </Text>
+          </TText>
         </View>
       )}
       <Button onPress={() => open({ type: "browser", browser })}>
@@ -177,12 +178,12 @@ export function ComputerSheet() {
           >
             <Monitor size={28} color={colors.blueDark} />
             <View style={{ flex: 1 }}>
-              <Text style={s.heading}>
+              <TText style={s.heading}>
                 {available ? t("computer.browserConnected") : t("computer.browserOffline")}
-              </Text>
-              <Text style={s.muted}>
+              </TText>
+              <TText style={s.muted}>
                 {available ? t("computer.browserConnectedDesc") : t("computer.browserOfflineDesc")}
-              </Text>
+              </TText>
             </View>
           </View>
         )}
@@ -233,13 +234,13 @@ export function ComputerSheet() {
               .map((browser) => (
                 <BrowserThreadCard key={browser.id} browser={browser} />
               ))}
-            {!workspace.browsers.length && <Text style={s.muted}>{t("browser.emptyHint")}</Text>}
-            <Text style={s.small}>{t("browser.takeoverHint")}</Text>
+            {!workspace.browsers.length && <TText style={s.muted}>{t("browser.emptyHint")}</TText>}
+            <TText style={s.small}>{t("browser.takeoverHint")}</TText>
           </>
         ) : tab === "Files" ? (
           <>
-            <Text style={s.heading}>{t("computer.filesHeading")}</Text>
-            <Text style={s.small}>{t("computer.filesDesc")}</Text>
+            <TText style={s.heading}>{t("computer.filesHeading")}</TText>
+            <TText style={s.small}>{t("computer.filesDesc")}</TText>
             {workspace.files.map((file) => (
               <LinkRow
                 key={file.id}

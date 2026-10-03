@@ -30,7 +30,7 @@ import {
   X,
 } from "lucide-react-native";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { type StringKey, t } from "./i18n";
@@ -48,6 +48,7 @@ import {
 } from "./theme/types";
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 import { ShareSection } from "./theme-share-ui";
+import { TText, useFont } from "./font";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -99,6 +100,8 @@ export function AppearanceScreen() {
   const { bundle, staging, tokens, stageBundle, cancelStage, applyBundle, rollback } = useTheme();
   const colors = useColors();
   const { option: fontOption, setOption: setFontOption, scale: fontScale } = useFontSizeSetting();
+  const { fontName, pickFont, clearFont } = useFont();
+  const [fontBusy, setFontBusy] = useState(false);
   const [customs, setCustoms] = useState<ThemeBundle[]>([]);
   const [draft, setDraft] = useState<DraftSeed>(() => seedFromBundle(bundle));
   const [customName, setCustomName] = useState("");
@@ -223,6 +226,23 @@ export function AppearanceScreen() {
     });
   };
 
+  const pickFontFile = async () => {
+    setNotice("");
+    setFontBusy(true);
+    try {
+      const result = await pickFont();
+      if (result === "ok") setNotice(t("appearance.fontLoaded"));
+      else if (result === "invalid") setNotice(t("appearance.fontFailed"));
+    } finally {
+      setFontBusy(false);
+    }
+  };
+
+  const restoreSystemFont = async () => {
+    setNotice("");
+    await clearFont();
+  };
+
   const pickImage = useCallback(async (): Promise<string | null> => {
     setNotice("");
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -301,7 +321,7 @@ export function AppearanceScreen() {
 
   return (
     <View style={{ gap: 26 }}>
-      {notice ? <Text style={{ color: fg, fontSize: 13 }}>{notice}</Text> : null}
+      {notice ? <TText style={{ color: fg, fontSize: 13 }}>{notice}</TText> : null}
 
       {staging ? (
         <View
@@ -312,9 +332,9 @@ export function AppearanceScreen() {
             gap: 10,
           }}
         >
-          <Text style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "600" }}>
+          <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "600" }}>
             {t("appearance.tryOn")}
-          </Text>
+          </TText>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Button
               small
@@ -376,7 +396,7 @@ export function AppearanceScreen() {
                 }}
               >
                 <Icon size={20} color={selected ? tokens.accent.fg : fg} />
-                <Text
+                <TText
                   style={{
                     color: selected ? tokens.accent.fg : fg,
                     fontSize: 12,
@@ -384,7 +404,7 @@ export function AppearanceScreen() {
                   }}
                 >
                   {item.label}
-                </Text>
+                </TText>
               </Pressable>
             );
           })}
@@ -419,7 +439,7 @@ export function AppearanceScreen() {
                   backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
                 }}
               >
-                <Text
+                <TText
                   style={{
                     color: selected ? tokens.accent.fg : fg,
                     fontSize: item.preview,
@@ -427,8 +447,8 @@ export function AppearanceScreen() {
                   }}
                 >
                   A
-                </Text>
-                <Text
+                </TText>
+                <TText
                   style={{
                     color: selected ? tokens.accent.fg : fg,
                     fontSize: 11,
@@ -436,7 +456,7 @@ export function AppearanceScreen() {
                   }}
                 >
                   {item.label}
-                </Text>
+                </TText>
               </Pressable>
             );
           })}
@@ -444,8 +464,33 @@ export function AppearanceScreen() {
       </View>
 
       <View>
-        <SectionHeading title={t("appearance.presetsLabel")} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <SectionHeading title={t("appearance.fontLabel")} />
+        <Card style={{ gap: 10 }}>
+          <TText style={{ color: fg, fontSize: 13 }}>
+            {t("appearance.fontCurrent")}：{fontName ?? t("appearance.fontSystem")}
+          </TText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <Button
+              small
+              busy={fontBusy}
+              onPress={() => void pickFontFile()}
+            >
+              {t("appearance.fontUpload")}
+            </Button>
+            {fontName ? (
+              <Button small danger onPress={() => void restoreSystemFont()}>
+                {t("appearance.fontRestore")}
+              </Button>
+            ) : null}
+          </View>
+          <TText style={{ color: tokens.text.accent, fontSize: 12 }}>
+            {t("appearance.fontNote")}
+          </TText>
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeading title={t("appearance.presetsLabel")} />       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row", gap: 12, paddingRight: 4 }}>
             {[...PRESETS, ...customs].map((preset) => {
               const selected = bundle.id === preset.id;
@@ -477,12 +522,12 @@ export function AppearanceScreen() {
                       backgroundColor: preset.seed.primary,
                     }}
                   />
-                  <Text
+                  <TText
                     style={{ color: fg, fontSize: 12, fontWeight: selected ? "600" : "400" }}
                     numberOfLines={1}
                   >
                     {displayName(preset)}
-                  </Text>
+                  </TText>
                 </Pressable>
               );
             })}
@@ -501,7 +546,7 @@ export function AppearanceScreen() {
             ] as const
           ).map((row) => (
             <View key={row.key} style={{ gap: 8 }}>
-              <Text style={{ color: fg, fontSize: 13, fontWeight: "600" }}>{row.label}</Text>
+              <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>{row.label}</TText>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {SWATCHES.map((hex) => {
                   const selected = validHex(draft[row.key]) === hex;
@@ -562,9 +607,9 @@ export function AppearanceScreen() {
           ))}
 
           <View style={{ gap: 8 }}>
-            <Text style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+            <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
               {t("appearance.preview")}
-            </Text>
+            </TText>
             <View style={{ gap: 8 }}>
               <View
                 style={{
@@ -576,9 +621,9 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <Text style={{ color: tokens.aiBubble.fg, fontSize: Math.round(14 * fontScale) }}>
+                <TText style={{ color: tokens.aiBubble.fg, fontSize: Math.round(14 * fontScale) }}>
                   {t("appearance.sampleAi")}
-                </Text>
+                </TText>
               </View>
               <View
                 style={{
@@ -590,9 +635,9 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <Text style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}>
+                <TText style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}>
                   {t("appearance.sampleUser")}
-                </Text>
+                </TText>
               </View>
             </View>
           </View>
@@ -645,9 +690,9 @@ export function AppearanceScreen() {
           </View>
           {bundle.wallpaper ? (
             <View style={{ gap: 6 }}>
-              <Text style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+              <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
                 {t("appearance.dimLabel")} · {Math.round(bundle.wallpaper.dim * 100)}%
-              </Text>
+              </TText>
               <DimSlider value={bundle.wallpaper.dim} onChange={setDim} tokens={tokens} />
             </View>
           ) : null}
@@ -712,7 +757,7 @@ export function AppearanceScreen() {
       <View>
         <SectionHeading title={t("appearance.safetyTitle")} />
         <Card style={{ gap: 12 }}>
-          <Text style={{ color: fg, fontSize: 13 }}>{t("appearance.rollbackNote")}</Text>
+          <TText style={{ color: fg, fontSize: 13 }}>{t("appearance.rollbackNote")}</TText>
           <Button small icon={RotateCcw} onPress={() => void rollback()}>
             {t("appearance.rollback")}
           </Button>
@@ -829,9 +874,9 @@ function StickerPicker({
   );
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+      <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
         {t("appearance.stickerLabel")}
-      </Text>
+      </TText>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 10 }}>
           {stickerUris.map((uri, i) => {
@@ -888,7 +933,7 @@ function AvatarRow({
       ) : (
         fallback
       )}
-      <Text style={{ flex: 1, color: fg, fontSize: 14, fontWeight: "500" }}>{label}</Text>
+      <TText style={{ flex: 1, color: fg, fontSize: 14, fontWeight: "500" }}>{label}</TText>
       <Button small icon={ImagePlus} onPress={onPick}>
         {t("appearance.changeImage")}
       </Button>

@@ -1,6 +1,6 @@
 import { ChevronRight, FileText } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import type { Artifact, BrowserSession } from "../../../packages/domain/src";
 import type { AgentArtifact, AgentTask } from "../../../packages/domain/src/agent";
 import { ArtifactCard, TaskCard } from "./agent-ui";
@@ -8,6 +8,7 @@ import { BrowserThreadCard } from "./computer";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 export function FileThreadCard({ file }: { file: Artifact }) {
   const colors = useColors();
@@ -22,7 +23,7 @@ export function FileThreadCard({ file }: { file: Artifact }) {
     >
       <Card style={{ padding: 18, backgroundColor: colors.line, gap: 18 }}>
         <View style={{ borderRadius: 12, padding: 22, backgroundColor: colors.card, gap: 14 }}>
-          <Text style={[s.heading, { fontSize: 18 }]}>{file.name.replace(/\.pdf$/i, "")}</Text>
+          <TText style={[s.heading, { fontSize: 18 }]}>{file.name.replace(/\.pdf$/i, "")}</TText>
           {file.fields?.length ? (
             file.fields.slice(0, 4).map((field) => (
               <View
@@ -34,16 +35,16 @@ export function FileThreadCard({ file }: { file: Artifact }) {
                   paddingBottom: 9,
                 }}
               >
-                <Text style={[s.small, { fontSize: 9 }]}>
+                <TText style={[s.small, { fontSize: 9 }]}>
                   {field.name.replace(/_/g, " ").toUpperCase()}
-                </Text>
-                <Text style={[s.text, { fontSize: 12 }]}>{field.value || "—"}</Text>
+                </TText>
+                <TText style={[s.text, { fontSize: 12 }]}>{field.value || "—"}</TText>
               </View>
             ))
           ) : (
-            <Text style={s.muted}>
+            <TText style={s.muted}>
               {file.pageCount} {file.pageCount === 1 ? "page" : "pages"} · Tap to read the document
-            </Text>
+            </TText>
           )}
         </View>
         <View style={[s.row, { gap: 13 }]}>
@@ -51,10 +52,10 @@ export function FileThreadCard({ file }: { file: Artifact }) {
             <FileText size={23} color="#FFF" />
           </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <Text numberOfLines={2} style={s.heading}>
+            <TText numberOfLines={2} style={s.heading}>
               {file.name}
-            </Text>
-            <Text style={s.muted}>PDF</Text>
+            </TText>
+            <TText style={s.muted}>PDF</TText>
           </View>
           <ChevronRight size={18} color={colors.muted} />
         </View>

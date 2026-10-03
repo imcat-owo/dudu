@@ -60,6 +60,7 @@ import {
   useStyles,
 } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 function todayDate() {
   return localDateTime(new Date().toISOString(), Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -96,9 +97,9 @@ export function TodayScreen() {
         <View style={{ flex: 1, gap: 15, zIndex: 1 }}>
           <View style={[s.row, { gap: 7 }]}>
             <Sparkles size={13} color={colors.blueDark} />
-            <Text style={[s.label, { color: colors.blueDark }]}>{t("today.kicker")}</Text>
+            <TText style={[s.label, { color: colors.blueDark }]}>{t("today.kicker")}</TText>
           </View>
-          <Text
+          <TText
             style={{
               fontSize: wide ? 39 : 29,
               lineHeight: wide ? 45 : 36,
@@ -108,14 +109,14 @@ export function TodayScreen() {
             }}
           >
             {t("today.headline")}
-          </Text>
-          <Text style={[s.muted, { maxWidth: 420, color: "#617680" }]}>
+          </TText>
+          <TText style={[s.muted, { maxWidth: 420, color: "#617680" }]}>
             {events.length
               ? t("today.thingsOnCalendar", { count: events.length })
               : t("today.calendarRoom")}
             {unread.length ? t("today.unreadEmails", { count: unread.length }) : ""}
             {t("today.makeSpace")}
-          </Text>
+          </TText>
           <Button
             onPress={() => ask(t("today.planDay"))}
             icon={Sparkles}
@@ -163,7 +164,7 @@ export function TodayScreen() {
               ]}
             >
               <Check size={14} color="#739174" />
-              <Text style={s.small}>{t("today.easyDay")}</Text>
+              <TText style={s.small}>{t("today.easyDay")}</TText>
             </View>
             <View
               style={[
@@ -181,7 +182,7 @@ export function TodayScreen() {
               ]}
             >
               <CalendarDays size={17} color={colors.blueDark} />
-              <Text style={s.small}>{t("today.allTogether")}</Text>
+              <TText style={s.small}>{t("today.allTogether")}</TText>
             </View>
           </View>
         )}
@@ -221,7 +222,7 @@ export function TodayScreen() {
           >
             <Card style={{ padding: 21, height: 126 }}>
               <View style={s.between}>
-                <Text style={[s.label, { fontSize: 9, letterSpacing: 1 }]}>{item.label}</Text>
+                <TText style={[s.label, { fontSize: 9, letterSpacing: 1 }]}>{item.label}</TText>
                 <View
                   style={[
                     s.iconBox,
@@ -231,10 +232,10 @@ export function TodayScreen() {
                   <item.icon size={15} color={colors.text} />
                 </View>
               </View>
-              <Text style={{ fontSize: 29, color: colors.text, letterSpacing: -1, marginTop: -2 }}>
+              <TText style={{ fontSize: 29, color: colors.text, letterSpacing: -1, marginTop: -2 }}>
                 {String(item.value).padStart(2, "0")}
-              </Text>
-              <Text style={[s.small, { fontSize: 10, marginTop: 3 }]}>{item.note}</Text>
+              </TText>
+              <TText style={[s.small, { fontSize: 10, marginTop: 3 }]}>{item.note}</TText>
             </Card>
           </Pressable>
         ))}
@@ -269,7 +270,7 @@ export function TodayScreen() {
             ]}
           >
             <Plus size={15} color={colors.muted} />
-            <Text style={s.small}>{t("today.scheduleTime")}</Text>
+            <TText style={s.small}>{t("today.scheduleTime")}</TText>
           </Pressable>
         </Card>
         <Card style={{ flex: 1 }}>
@@ -296,15 +297,15 @@ export function TodayScreen() {
                 <Avatar name={m.sender} index={i} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <View style={s.between}>
-                    <Text style={[s.text, { fontSize: 12, fontWeight: "600" }]}>{m.sender}</Text>
-                    <Text style={[s.small, { fontSize: 10 }]}>{timeLabel(m.date)}</Text>
+                    <TText style={[s.text, { fontSize: 12, fontWeight: "600" }]}>{m.sender}</TText>
+                    <TText style={[s.small, { fontSize: 10 }]}>{timeLabel(m.date)}</TText>
                   </View>
-                  <Text numberOfLines={1} style={[s.text, { fontSize: 12, lineHeight: 18 }]}>
+                  <TText numberOfLines={1} style={[s.text, { fontSize: 12, lineHeight: 18 }]}>
                     {m.subject}
-                  </Text>
-                  <Text numberOfLines={1} style={[s.small, { fontSize: 11 }]}>
+                  </TText>
+                  <TText numberOfLines={1} style={[s.small, { fontSize: 11 }]}>
                     {m.body.replace(/\n/g, " ")}
-                  </Text>
+                  </TText>
                 </View>
                 {m.unread && (
                   <View
@@ -321,7 +322,7 @@ export function TodayScreen() {
       <View style={{ flexDirection: wide ? "row" : "column", gap: 22 }}>
         <Card style={{ flex: 1, backgroundColor: "#F0F0E7" }}>
           <SectionHeading title={t("today.smallThings")} />
-          <Text style={[s.muted, { marginBottom: 15 }]}>{t("today.startWithIdea")}</Text>
+          <TText style={[s.muted, { marginBottom: 15 }]}>{t("today.startWithIdea")}</TText>
           {[t("today.prompt.attention"), t("today.prompt.inbox"), t("today.prompt.docs")].map(
             (prompt) => (
               <Pressable
@@ -332,7 +333,7 @@ export function TodayScreen() {
                   { borderTopWidth: 1, borderTopColor: "#E1E2D9", paddingVertical: 13 },
                 ]}
               >
-                <Text style={[s.text, { fontSize: 12 }]}>{prompt}</Text>
+                <TText style={[s.text, { fontSize: 12 }]}>{prompt}</TText>
                 <ArrowUpRight size={15} color={colors.muted} />
               </Pressable>
             ),
@@ -365,13 +366,13 @@ export function TodayScreen() {
                     <Check size={14} color={colors.text} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.text, { fontSize: 12 }]}>{a.title}</Text>
-                    <Text style={s.small}>{relativeDate(a.date)}</Text>
+                    <TText style={[s.text, { fontSize: 12 }]}>{a.title}</TText>
+                    <TText style={s.small}>{relativeDate(a.date)}</TText>
                   </View>
                 </View>
               ))}
           {!pending.length && !w.activity.length && (
-            <Text style={s.muted}>{t("today.workspaceReady")}</Text>
+            <TText style={s.muted}>{t("today.workspaceReady")}</TText>
           )}
         </Card>
       </View>
@@ -391,13 +392,13 @@ function Avatar({ name, index = 0 }: { name: string; index?: number }) {
         alignItems: "center",
       }}
     >
-      <Text style={{ color: colors.text, fontSize: 11, fontWeight: "500" }}>
+      <TText style={{ color: colors.text, fontSize: 11, fontWeight: "500" }}>
         {name
           .split(" ")
           .map((p) => p[0])
           .slice(0, 2)
           .join("")}
-      </Text>
+      </TText>
     </View>
   );
 }
@@ -419,11 +420,11 @@ export function AgendaRow({
       style={[s.row, { gap: 16, paddingVertical: 14 }]}
     >
       <View style={{ width: 65 }}>
-        <Text style={[s.text, { fontSize: 11 }]}>
+        <TText style={[s.text, { fontSize: 11 }]}>
           {e.allDay ? t("event.allDayShort") : timeLabel(e.start, e.timeZone)}
-        </Text>
+        </TText>
         {!e.allDay && (
-          <Text style={[s.small, { fontSize: 10 }]}>{timeLabel(e.end, e.timeZone)}</Text>
+          <TText style={[s.small, { fontSize: 10 }]}>{timeLabel(e.end, e.timeZone)}</TText>
         )}
       </View>
       <View
@@ -435,13 +436,13 @@ export function AgendaRow({
         }}
       />
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[s.text, { fontSize: 13, fontWeight: "500" }]}>{e.title}</Text>
-        <Text numberOfLines={1} style={[s.small, { fontSize: 11 }]}>
+        <TText style={[s.text, { fontSize: 13, fontWeight: "500" }]}>{e.title}</TText>
+        <TText numberOfLines={1} style={[s.small, { fontSize: 11 }]}>
           {e.location ||
             (e.attendees.length
               ? t("event.attendeeCount", { count: e.attendees.length })
               : t("event.timeForYou"))}
-        </Text>
+        </TText>
       </View>
       <ChevronRight size={14} color={colors.muted} />
     </Pressable>
@@ -544,19 +545,19 @@ export function MailScreen() {
               <Avatar name={m.sender} index={i} />
               <View style={{ flex: 1, gap: 5 }}>
                 <View style={s.between}>
-                  <Text style={[s.text, { fontWeight: m.unread ? "600" : "400" }]}>{m.sender}</Text>
-                  <Text style={s.small}>{dateLabel(m.date)}</Text>
+                  <TText style={[s.text, { fontWeight: m.unread ? "600" : "400" }]}>{m.sender}</TText>
+                  <TText style={s.small}>{dateLabel(m.date)}</TText>
                 </View>
-                <Text style={[s.text, { fontWeight: "500", fontSize: 13 }]}>{m.subject}</Text>
-                <Text style={s.muted} numberOfLines={1}>
+                <TText style={[s.text, { fontWeight: "500", fontSize: 13 }]}>{m.subject}</TText>
+                <TText style={s.muted} numberOfLines={1}>
                   {m.body.replace(/\n/g, " ")}
-                </Text>
+                </TText>
                 {!!m.attachments.length && (
                   <View style={[s.row, { gap: 4, marginTop: 2 }]}>
                     <FileText size={12} color={colors.muted} />
-                    <Text style={s.small}>
+                    <TText style={s.small}>
                       {t("mail.attachmentCount", { count: m.attachments.length })}
-                    </Text>
+                    </TText>
                   </View>
                 )}
               </View>
@@ -678,9 +679,9 @@ export function CalendarScreen() {
     <View style={{ gap: 20 }}>
       <View style={[s.between, { gap: 12, flexWrap: "wrap" }]}>
         <View style={[s.row, { gap: 8 }]}>
-          <Text style={s.title}>
+          <TText style={s.title}>
             {anchor.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </Text>
+          </TText>
           <IconButton
             icon={ChevronLeft}
             label={t("a11y.prevWeek")}
@@ -698,7 +699,7 @@ export function CalendarScreen() {
       </View>
       {calendars.length > 0 && (
         <View style={{ gap: 9 }}>
-          <Text style={s.label}>{t("cal.yourCalendars")}</Text>
+          <TText style={s.label}>{t("cal.yourCalendars")}</TText>
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {calendars.map((c) => (
               <Button
@@ -737,15 +738,15 @@ export function CalendarScreen() {
                   backgroundColor: key === date ? colors.sky : "transparent",
                 }}
               >
-                <Text style={s.small}>{day.toLocaleDateString("en-US", { weekday: "short" })}</Text>
-                <Text
+                <TText style={s.small}>{day.toLocaleDateString("en-US", { weekday: "short" })}</TText>
+                <TText
                   style={[
                     s.title,
                     { fontSize: 22, color: key === date ? colors.blueDark : colors.text },
                   ]}
                 >
                   {day.getDate()}
-                </Text>
+                </TText>
                 <View
                   style={{
                     height: 4,
@@ -765,18 +766,18 @@ export function CalendarScreen() {
       </Card>
       <Card>
         <View style={[s.between, { gap: 10, flexWrap: "wrap" }]}>
-          <Text style={s.heading}>
+          <TText style={s.heading}>
             {all
               ? t("cal.next30")
               : dateLabel(`${date}T12:00:00`, { weekday: "long", month: "long", day: "numeric" })}
-          </Text>
+          </TText>
           <Button small onPress={() => setAll(!all)}>
             {all ? t("cal.selectedDay") : t("cal.next30")}
           </Button>
         </View>
-        <Text style={[s.small, { marginTop: 7, marginBottom: 13 }]}>
+        <TText style={[s.small, { marginTop: 7, marginBottom: 13 }]}>
           {t("cal.tzNote", { name: selected?.name || t("cal.fallbackName"), zone })}
-        </Text>
+        </TText>
         <ErrorNotice error={error} />
         {!!error && (
           <Button small onPress={() => setRetry(retry + 1)}>
@@ -786,14 +787,14 @@ export function CalendarScreen() {
         {loading ? (
           <View style={[s.row, { gap: 10, paddingVertical: 35, justifyContent: "center" }]}>
             <ActivityIndicator size="small" color={colors.blueDark} />
-            <Text style={s.muted}>{t("cal.loading")}</Text>
+            <TText style={s.muted}>{t("cal.loading")}</TText>
           </View>
         ) : events.length ? (
           events.map((e, i) => (
             <View key={e.id}>
-              {all && <Text style={[s.label, { marginTop: 16 }]}>{dateLabel(e.start)}</Text>}
+              {all && <TText style={[s.label, { marginTop: 16 }]}>{dateLabel(e.start)}</TText>}
               <AgendaRow event={e} index={i} neighbors={events} />
-              <Text style={[s.small, { marginLeft: 84, marginBottom: 8 }]}>{e.timeZone}</Text>
+              <TText style={[s.small, { marginLeft: 84, marginBottom: 8 }]}>{e.timeZone}</TText>
             </View>
           ))
         ) : (
@@ -842,8 +843,8 @@ export function BrowserScreen() {
         <View style={[s.row, { gap: 12, marginBottom: 15 }]}>
           <Globe2 size={22} color={colors.blueDark} />
           <View>
-            <Text style={s.heading}>{t("browser.tabPlace")}</Text>
-            <Text style={s.muted}>{t("browser.privateBrowsing")}</Text>
+            <TText style={s.heading}>{t("browser.tabPlace")}</TText>
+            <TText style={s.muted}>{t("browser.privateBrowsing")}</TText>
           </View>
         </View>
         <View style={[s.row, { gap: 10 }]}>
@@ -888,10 +889,10 @@ export function BrowserScreen() {
                   <Globe2 size={20} color={colors.blueDark} />
                 </View>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={s.heading}>{b.title || t("browser.untitled")}</Text>
-                  <Text style={s.muted} numberOfLines={1}>
+                  <TText style={s.heading}>{b.title || t("browser.untitled")}</TText>
+                  <TText style={s.muted} numberOfLines={1}>
                     {b.url}
-                  </Text>
+                  </TText>
                 </View>
                 <Chip tint={b.status === "active" ? colors.green : colors.canvas}>{b.status}</Chip>
                 <ArrowUpRight size={17} color={colors.muted} />
@@ -967,7 +968,7 @@ export function FilesScreen() {
   return (
     <View style={{ gap: 20 }}>
       <View style={s.between}>
-        <Text style={[s.muted, { flex: 1, marginRight: 15 }]}>{t("files.tagline")}</Text>
+        <TText style={[s.muted, { flex: 1, marginRight: 15 }]}>{t("files.tagline")}</TText>
         <Button primary icon={Upload} busy={busy} onPress={() => void upload()}>
           {t("files.importPdf")}
         </Button>
@@ -1003,7 +1004,7 @@ export function FilesScreen() {
                 >
                   <View style={[s.row, { gap: 5, marginBottom: 15 }]}>
                     <FileText size={13} color={colors.blueDark} />
-                    <Text style={{ fontSize: 7, color: colors.blueDark }}>DOCUMENT</Text>
+                    <TText style={{ fontSize: 7, color: colors.blueDark }}>DOCUMENT</TText>
                   </View>
                   {[100, 75, 90, 95, 60].map((width, i) => (
                     <View
@@ -1023,16 +1024,16 @@ export function FilesScreen() {
                 </View>
               </View>
               <View style={{ padding: 21, gap: 6 }}>
-                <Text numberOfLines={1} style={[s.heading, { fontSize: 14 }]}>
+                <TText numberOfLines={1} style={[s.heading, { fontSize: 14 }]}>
                   {f.name}
-                </Text>
-                <Text style={s.small}>
+                </TText>
+                <TText style={s.small}>
                   {t("files.pageCount", { count: f.pageCount })} ·{" "}
                   {Math.max(1, Math.round(f.size / 1024))} KB
-                </Text>
+                </TText>
                 <View style={[s.between, { marginTop: 9 }]}>
                   <Chip>{f.source}</Chip>
-                  <Text style={s.small}>{dateLabel(f.createdAt)}</Text>
+                  <TText style={s.small}>{dateLabel(f.createdAt)}</TText>
                 </View>
               </View>
             </Card>
@@ -1092,8 +1093,8 @@ export function ActivityScreen() {
                 )}
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={s.text}>{a.title}</Text>
-                <Text style={s.small}>{relativeDate(a.createdAt)}</Text>
+                <TText style={s.text}>{a.title}</TText>
+                <TText style={s.small}>{relativeDate(a.createdAt)}</TText>
               </View>
               <Chip
                 tint={
@@ -1135,11 +1136,11 @@ export function ActivityScreen() {
                   <Clock3 size={16} color={colors.muted} />
                 </View>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={s.text}>{a.title}</Text>
-                  <Text style={s.muted}>{resultSummary(a.detail)}</Text>
-                  <Text style={s.small}>
+                  <TText style={s.text}>{a.title}</TText>
+                  <TText style={s.muted}>{resultSummary(a.detail)}</TText>
+                  <TText style={s.small}>
                     {dateLabel(a.date)} · {timeLabel(a.date)}
-                  </Text>
+                  </TText>
                 </View>
                 <Chip>{a.status}</Chip>
               </View>
@@ -1242,13 +1243,13 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
         if (!group.length) return null;
         return (
           <View key={String(isConnected)} style={{ gap: 8 }}>
-            <Text style={[s.small, { marginLeft: 12 }]}>
+            <TText style={[s.small, { marginLeft: 12 }]}>
               {isConnected
                 ? w.mode === "sample"
                   ? t("conn.yourConnections")
                   : t("conn.connected")
                 : t("conn.available")}
-            </Text>
+            </TText>
             <View style={{ paddingHorizontal: 16, borderRadius: 23, backgroundColor: colors.line }}>
               {group.map((row, index) => (
                 <Pressable
@@ -1280,21 +1281,21 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   >
                     <row.icon size={23} color={row.color} />
                   </View>
-                  <Text style={[s.text, { flex: 1 }]}>{row.name}</Text>
+                  <TText style={[s.text, { flex: 1 }]}>{row.name}</TText>
                   {row.connected && row.group === "google" && w.mode === "sample" && (
-                    <Text style={s.small}>{t("conn.localData")}</Text>
+                    <TText style={s.small}>{t("conn.localData")}</TText>
                   )}
                   {row.connected ? (
                     <ChevronRight size={18} color={colors.muted} />
                   ) : (
-                    <Text
+                    <TText
                       style={{
                         fontSize: 13,
                         color: row.group === "google" ? colors.blueDark : colors.muted,
                       }}
                     >
                       {row.group === "google" ? t("conn.connect") : t("conn.setup")}
-                    </Text>
+                    </TText>
                   )}
                 </Pressable>
               ))}
@@ -1302,7 +1303,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
           </View>
         );
       })}
-      {!rows.length && <Text style={s.muted}>{t("conn.noMatch")}</Text>}
+      {!rows.length && <TText style={s.muted}>{t("conn.noMatch")}</TText>}
       {selected && (
         <Sheet
           title={selected === "google" ? t("conn.googleTitle") : "OpenBot"}
@@ -1311,7 +1312,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
         >
           {selected === "google" ? (
             <View style={{ gap: 18 }}>
-              <Text style={s.muted}>{t("conn.googleIntro")}</Text>
+              <TText style={s.muted}>{t("conn.googleIntro")}</TText>
               <View style={[s.row, { gap: 7, flexWrap: "wrap" }]}>
                 {google?.capabilities.map((cap) => (
                   <Chip key={cap}>{capabilityLabel(cap)}</Chip>
@@ -1357,8 +1358,8 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
             </View>
           ) : (
             <View style={{ gap: 14 }}>
-              <Text style={s.text}>{t("conn.openbotNote1")}</Text>
-              <Text style={s.muted}>{t("conn.openbotNote2")}</Text>
+              <TText style={s.text}>{t("conn.openbotNote1")}</TText>
+              <TText style={s.muted}>{t("conn.openbotNote2")}</TText>
             </View>
           )}
         </Sheet>
@@ -1376,8 +1377,8 @@ function SettingsLine({ label, value }: { label: string; value: string }) {
         { gap: 15, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.line },
       ]}
     >
-      <Text style={s.muted}>{label}</Text>
-      <Text style={[s.text, { fontSize: 12, flexShrink: 1, textAlign: "right" }]}>{value}</Text>
+      <TText style={s.muted}>{label}</TText>
+      <TText style={[s.text, { fontSize: 12, flexShrink: 1, textAlign: "right" }]}>{value}</TText>
     </View>
   );
 }

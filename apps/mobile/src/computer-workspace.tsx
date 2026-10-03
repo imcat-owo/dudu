@@ -12,7 +12,7 @@ import {
   Upload,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Platform, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 import type { Artifact } from "../../../packages/domain/src";
 import type {
   ComputerCommand,
@@ -33,6 +33,7 @@ import {
   useStyles,
 } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -138,8 +139,8 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
         <View style={[s.row, { gap: 12 }]}>
           <Terminal size={24} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={s.heading}>{t("term.title")}</Text>
-            <Text style={s.muted}>
+            <TText style={s.heading}>{t("term.title")}</TText>
+            <TText style={s.muted}>
               {running
                 ? t("term.running")
                 : snapshot?.status === "stopped"
@@ -149,11 +150,11 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                     : snapshot?.status === "error"
                       ? t("term.attention")
                       : t("term.connecting")}
-            </Text>
+            </TText>
           </View>
           {!snapshot && !error && <ActivityIndicator color={colors.blueDark} />}
         </View>
-        {!!snapshot?.message && <Text style={s.small}>{snapshot.message}</Text>}
+        {!!snapshot?.message && <TText style={s.small}>{snapshot.message}</TText>}
         {snapshot?.enabled && (
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {running ? (
@@ -196,9 +197,9 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
           <View style={{ display: tab === "Terminal" ? "flex" : "none", gap: 16 }}>
             {editingCommand || command.length > 0 || snapshot.commands.length === 0 ? (
               <View style={{ borderRadius: 22, backgroundColor: colors.line, padding: 18, gap: 8 }}>
-                <Text style={{ color: colors.muted, fontSize: 12, fontFamily: mono }}>
+                <TText style={{ color: colors.muted, fontSize: 12, fontFamily: mono }}>
                   {t("term.paneLabel")}
-                </Text>
+                </TText>
                 <Field
                   label={t("term.workdir")}
                   value={cwd}
@@ -240,9 +241,9 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                 >
                   {t("term.runCommand")}
                 </Button>
-                <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
+                <TText style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>
                   {t("term.runNote")}
-                </Text>
+                </TText>
               </View>
             ) : (
               <Button
@@ -254,7 +255,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                 {t("term.newCommand")}
               </Button>
             )}
-            {!!commandRunning && <Text style={s.muted}>{t("term.runningNote")}</Text>}
+            {!!commandRunning && <TText style={s.muted}>{t("term.runningNote")}</TText>}
             {snapshot.commands.length === 0 ? (
               <Empty icon={Terminal} title={t("term.readyTitle")} detail={t("term.readyDetail")} />
             ) : (
@@ -285,7 +286,7 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
   return (
     <Card style={{ gap: 10 }}>
       <View style={[s.between, { gap: 10 }]}>
-        <Text
+        <TText
           style={[
             s.small,
             {
@@ -300,23 +301,23 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
         >
           {run.status.replace("_", " ")}
           {run.exitCode !== undefined ? ` · exit ${run.exitCode}` : ""}
-        </Text>
-        <Text style={s.small}>{timeLabel(run.startedAt)}</Text>
+        </TText>
+        <TText style={s.small}>{timeLabel(run.startedAt)}</TText>
       </View>
-      <Text
+      <TText
         selectable
         style={[s.text, { fontFamily: mono, fontSize: 13 }]}
-      >{`$ ${run.command}`}</Text>
-      <Text style={[s.small, { fontFamily: mono }]}>{run.cwd}</Text>
+      >{`$ ${run.command}`}</TText>
+      <TText style={[s.small, { fontFamily: mono }]}>{run.cwd}</TText>
       {expanded && (
         <>
           {!!run.stdout && (
-            <Text selectable style={[s.text, { fontFamily: mono, fontSize: 12, lineHeight: 19 }]}>
+            <TText selectable style={[s.text, { fontFamily: mono, fontSize: 12, lineHeight: 19 }]}>
               {run.stdout}
-            </Text>
+            </TText>
           )}
           {!!run.stderr && (
-            <Text
+            <TText
               selectable
               style={[
                 s.text,
@@ -324,12 +325,12 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
               ]}
             >
               {run.stderr}
-            </Text>
+            </TText>
           )}
           {!run.stdout && !run.stderr && run.status !== "running" && (
-            <Text style={s.small}>{t("term.noOutput")}</Text>
+            <TText style={s.small}>{t("term.noOutput")}</TText>
           )}
-          {run.truncated && <Text style={s.small}>{t("term.truncatedNote")}</Text>}
+          {run.truncated && <TText style={s.small}>{t("term.truncatedNote")}</TText>}
         </>
       )}
       {!!(run.stdout || run.stderr) && (
@@ -476,15 +477,15 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
   return (
     <View style={{ gap: 12 }}>
       <View style={s.between}>
-        <Text style={s.heading}>{t("term.workspaceFiles")}</Text>
+        <TText style={s.heading}>{t("term.workspaceFiles")}</TText>
         {(busy || loading) && <ActivityIndicator color={colors.blueDark} />}
       </View>
-      <Text selectable style={[s.small, { fontFamily: mono }]}>
+      <TText selectable style={[s.small, { fontFamily: mono }]}>
         {editor?.path || path}
-      </Text>
+      </TText>
       <ErrorNotice error={error} />
-      {!!notice && <Text style={[s.small, { color: "#248258" }]}>{notice}</Text>}
-      {!running && <Text style={s.muted}>{t("term.startToBrowse")}</Text>}
+      {!!notice && <TText style={[s.small, { color: "#248258" }]}>{notice}</TText>}
+      {!running && <TText style={s.muted}>{t("term.startToBrowse")}</TText>}
       {editor ? (
         <>
           <Field
@@ -585,8 +586,8 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
           </View>
           {importing && (
             <Card>
-              <Text style={s.heading}>{t("term.pickPdf")}</Text>
-              <Text style={[s.small, { marginTop: 6 }]}>{t("term.copyNote")}</Text>
+              <TText style={s.heading}>{t("term.pickPdf")}</TText>
+              <TText style={[s.small, { marginTop: 6 }]}>{t("term.copyNote")}</TText>
               {workspace.files.map((file) => (
                 <LinkRow
                   key={file.id}
@@ -595,7 +596,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                   onPress={() => void importDocument(file)}
                 />
               ))}
-              {!workspace.files.length && <Text style={s.muted}>{t("term.addDocFirst")}</Text>}
+              {!workspace.files.length && <TText style={s.muted}>{t("term.addDocFirst")}</TText>}
             </Card>
           )}
           {folder !== undefined && (

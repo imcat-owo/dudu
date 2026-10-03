@@ -1,11 +1,12 @@
 import { Check, Globe2, Hand, RotateCw } from "lucide-react-native";
 import { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, AppState, Image, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Image, View } from "react-native";
 import { z } from "zod";
 import type { BrowserSession } from "../../../packages/domain/src";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 export const BrowserRunContext = createContext({ running: false, active: false });
 
@@ -103,8 +104,8 @@ export function BrowserToolCard({
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1, gap: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>浏览器</Text>
-          <Text numberOfLines={1} style={[s.small, { fontSize: 12 }]}>
+          <TText style={[s.text, { fontWeight: "600" }]}>浏览器</TText>
+          <TText numberOfLines={1} style={[s.small, { fontSize: 12 }]}>
             {working
               ? t("browsercard.reading")
               : loading
@@ -112,7 +113,7 @@ export function BrowserToolCard({
                 : failure
                   ? t("browsercard.couldntRead")
                   : siteLabel(visited?.url)}
-          </Text>
+          </TText>
         </View>
         {working ? (
           <ActivityIndicator size="small" color={colors.blueDark} />
@@ -135,9 +136,9 @@ export function BrowserToolCard({
         />
       ) : (
         <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 21, gap: 12 }}>
-          <Text numberOfLines={2} style={[s.text, { fontSize: 14 }]}>
+          <TText numberOfLines={2} style={[s.text, { fontSize: 14 }]}>
             {visited?.title || siteLabel(url)}
-          </Text>
+          </TText>
           {working ? (
             <View style={{ gap: 8 }}>
               {(["90%", "74%", "84%"] as const).map((width) => (
@@ -148,7 +149,7 @@ export function BrowserToolCard({
               ))}
             </View>
           ) : visited ? (
-            <Text style={s.small}>
+            <TText style={s.small}>
               {browser && browser.url !== visited.url
                 ? t("browsercard.visited")
                 : browser?.status === "closed"
@@ -158,7 +159,7 @@ export function BrowserToolCard({
                     : previewFailed
                       ? t("browsercard.previewUnavailable")
                       : t("browsercard.connecting")}
-            </Text>
+            </TText>
           ) : null}
         </View>
       )}

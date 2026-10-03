@@ -1,16 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
-import { Linking, Text, type TextStyle } from "react-native";
+import { Linking, type TextStyle } from "react-native";
 import Markdown, { type MarkdownStyles, type RenderRules } from "react-native-markdown-renderer";
 import { useFontSizeSetting } from "./app-settings";
 import { assistantMarkdown, isSafeAssistantUrl } from "./assistant-markdown";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { ErrorNotice, useColors } from "./ui";
+import { TText } from "./font";
 
 const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles) => (
-  <Text key={node.key} selectable style={styles.codeBlock as TextStyle}>
+  <TText key={node.key} selectable style={styles.codeBlock as TextStyle}>
     {node.content.replace(/\n$/, "")}
-  </Text>
+  </TText>
 );
 
 export function AssistantResponse({ content }: { content: string }) {
@@ -46,16 +47,16 @@ export function AssistantResponse({ content }: { content: string }) {
     };
     const mdRules: RenderRules = {
       textgroup: (node, children) => (
-        <Text key={node.key} selectable style={textStyle}>
+        <TText key={node.key} selectable style={textStyle}>
           {children}
-        </Text>
+        </TText>
       ),
       image: (node) => (
-        <Text key={node.key} selectable style={{ color: colors.muted }}>
+        <TText key={node.key} selectable style={{ color: colors.muted }}>
           {node.attributes.alt
             ? t("chat.imageAlt", { alt: node.attributes.alt })
             : t("chat.imageFallback")}
-        </Text>
+        </TText>
       ),
       code_block: renderCodeBlock,
       fence: renderCodeBlock,

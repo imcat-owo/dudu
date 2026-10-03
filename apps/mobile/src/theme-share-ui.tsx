@@ -13,7 +13,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Pressable, Share, Text, TextInput, View } from "react-native";
+import { Pressable, Share, TextInput, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { t } from "./i18n";
 import {
@@ -26,6 +26,7 @@ import {
 import { useTheme } from "./theme/ThemeContext";
 import type { ThemeBundle } from "./theme/types";
 import { Button, Card, SectionHeading, Sheet, useColors } from "./ui";
+import { TText } from "./font";
 
 function importErrorText(code: ImportErrorCode): string {
   switch (code) {
@@ -105,7 +106,7 @@ export function ShareSection() {
             {t("appearance.shareScanQr")}
           </Button>
         </View>
-        {notice ? <Text style={{ color: colors.text, fontSize: 13 }}>{notice}</Text> : null}
+        {notice ? <TText style={{ color: colors.text, fontSize: 13 }}>{notice}</TText> : null}
       </Card>
       {qrOpen ? <QrSheet bundle={bundle} onClose={() => setQrOpen(false)} /> : null}
       {pasteOpen ? (
@@ -147,14 +148,14 @@ function QrSheet({ bundle, onClose }: { bundle: ThemeBundle; onClose: () => void
             <QRCode value={json} size={200} />
           </View>
         ) : (
-          <Text style={{ color: colors.text, fontSize: 14, textAlign: "center" }}>
+          <TText style={{ color: colors.text, fontSize: 14, textAlign: "center" }}>
             {t("appearance.shareQrTooBig")}
-          </Text>
+          </TText>
         )}
         {stripped.length > 0 ? (
-          <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>
+          <TText style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>
             {t("appearance.shareStripped")}
-          </Text>
+          </TText>
         ) : null}
         <Button small onPress={onClose}>
           {t("appearance.shareClose")}
@@ -222,7 +223,7 @@ function ScanSheet({
     return (
       <Sheet title={t("appearance.shareScanQr")} onClose={onClose}>
         <View style={{ padding: 20 }}>
-          <Text style={{ color: colors.text }}>…</Text>
+          <TText style={{ color: colors.text }}>…</TText>
         </View>
       </Sheet>
     );
@@ -231,9 +232,9 @@ function ScanSheet({
     return (
       <Sheet title={t("appearance.shareScanQr")} onClose={onClose}>
         <View style={{ gap: 12, paddingVertical: 8 }}>
-          <Text style={{ color: colors.text, fontSize: 14 }}>
+          <TText style={{ color: colors.text, fontSize: 14 }}>
             {t("appearance.shareCameraDenied")}
-          </Text>
+          </TText>
           <Button primary onPress={() => void requestPermission()}>
             {t("appearance.shareScanQr")}
           </Button>
@@ -256,9 +257,9 @@ function ScanSheet({
           />
         </View>
         <Pressable onPress={onClose}>
-          <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center" }}>
+          <TText style={{ color: colors.muted, fontSize: 13, textAlign: "center" }}>
             {t("appearance.shareClose")}
-          </Text>
+          </TText>
         </Pressable>
       </View>
     </Sheet>

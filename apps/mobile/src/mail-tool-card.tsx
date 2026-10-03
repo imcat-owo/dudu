@@ -1,11 +1,12 @@
 import { Mail, Search } from "lucide-react-native";
 import { useContext } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { z } from "zod";
 import { BrowserRunContext } from "./browser-tool-card";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 const messageSchema = z.object({
   id: z.string(),
@@ -52,13 +53,13 @@ export function MailToolCard({
         ) : (
           <Mail size={16} color={colors.muted} />
         )}
-        <Text style={s.muted}>
+        <TText style={s.muted}>
           {!active
             ? t("mailcard.paused")
             : search
               ? t("mailcard.checkingInbox")
               : t("mailcard.readingEmail")}
-        </Text>
+        </TText>
       </View>
     );
   if (search) {
@@ -70,7 +71,7 @@ export function MailToolCard({
     return (
       <View style={[s.row, { gap: 9, padding: 12 }]}>
         <Search size={16} color={colors.muted} />
-        <Text style={s.muted}>
+        <TText style={s.muted}>
           {count
             ? parsed.data.truncated
               ? t("mailcard.foundAtLeast", { count })
@@ -78,7 +79,7 @@ export function MailToolCard({
                 ? t("mailcard.foundOne")
                 : t("mailcard.foundMany", { count })
             : t("mailcard.noMatch")}
-        </Text>
+        </TText>
       </View>
     );
   }
@@ -87,7 +88,7 @@ export function MailToolCard({
     .safeParse(value);
   if (!parsed.success) return <ErrorNotice error={t("mailcard.couldntDisplay")} />;
   const message = parsed.data.messages.at(-1);
-  if (!message) return <Text style={s.muted}>这个帖子里没有消息。</Text>;
+  if (!message) return <TText style={s.muted}>这个帖子里没有消息。</TText>;
   return (
     <Card
       style={{ padding: 18, gap: 14, backgroundColor: colors.line, maxWidth: 440, width: "100%" }}
@@ -97,20 +98,20 @@ export function MailToolCard({
           <Mail size={20} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>{message.sender}</Text>
-          <Text style={s.small}>
+          <TText style={[s.text, { fontWeight: "600" }]}>{message.sender}</TText>
+          <TText style={s.small}>
             Email ·{" "}
             {parsed.data.messages.length === 1
               ? t("mailcard.oneMessage")
               : t("mailcard.messages", { count: parsed.data.messages.length })}
-          </Text>
+          </TText>
         </View>
       </View>
-      <Text style={s.heading}>{message.subject}</Text>
-      <Text style={s.muted} numberOfLines={3}>
+      <TText style={s.heading}>{message.subject}</TText>
+      <TText style={s.muted} numberOfLines={3}>
         {message.body}
-      </Text>
-      {parsed.data.truncated && <Text style={s.small}>显示这个帖子的摘要。</Text>}
+      </TText>
+      {parsed.data.truncated && <TText style={s.small}>显示这个帖子的摘要。</TText>}
       <Button small icon={Mail} onPress={() => open({ type: "mail", mail: message })}>
         {t("mailcard.openEmail")}
       </Button>

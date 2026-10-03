@@ -9,9 +9,10 @@ import {
 } from "expo-audio";
 import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
+import { TText } from "./font";
 
 export type VoiceMessage = {
   uri: string;
@@ -195,12 +196,12 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
               />
             ))}
           </View>
-          <Text style={[s.small, { color: bubble.fg, opacity: 0.75 }]}>
+          <TText style={[s.small, { color: bubble.fg, opacity: 0.75 }]}>
             {formatDuration(playing || position > 0 ? remaining : duration)}
-          </Text>
+          </TText>
         </View>
       </View>
-      {!!error && <Text style={[s.small, { color: colors.danger, marginTop: 6 }]}>{error}</Text>}
+      {!!error && <TText style={[s.small, { color: colors.danger, marginTop: 6 }]}>{error}</TText>}
     </View>
   );
 }
@@ -312,9 +313,9 @@ export function VoiceRecorderButton({
   return (
     <View style={{ alignItems: "center" }}>
       {!!hint && !recording && (
-        <Text style={[s.small, { color: colors.danger, marginBottom: 4, textAlign: "center" }]}>
+        <TText style={[s.small, { color: colors.danger, marginBottom: 4, textAlign: "center" }]}>
           {hint}
-        </Text>
+        </TText>
       )}
       {recording && (
         <View
@@ -338,11 +339,11 @@ export function VoiceRecorderButton({
                 backgroundColor: "#FF3B30",
               }}
             />
-            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
+            <TText style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
               {formatTimer(seconds)}
-            </Text>
+            </TText>
           </View>
-          <Text style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>松开发送</Text>
+          <TText style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>松开发送</TText>
         </View>
       )}
       <Pressable

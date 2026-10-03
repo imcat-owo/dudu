@@ -1,6 +1,6 @@
 import { Bell, Bluetooth, Camera, Clipboard, LocateFixed, Mic } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import {
   checkers,
   PERMISSION_LABELS,
@@ -10,6 +10,7 @@ import {
 } from "./device-permissions";
 import { t } from "./i18n";
 import { Button, Sheet, useColors, useStyles } from "./ui";
+import { TText } from "./font";
 
 const ICONS: Record<PermissionKind, typeof Mic> = {
   audio: Mic,
@@ -87,7 +88,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title={t("perm.sheetTitle")} subtitle={t("perm.sheetSubtitle")} onClose={onClose}>
       <View style={{ gap: 4 }}>
-        <Text style={s.muted}>{t("perm.intro")}</Text>
+        <TText style={s.muted}>{t("perm.intro")}</TText>
         {ORDER.map((kind) => {
           const Icon = ICONS[kind];
           const status = statuses[kind];
@@ -106,8 +107,8 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
               <View style={[s.row, { gap: 12, flex: 1 }]}>
                 <Icon size={19} color={colors.text} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.text}>{PERMISSION_LABELS[kind]}</Text>
-                  <Text style={s.small}>{statusText(status)}</Text>
+                  <TText style={s.text}>{PERMISSION_LABELS[kind]}</TText>
+                  <TText style={s.small}>{statusText(status)}</TText>
                 </View>
               </View>
               {busy === kind ? (
@@ -123,7 +124,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
             </View>
           );
         })}
-        <Text style={[s.small, { marginTop: 12 }]}>{t("perm.bluetoothNote")}</Text>
+        <TText style={[s.small, { marginTop: 12 }]}>{t("perm.bluetoothNote")}</TText>
       </View>
     </Sheet>
   );

@@ -53,6 +53,7 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
+import { TText } from "./font";
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -180,13 +181,13 @@ function ServerToolCard({
   if (task) return <TaskThreadCard task={task} />;
   return (
     <Card style={{ padding: 16, gap: 10 }}>
-      <Text style={s.heading}>
+      <TText style={s.heading}>
         {loading ? t("toolcard.saving", { name: name.toLowerCase() }) : name}
-      </Text>
+      </TText>
       {parsed.success && parsed.data.error ? (
         <ErrorNotice error={parsed.data.error} />
       ) : (
-        <Text style={s.muted}>{loading ? t("toolcard.waiting") : t("toolcard.openWorkspace")}</Text>
+        <TText style={s.muted}>{loading ? t("toolcard.waiting") : t("toolcard.openWorkspace")}</TText>
       )}
       <Button
         small
@@ -472,7 +473,7 @@ export function ChatScreen({
             backgroundColor: incognitoOn ? colors.text : colors.line,
           }}
         >
-          <Text
+          <TText
             style={{
               fontSize: 12,
               fontWeight: "600",
@@ -480,13 +481,13 @@ export function ChatScreen({
             }}
           >
             {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
-          </Text>
+          </TText>
         </Pressable>
       </View>
       {incognitoOn && (
-        <Text style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
+        <TText style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
           {t("chat.incognitoNote")}
-        </Text>
+        </TText>
       )}
       <ScrollView
         ref={list}
@@ -523,7 +524,7 @@ export function ChatScreen({
               gap: 15,
             }}
           >
-            <Text
+            <TText
               style={{
                 fontSize: 22,
                 letterSpacing: -0.5,
@@ -533,10 +534,10 @@ export function ChatScreen({
               }}
             >
               {t("chat.welcomeTitle")}
-            </Text>
-            <Text style={[s.muted, { maxWidth: 320, textAlign: "center", lineHeight: 23 }]}>
+            </TText>
+            <TText style={[s.muted, { maxWidth: 320, textAlign: "center", lineHeight: 23 }]}>
               {t("chat.welcomeBody")}
-            </Text>
+            </TText>
             <View style={{ width: "100%", maxWidth: 360, marginTop: 14, gap: 8 }}>
               {[
                 {
@@ -610,9 +611,9 @@ export function ChatScreen({
                             }}
                           >
                             {user ? (
-                              <Text selectable style={[s.text, { color: bubble.fg }]}>
+                              <TText selectable style={[s.text, { color: bubble.fg }]}>
                                 {text}
-                              </Text>
+                              </TText>
                             ) : (
                               <AssistantResponse content={text} />
                             )}
@@ -807,14 +808,14 @@ export function ChatScreen({
         )}
         {!!outbox.pending.length && (
           <View style={{ padding: 12, gap: 6 }}>
-            <Text style={s.small}>
+            <TText style={s.small}>
               {outbox.paused ? t("chat.onHold") : t("chat.upNext")} · {t("chat.keepOpen")}
-            </Text>
+            </TText>
             {outbox.pending.map((message) => (
               <View key={message.id} style={[s.row, { gap: 8 }]}>
-                <Text numberOfLines={2} style={[s.muted, { flex: 1 }]}>
+                <TText numberOfLines={2} style={[s.muted, { flex: 1 }]}>
                   {displayJevUserMessage(message.text, messages)}
-                </Text>
+                </TText>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t("a11y.removeQueued", {
@@ -850,7 +851,7 @@ export function ChatScreen({
         )}
         {picking && (
           <Card style={{ marginBottom: 12, padding: 15 }}>
-            <Text style={s.heading}>{t("chat.addDocument")}</Text>
+            <TText style={s.heading}>{t("chat.addDocument")}</TText>
             <ScrollView style={{ maxHeight: 230 }} keyboardShouldPersistTaps="handled">
               {w.files.length ? (
                 w.files.map((f) => (
@@ -868,7 +869,7 @@ export function ChatScreen({
                   />
                 ))
               ) : (
-                <Text style={s.muted}>{t("chat.importPdfHint")}</Text>
+                <TText style={s.muted}>{t("chat.importPdfHint")}</TText>
               )}
             </ScrollView>
             <Button
@@ -917,12 +918,12 @@ export function ChatScreen({
                     ]}
                   >
                     <FileText size={14} color={colors.blueDark} />
-                    <Text
+                    <TText
                       numberOfLines={1}
                       style={{ flexShrink: 1, fontSize: 12, color: colors.text }}
                     >
                       {f.name}
-                    </Text>
+                    </TText>
                     <X size={13} color={colors.muted} />
                   </Pressable>
                 ))}
@@ -943,9 +944,9 @@ export function ChatScreen({
                 backgroundColor: picking || pressed ? colors.sky : "transparent",
               })}
             >
-              <Text style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}>
+              <TText style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}>
                 +
-              </Text>
+              </TText>
             </Pressable>
             <TextInput
               accessibilityLabel={t("a11y.messageInput")}
