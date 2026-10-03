@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Image, Text, View } from "react-native";
+import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
 
 export type ImageMessage = {
@@ -70,15 +71,19 @@ export function parseImageCommand(text: string): string | null {
 export function ImageBubble({ image, user }: { image: ImageMessage; user: boolean }) {
   const colors = useColors();
   const s = useStyles();
+  const { tokens } = useTheme();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  // Same surface tokens as text bubbles (review P3, 2026-10-03).
+  const bubble = user ? tokens.userBubble : tokens.aiBubble;
+  const radius = bubble.radius ?? 16;
 
   return (
     <View
       style={{
-        borderRadius: 18,
+        borderRadius: radius,
         overflow: "hidden",
-        backgroundColor: colors.line,
+        backgroundColor: bubble.bg,
         maxWidth: "100%",
       }}
     >
@@ -109,7 +114,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
           )}
           <Image
             source={{ uri: image.uri }}
-            style={{ width: 280, height: 280, borderRadius: 18 }}
+            style={{ width: 280, height: 280, borderRadius: radius }}
             resizeMode="cover"
             onLoad={() => setLoading(false)}
             onError={() => {

@@ -576,47 +576,52 @@ export function ChatScreen({
             // tighter bubbles, tighter spacing, smaller type — all from tokens.
             const bubble = user ? tokens.userBubble : tokens.aiBubble;
             const radius = bubble.radius ?? 16;
+            // Tool-call-only assistant messages have no bubble — render the
+            // avatar row only when there is visible bubble content.
+            const hasBubble = !!voice || !!generatedImage || !!text;
             return (
               <View key={message.id} style={{ gap: 6 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-end",
-                    justifyContent: user ? "flex-end" : "flex-start",
-                    gap: 8,
-                  }}
-                >
-                  {!user && <ChatAvatar who="assistant" />}
-                  <View style={{ maxWidth: "80%" }}>
-                    {voice ? (
-                      <VoiceBubble voice={voice} user={user} />
-                    ) : generatedImage ? (
-                      <ImageBubble image={generatedImage} user={user} />
-                    ) : (
-                      !!text && (
-                        <View
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 9,
-                            borderRadius: radius,
-                            borderBottomRightRadius: user ? 6 : radius,
-                            borderBottomLeftRadius: user ? radius : 6,
-                            backgroundColor: bubble.bg,
-                          }}
-                        >
-                          {user ? (
-                            <Text selectable style={[s.text, { color: bubble.fg }]}>
-                              {text}
-                            </Text>
-                          ) : (
-                            <AssistantResponse content={text} />
-                          )}
-                        </View>
-                      )
-                    )}
+                {hasBubble && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-end",
+                      justifyContent: user ? "flex-end" : "flex-start",
+                      gap: 8,
+                    }}
+                  >
+                    {!user && <ChatAvatar who="assistant" />}
+                    <View style={{ maxWidth: "80%" }}>
+                      {voice ? (
+                        <VoiceBubble voice={voice} user={user} />
+                      ) : generatedImage ? (
+                        <ImageBubble image={generatedImage} user={user} />
+                      ) : (
+                        !!text && (
+                          <View
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 9,
+                              borderRadius: radius,
+                              borderBottomRightRadius: user ? 6 : radius,
+                              borderBottomLeftRadius: user ? radius : 6,
+                              backgroundColor: bubble.bg,
+                            }}
+                          >
+                            {user ? (
+                              <Text selectable style={[s.text, { color: bubble.fg }]}>
+                                {text}
+                              </Text>
+                            ) : (
+                              <AssistantResponse content={text} />
+                            )}
+                          </View>
+                        )
+                      )}
+                    </View>
+                    {user && <ChatAvatar who="user" />}
                   </View>
-                  {user && <ChatAvatar who="user" />}
-                </View>
+                )}
                 {!!toolCalls.length && (
                   <JevInteractionContext.Provider
                     value={{
@@ -881,7 +886,7 @@ export function ChatScreen({
             borderWidth: 1,
             borderColor: focused ? colors.blue : colors.line,
             padding: 8,
-            shadowColor: "#18384B",
+            shadowColor: colors.scrim,
             shadowOpacity: focused ? 0.1 : 0.06,
             shadowRadius: 20,
             shadowOffset: { width: 0, height: 4 },
