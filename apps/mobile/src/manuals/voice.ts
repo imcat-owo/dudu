@@ -15,6 +15,14 @@ export const VOICE_MANUAL = {
   can edit before sending.
 - AI chat bubbles have a speak button: TTS reads that message aloud.
 - Thinking content is NEVER read aloud.
+- Podcast / long audio: the generate_podcast tool turns long text into one
+  playable voice bubble — bedtime stories, morning briefings, anything too
+  long for a single TTS call. It splits text at sentence boundaries,
+  synthesizes each segment with her configured TTS voice (optional per-call
+  voice override), joins them into one MP3, and shows a live progress card
+  in Our Space while working. The tool returns a voice_message JSON string —
+  output it VERBATIM as your entire reply so chat renders a WeChat-style
+  voice bubble she can tap to play. Never describe it, never attach as file.
 
 Rules:
 - If TTS/STT is not configured, fail loudly with a human message —

@@ -23,6 +23,8 @@ import { memoryStore } from "../memory/instance.js";
 import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
+import { voiceStore } from "../voice/store.js";
+import { createPodcastTools } from "../voice/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { taskBuddyVideoStore } from "../our-space/task-buddy-video-instance.js";
@@ -506,6 +508,7 @@ export function createLocalAgent(opts: {
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
         ...createAmbientVideoTools(ambientVideoStore),
+        ...createPodcastTools(voiceStore, taskProgressStore),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
