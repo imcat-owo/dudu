@@ -31,6 +31,7 @@ import {
 } from "lucide-react-native";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "react-native";
+import { API_URL } from "./api";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { type StringKey, t } from "./i18n";
@@ -98,7 +99,7 @@ function seedFromBundle(bundle: ThemeBundle): DraftSeed {
 }
 
 export function AppearanceScreen() {
-  const { bundle, staging, tokens, stageBundle, cancelStage, applyBundle, rollback } = useTheme();
+  const { bundle, staging, tokens, stageBundle, discardStage, applyBundle, rollback } = useTheme();
   const colors = useColors();
   const { option: fontOption, setOption: setFontOption, scale: fontScale } = useFontSizeSetting();
   const { fontName, pickFont, clearFont } = useFont();
@@ -359,8 +360,9 @@ export function AppearanceScreen() {
               small
               icon={X}
               onPress={() => {
-                cancelStage();
-                setNotice(t("appearance.discarded"));
+                void discardStage().then(() => {
+                  setNotice(t("appearance.discarded"));
+                });
               }}
             >
               {t("appearance.discard")}
@@ -818,7 +820,114 @@ export function AppearanceScreen() {
 
       <ShareSection />
 
+      <AiThemeModeSection />
+
       <HistorySection />
+    </View>
+  );
+}
+
+type AiThemeMode = "stable" | "creative" | "off";
+
+/** AI 换肤 mode switch (theme-design.md §5.6): stable / creative / off. */
+function AiThemeModeSection() {
+  const { apiToken, tokens } = useTheme();
+  const colors = useColors();
+  const fg = colors.text;
+  const accent = tokens.accent.accent;
+  const [mode, setMode] = useState<AiThemeMode>("stable");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!apiToken) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/theme/mode`, {
+          headers: { Authorization: `Bearer ${apiToken}` },
+        });
+        if (!res.ok || cancelled) return;
+        const payload = (await res.json()) as { mode?: unknown };
+        if (payload.mode === "creative" || payload.mode === "off" || payload.mode === "stable") {
+          setMode(payload.mode);
+        }
+      } catch {
+        // Offline: keep default.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiToken]);
+
+  const choose = (next: AiThemeMode) => {
+    if (next === mode || saving) return;
+    setMode(next);
+    if (!apiToken) return;
+    setSaving(true);
+    void fetch(`${API_URL}/api/theme/mode`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: next }),
+    })
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  };
+
+  const options: { key: AiThemeMode; titleKey: StringKey; descKey: StringKey }[] = [
+    { key: "stable", titleKey: "appearance.aiModeStable", descKey: "appearance.aiModeStableDesc" },
+    { key: "creative", titleKey: "appearance.aiModeCreative", descKey: "appearance.aiModeCreativeDesc" },
+    { key: "off", titleKey: "appearance.aiModeOff", descKey: "appearance.aiModeOffDesc" },
+  ];
+
+  return (
+    <View>
+      <SectionHeading title={t("appearance.aiModeLabel")} />
+      <Card style={{ gap: 6 }}>
+        {options.map((opt) => {
+          const selected = mode === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              onPress={() => choose(opt.key)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingVertical: 10,
+                paddingHorizontal: 4,
+                opacity: saving && !selected ? 0.5 : 1,
+              }}
+            >
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: selected ? accent : colors.muted,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {selected ? (
+                  <View
+                    style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: accent }}
+                  />
+                ) : null}
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <TText style={{ color: fg, fontSize: 14, fontWeight: selected ? "600" : "400" }}>
+                  {t(opt.titleKey)}
+                </TText>
+                <TText style={{ color: colors.muted, fontSize: 12 }}>{t(opt.descKey)}</TText>
+              </View>
+            </Pressable>
+          );
+        })}
+      </Card>
     </View>
   );
 }

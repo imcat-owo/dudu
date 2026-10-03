@@ -58,6 +58,13 @@ export type ThemeHistoryEntry = {
   savedAt: string;
 };
 
+export type ThemeToolMode = "stable" | "creative" | "off";
+
+export type StagedTheme = { bundle: ThemeBundle; updatedAt: string } | null;
+
+const THEME_MODE_ID = "tool-mode";
+const THEME_STAGED_ID = "staged";
+
 export class ThemeStore {
   constructor(private readonly db: Store) {}
   async get(owner: string): Promise<{ bundle: ThemeBundle | null; version: number }> {
@@ -94,12 +101,61 @@ export class ThemeStore {
     const entries = [entry, ...(await this.history(owner))].slice(0, THEME_HISTORY_LIMIT);
     await this.db.put(owner, "themes", { id: THEME_HISTORY_ID, entries });
   }
+
+  async getMode(owner: string): Promise<ThemeToolMode> {
+    const record = await this.db.get<{ mode: string }>(owner, "themes", THEME_MODE_ID);
+    return record?.mode === "creative" || record?.mode === "off" ? record.mode : "stable";
+  }
+  async setMode(owner: string, mode: ThemeToolMode): Promise<void> {
+    await this.db.put(owner, "themes", { id: THEME_MODE_ID, mode });
+  }
+  async getStaged(owner: string): Promise<StagedTheme> {
+    const record = await this.db.get<{ bundle: ThemeBundle | null; updatedAt: string }>(
+      owner,
+      "themes",
+      THEME_STAGED_ID,
+    );
+    return record?.bundle ? { bundle: record.bundle, updatedAt: record.updatedAt } : null;
+  }
+  async setStaged(owner: string, bundle: ThemeBundle): Promise<string> {
+    const updatedAt = new Date().toISOString();
+    await this.db.put(owner, "themes", { id: THEME_STAGED_ID, bundle, updatedAt });
+    return updatedAt;
+  }
+  async clearStaged(owner: string): Promise<void> {
+    await this.db.put(owner, "themes", { id: THEME_STAGED_ID, bundle: null, updatedAt: "" });
+  }
+  /** Promote staged to current (records history) and clear staged. */
+  async confirmStaged(owner: string): Promise<{ version: number; bundle: ThemeBundle } | null> {
+    const staged = await this.getStaged(owner);
+    if (!staged?.bundle) return null;
+    const version = await this.save(owner, staged.bundle);
+    await this.clearStaged(owner);
+    return { version, bundle: staged.bundle };
+  }
+  /** Restore the most recent history entry (first non-current entry). */
+  async rollbackHistory(owner: string): Promise<{ version: number; bundle: ThemeBundle } | null> {
+    const entries = await this.history(owner);
+    if (entries.length === 0) return null;
+    const current = await this.get(owner);
+    const previous = current.bundle
+      ? entries.find((e) => e.version !== current.version)
+      : entries[0];
+    if (!previous) return null;
+    const version = await this.save(owner, previous.bundle);
+    return { version, bundle: previous.bundle };
+  }
 }
 
 export function themeRoutes(db: Store) {
   const store = new ThemeStore(db);
   const app = new Hono<{ Variables: { owner: string } }>();
-  app.get("/", async (c) => c.json(await store.get(c.get("owner"))));
+  app.get("/", async (c) => {
+    const owner = c.get("owner");
+    const { bundle, version } = await store.get(owner);
+    const staged = await store.getStaged(owner);
+    return c.json({ bundle, version, staged });
+  });
   app.get("/history", async (c) => {
     const entries = await store.history(c.get("owner"));
     // Summaries only — the client fetches the full bundle when restoring.
@@ -125,5 +181,51 @@ export function themeRoutes(db: Store) {
     if (!validation.ok) return c.json({ error: validation.error }, 400);
     return c.json({ version: await store.save(c.get("owner"), validation.bundle) });
   });
+
+  // --- AI try-on protocol (theme-design.md §4/§11) ---
+  app.get("/mode", async (c) => {
+    return c.json({ mode: await store.getMode(c.get("owner")) });
+  });
+  app.put("/mode", async (c) => {
+    const mode = (await c.req.json())?.mode;
+    if (mode !== "stable" && mode !== "creative" && mode !== "off") {
+      return c.json({ error: "mode must be stable | creative | off" }, 400);
+    }
+    await store.setMode(c.get("owner"), mode);
+    return c.json({ mode });
+  });
+  app.post("/preview", async (c) => {
+    if (!checkStageRate(c.get("owner"))) {
+      return c.json({ error: "rate limited: wait 3s between theme changes" }, 429);
+    }
+    const validation = validateThemeBundle((await c.req.json())?.bundle);
+    if (!validation.ok) return c.json({ error: validation.error }, 400);
+    const updatedAt = await store.setStaged(c.get("owner"), validation.bundle);
+    return c.json({ staged: true, updatedAt });
+  });
+  app.post("/confirm", async (c) => {
+    const result = await store.confirmStaged(c.get("owner"));
+    if (!result) return c.json({ error: "nothing staged" }, 404);
+    return c.json({ version: result.version });
+  });
+  app.post("/rollback", async (c) => {
+    const result = await store.rollbackHistory(c.get("owner"));
+    if (!result) return c.json({ error: "no previous version" }, 404);
+    return c.json({ version: result.version });
+  });
+  app.delete("/preview", async (c) => {
+    await store.clearStaged(c.get("owner"));
+    return c.json({ cleared: true });
+  });
   return app;
+}
+
+/** 3s minimum between staged writes per owner (theme-design.md §12). */
+const stageRate = new Map<string, number>();
+function checkStageRate(owner: string): boolean {
+  const now = Date.now();
+  const last = stageRate.get(owner) ?? 0;
+  if (now - last < 3000) return false;
+  stageRate.set(owner, now);
+  return true;
 }

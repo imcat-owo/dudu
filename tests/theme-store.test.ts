@@ -114,3 +114,81 @@ test("theme version starts at 0, bumps on each save, and is isolated per owner",
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("staged try-on lifecycle: set, get, confirm, clear", async () => {
+  const root = await mkdtemp(join(tmpdir(), "theme-staged-"));
+  try {
+    const db = await createStore(join(root, "db"));
+    try {
+      const store = new ThemeStore(db);
+      const owner = "owner-staged";
+      await store.save(owner, validBundle({ name: "v1" }) as ThemeBundle);
+
+      assert.equal(await store.getStaged(owner), null);
+
+      const stagedBundle = validBundle({ name: "try-on" });
+      const updatedAt = await store.setStaged(owner, stagedBundle as ThemeBundle);
+      assert.ok(updatedAt);
+      const staged = await store.getStaged(owner);
+      assert.equal(staged?.bundle.name, "try-on");
+
+      // Confirm promotes staged → current and clears staged.
+      const confirmed = await store.confirmStaged(owner);
+      assert.equal(confirmed?.version, 2);
+      assert.equal((await store.get(owner)).bundle?.name, "try-on");
+      assert.equal(await store.getStaged(owner), null);
+
+      // Confirm with nothing staged returns null.
+      assert.equal(await store.confirmStaged(owner), null);
+
+      // Clear is idempotent.
+      await store.clearStaged(owner);
+      assert.equal(await store.getStaged(owner), null);
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rollbackHistory restores the previous confirmed version", async () => {
+  const root = await mkdtemp(join(tmpdir(), "theme-rollback-"));
+  try {
+    const db = await createStore(join(root, "db"));
+    try {
+      const store = new ThemeStore(db);
+      const owner = "owner-rollback";
+      assert.equal(await store.rollbackHistory(owner), null);
+      await store.save(owner, validBundle({ name: "v1" }) as ThemeBundle);
+      await store.save(owner, validBundle({ name: "v2" }) as ThemeBundle);
+      const rolled = await store.rollbackHistory(owner);
+      assert.equal(rolled?.version, 3);
+      assert.equal((await store.get(owner)).bundle?.name, "v1");
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("theme tool mode defaults to stable and round-trips", async () => {
+  const root = await mkdtemp(join(tmpdir(), "theme-mode-"));
+  try {
+    const db = await createStore(join(root, "db"));
+    try {
+      const store = new ThemeStore(db);
+      const owner = "owner-mode";
+      assert.equal(await store.getMode(owner), "stable");
+      await store.setMode(owner, "creative");
+      assert.equal(await store.getMode(owner), "creative");
+      await store.setMode(owner, "off");
+      assert.equal(await store.getMode(owner), "off");
+    } finally {
+      await db.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

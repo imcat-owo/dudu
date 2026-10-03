@@ -27,7 +27,8 @@ import {
 } from "react";
 import { useColorScheme } from "react-native";
 import { API_URL } from "../api";
-import { deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
+import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
+import { applyCssOverrides } from "./css";
 import { defaultPreset } from "./presets";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
@@ -60,10 +61,14 @@ export type ThemeContextValue = {
   tokens: Record<SurfaceId, SurfaceTokens>;
   /** Last known /api/theme version, null when the server was never reached. */
   serverVersion: number | null;
+  /** API token for direct /api/theme calls (undefined when offline). */
+  apiToken?: string;
   /** Try-on: applies in memory only, never persisted. False if invalid. */
   stageBundle: (bundle: ThemeBundle) => boolean;
   /** Abandon the staged try-on. */
   cancelStage: () => void;
+  /** Abandon the try-on AND clear the server's staged copy (AI try-on). */
+  discardStage: () => Promise<void>;
   /** Confirm: persist locally AND PUT to /api/theme. See ApplyResult. */
   applyBundle: (bundle: ThemeBundle) => Promise<ApplyResult>;
   /** Restore the bundle that was confirmed before the last apply. */
@@ -89,8 +94,10 @@ function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
     resolvedMode,
     tokens: deriveSurfaces(bundle.seed, resolvedMode),
     serverVersion: null,
+    apiToken: undefined,
     stageBundle: () => false,
     cancelStage: () => {},
+    discardStage: async () => {},
     applyBundle: async () => "invalid",
     rollback: async () => {},
     refreshFromServer: async () => {},
@@ -106,7 +113,11 @@ export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
 }
 
-type RemoteTheme = { version: number; bundle: ThemeBundle };
+type RemoteTheme = {
+  version: number;
+  bundle: ThemeBundle;
+  staged?: { bundle: ThemeBundle; updatedAt: string } | null;
+};
 
 async function persistLocal(bundle: ThemeBundle): Promise<void> {
   try {
@@ -161,6 +172,10 @@ export function ThemeProvider({
   const previousRef = useRef<ThemeBundle | null>(null);
   const serverVersionRef = useRef<number | null>(null);
   const stagedRef = useRef<ThemeBundle | null>(null);
+  // Tracks the server try-on currently shown, so polls don't re-stage it and
+  // we notice when it disappears (confirmed elsewhere / discarded).
+  const lastSeenStagedAt = useRef<string | null>(null);
+  const serverStagedActive = useRef(false);
 
   useEffect(() => {
     confirmedRef.current = confirmed;
@@ -234,17 +249,60 @@ export function ThemeProvider({
         headers: { Authorization: `Bearer ${apiToken}` },
       });
       if (!res.ok) return null;
-      const payload = (await res.json()) as { version?: unknown; bundle?: unknown };
+      const payload = (await res.json()) as {
+        version?: unknown;
+        bundle?: unknown;
+        staged?: unknown;
+      };
       if (typeof payload.version !== "number" || !isThemeBundle(payload.bundle)) return null;
-      return { version: payload.version, bundle: payload.bundle };
+      let staged: RemoteTheme["staged"] = null;
+      if (
+        payload.staged &&
+        typeof payload.staged === "object" &&
+        isThemeBundle((payload.staged as { bundle?: unknown }).bundle)
+      ) {
+        staged = payload.staged as { bundle: ThemeBundle; updatedAt: string };
+      }
+      return { version: payload.version, bundle: payload.bundle, staged };
     } catch {
       return null;
     }
   }, [apiToken]);
 
+  // ---- try-on staging (defined before refreshFromServer, which stages AI try-ons) ----
+  const stageBundle = useCallback((bundle: ThemeBundle): boolean => {
+    if (!isThemeBundle(bundle)) return false;
+    // Discrete start of a try-on bumps the transition; continuous
+    // updates during a color drag do not (the live preview is already smooth).
+    if (!stagedRef.current) bumpTransition();
+    setStaged(bundle); // in memory only — never persisted
+    return true;
+  }, [bumpTransition]);
+
   const refreshFromServer = useCallback(async (): Promise<void> => {
     const remote = await fetchRemote();
     if (!remote) return;
+    // AI try-on protocol (theme-design.md §3): a staged bundle on the server
+    // (from an AI theme tool) previews here with the try-on banner.
+    if (remote.staged && remote.staged.updatedAt !== lastSeenStagedAt.current) {
+      lastSeenStagedAt.current = remote.staged.updatedAt;
+      serverStagedActive.current = true;
+      stageBundle(remote.staged.bundle);
+      return;
+    }
+    if (!remote.staged && serverStagedActive.current) {
+      // The server try-on is gone (confirmed elsewhere or discarded) —
+      // drop the local preview and adopt the confirmed bundle.
+      serverStagedActive.current = false;
+      lastSeenStagedAt.current = null;
+      serverVersionRef.current = remote.version;
+      setServerVersion(remote.version);
+      bumpTransition();
+      setStaged(null);
+      setConfirmed(remote.bundle);
+      await persistLocal(remote.bundle);
+      return;
+    }
     if (serverVersionRef.current === remote.version) return;
     // Never clobber an active try-on: the user is mid-preview and the
     // banner offers Apply/Discard. Skip this poll; the next one retries
@@ -255,7 +313,7 @@ export function ThemeProvider({
     bumpTransition();
     setConfirmed(remote.bundle);
     await persistLocal(remote.bundle);
-  }, [fetchRemote, bumpTransition]);
+  }, [fetchRemote, bumpTransition, stageBundle]);
 
   useEffect(() => {
     void refreshFromServer();
@@ -265,19 +323,29 @@ export function ThemeProvider({
     return () => clearInterval(timer);
   }, [refreshFromServer]);
 
-  // ---- try-on / confirm / rollback (safety net §6) ----
-  const stageBundle = useCallback((bundle: ThemeBundle): boolean => {
-    if (!isThemeBundle(bundle)) return false;
-    // Discrete start of a try-on bumps the transition; continuous
-    // updates during a color drag do not (the live preview is already smooth).
-    if (!stagedRef.current) bumpTransition();
-    setStaged(bundle); // in memory only — never persisted
-    return true;
-  }, [bumpTransition]);
-
+  // ---- confirm / rollback (safety net §6) ----
   const cancelStage = useCallback((): void => {
     setStaged(null);
   }, []);
+
+  /**
+   * Discard a try-on completely: clear the local preview AND the server's
+   * staged copy (from an AI theme tool), so the next poll doesn't re-stage it.
+   */
+  const discardStage = useCallback(async (): Promise<void> => {
+    serverStagedActive.current = false;
+    lastSeenStagedAt.current = null;
+    setStaged(null);
+    if (!apiToken) return;
+    try {
+      await fetch(`${API_URL}/api/theme/preview`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+    } catch {
+      // Best effort — the staged copy expires on next confirm anyway.
+    }
+  }, [apiToken]);
 
   const applyBundle = useCallback(
     async (bundle: ThemeBundle): Promise<ApplyResult> => {
@@ -359,10 +427,11 @@ export function ThemeProvider({
 
   const effective = staged ?? confirmed;
   const resolvedMode = resolveMode(effective.mode, systemScheme === "dark");
-  const tokens = useMemo(
-    () => deriveSurfaces(effective.seed, resolvedMode),
-    [effective.seed, resolvedMode],
-  );
+  const tokens = useMemo(() => {
+    const derived = deriveSurfaces(effective.seed, resolvedMode);
+    // Creative-mode CSS overlay: restricted token overrides (theme-design.md §3).
+    return applyCssOverrides(derived, effective.css, clampFg);
+  }, [effective.seed, effective.css, resolvedMode]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -372,8 +441,10 @@ export function ThemeProvider({
       resolvedMode,
       tokens,
       serverVersion,
+      apiToken,
       stageBundle,
       cancelStage,
+      discardStage,
       applyBundle,
       rollback,
       refreshFromServer,
@@ -387,8 +458,10 @@ export function ThemeProvider({
       resolvedMode,
       tokens,
       serverVersion,
+      apiToken,
       stageBundle,
       cancelStage,
+      discardStage,
       applyBundle,
       rollback,
       refreshFromServer,
