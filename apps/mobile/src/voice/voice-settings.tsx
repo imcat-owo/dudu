@@ -12,19 +12,19 @@
  */
 
 import { useState } from "react";
-import { Pressable, ScrollView, Switch, View } from "react-native";
+import { Pressable, Switch, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
-import { voiceStore, useVoiceConfig } from "./store";
+import { useVoiceConfig, voiceStore } from "./store";
 import { synthesizeSpeech } from "./tts";
 import {
   EDGE_TTS_CHINESE_VOICES,
-  validateSttConfig,
-  validateTtsConfig,
   type MicMode,
   type SttConfig,
   type TtsConfig,
+  validateSttConfig,
+  validateTtsConfig,
 } from "./types";
 
 function ProviderTabs<T extends string>({
@@ -68,7 +68,6 @@ function ProviderTabs<T extends string>({
 
 function TtsSection() {
   const colors = useColors();
-  const s = useStyles();
   const { tts, loaded } = useVoiceConfig();
   const [draft, setDraft] = useState<TtsConfig | null>(null);
   const [error, setError] = useState("");
@@ -108,7 +107,7 @@ function TtsSection() {
       await setAudioModeAsync({ playsInSilentMode: true });
       const player = createAudioPlayer(uri);
       player.play();
-      setTestMsg(t("voice.test") + " ✓");
+      setTestMsg(`${t("voice.test")} ✓`);
     } catch (e) {
       setTestMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -216,7 +215,6 @@ function TtsSection() {
 
 function SttSection() {
   const colors = useColors();
-  const s = useStyles();
   const { stt, loaded } = useVoiceConfig();
   const [draft, setDraft] = useState<SttConfig | null>(null);
   const [error, setError] = useState("");
@@ -302,7 +300,11 @@ function MicModeSection() {
   if (!loaded) return null;
   const modes: Array<{ id: MicMode; label: string; desc: string }> = [
     { id: "transcribe", label: t("voice.micTranscribe"), desc: t("voice.micTranscribeDesc") },
-    { id: "voice-message", label: t("voice.micVoiceMessage"), desc: t("voice.micVoiceMessageDesc") },
+    {
+      id: "voice-message",
+      label: t("voice.micVoiceMessage"),
+      desc: t("voice.micVoiceMessageDesc"),
+    },
   ];
   return (
     <Card>

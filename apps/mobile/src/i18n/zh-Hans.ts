@@ -933,6 +933,7 @@ const zhHans = {
   "voice.transcribing": "转写中…",
   "voice.speak": "朗读",
   "voice.stopSpeak": "停止朗读",
+  "voice.speakFailed": "朗读失败：{error}，点按重试",
   "voice.synthesizing": "合成中…",
   "voice.ttsUrlRequired": "请填写接口地址",
   "voice.ttsUrlInvalid": "接口地址格式不正确（需以 http:// 或 https:// 开头）",

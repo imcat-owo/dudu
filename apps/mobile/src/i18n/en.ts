@@ -959,6 +959,7 @@ export const enStrings: Record<StringKey, string> = {
   "voice.transcribing": "Transcribing…",
   "voice.speak": "Read aloud",
   "voice.stopSpeak": "Stop",
+  "voice.speakFailed": "Read-aloud failed: {error}. Tap to retry.",
   "voice.synthesizing": "Synthesizing…",
   "voice.ttsUrlRequired": "Please enter the API URL",
   "voice.ttsUrlInvalid": "Invalid API URL (must start with http:// or https://)",

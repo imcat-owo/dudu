@@ -10,9 +10,10 @@ import { type AudioPlayer, createAudioPlayer, setAudioModeAsync } from "expo-aud
 import { Volume2, VolumeX } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable } from "react-native";
+import { t } from "../i18n";
 import { useColors } from "../ui";
-import { synthesizeSpeech } from "./tts";
 import { useVoiceConfig } from "./store";
+import { synthesizeSpeech } from "./tts";
 
 export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string }) {
   const colors = useColors();
@@ -74,7 +75,13 @@ export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={state === "playing" ? "停止朗读" : "朗读"}
+      accessibilityLabel={
+        error
+          ? t("voice.speakFailed", { error })
+          : state === "playing"
+            ? t("voice.stopSpeak")
+            : t("voice.speak")
+      }
       onPress={() => void (state === "playing" ? stop() : speak())}
       style={{ padding: 6, opacity: 0.7 }}
     >
@@ -83,7 +90,9 @@ export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string
       ) : state === "playing" ? (
         <VolumeX size={15} color={bubbleFg} />
       ) : (
-        <Volume2 size={15} color={bubbleFg} />
+        // On TTS failure the icon tints danger-red so the failure is visible;
+        // tapping retries (speak() clears the error first).
+        <Volume2 size={15} color={error ? colors.danger : bubbleFg} />
       )}
     </Pressable>
   );
