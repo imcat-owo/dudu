@@ -227,6 +227,11 @@ export function buildLocalSystemPrompt(
       if (s) parts.push(s);
     }
   }
+  // Current time — the AI sees "now" like a person does, no permission needed.
+  const now = new Date();
+  parts.push(
+    `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })} (Asia/Shanghai).`,
+  );
   return parts.join("\n");
 }
 
