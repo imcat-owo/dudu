@@ -150,7 +150,7 @@ export function VoiceBubble({
         borderRadius: 22,
         borderBottomRightRadius: user ? 7 : 22,
         borderBottomLeftRadius: user ? 22 : 7,
-        backgroundColor: user ? colors.blue : "#EEEEF0",
+        backgroundColor: user ? colors.blue : colors.line,
         minWidth: 180,
         maxWidth: 260,
       }}
@@ -164,15 +164,15 @@ export function VoiceBubble({
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: user ? "#FFFFFF" : colors.blue,
+            backgroundColor: user ? colors.card : colors.blue,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           {playing ? (
-            <Pause size={17} color={colors.text} fill={colors.text} />
+            <Pause size={17} color={user ? colors.text : colors.onBlue} fill={user ? colors.text : colors.onBlue} />
           ) : (
-            <Play size={17} color={colors.text} fill={colors.text} />
+            <Play size={17} color={user ? colors.text : colors.onBlue} fill={user ? colors.text : colors.onBlue} />
           )}
         </Pressable>
         <View style={{ flex: 1, gap: 4 }}>

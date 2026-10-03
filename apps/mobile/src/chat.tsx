@@ -465,11 +465,11 @@ export function ChatScreen({
             paddingHorizontal: 12,
             paddingVertical: 6,
             borderRadius: 16,
-            backgroundColor: incognitoOn ? "#2B2B2E" : "#F1F2F3",
+            backgroundColor: incognitoOn ? colors.text : colors.line,
           }}
         >
           <Text
-            style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? "#FFF" : colors.muted }}
+            style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? colors.canvas : colors.muted }}
           >
             {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
           </Text>
@@ -587,11 +587,11 @@ export function ChatScreen({
                         borderRadius: 22,
                         borderBottomRightRadius: user ? 7 : 22,
                         borderBottomLeftRadius: user ? 22 : 7,
-                        backgroundColor: user ? colors.blue : "#EEEEF0",
+                        backgroundColor: user ? colors.blue : colors.line,
                       }}
                     >
                       {user ? (
-                        <Text selectable style={[s.text, { fontSize: 16, lineHeight: 24 }]}>
+                        <Text selectable style={[s.text, { fontSize: 16, lineHeight: 24, color: colors.onBlue }]}>
                           {text}
                         </Text>
                       ) : (
@@ -703,7 +703,7 @@ export function ChatScreen({
                 gap: 7,
                 paddingHorizontal: 19,
                 paddingVertical: 18,
-                backgroundColor: "#EEEEF0",
+                backgroundColor: colors.line,
                 borderRadius: 28,
               },
             ]}
@@ -844,10 +844,10 @@ export function ChatScreen({
         )}
         <View
           style={{
-            backgroundColor: "#FFF",
+            backgroundColor: colors.card,
             borderRadius: 32,
             borderWidth: 1,
-            borderColor: focused ? "#C7E4F9" : "#EEF0F2",
+            borderColor: focused ? colors.blue : colors.line,
             padding: 8,
             shadowColor: "#18384B",
             shadowOpacity: focused ? 0.1 : 0.06,
@@ -925,7 +925,7 @@ export function ChatScreen({
                       : t("chat.placeholder.loading")
                     : t("chat.placeholder.message")
               }
-              placeholderTextColor="#949B9F"
+              placeholderTextColor={colors.muted}
               selectionColor={colors.blueDark}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
@@ -971,19 +971,19 @@ export function ChatScreen({
                 width: 44,
                 height: 44,
                 borderRadius: 24,
-                backgroundColor: replying || draft.trim() ? colors.blue : "#F3F5F6",
+                backgroundColor: replying || draft.trim() ? colors.blue : colors.line,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.94 : 1 }],
               })}
             >
               {replying ? (
-                <Square size={18} fill={colors.text} strokeWidth={0} />
+                <Square size={18} fill={colors.onBlue} strokeWidth={0} />
               ) : (
                 <ArrowUp
                   size={25}
                   strokeWidth={1.8}
-                  color={draft.trim() ? colors.text : "#9CB5C5"}
+                  color={draft.trim() ? colors.onBlue : colors.muted}
                 />
               )}
             </Pressable>

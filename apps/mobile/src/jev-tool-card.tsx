@@ -225,7 +225,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
           {panel.options.map((option, index) => (
             <View
               key={option.id}
-              style={{ borderRadius: 16, padding: 14, gap: 9, backgroundColor: "#F6F7F8" }}
+              style={{ borderRadius: 16, padding: 14, gap: 9, backgroundColor: colors.line }}
             >
               <Text style={[s.text, { fontWeight: "600" }]}>{option.label}</Text>
               {!!option.details.length && (

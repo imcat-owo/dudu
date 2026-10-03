@@ -78,7 +78,7 @@ export function ImageBubble({ image, user }: { image: ImageMessage; user: boolea
       style={{
         borderRadius: 18,
         overflow: "hidden",
-        backgroundColor: "#E8EAEC",
+        backgroundColor: colors.line,
         maxWidth: "100%",
       }}
     >

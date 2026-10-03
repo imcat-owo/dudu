@@ -139,7 +139,7 @@ export function TodayScreen() {
                   left: -19,
                   padding: 11,
                   gap: 7,
-                  backgroundColor: "#FFF",
+                  backgroundColor: colors.card,
                   borderRadius: 13,
                   transform: [{ rotate: "-7deg" }],
                 },
@@ -157,7 +157,7 @@ export function TodayScreen() {
                   right: -8,
                   padding: 12,
                   gap: 8,
-                  backgroundColor: "#FFF",
+                  backgroundColor: colors.card,
                   borderRadius: 13,
                   transform: [{ rotate: "5deg" }],
                 },
@@ -462,7 +462,7 @@ export function MailScreen() {
               gap: 9,
               flex: 1,
               minWidth: 200,
-              backgroundColor: "#FFF",
+              backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.line,
               borderRadius: 12,
@@ -977,11 +977,11 @@ export function FilesScreen() {
                     width: 93,
                     height: 121,
                     borderRadius: 5,
-                    backgroundColor: "#FFF",
+                    backgroundColor: colors.card,
                     padding: 14,
                     transform: [{ rotate: "-4deg" }],
                     borderWidth: 1,
-                    borderColor: "#DDE3DD",
+                    borderColor: colors.line,
                   }}
                 >
                   <View style={[s.row, { gap: 5, marginBottom: 15 }]}>
@@ -993,7 +993,7 @@ export function FilesScreen() {
                       key={width}
                       style={{
                         height: 3,
-                        backgroundColor: i === 0 ? "#A4BED0" : "#E3E7E3",
+                        backgroundColor: i === 0 ? colors.blue : colors.line,
                         width: `${width}%`,
                         marginBottom: 7,
                         borderRadius: 3,
@@ -1081,7 +1081,7 @@ export function ActivityScreen() {
               <Chip
                 tint={
                   a.status === "failed"
-                    ? "#FBEFED"
+                    ? colors.errorBg
                     : a.status === "awaiting_review"
                       ? colors.lavender
                       : colors.canvas
@@ -1232,7 +1232,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   : t("conn.connected")
                 : t("conn.available")}
             </Text>
-            <View style={{ paddingHorizontal: 16, borderRadius: 23, backgroundColor: "#F3F4F5" }}>
+            <View style={{ paddingHorizontal: 16, borderRadius: 23, backgroundColor: colors.line }}>
               {group.map((row, index) => (
                 <Pressable
                   key={row.id}
@@ -1247,7 +1247,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                       gap: 14,
                       minHeight: 61,
                       borderBottomWidth: index < group.length - 1 ? 1 : 0,
-                      borderBottomColor: "#E5E7E9",
+                      borderBottomColor: colors.line,
                     },
                   ]}
                 >
@@ -1256,7 +1256,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                       width: 29,
                       height: 29,
                       borderRadius: 7,
-                      backgroundColor: "#FFF",
+                      backgroundColor: colors.card,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1268,7 +1268,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                     <Text style={s.small}>{t("conn.localData")}</Text>
                   )}
                   {row.connected ? (
-                    <ChevronRight size={18} color="#A4A7AA" />
+                    <ChevronRight size={18} color={colors.muted} />
                   ) : (
                     <Text
                       style={{
