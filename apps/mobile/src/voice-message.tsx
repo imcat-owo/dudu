@@ -2,6 +2,7 @@ import { Audio } from "expo-av";
 import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
 
 export type VoiceMessage = {
@@ -80,11 +81,18 @@ async function createSound(uri: string): Promise<SoundLike> {
 export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolean }) {
   const colors = useColors();
   const s = useStyles();
+  const { tokens } = useTheme();
+  // Same surface tokens as text bubbles — a user's voice and text messages
+  // must render in the same color (review P1, 2026-10-03).
+  const bubble = user ? tokens.userBubble : tokens.aiBubble;
+  const radius = bubble.radius ?? 16;
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0); // seconds
   const [error, setError] = useState("");
   const soundRef = useRef<SoundLike | null>(null);
-  const bars = useRef(waveformBars(voice.uri)).current;
+  const bars = useRef(
+    waveformBars(voice.uri).map((height, index) => ({ height, index, id: `wave-${index}` })),
+  ).current;
   const duration = Math.max(1, voice.duration);
 
   useEffect(() => {
@@ -140,11 +148,11 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
     <View
       style={{
         paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 22,
-        borderBottomRightRadius: user ? 7 : 22,
-        borderBottomLeftRadius: user ? 22 : 7,
-        backgroundColor: user ? colors.blue : colors.line,
+        paddingVertical: 9,
+        borderRadius: radius,
+        borderBottomRightRadius: user ? 6 : radius,
+        borderBottomLeftRadius: user ? radius : 6,
+        backgroundColor: bubble.bg,
         minWidth: 180,
         maxWidth: 260,
       }}
@@ -158,40 +166,33 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
             width: 38,
             height: 38,
             borderRadius: 19,
-            backgroundColor: user ? colors.card : colors.blue,
+            backgroundColor: bubble.fg,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           {playing ? (
-            <Pause
-              size={17}
-              color={user ? colors.text : colors.onBlue}
-              fill={user ? colors.text : colors.onBlue}
-            />
+            <Pause size={17} color={bubble.bg} fill={bubble.bg} />
           ) : (
-            <Play
-              size={17}
-              color={user ? colors.text : colors.onBlue}
-              fill={user ? colors.text : colors.onBlue}
-            />
+            <Play size={17} color={bubble.bg} fill={bubble.bg} />
           )}
         </Pressable>
         <View style={{ flex: 1, gap: 4 }}>
           <View style={[s.row, { gap: 2, height: 22, alignItems: "flex-end" }]}>
-            {bars.map((height, i) => (
+            {bars.map((bar) => (
               <View
-                key={i}
+                key={bar.id}
                 style={{
                   flex: 1,
-                  height: 6 + height * 16,
+                  height: 6 + bar.height * 16,
                   borderRadius: 2,
-                  backgroundColor: i < playedBars ? colors.blueDark : "rgba(20,40,60,0.22)",
+                  backgroundColor: bubble.fg,
+                  opacity: bar.index < playedBars ? 1 : 0.25,
                 }}
               />
             ))}
           </View>
-          <Text style={[s.small, { color: colors.muted }]}>
+          <Text style={[s.small, { color: bubble.fg, opacity: 0.75 }]}>
             {formatDuration(playing || position > 0 ? remaining : duration)}
           </Text>
         </View>
