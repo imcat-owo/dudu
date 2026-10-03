@@ -111,15 +111,18 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 9 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 17 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 9);
+    assert.equal(tools.length, 17);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read", "my_status_update",
       "diary_write", "diary_read",
       "timeline_add", "timeline_read",
       "tell_later_add", "tell_later_read", "tell_later_done",
+      "feed_post", "feed_read", "feed_reply", "feed_like",
+      "anniversary_add", "anniversary_read",
+      "work_add", "work_read",
     ]) {
       assert.ok(names.includes(n), `missing tool ${n}`);
     }
@@ -175,5 +178,134 @@ describe("our-space manual", () => {
     assert.ok(m);
     assert.equal(m?.file, "src/manuals/our-space.ts");
     assert.match(m?.body ?? "", /she NEVER edits/i);
+  });
+});
+
+describe("our-space v2: couple profile", () => {
+  it("avatar customization persists per person", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    assert.equal(await s.getCoupleProfile(), null);
+    const p1 = await s.setAvatar("her", "file:///her.jpg");
+    assert.equal(p1.herAvatarUri, "file:///her.jpg");
+    assert.equal(p1.aiAvatarUri, null);
+    const p2 = await s.setAvatar("ai", "file:///ai.jpg");
+    assert.equal(p2.herAvatarUri, "file:///her.jpg");
+    assert.equal(p2.aiAvatarUri, "file:///ai.jpg");
+    // Clearing works too.
+    const p3 = await s.setAvatar("her", null);
+    assert.equal(p3.herAvatarUri, null);
+  });
+});
+
+describe("our-space v2: social feed", () => {
+  it("post, like toggle, reply, delete cascades", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const post = await s.addFeedPost("her", "Hello world");
+    assert.equal(post.likedByHer, false);
+    assert.equal(post.likedByAi, false);
+
+    // Likes toggle per person independently.
+    const liked = await s.toggleFeedLike(post.id, "ai");
+    assert.equal(liked?.likedByAi, true);
+    assert.equal(liked?.likedByHer, false);
+    const unliked = await s.toggleFeedLike(post.id, "ai");
+    assert.equal(unliked?.likedByAi, false);
+
+    // Replies thread under the post.
+    await s.addReply(post.id, "ai", "Hi there");
+    const replies = await s.listReplies(post.id);
+    assert.equal(replies.length, 1);
+    assert.equal(replies[0].text, "Hi there");
+
+    // Deleting the post cascades to its replies.
+    assert.equal(await s.deleteFeedPost(post.id), true);
+    assert.deepEqual(await s.listFeed(), []);
+    assert.deepEqual(await s.listReplies(post.id), []);
+  });
+
+  it("rejects empty posts and replies to missing posts", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    await assert.rejects(() => s.addFeedPost("her", "   "));
+    await assert.rejects(() => s.addReply("nope", "ai", "hi"));
+    // Image-only post is allowed (her exception).
+    const img = await s.addFeedPost("ai", "", "file:///pic.jpg");
+    assert.equal(img.imageUri, "file:///pic.jpg");
+  });
+
+  it("AI tools: feed_post / feed_read / feed_reply / feed_like", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    await reg.execute("feed_post", { text: "AI says hi" }, ctx);
+    const read = await reg.execute("feed_read", {}, ctx);
+    assert.match(read, /AI says hi/);
+    const post = (await store.listFeed())[0];
+    await reg.execute("feed_reply", { postId: post.id, text: "Her reply" }, ctx);
+    const read2 = await reg.execute("feed_read", {}, ctx);
+    assert.match(read2, /Her reply/);
+    const likeRes = await reg.execute("feed_like", { postId: post.id }, ctx);
+    assert.match(likeRes, /Liked/);
+  });
+});
+
+describe("our-space v2: anniversaries", () => {
+  it("add, list sorted, delete; rejects bad dates", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    await s.addAnniversary("Met", "2024-02-14");
+    await s.addAnniversary("First trip", "2024-05-01", "Beach");
+    const list = await s.listAnniversaries();
+    assert.equal(list.length, 2);
+    assert.equal(list[0].date, "2024-02-14"); // sorted by date
+    await assert.rejects(() => s.addAnniversary("Bad", "tomorrow"));
+    const item = list[0];
+    assert.equal(await s.deleteAnniversary(item.id), true);
+    assert.equal((await s.listAnniversaries()).length, 1);
+  });
+
+  it("AI tools: anniversary_add / anniversary_read", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    await reg.execute("anniversary_add", { title: "Met", date: "2024-02-14" }, ctx);
+    const read = await reg.execute("anniversary_read", {}, ctx);
+    assert.match(read, /Met.*2024-02-14/);
+  });
+});
+
+describe("our-space v2: works drawer", () => {
+  it("add, list newest-first, delete; rejects bad input", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const w1 = await s.addWork("image", "Sunset", "file:///sunset.jpg", "For her");
+    await s.addWork("html", "Card", "file:///card.html");
+    const list = await s.listWorks();
+    assert.equal(list.length, 2);
+    assert.equal(list[0].title, "Card"); // newest first
+    assert.equal(w1.thumbnailUri, undefined);
+    await assert.rejects(() => s.addWork("image", "", "file:///x.jpg"));
+    await assert.rejects(() => s.addWork("image", "No URI", "  "));
+    assert.equal(await s.deleteWork(w1.id), true);
+    assert.equal((await s.listWorks()).length, 1);
+  });
+
+  it("AI tools: work_add / work_read; rejects unknown type", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    await reg.execute(
+      "work_add",
+      { type: "image", title: "Pic", uri: "file:///pic.jpg" },
+      ctx,
+    );
+    const read = await reg.execute("work_read", {}, ctx);
+    assert.match(read, /\[image\] Pic/);
+    await assert.rejects(() =>
+      reg.execute("work_add", { type: "video", title: "V", uri: "file:///v.mp4" }, ctx),
+    );
+  });
+});
+
+describe("our-space v2: no duplicate tool names", () => {
+  it("every tool name registered exactly once", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const tools = createOurSpaceTools(store);
+    const names = tools.map((t) => t.name);
+    assert.equal(names.length, new Set(names).size);
   });
 });
