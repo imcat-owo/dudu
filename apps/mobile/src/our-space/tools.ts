@@ -9,15 +9,8 @@
  * human-language descriptions written FOR the AI).
  */
 
-import {
-  type LocalTool,
-  ToolError,
-} from "../api-groups/local-tools.js";
-import {
-  type MemoryConfidence,
-  type OurSpaceStore,
-  type TimelineKind,
-} from "./store.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
+import type { MemoryConfidence, OurSpaceStore, TimelineKind } from "./store.js";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -59,7 +52,10 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       parameters: {
         type: "object",
         properties: {
-          text: { type: "string", description: "Short status line, e.g. what you are doing right now." },
+          text: {
+            type: "string",
+            description: "Short status line, e.g. what you are doing right now.",
+          },
           detail: { type: "string", description: "Optional longer detail." },
         },
         required: ["text"],
@@ -91,7 +87,11 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       },
       manualId: "our-space",
       run: async (args) => {
-        const entry = await store.addDiary(strArg(args, "title"), strArg(args, "content"), strArg(args, "date") || undefined);
+        const entry = await store.addDiary(
+          strArg(args, "title"),
+          strArg(args, "content"),
+          strArg(args, "date") || undefined,
+        );
         return `Diary entry saved: "${entry.title}" (${entry.date}).`;
       },
     },
@@ -110,9 +110,7 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       run: async (args) => {
         const entries = await store.listDiary(Math.round(numArg(args, "limit", 10)));
         if (entries.length === 0) return "No diary entries yet.";
-        return entries
-          .map((e) => `— ${e.date} · ${e.title}\n${e.content}`)
-          .join("\n\n");
+        return entries.map((e) => `— ${e.date} · ${e.title}\n${e.content}`).join("\n\n");
       },
     },
 
@@ -134,8 +132,13 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       manualId: "our-space",
       run: async (args) => {
         const kindRaw = strArg(args, "kind");
-        const kind: TimelineKind = kindRaw === "milestone" || kindRaw === "note" ? kindRaw : "moment";
-        const ev = await store.addTimeline(strArg(args, "title"), strArg(args, "description"), kind);
+        const kind: TimelineKind =
+          kindRaw === "milestone" || kindRaw === "note" ? kindRaw : "moment";
+        const ev = await store.addTimeline(
+          strArg(args, "title"),
+          strArg(args, "description"),
+          kind,
+        );
         return `Timeline moment saved: "${ev.title}".`;
       },
     },
@@ -154,7 +157,10 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const events = await store.listTimeline(Math.round(numArg(args, "limit", 20)));
         if (events.length === 0) return "The timeline is empty — no shared moments recorded yet.";
         return events
-          .map((e) => `— ${fmtDate(e.timestamp)} [${e.kind}] ${e.title}${e.description ? `\n  ${e.description}` : ""}`)
+          .map(
+            (e) =>
+              `— ${fmtDate(e.timestamp)} [${e.kind}] ${e.title}${e.description ? `\n  ${e.description}` : ""}`,
+          )
           .join("\n");
       },
     },
@@ -189,7 +195,10 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       parameters: {
         type: "object",
         properties: {
-          confidence: { type: "string", description: "Optional filter: blooming, sprouting, or ask." },
+          confidence: {
+            type: "string",
+            description: "Optional filter: blooming, sprouting, or ask.",
+          },
         },
         additionalProperties: false,
       },
@@ -259,13 +268,17 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       parameters: {
         type: "object",
         properties: {
-          include_done: { type: "boolean", description: "Include checked-off items (default true)." },
+          include_done: {
+            type: "boolean",
+            description: "Include checked-off items (default true).",
+          },
         },
         additionalProperties: false,
       },
       manualId: "our-space",
       run: async (args) => {
-        const includeDone = args["include_done"] === undefined ? true : args["include_done"] === true;
+        const includeDone =
+          args.include_done === undefined ? true : args.include_done === true;
         const items = await store.listTellLater(includeDone);
         if (items.length === 0) return "Nothing queued to tell her.";
         return items

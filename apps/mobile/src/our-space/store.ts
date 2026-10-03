@@ -179,7 +179,11 @@ export class OurSpaceStore {
       .slice(0, Math.max(1, limit));
   }
 
-  async addTimeline(title: string, description = "", kind: TimelineKind = "moment"): Promise<TimelineEvent> {
+  async addTimeline(
+    title: string,
+    description = "",
+    kind: TimelineKind = "moment",
+  ): Promise<TimelineEvent> {
     const t = title.trim();
     if (!t) throw new Error("Timeline title is required.");
     const ev: TimelineEvent = {

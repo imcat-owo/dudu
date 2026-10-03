@@ -16,7 +16,13 @@
  *   (it skips all backend calls when disabled).
  */
 
-import { type LucideIcon, MessageCircle, Plug, SlidersHorizontal } from "lucide-react-native";
+import {
+  Heart,
+  type LucideIcon,
+  MessageCircle,
+  Plug,
+  SlidersHorizontal,
+} from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
@@ -28,13 +34,14 @@ import { ChatScreen } from "./chat";
 import { FontProvider } from "./font";
 import { t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
+import { OurSpaceScreen } from "./our-space-ui";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
 import { useColors } from "./ui";
 import { WorkspaceContext } from "./workspace";
 
-type LocalSection = "chat" | "connections" | "appearance";
+type LocalSection = "chat" | "connections" | "appearance" | "space";
 
 /** Any backend call in local mode is a bug — fail loudly, not silently. */
 class NullMuseApi extends MuseApi {
@@ -72,6 +79,7 @@ export function LocalApp() {
 
   const nav: { id: LocalSection; label: string; icon: LucideIcon }[] = [
     { id: "chat", label: t("tab.chat"), icon: MessageCircle },
+    { id: "space", label: t("tab.space"), icon: Heart },
     { id: "connections", label: t("section.connections.title"), icon: Plug },
     { id: "appearance", label: t("appearance.title"), icon: SlidersHorizontal },
   ];
@@ -82,7 +90,7 @@ export function LocalApp() {
       api,
       section: section as Section,
       navigate: (next: Section) => {
-        if (next === "chat" || next === "connections" || next === "appearance")
+        if (next === "chat" || next === "connections" || next === "appearance" || next === "space")
           setSection(next as LocalSection);
       },
       refresh: () => Promise.resolve(),
@@ -112,6 +120,8 @@ export function LocalApp() {
                     <View style={{ flex: 1 }}>
                       {section === "chat" ? (
                         <ChatScreen prompt={prompt} active={true} />
+                      ) : section === "space" ? (
+                        <OurSpaceScreen />
                       ) : section === "connections" ? (
                         <ApiSettingsScreen />
                       ) : (
