@@ -94,7 +94,7 @@ function seedFromBundle(bundle: ThemeBundle): DraftSeed {
 export function AppearanceScreen() {
   const { bundle, staging, tokens, stageBundle, cancelStage, applyBundle, rollback } = useTheme();
   const colors = useColors();
-  const { option: fontOption, setOption: setFontOption } = useFontSizeSetting();
+  const { option: fontOption, setOption: setFontOption, scale: fontScale } = useFontSizeSetting();
   const [customs, setCustoms] = useState<ThemeBundle[]>([]);
   const [draft, setDraft] = useState<DraftSeed>(() => seedFromBundle(bundle));
   const [customName, setCustomName] = useState("");
@@ -544,7 +544,7 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <Text style={{ color: tokens.aiBubble.fg, fontSize: 14 }}>
+                <Text style={{ color: tokens.aiBubble.fg, fontSize: Math.round(14 * fontScale) }}>
                   {t("appearance.sampleAi")}
                 </Text>
               </View>
@@ -558,7 +558,7 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <Text style={{ color: tokens.userBubble.fg, fontSize: 14 }}>
+                <Text style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}>
                   {t("appearance.sampleUser")}
                 </Text>
               </View>
