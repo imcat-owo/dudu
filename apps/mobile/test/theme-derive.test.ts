@@ -95,5 +95,19 @@ describe("presets", () => {
       false,
       "missing surfaces must fail",
     );
+    assert.equal(
+      isThemeBundle({ ...PRESETS[0], avatar: { size: 8 } }),
+      false,
+      "avatar size below 12 must fail",
+    );
+    assert.equal(
+      isThemeBundle({ ...PRESETS[0], avatar: { size: 200 } }),
+      false,
+      "avatar size above 96 must fail",
+    );
+    assert.ok(
+      isThemeBundle({ ...PRESETS[0], avatar: { size: 30 } }),
+      "avatar size 30 must pass",
+    );
   });
 });

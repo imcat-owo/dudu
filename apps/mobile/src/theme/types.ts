@@ -69,7 +69,12 @@ export type ThemeBundle = {
   mode: ThemeMode;
   surfaces: Record<SurfaceId, SurfaceTokens>;
   wallpaper?: { uri: string; fit: "cover" | "contain"; dim: number };
-  avatar?: { user?: string; assistant?: string };
+  /**
+   * Avatar images (URIs) plus the avatar diameter in pt.
+   * Design §9: avatar shape/size are theme tokens, never hardcoded.
+   * size defaults to 30pt when unset (see ChatAvatar).
+   */
+  avatar?: { user?: string; assistant?: string; size?: number };
   /** Restricted theme-CSS text (creative mode). */
   css?: string;
   meta: { createdAt: string; updatedAt: string; label?: string };
@@ -137,6 +142,11 @@ export function isThemeBundle(v: unknown): v is ThemeBundle {
     if (!isObject(a)) return false;
     if (a.user !== undefined && typeof a.user !== "string") return false;
     if (a.assistant !== undefined && typeof a.assistant !== "string") return false;
+    if (
+      a.size !== undefined &&
+      (typeof a.size !== "number" || !(a.size >= 12 && a.size <= 96))
+    )
+      return false;
   }
   if (v.css !== undefined && typeof v.css !== "string") return false;
 
