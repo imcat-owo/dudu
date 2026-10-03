@@ -695,6 +695,7 @@ export const enStrings: Record<StringKey, string> = {
   "appearance.apply": "Apply",
   "appearance.discard": "Discard",
   "appearance.applied": "Applied",
+  "appearance.appliedLocal": "Applied locally; cloud sync failed",
   "appearance.discarded": "Try-on discarded",
   "appearance.rollback": "Roll back to previous",
   "appearance.rollbackNote":

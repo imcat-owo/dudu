@@ -128,7 +128,7 @@ describe("ui theme migration", () => {
     }
     let api: {
       stageBundle: (b: ThemeBundle) => boolean;
-      applyBundle: (b: ThemeBundle) => Promise<boolean>;
+      applyBundle: (b: ThemeBundle) => Promise<"ok" | "local-only" | "invalid">;
       rollback: () => Promise<void>;
     } | null = null;
     function Grab(): ReactNode {
@@ -154,7 +154,7 @@ describe("ui theme migration", () => {
       const staged = { ...seen };
 
       await act(async () => {
-        assert.equal(await api?.applyBundle(PRESETS[4]), true, "applyBundle accepts preset");
+        assert.equal(await api?.applyBundle(PRESETS[4]), "ok", "applyBundle accepts preset");
       });
       assert.notEqual(seen.cardBg, staged.cardBg, "applyBundle repaints card bg");
       // danger is a fixed-hue semantic red (seed-independent by design, same as

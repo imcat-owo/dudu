@@ -676,6 +676,7 @@ const zhHans = {
   "appearance.apply": "应用",
   "appearance.discard": "放弃",
   "appearance.applied": "已应用",
+  "appearance.appliedLocal": "已应用到本机，云端同步失败",
   "appearance.discarded": "已放弃试穿",
   "appearance.rollback": "恢复上一版",
   "appearance.rollbackNote": "确认后才会真正保存；随时可以回到上一次确认的样子。",

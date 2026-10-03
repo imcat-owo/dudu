@@ -287,8 +287,14 @@ export function AppearanceScreen() {
               small
               primary
               onPress={() => {
-                void applyBundle(bundle).then((ok) => {
-                  setNotice(ok ? t("appearance.applied") : t("appearance.saveFailed"));
+                void applyBundle(bundle).then((result) => {
+                  setNotice(
+                    result === "ok"
+                      ? t("appearance.applied")
+                      : result === "local-only"
+                        ? t("appearance.appliedLocal")
+                        : t("appearance.saveFailed"),
+                  );
                 });
               }}
             >

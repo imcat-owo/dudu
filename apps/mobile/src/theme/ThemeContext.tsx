@@ -34,6 +34,15 @@ import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } f
 export const THEME_STORAGE_KEY = "openmuse.theme.bundle.v1";
 const SERVER_POLL_MS = 30_000;
 
+/**
+ * Result of applyBundle():
+ * - "ok": persisted locally (and PUT to /api/theme when a server is in play)
+ * - "local-only": persisted locally, but the PUT to /api/theme failed —
+ *   the local cache is the source of truth until the server is reachable
+ * - "invalid": the bundle failed validation, nothing was applied
+ */
+export type ApplyResult = "ok" | "local-only" | "invalid";
+
 export type ThemeContextValue = {
   /** Effective bundle: staged try-on wins over the confirmed bundle. */
   bundle: ThemeBundle;
@@ -50,8 +59,8 @@ export type ThemeContextValue = {
   stageBundle: (bundle: ThemeBundle) => boolean;
   /** Abandon the staged try-on. */
   cancelStage: () => void;
-  /** Confirm: persist locally AND PUT to /api/theme. False if invalid. */
-  applyBundle: (bundle: ThemeBundle) => Promise<boolean>;
+  /** Confirm: persist locally AND PUT to /api/theme. See ApplyResult. */
+  applyBundle: (bundle: ThemeBundle) => Promise<ApplyResult>;
   /** Restore the bundle that was confirmed before the last apply. */
   rollback: () => Promise<void>;
   /** Re-check /api/theme now and adopt the bundle if its version changed. */
@@ -69,7 +78,7 @@ function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
     serverVersion: null,
     stageBundle: () => false,
     cancelStage: () => {},
-    applyBundle: async () => false,
+    applyBundle: async () => "invalid",
     rollback: async () => {},
     refreshFromServer: async () => {},
   };
@@ -198,8 +207,8 @@ export function ThemeProvider({
   }, []);
 
   const applyBundle = useCallback(
-    async (bundle: ThemeBundle): Promise<boolean> => {
-      if (!isThemeBundle(bundle)) return false;
+    async (bundle: ThemeBundle): Promise<ApplyResult> => {
+      if (!isThemeBundle(bundle)) return "invalid";
       const stamped: ThemeBundle = {
         ...bundle,
         meta: { ...bundle.meta, updatedAt: new Date().toISOString() },
@@ -208,21 +217,30 @@ export function ThemeProvider({
       setConfirmed(stamped);
       setStaged(null);
       await persistLocal(stamped);
-      if (apiToken) {
-        try {
-          await fetch(`${API_URL}/api/theme`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ bundle: stamped }),
-          });
-        } catch {
-          // Server unreachable: the local cache stays the source of truth.
+      if (!apiToken) return "ok"; // local mode: the cache is the whole truth
+      try {
+        const res = await fetch(`${API_URL}/api/theme`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ bundle: stamped }),
+        });
+        if (!res.ok) return "local-only";
+        // Adopt the new server version so the poll doesn't redundantly
+        // re-fetch the bundle we just wrote (review P3-2, 2026-10-03).
+        const payload = (await res.json()) as { version?: unknown };
+        if (typeof payload.version === "number") {
+          serverVersionRef.current = payload.version;
+          setServerVersion(payload.version);
         }
+        return "ok";
+      } catch {
+        // Server unreachable: report honestly — local is applied, the
+        // server never got it. The next poll will retry the sync.
+        return "local-only";
       }
-      return true;
     },
     [apiToken],
   );
