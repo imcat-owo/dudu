@@ -501,7 +501,7 @@ export function AppearanceScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholder={t("appearance.hexHint")}
-                  placeholderTextColor={tokens.input.fg}
+                  placeholderTextColor={tokens.text.accent}
                   accessibilityLabel={`${row.label} hex`}
                   style={{
                     flex: 1,
