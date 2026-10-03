@@ -43,7 +43,7 @@ import {
   type ThemeBundle,
   type ThemeMode,
 } from "./theme/types";
-import { Button, Card, Field, Mascot, SectionHeading } from "./ui";
+import { Button, Card, Field, Mascot, SectionHeading, useColors } from "./ui";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -93,6 +93,7 @@ function seedFromBundle(bundle: ThemeBundle): DraftSeed {
 
 export function AppearanceScreen() {
   const { bundle, staging, tokens, stageBundle, cancelStage, applyBundle, rollback } = useTheme();
+  const colors = useColors();
   const { option: fontOption, setOption: setFontOption } = useFontSizeSetting();
   const [customs, setCustoms] = useState<ThemeBundle[]>([]);
   const [draft, setDraft] = useState<DraftSeed>(() => seedFromBundle(bundle));
@@ -594,7 +595,7 @@ export function AppearanceScreen() {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: "#000000",
+                  backgroundColor: colors.scrim,
                   opacity: bundle.wallpaper.dim,
                 }}
               />
