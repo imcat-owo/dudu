@@ -158,11 +158,7 @@ export function ComputerSheet() {
     }
   }
   return (
-    <Sheet
-      title={t("computer.sheetTitle")}
-      subtitle={t("computer.sheetSubtitle")}
-      onClose={close}
-    >
+    <Sheet title={t("computer.sheetTitle")} subtitle={t("computer.sheetSubtitle")} onClose={close}>
       <View style={{ gap: 20 }}>
         {tab === "Browser" && (
           <View
@@ -174,9 +170,7 @@ export function ComputerSheet() {
                 {available ? t("computer.browserConnected") : t("computer.browserOffline")}
               </Text>
               <Text style={s.muted}>
-                {available
-                  ? t("computer.browserConnectedDesc")
-                  : t("computer.browserOfflineDesc")}
+                {available ? t("computer.browserConnectedDesc") : t("computer.browserOfflineDesc")}
               </Text>
             </View>
           </View>
@@ -228,9 +222,7 @@ export function ComputerSheet() {
               .map((browser) => (
                 <BrowserThreadCard key={browser.id} browser={browser} />
               ))}
-            {!workspace.browsers.length && (
-              <Text style={s.muted}>{t("browser.emptyHint")}</Text>
-            )}
+            {!workspace.browsers.length && <Text style={s.muted}>{t("browser.emptyHint")}</Text>}
             <Text style={s.small}>{t("browser.takeoverHint")}</Text>
           </>
         ) : tab === "Files" ? (

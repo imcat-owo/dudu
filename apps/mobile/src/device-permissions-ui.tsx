@@ -1,4 +1,4 @@
-import { Bluetooth, Camera, Clipboard, LocateFixed, Mic, Bell } from "lucide-react-native";
+import { Bell, Bluetooth, Camera, Clipboard, LocateFixed, Mic } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import {

@@ -20,8 +20,8 @@ import type {
   ComputerSnapshot,
 } from "../../../packages/domain/src/computer";
 import { useComputerDraft } from "./computer-drafts";
-import { Button, Card, colors, Empty, ErrorNotice, Field, LinkRow, s, timeLabel } from "./ui";
 import { t } from "./i18n";
+import { Button, Card, colors, Empty, ErrorNotice, Field, LinkRow, s, timeLabel } from "./ui";
 import { useWorkspace } from "./workspace";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
@@ -242,17 +242,9 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
                 {t("term.newCommand")}
               </Button>
             )}
-            {!!commandRunning && (
-              <Text style={s.muted}>
-                {t("term.runningNote")}
-              </Text>
-            )}
+            {!!commandRunning && <Text style={s.muted}>{t("term.runningNote")}</Text>}
             {snapshot.commands.length === 0 ? (
-              <Empty
-                icon={Terminal}
-                title={t("term.readyTitle")}
-                detail={t("term.readyDetail")}
-              />
+              <Empty icon={Terminal} title={t("term.readyTitle")} detail={t("term.readyDetail")} />
             ) : (
               [...snapshot.commands]
                 .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -323,11 +315,7 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
           {!run.stdout && !run.stderr && run.status !== "running" && (
             <Text style={s.small}>{t("term.noOutput")}</Text>
           )}
-          {run.truncated && (
-            <Text style={s.small}>
-              {t("term.truncatedNote")}
-            </Text>
-          )}
+          {run.truncated && <Text style={s.small}>{t("term.truncatedNote")}</Text>}
         </>
       )}
       {!!(run.stdout || run.stderr) && (
@@ -480,9 +468,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
       </Text>
       <ErrorNotice error={error} />
       {!!notice && <Text style={[s.small, { color: "#248258" }]}>{notice}</Text>}
-      {!running && (
-        <Text style={s.muted}>{t("term.startToBrowse")}</Text>
-      )}
+      {!running && <Text style={s.muted}>{t("term.startToBrowse")}</Text>}
       {editor ? (
         <>
           <Field
@@ -584,9 +570,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
           {importing && (
             <Card>
               <Text style={s.heading}>{t("term.pickPdf")}</Text>
-              <Text style={[s.small, { marginTop: 6 }]}>
-                {t("term.copyNote")}
-              </Text>
+              <Text style={[s.small, { marginTop: 6 }]}>{t("term.copyNote")}</Text>
               {workspace.files.map((file) => (
                 <LinkRow
                   key={file.id}
@@ -595,9 +579,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
                   onPress={() => void importDocument(file)}
                 />
               ))}
-              {!workspace.files.length && (
-                <Text style={s.muted}>{t("term.addDocFirst")}</Text>
-              )}
+              {!workspace.files.length && <Text style={s.muted}>{t("term.addDocFirst")}</Text>}
             </Card>
           )}
           {folder !== undefined && (

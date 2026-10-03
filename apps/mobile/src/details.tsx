@@ -38,6 +38,7 @@ import { browserAddress, browserSite } from "./browser-address";
 import { ComputerSheet } from "./computer";
 import DateTimeEditor from "./DateTimeEditor";
 import { localDateTime, zonedInstant } from "./date-time";
+import { type StringKey, t } from "./i18n";
 import PdfReader from "./PdfReader";
 import {
   Button,
@@ -57,7 +58,6 @@ import {
   timeLabel,
 } from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
-import { t, type StringKey } from "./i18n";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();
   if (detail.type === "computer") return <ComputerSheet />;
@@ -79,7 +79,11 @@ export function Details({ detail }: { detail: Detail }) {
         { section: "browser" as const, title: t("section.browser.title"), icon: Globe2 },
         { section: "files" as const, title: t("section.files.title"), icon: FileText },
         { section: "activity" as const, title: t("section.activity.title"), icon: Clock3 },
-        { section: "connections" as const, title: t("section.connections.title"), icon: ShieldCheck },
+        {
+          section: "connections" as const,
+          title: t("section.connections.title"),
+          icon: ShieldCheck,
+        },
       ].map((item) => (
         <LinkRow
           key={item.section}
@@ -151,7 +155,9 @@ function MailDetail({ mail: m }: { mail: Mail }) {
             <View style={{ gap: 4, flex: 1 }}>
               <Text style={s.heading}>{message.sender}</Text>
               <Text style={s.small}>{message.from}</Text>
-              <Text style={s.small}>{t("mail.to")}: {message.to.join(", ")}</Text>
+              <Text style={s.small}>
+                {t("mail.to")}: {message.to.join(", ")}
+              </Text>
             </View>
             <Text style={s.small}>
               {dateLabel(message.date)} · {timeLabel(message.date)}
@@ -185,7 +191,9 @@ function MailDetail({ mail: m }: { mail: Mail }) {
         </Card>
       ))}
       <ErrorNotice error={error} />
-      {!!error && <Button onPress={() => setRetry(retry + 1)}>{t("mail.reloadConversation")}</Button>}
+      {!!error && (
+        <Button onPress={() => setRetry(retry + 1)}>{t("mail.reloadConversation")}</Button>
+      )}
       <Button
         primary
         icon={Reply}
@@ -317,7 +325,9 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
       />
       {w.files.length > 0 && (
         <Card style={{ padding: 16, marginBottom: 18 }}>
-          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>{t("mail.attachments")}</Text>
+          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>
+            {t("mail.attachments")}
+          </Text>
           {w.files.map((f) => (
             <CheckRow
               key={f.id}
@@ -354,9 +364,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
           {t("mail.saveDraft")}
         </Button>
       </View>
-      <Text style={[s.small, { marginTop: 13 }]}>
-        {t("mail.reviewNote")}
-      </Text>
+      <Text style={[s.small, { marginTop: 13 }]}>{t("mail.reviewNote")}</Text>
     </Sheet>
   );
 }
@@ -439,9 +447,7 @@ function EventEditor({
   return (
     <Sheet
       title={e ? t("event.editTitle") : t("event.newTitle")}
-      subtitle={
-        e ? t("event.editSubtitle") : t("event.newSubtitle")
-      }
+      subtitle={e ? t("event.editSubtitle") : t("event.newSubtitle")}
       onClose={close}
     >
       <Field
@@ -479,12 +485,14 @@ function EventEditor({
         timeZone={zone}
         allDay={allDay}
       />
-      <DateTimeEditor label={t("event.ends")} value={end} onChange={setEnd} timeZone={zone} allDay={allDay} />
-      {allDay && (
-        <Text style={[s.small, { marginBottom: 15 }]}>
-          {t("event.allDayNote")}
-        </Text>
-      )}
+      <DateTimeEditor
+        label={t("event.ends")}
+        value={end}
+        onChange={setEnd}
+        timeZone={zone}
+        allDay={allDay}
+      />
+      {allDay && <Text style={[s.small, { marginBottom: 15 }]}>{t("event.allDayNote")}</Text>}
       <Field
         label={t("event.timeZone")}
         value={zone}
@@ -570,8 +578,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
         const draft = eventDraftSchema.parse(action.data);
         if (action.kind === "calendar.update") {
           const eventId = action.data.eventId;
-          if (typeof eventId !== "string" || !eventId)
-            throw new Error(t("event.refMissing"));
+          if (typeof eventId !== "string" || !eventId) throw new Error(t("event.refMissing"));
           next = { type: "event", event: { ...draft, id: eventId } };
         } else next = { type: "event", draft };
       }
@@ -591,11 +598,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
   return (
     <Sheet
       title={pending ? t("review.lastLook") : action.title}
-      subtitle={
-        w.mode === "sample"
-          ? t("review.localOnly")
-          : t("review.reviewExact")
-      }
+      subtitle={w.mode === "sample" ? t("review.localOnly") : t("review.reviewExact")}
       onClose={close}
     >
       <View style={[s.row, { gap: 13, marginBottom: 21 }]}>
@@ -659,10 +662,22 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
                   }
                 />
                 <ReviewLine label={t("event.timeZone")} value={String(d.timeZone || "")} />
-                <ReviewLine label={t("review.allDay")} value={d.allDay ? t("review.yes") : t("review.no")} />
-                <ReviewLine label={t("review.location")} value={String(d.location || t("review.none"))} />
-                <ReviewLine label={t("event.attendees")} value={arrayText(d.attendees) || t("review.justYou")} />
-                <ReviewLine label={t("event.notes")} value={String(d.description || t("review.none"))} />
+                <ReviewLine
+                  label={t("review.allDay")}
+                  value={d.allDay ? t("review.yes") : t("review.no")}
+                />
+                <ReviewLine
+                  label={t("review.location")}
+                  value={String(d.location || t("review.none"))}
+                />
+                <ReviewLine
+                  label={t("event.attendees")}
+                  value={arrayText(d.attendees) || t("review.justYou")}
+                />
+                <ReviewLine
+                  label={t("event.notes")}
+                  value={String(d.description || t("review.none"))}
+                />
               </>
             )}
             <ReviewLine label={t("review.calendar")} value={String(d.calendarId || "primary")} />
@@ -685,14 +700,16 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
       {pending ? (
         <>
           <Text style={[s.small, { marginVertical: 17 }]}>
-            {t("review.expiryNote", { date: new Date(action.expiresAt).toLocaleString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              timeZoneName: "short",
-            }) })}
+            {t("review.expiryNote", {
+              date: new Date(action.expiresAt).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZoneName: "short",
+              }),
+            })}
           </Text>
           <View style={[s.row, { gap: 10, flexWrap: "wrap" }]}>
             <Button primary icon={Check} busy={busy} onPress={() => void decide("approve")}>
@@ -782,7 +799,11 @@ function FileDetail({ file: f }: { file: Artifact }) {
   return (
     <Sheet
       title={f.name}
-      subtitle={t("file.sizeDetail", { pages: f.pageCount, kb: Math.max(1, Math.round(f.size / 1024)), source: f.source })}
+      subtitle={t("file.sizeDetail", {
+        pages: f.pageCount,
+        kb: Math.max(1, Math.round(f.size / 1024)),
+        source: f.source,
+      })}
       onClose={close}
       wide
     >
@@ -801,9 +822,7 @@ function FileDetail({ file: f }: { file: Artifact }) {
       {f.fields && f.fields.length > 0 && (
         <Card>
           <SectionHeading title={t("file.fillForm")} />
-          <Text style={[s.muted, { marginBottom: 18 }]}>
-            {t("file.fillNote")}
-          </Text>
+          <Text style={[s.muted, { marginBottom: 18 }]}>{t("file.fillNote")}</Text>
           {f.fields.map((field) =>
             field.type === "unsupported" ? (
               <Text key={field.name} style={s.muted}>
@@ -886,9 +905,7 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
         );
       const files = result.files;
       notify(
-        files.length
-          ? t("browser.pdfsAdded", { count: files.length })
-          : t("browser.noNewPdfs"),
+        files.length ? t("browser.pdfsAdded", { count: files.length }) : t("browser.noNewPdfs"),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -918,7 +935,10 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
   return (
     <Sheet
       title={browserSite(browser.url)}
-      subtitle={t("browser.statusLine", { status: t(`browser.status.${browser.status}` as StringKey), time: timeLabel(browser.updatedAt) })}
+      subtitle={t("browser.statusLine", {
+        status: t(`browser.status.${browser.status}` as StringKey),
+        time: timeLabel(browser.updatedAt),
+      })}
       onClose={close}
       wide
     >
@@ -934,7 +954,11 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
           />
         </View>
         <Button primary busy={busy} disabled={loading || !url.trim()} onPress={() => void mutate()}>
-          {browser.status === "closed" ? t("browser.reopenShort") : browser.status === "error" ? t("browser.reconnectShort") : t("browser.go")}
+          {browser.status === "closed"
+            ? t("browser.reopenShort")
+            : browser.status === "error"
+              ? t("browser.reconnectShort")
+              : t("browser.go")}
         </Button>
       </View>
       <ErrorNotice error={error} />
@@ -960,13 +984,9 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
       ) : (
         <Empty
           icon={Globe2}
-          title={
-            browser.status === "closed" ? t("browser.sessionClosed") : t("browser.noPreview")
-          }
+          title={browser.status === "closed" ? t("browser.sessionClosed") : t("browser.noPreview")}
           detail={
-            browser.status === "closed"
-              ? t("browser.profileSaved")
-              : t("browser.reconnectProfile")
+            browser.status === "closed" ? t("browser.profileSaved") : t("browser.reconnectProfile")
           }
         />
       )}
