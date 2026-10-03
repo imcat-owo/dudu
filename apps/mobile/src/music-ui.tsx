@@ -67,6 +67,7 @@ import {
 } from "./music/store";
 import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
+import { petActivity } from "./pet/store";
 import { useColors } from "./ui";
 
 /** Re-render whenever the music store changes (AI writes from dialog). */
@@ -210,7 +211,7 @@ function usePlayerEngine() {
     activeSourceId.current = sourceId;
   }, []);
 
-  useEffect(() => statusUnsub.current?.(), []);
+  useEffect(() => () => statusUnsub.current?.(), []);
   useEffect(() => {
     void musicStore.getNowPlaying().then(setNowPlaying);
     void musicStore.getTogether().then(setTogether);
@@ -1890,6 +1891,10 @@ export function MusicRoomPage() {
   const engine = usePlayerEngine();
   const [addVisible, setAddVisible] = useState(false);
   const [addTab, setAddTab] = useState<"local" | "apple">("local");
+  // The desktop pet bops while music plays.
+  useEffect(() => {
+    petActivity.setMusicPlaying(engine.status.playing);
+  }, [engine.status.playing]);
   return (
     <View style={{ gap: 14 }}>
       <FadeIn>

@@ -43,6 +43,8 @@ import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
+import { petStore } from "./pet/instance";
+import type { PetSkin } from "./pet/store";
 import { SandboxSheet } from "./sandbox/sandbox-ui";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
@@ -814,6 +816,8 @@ export function AppearanceScreen() {
         </Card>
       </View>
 
+      <PetSkinSection />
+
       <View>
         <SectionHeading title={t("appearance.safetyTitle")} />
         <Card style={{ gap: 12 }}>
@@ -1151,6 +1155,75 @@ function StickerPicker({
           })}
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+/** Desktop pet skin picker — Sora (default) or one of the 10 devil stickers. */
+function PetSkinSection() {
+  const { tokens } = useTheme();
+  const colors = useColors();
+  const [skin, setSkin] = useState<PetSkin>({ kind: "sora" });
+  useEffect(() => {
+    void petStore.load().then((s) => setSkin(s.skin));
+    return petStore.subscribe(() => setSkin({ ...petStore.get().skin }));
+  }, []);
+  const pick = (next: PetSkin) => {
+    setSkin(next);
+    void petStore.setSkin(next);
+  };
+  const option = (
+    key: string,
+    selected: boolean,
+    label: string,
+    face: React.ReactNode,
+    onPress: () => void,
+  ) => (
+    <Pressable
+      key={key}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      style={{
+        borderRadius: 26,
+        borderWidth: selected ? 2 : 0,
+        borderColor: selected ? tokens.accent.fg : "transparent",
+        padding: selected ? 1 : 3,
+      }}
+    >
+      {face}
+    </Pressable>
+  );
+  return (
+    <View>
+      <SectionHeading title={t("pet.settingsTitle")} />
+      <Card style={{ gap: 10 }}>
+        <TText style={{ color: colors.muted, fontSize: 13 }}>{t("pet.settingsHint")}</TText>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {option(
+              "sora",
+              skin.kind === "sora",
+              t("pet.skin.sora"),
+              <Image source={soraSource()} style={{ width: 46, height: 46, borderRadius: 23 }} />,
+              () => pick({ kind: "sora" }),
+            )}
+            {Array.from({ length: MASCOT_COUNT }, (_, i) =>
+              option(
+                `devil-${i}`,
+                skin.kind === "devil" && skin.index === i,
+                t("pet.skin.devil", { n: i + 1 }),
+                <Image
+                  source={mascotSource(i)}
+                  style={{ width: 46, height: 46, borderRadius: 23 }}
+                />,
+                () => pick({ kind: "devil", index: i }),
+              ),
+            )}
+          </View>
+        </ScrollView>
+      </Card>
     </View>
   );
 }

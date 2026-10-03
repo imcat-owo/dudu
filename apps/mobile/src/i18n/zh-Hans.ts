@@ -76,6 +76,11 @@ const zhHans = {
 
   // ---- our space (我们的空间) ----
   "space.title": "我们的空间",
+  "pet.settingsTitle": "桌宠",
+  "pet.settingsHint": "小梦的桌宠样子，拖着它在对话框里到处玩。",
+  "pet.skin.sora": "穹妹",
+  "pet.skin.devil": "小恶魔 {n}",
+  "pet.a11y.pet": "桌宠小梦，拖动我",
   "space.subtitle": "属于我们俩的地方",
   "space.tabs.status": "状态",
   "space.tabs.diary": "日记",

@@ -35,6 +35,8 @@ import { FontProvider } from "./font";
 import { t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
 import { OurSpaceScreen } from "./our-space-ui";
+import { useDropZone } from "./pet/registry";
+import { PetOverlay } from "./pet-ui";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
@@ -42,6 +44,43 @@ import { useColors } from "./ui";
 import { WorkspaceContext } from "./workspace";
 
 type LocalSection = "chat" | "connections" | "appearance" | "space";
+
+/** Bottom tab button — the chat/space tabs double as pet drop portals. */
+function TabButton({
+  id,
+  label,
+  icon: Icon,
+  active,
+  onPress,
+}: {
+  id: LocalSection;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const zoneRef = useDropZone(id === "space" ? "tab-space" : id === "chat" ? "tab-chat" : null);
+  return (
+    <Pressable
+      ref={zoneRef}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        height: 47,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: active ? colors.sky : "transparent",
+        borderRadius: 28,
+      }}
+    >
+      <Icon size={23} strokeWidth={1.8} color={colors.text} />
+    </Pressable>
+  );
+}
 
 /** Any backend call in local mode is a bug — fail loudly, not silently. */
 class NullMuseApi extends MuseApi {
@@ -160,29 +199,18 @@ export function LocalApp() {
                         gap: 8,
                       }}
                     >
-                      {nav.map((item) => {
-                        const active = section === item.id;
-                        return (
-                          <Pressable
-                            key={item.id}
-                            accessibilityRole="tab"
-                            accessibilityLabel={item.label}
-                            accessibilityState={{ selected: active }}
-                            onPress={() => setSection(item.id)}
-                            style={{
-                              flex: 1,
-                              height: 47,
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: active ? colors.sky : "transparent",
-                              borderRadius: 28,
-                            }}
-                          >
-                            <item.icon size={23} strokeWidth={1.8} color={colors.text} />
-                          </Pressable>
-                        );
-                      })}
+                      {nav.map((item) => (
+                        <TabButton
+                          key={item.id}
+                          id={item.id}
+                          label={item.label}
+                          icon={item.icon}
+                          active={section === item.id}
+                          onPress={() => setSection(item.id)}
+                        />
+                      ))}
                     </View>
+                    <PetOverlay section={section} onNavigate={(next) => setSection(next)} />
                   </View>
                 </ThemeTransition>
               </FontProvider>

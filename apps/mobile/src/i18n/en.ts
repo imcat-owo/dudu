@@ -72,6 +72,11 @@ export const enStrings: Record<StringKey, string> = {
 
   // ---- our space ----
   "space.title": "Our Space",
+  "pet.settingsTitle": "Desktop Pet",
+  "pet.settingsHint": "What your pet Xiaomeng looks like. Drag it around the chat.",
+  "pet.skin.sora": "Sora",
+  "pet.skin.devil": "Little devil {n}",
+  "pet.a11y.pet": "Pet Xiaomeng, drag me",
   "space.subtitle": "A place for the two of us",
   "space.tabs.status": "Status",
   "space.tabs.diary": "Diary",

@@ -10,6 +10,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -51,6 +52,13 @@ import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
+import {
+  registerDropZone,
+  setAiBubbleMessageId,
+  unregisterDropZone,
+  useDropZone,
+} from "./pet/registry";
+import { petActivity } from "./pet/store";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
@@ -285,6 +293,18 @@ export function ChatScreen({
   const [activityId, setActivityId] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
+  // Pet drop zones: the message list is the "dialog" zone. Registered
+  // imperatively because the ref already exists for scrolling.
+  useEffect(() => {
+    registerDropZone("dialog", list as unknown as { current: View | null });
+    return () => unregisterDropZone("dialog");
+  }, []);
+  const inputBarZoneRef = useDropZone("input-top");
+  const lastAiBubbleRef = useRef<View | null>(null);
+  useEffect(() => {
+    registerDropZone("ai-bubble", lastAiBubbleRef);
+    return () => unregisterDropZone("ai-bubble");
+  }, []);
   const [queue] = useState(() => new ConversationQueue());
   const choiceCompletions = useRef(
     new Map<string, { resolve: () => void; reject: (error: unknown) => void }>(),
@@ -550,6 +570,23 @@ export function ChatScreen({
       : null;
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const replying = busy || agent.isRunning;
+  // The desktop pet watches this: while the AI is working it shows busy.
+  useEffect(() => {
+    petActivity.setAiBusy(replying);
+    return () => petActivity.setAiBusy(false);
+  }, [replying]);
+  // Id of the last assistant message with a visible bubble — the pet's
+  // "sit on the AI bubble" drop target.
+  const lastAiBubbleId = useMemo(() => {
+    for (let i = visible.length - 1; i >= 0; i--) {
+      if (visible[i].role === "assistant") return visible[i].id;
+    }
+    return null;
+  }, [visible]);
+  // Keep the pet's bubble anchor honest: it only sits on THIS bubble.
+  useEffect(() => {
+    setAiBubbleMessageId(lastAiBubbleId);
+  }, [lastAiBubbleId]);
   return (
     <View style={{ flex: 1, backgroundColor: incognitoOn ? "rgba(61,58,51,0.06)" : undefined }}>
       <View
@@ -729,7 +766,10 @@ export function ChatScreen({
                     }}
                   >
                     {!user && <ChatAvatar who="assistant" />}
-                    <View style={{ maxWidth: "80%" }}>
+                    <View
+                      ref={message.id === lastAiBubbleId ? lastAiBubbleRef : undefined}
+                      style={{ maxWidth: "80%" }}
+                    >
                       {!!thinking && (
                         <ThinkingStatus
                           thinking={thinking}
@@ -1143,7 +1183,7 @@ export function ChatScreen({
               ))}
             </View>
           )}
-          <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
+          <View ref={inputBarZoneRef} style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             {/* Local mode: image attach for vision (no backend file store needed). */}
             {mode === "local" ? (
               <Pressable
