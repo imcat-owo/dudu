@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
-import { colors, s } from "./ui";
+import {useColors, useStyles} from "./ui";
 
 export type ImageMessage = {
   uri: string;
@@ -68,6 +68,8 @@ export function parseImageCommand(text: string): string | null {
  * Tapping could open fullscreen later — for now just displays inline.
  */
 export function ImageBubble({ image, user }: { image: ImageMessage; user: boolean }) {
+  const colors = useColors();
+  const s = useStyles();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
