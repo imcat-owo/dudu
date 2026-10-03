@@ -934,6 +934,13 @@ const zhHans = {
   "voice.speak": "朗读",
   "voice.stopSpeak": "停止朗读",
   "voice.synthesizing": "合成中…",
+  "voice.ttsUrlRequired": "请填写接口地址",
+  "voice.ttsUrlInvalid": "接口地址格式不正确（需以 http:// 或 https:// 开头）",
+  "voice.ttsModelRequired": "请填写模型",
+  "voice.voiceRequired": "请选择音色",
+  "voice.sttUrlRequired": "请填写接口地址",
+  "voice.sttUrlInvalid": "接口地址格式不正确（需以 http:// 或 https:// 开头）",
+  "voice.sttModelRequired": "请填写模型",
 
   // ---- vision ----
   "vision.title": "识图",

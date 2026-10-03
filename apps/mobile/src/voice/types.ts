@@ -45,7 +45,12 @@ export function blankTtsConfig(): TtsConfig {
 }
 
 /** User-facing validation — returns the first problem key, or null when valid. */
-export function validateTtsConfig(c: TtsConfig): string | null {
+export type TtsValidationProblem =
+  | "ttsUrlRequired"
+  | "ttsUrlInvalid"
+  | "ttsModelRequired"
+  | "voiceRequired";
+export function validateTtsConfig(c: TtsConfig): TtsValidationProblem | null {
   if (c.provider === "edge-tts") {
     if (!c.voice.trim()) return "voiceRequired";
     return null;
@@ -76,7 +81,11 @@ export function blankSttConfig(): SttConfig {
   return { provider: "group" };
 }
 
-export function validateSttConfig(c: SttConfig): string | null {
+export type SttValidationProblem =
+  | "sttUrlRequired"
+  | "sttUrlInvalid"
+  | "sttModelRequired";
+export function validateSttConfig(c: SttConfig): SttValidationProblem | null {
   if (c.provider === "group") return null;
   const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");
   if (!url) return "sttUrlRequired";

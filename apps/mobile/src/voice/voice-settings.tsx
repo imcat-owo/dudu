@@ -86,7 +86,7 @@ function TtsSection() {
   async function onSave() {
     const problem = validateTtsConfig(cfg);
     if (problem) {
-      setError(t(`voice.${problem}` as Parameters<typeof t>[0]));
+      setError(t(`voice.${problem}`));
       return;
     }
     await voiceStore.setTts(cfg);
@@ -96,7 +96,7 @@ function TtsSection() {
   async function onTest() {
     const problem = validateTtsConfig(cfg);
     if (problem) {
-      setError(t(`voice.${problem}` as Parameters<typeof t>[0]));
+      setError(t(`voice.${problem}`));
       return;
     }
     setTesting(true);
@@ -231,7 +231,7 @@ function SttSection() {
   async function onSave() {
     const problem = validateSttConfig(cfg);
     if (problem) {
-      setError(t(`voice.${problem}` as Parameters<typeof t>[0]));
+      setError(t(`voice.${problem}`));
       return;
     }
     await voiceStore.setStt(cfg);

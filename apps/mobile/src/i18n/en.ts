@@ -960,6 +960,13 @@ export const enStrings: Record<StringKey, string> = {
   "voice.speak": "Read aloud",
   "voice.stopSpeak": "Stop",
   "voice.synthesizing": "Synthesizing…",
+  "voice.ttsUrlRequired": "Please enter the API URL",
+  "voice.ttsUrlInvalid": "Invalid API URL (must start with http:// or https://)",
+  "voice.ttsModelRequired": "Please enter the model",
+  "voice.voiceRequired": "Please choose a voice",
+  "voice.sttUrlRequired": "Please enter the API URL",
+  "voice.sttUrlInvalid": "Invalid API URL (must start with http:// or https://)",
+  "voice.sttModelRequired": "Please enter the model",
 
   // ---- vision ----
   "vision.title": "Vision",
