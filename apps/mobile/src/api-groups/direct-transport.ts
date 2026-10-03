@@ -19,8 +19,13 @@ import { type ApiGroup, normalizeBaseUrl } from "./types";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  /** Plain text, or OpenAI content blocks (for native vision image_url). */
+  content: string | ChatContentBlock[];
 }
+
+export type ChatContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 export class GroupError extends Error {
   constructor(

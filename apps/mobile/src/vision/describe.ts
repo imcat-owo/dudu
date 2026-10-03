@@ -178,3 +178,51 @@ export async function nativeImageBlock(
 export function formatDescriptionBlock(imageName: string, description: string): string {
   return `[图片描述 | ${imageName}]\n${description}`;
 }
+
+export interface UserImageAttachment {
+  uri: string;
+  name: string;
+}
+
+export interface UserMessageWithImages {
+  text: string;
+  images: UserImageAttachment[];
+}
+
+/**
+ * User message carrying image attachments, encoded in message content.
+ * Convention: {"type":"user_message_with_images","text":"...","images":[{"uri","name"}]}
+ * The local agent decodes this at runTurn time (vision processing) and
+ * chat.tsx decodes it for rendering thumbnails.
+ */
+export function encodeUserMessageWithImages(text: string, images: UserImageAttachment[]): string {
+  return JSON.stringify({ type: "user_message_with_images", text, images });
+}
+
+export function parseUserMessageWithImages(content: string): UserMessageWithImages | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      (parsed as Record<string, unknown>).type === "user_message_with_images" &&
+      typeof (parsed as Record<string, unknown>).text === "string" &&
+      Array.isArray((parsed as Record<string, unknown>).images)
+    ) {
+      const p = parsed as { text: string; images: unknown[] };
+      const images = p.images.filter(
+        (img): img is UserImageAttachment =>
+          typeof img === "object" &&
+          img !== null &&
+          typeof (img as UserImageAttachment).uri === "string" &&
+          typeof (img as UserImageAttachment).name === "string",
+      );
+      return { text: p.text, images };
+    }
+  } catch {
+    // not JSON — not an image message
+  }
+  return null;
+}

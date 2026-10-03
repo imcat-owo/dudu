@@ -12,8 +12,20 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { type ChatMessage, GroupError, streamChat } from "./direct-transport";
+import {
+  type ChatContentBlock,
+  type ChatMessage,
+  GroupError,
+  streamChat,
+} from "./direct-transport";
 import type { ApiGroup } from "./types";
+import {
+  describeImage,
+  formatDescriptionBlock,
+  nativeImageBlock,
+  parseUserMessageWithImages,
+  VisionError,
+} from "../vision/describe";
 
 export interface LocalChatMessage {
   id: string;
@@ -65,6 +77,54 @@ async function saveLocalHistory(threadId: string, messages: LocalChatMessage[]):
   } catch {
     // History persistence is best-effort; the session keeps working.
   }
+}
+
+/**
+ * Resolve a user message for the wire, processing image attachments.
+ *
+ * - No images: passthrough.
+ * - Native vision: text + image_url content blocks in one request.
+ * - Describe pipeline: each image → 4-part description → appended as
+ *   structured blocks the text model can read.
+ * - No vision config: throw loudly — never silently drop the image.
+ */
+async function toWireUserMessage(group: ApiGroup, content: string): Promise<ChatMessage> {
+  const parsed = parseUserMessageWithImages(content);
+  if (!parsed || parsed.images.length === 0) return { role: "user", content };
+
+  const vision = group.vision;
+  if (!vision) {
+    throw new GroupError(
+      group.name,
+      "没有配置识图：请在分组设置里打开“聊天模型直接看图”或填写识图模型",
+    );
+  }
+
+  if (vision.native) {
+    const blocks: ChatContentBlock[] = [];
+    if (parsed.text.trim()) blocks.push({ type: "text", text: parsed.text });
+    for (const img of parsed.images) {
+      blocks.push(await nativeImageBlock(img.uri));
+    }
+    return { role: "user", content: blocks };
+  }
+
+  // Describe pipeline: vision model describes, chat model reads text.
+  const parts: string[] = [];
+  if (parsed.text.trim()) parts.push(parsed.text);
+  for (const img of parsed.images) {
+    let description: string;
+    try {
+      description = await describeImage(group, img.uri, parsed.text);
+    } catch (e) {
+      // Loud, per-image — the user knows exactly which image failed and why.
+      throw e instanceof VisionError || e instanceof GroupError
+        ? e
+        : new VisionError(`识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`);
+    }
+    parts.push(formatDescriptionBlock(img.name, description));
+  }
+  return { role: "user", content: parts.join("\n\n") };
 }
 
 export function createLocalAgent(opts: {
@@ -124,12 +184,17 @@ export function createLocalAgent(opts: {
       messages = [...messages, { id: replyId, role: "assistant", content: "" }];
       emit();
 
-      const wire: ChatMessage[] = [
-        ...(opts.systemPrompt ? [{ role: "system" as const, content: opts.systemPrompt }] : []),
-        ...messages
-          .filter((m) => m.id !== replyId && (m.role === "user" || m.role === "assistant"))
-          .map((m): ChatMessage => ({ role: m.role, content: m.content })),
-      ];
+      // Build the wire messages, resolving image attachments via vision.
+      const wire: ChatMessage[] = [];
+      if (opts.systemPrompt) wire.push({ role: "system", content: opts.systemPrompt });
+      for (const m of messages) {
+        if (m.id === replyId || (m.role !== "user" && m.role !== "assistant")) continue;
+        if (m.role === "assistant") {
+          wire.push({ role: "assistant", content: m.content });
+          continue;
+        }
+        wire.push(await toWireUserMessage(group, m.content));
+      }
 
       try {
         await streamChat(group, wire, {
