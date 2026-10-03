@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Image,
   Pressable,
   ScrollView,
   Text,
@@ -43,7 +44,7 @@ import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
-import { ThemeProvider } from "./src/theme/ThemeContext";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
 import {
   Button,
@@ -358,10 +359,36 @@ function WorkspaceShell({
                     ? AppearanceScreen
                     : AppsScreen;
   const utility = ["mail", "calendar", "browser", "files", "appearance"].includes(section);
+  const { bundle } = useTheme();
+  const wallpaper = bundle.wallpaper;
   return (
     <>
       <WorkspaceTools />
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }} edges={["top", "bottom"]}>
+        {wallpaper ? (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <Image
+              source={{ uri: wallpaper.uri }}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              resizeMode={wallpaper.fit}
+            />
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: colors.scrim,
+                opacity: wallpaper.dim,
+              }}
+            />
+          </View>
+        ) : null}
         <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
           <View
             style={{
