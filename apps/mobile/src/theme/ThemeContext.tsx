@@ -107,10 +107,15 @@ export function ThemeProvider({
   const confirmedRef = useRef(confirmed);
   const previousRef = useRef<ThemeBundle | null>(null);
   const serverVersionRef = useRef<number | null>(null);
+  const stagedRef = useRef<ThemeBundle | null>(null);
 
   useEffect(() => {
     confirmedRef.current = confirmed;
   }, [confirmed]);
+
+  useEffect(() => {
+    stagedRef.current = staged;
+  }, [staged]);
 
   // ---- local cache: load on mount, self-heal on corruption ----
   useEffect(() => {
@@ -163,9 +168,12 @@ export function ThemeProvider({
     const remote = await fetchRemote();
     if (!remote) return;
     if (serverVersionRef.current === remote.version) return;
+    // Never clobber an active try-on: the user is mid-preview and the
+    // banner offers Apply/Discard. Skip this poll; the next one retries
+    // after staging ends (review P2-2, 2026-10-03).
+    if (stagedRef.current) return;
     serverVersionRef.current = remote.version;
     setServerVersion(remote.version);
-    setStaged(null);
     setConfirmed(remote.bundle);
     await persistLocal(remote.bundle);
   }, [fetchRemote]);
