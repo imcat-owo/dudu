@@ -45,6 +45,7 @@ import { IncognitoProvider } from "./src/incognito";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { ThemeTransition } from "./src/theme-transition";
 import { FontProvider } from "./src/font";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
 import {
@@ -392,7 +393,8 @@ function WorkspaceShell({
             />
           </View>
         ) : null}
-        <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
+        <ThemeTransition>
+          <View style={{ flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" }}>
           <View
             style={{
               height: desktop ? 146 : 122,
@@ -581,6 +583,7 @@ function WorkspaceShell({
             </View>
           </View>
         </View>
+        </ThemeTransition>
         {!!toast && (
           <View
             pointerEvents="box-none"

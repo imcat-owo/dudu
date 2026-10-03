@@ -72,6 +72,12 @@ export type ThemeContextValue = {
   refreshFromServer: () => Promise<void>;
   /** Last confirmed bundles, newest first (local, capped at 20). */
   history: ThemeHistoryEntry[];
+  /**
+   * Bumps on discrete theme changes (try-on start, apply, rollback,
+   * remote adopt) — drives the silky crossfade in ThemeTransition.
+   * Does NOT bump on every staged update during a color drag.
+   */
+  transitionKey: number;
 };
 
 function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
@@ -89,6 +95,7 @@ function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
     rollback: async () => {},
     refreshFromServer: async () => {},
     history: [],
+    transitionKey: 0,
   };
 }
 
@@ -147,6 +154,8 @@ export function ThemeProvider({
   const [staged, setStaged] = useState<ThemeBundle | null>(null);
   const [serverVersion, setServerVersion] = useState<number | null>(null);
   const [history, setHistory] = useState<ThemeHistoryEntry[]>([]);
+  const [transitionKey, setTransitionKey] = useState(0);
+  const bumpTransition = useCallback(() => setTransitionKey((k) => k + 1), []);
 
   const confirmedRef = useRef(confirmed);
   const previousRef = useRef<ThemeBundle | null>(null);
@@ -243,9 +252,10 @@ export function ThemeProvider({
     if (stagedRef.current) return;
     serverVersionRef.current = remote.version;
     setServerVersion(remote.version);
+    bumpTransition();
     setConfirmed(remote.bundle);
     await persistLocal(remote.bundle);
-  }, [fetchRemote]);
+  }, [fetchRemote, bumpTransition]);
 
   useEffect(() => {
     void refreshFromServer();
@@ -258,9 +268,12 @@ export function ThemeProvider({
   // ---- try-on / confirm / rollback (safety net §6) ----
   const stageBundle = useCallback((bundle: ThemeBundle): boolean => {
     if (!isThemeBundle(bundle)) return false;
+    // Discrete start of a try-on bumps the transition; continuous
+    // updates during a color drag do not (the live preview is already smooth).
+    if (!stagedRef.current) bumpTransition();
     setStaged(bundle); // in memory only — never persisted
     return true;
-  }, []);
+  }, [bumpTransition]);
 
   const cancelStage = useCallback((): void => {
     setStaged(null);
@@ -275,6 +288,7 @@ export function ThemeProvider({
       };
       previousRef.current = confirmedRef.current;
       await archiveCurrent();
+      bumpTransition();
       setConfirmed(stamped);
       setStaged(null);
       await persistLocal(stamped);
@@ -303,7 +317,7 @@ export function ThemeProvider({
         return "local-only";
       }
     },
-    [apiToken, archiveCurrent],
+    [apiToken, archiveCurrent, bumpTransition],
   );
 
   const rollback = useCallback(async (): Promise<void> => {
@@ -313,6 +327,7 @@ export function ThemeProvider({
       meta: { ...target.meta, updatedAt: new Date().toISOString() },
     };
     await archiveCurrent();
+    bumpTransition();
     setStaged(null);
     setConfirmed(stamped);
     await persistLocal(stamped);
@@ -363,6 +378,7 @@ export function ThemeProvider({
       rollback,
       refreshFromServer,
       history,
+      transitionKey,
     }),
     [
       effective,
@@ -377,6 +393,7 @@ export function ThemeProvider({
       rollback,
       refreshFromServer,
       history,
+      transitionKey,
     ],
   );
 

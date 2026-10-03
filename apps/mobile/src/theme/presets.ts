@@ -12,6 +12,15 @@ const BUILT_IN_AUTHOR = "openmuse";
 
 export const PRESETS: readonly ThemeBundle[] = [
   makeThemeBundle({
+    id: "preset-sora-gray",
+    name: "theme.preset.soraGray",
+    // Seed extracted from the owner's finalized avatar
+    // (artwork/avatar/sora-avatar.webp, mid-tone average).
+    seed: { primary: "#aaa7aa" },
+    mode: "light",
+    author: BUILT_IN_AUTHOR,
+  }),
+  makeThemeBundle({
     id: "preset-mint-frost",
     name: "theme.preset.mintFrost",
     seed: { primary: "#3f9b8a" },
