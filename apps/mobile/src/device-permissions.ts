@@ -1,7 +1,4 @@
-import {
-  getRecordingPermissionsAsync,
-  requestRecordingPermissionsAsync,
-} from "expo-audio";
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
