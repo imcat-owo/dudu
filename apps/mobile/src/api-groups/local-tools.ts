@@ -94,7 +94,7 @@ function numArg(args: Record<string, unknown>, name: string, fallback: number): 
  */
 export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
   const now = deps.now ?? (() => new Date());
-  const appInfo = deps.appInfo ?? (() => ({ name: "OpenMuse", version: "dev", platform: "ios" }));
+  const appInfo = deps.appInfo ?? (() => ({ name: "嘟嘟", version: "dev", platform: "ios" }));
 
   const tools: LocalTool[] = [
     {
