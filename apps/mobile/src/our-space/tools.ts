@@ -230,5 +230,192 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         return "Checked off.";
       },
     },
+
+    // ---- v2: social feed (Moments-style, bidirectional) ----
+    {
+      name: "feed_post",
+      description:
+        "Post to the Our Space social feed as yourself (the AI). She will see it in the feed and can reply and like. You may include an imageUri when you made an image for her — images ARE allowed in Our Space. Keep posts warm and personal, never generic.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Post text." },
+          imageUri: {
+            type: "string",
+            description: "Optional image URI to attach to the post.",
+          },
+        },
+        required: ["text"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const text = strArg(args, "text");
+        const imageUri = strArg(args, "imageUri") || undefined;
+        const post = await store.addFeedPost("ai", text, imageUri);
+        return `Posted to the feed (id: ${post.id}).`;
+      },
+    },
+    {
+      name: "feed_read",
+      description:
+        "Read recent posts from the Our Space social feed (newest first), including like state and reply counts. Use to see what she posted so you can reply or like.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "number", description: "Max posts (default 20)." },
+        },
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const posts = await store.listFeed(numArg(args, "limit", 20));
+        if (posts.length === 0) return "The feed is empty.";
+        const lines: string[] = [];
+        for (const p of posts) {
+          const who = p.author === "ai" ? "you" : "her";
+          const likes: string[] = [];
+          if (p.likedByHer) likes.push("her");
+          if (p.likedByAi) likes.push("you");
+          lines.push(
+            `— [${who}] ${p.text}${p.imageUri ? " [has image]" : ""} (id: ${p.id}, ${fmtDate(p.createdAt)}${likes.length ? `, liked by ${likes.join(" + ")}` : ""})`,
+          );
+          const replies = await store.listReplies(p.id);
+          for (const r of replies) {
+            lines.push(`    ↳ [${r.author === "ai" ? "you" : "her"}] ${r.text}`);
+          }
+        }
+        return lines.join("\n");
+      },
+    },
+    {
+      name: "feed_reply",
+      description:
+        "Reply to a feed post in Our Space as yourself (the AI). Use when she posts something and you want to respond in the feed.",
+      parameters: {
+        type: "object",
+        properties: {
+          postId: { type: "string", description: "The post id (from feed_read)." },
+          text: { type: "string", description: "Reply text." },
+        },
+        required: ["postId", "text"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const postId = strArg(args, "postId");
+        const text = strArg(args, "text");
+        if (!postId) throw new ToolError("Missing required argument: postId.");
+        if (!text) throw new ToolError("Missing required argument: text.");
+        await store.addReply(postId, "ai", text);
+        return "Reply posted.";
+      },
+    },
+    {
+      name: "feed_like",
+      description:
+        "Like (or unlike, toggling) a feed post in Our Space as yourself (the AI). Use to like her posts.",
+      parameters: {
+        type: "object",
+        properties: {
+          postId: { type: "string", description: "The post id (from feed_read)." },
+        },
+        required: ["postId"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const postId = strArg(args, "postId");
+        if (!postId) throw new ToolError("Missing required argument: postId.");
+        const post = await store.toggleFeedLike(postId, "ai");
+        if (!post) throw new ToolError(`No post with id "${postId}".`);
+        return post.likedByAi ? "Liked." : "Unliked.";
+      },
+    },
+
+    // ---- v2: anniversaries ----
+    {
+      name: "anniversary_add",
+      description:
+        "Add an anniversary / milestone date in Our Space (e.g. the day you met, her birthday). Shown in the 纪念日 card with a countdown.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Anniversary title." },
+          date: { type: "string", description: "Date as YYYY-MM-DD." },
+          description: { type: "string", description: "Optional note." },
+        },
+        required: ["title", "date"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const item = await store.addAnniversary(
+          strArg(args, "title"),
+          strArg(args, "date"),
+          strArg(args, "description"),
+        );
+        return `Anniversary saved: "${item.title}" (${item.date}).`;
+      },
+    },
+    {
+      name: "anniversary_read",
+      description: "List anniversaries in Our Space.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const items = await store.listAnniversaries();
+        if (items.length === 0) return "No anniversaries yet.";
+        return items.map((a) => `— ${a.title} (${a.date})${a.description ? ` — ${a.description}` : ""}`).join("\n");
+      },
+    },
+
+    // ---- v2: works drawer ----
+    {
+      name: "work_add",
+      description:
+        "Add something you made for her to the works drawer in Our Space (image, HTML page, theme, file). It appears as a card in the Instagram-style grid; she taps to view it full.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description: 'One of: "image", "html", "theme", "file".',
+          },
+          title: { type: "string", description: "Title for the card." },
+          uri: { type: "string", description: "URI to the content." },
+          description: { type: "string", description: "Optional note." },
+          thumbnailUri: { type: "string", description: "Optional thumbnail URI." },
+        },
+        required: ["type", "title", "uri"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const type = strArg(args, "type");
+        if (!["image", "html", "theme", "file"].includes(type)) {
+          throw new ToolError('type must be one of "image", "html", "theme", "file".');
+        }
+        const item = await store.addWork(
+          type as "image" | "html" | "theme" | "file",
+          strArg(args, "title"),
+          strArg(args, "uri"),
+          strArg(args, "description"),
+          strArg(args, "thumbnailUri") || undefined,
+        );
+        return `Added to works drawer: "${item.title}".`;
+      },
+    },
+    {
+      name: "work_read",
+      description: "List items in the works drawer.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const items = await store.listWorks();
+        if (items.length === 0) return "The works drawer is empty.";
+        return items.map((w) => `— [${w.type}] ${w.title} (id: ${w.id})`).join("\n");
+      },
+    },
   ];
 }

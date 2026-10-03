@@ -47,6 +47,58 @@ export interface AiStatus {
   updatedAt: number;
 }
 
+// ============ v2 additions (ADDITIVE — v1 areas above are untouched) ============
+
+/** Couple header: her avatar + AI avatar, both customizable (null = default). */
+export interface CoupleProfile {
+  herAvatarUri: string | null;
+  aiAvatarUri: string | null;
+  updatedAt: number;
+}
+
+export type FeedAuthor = "her" | "ai";
+
+export interface FeedPost {
+  id: string;
+  author: FeedAuthor;
+  text: string;
+  /** Optional image URI (her exception: images allowed in Our Space). */
+  imageUri?: string;
+  createdAt: number;
+  likedByHer: boolean;
+  likedByAi: boolean;
+}
+
+export interface FeedReply {
+  id: string;
+  postId: string;
+  author: FeedAuthor;
+  text: string;
+  createdAt: number;
+}
+
+export interface Anniversary {
+  id: string;
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+  description: string;
+  createdAt: number;
+}
+
+export type WorkType = "image" | "html" | "theme" | "file";
+
+export interface WorkItem {
+  id: string;
+  type: WorkType;
+  title: string;
+  /** URI to the content (image file, html file, theme bundle, etc.). */
+  uri: string;
+  thumbnailUri?: string;
+  description: string;
+  createdAt: number;
+}
+
 /** Minimal storage surface. AsyncStorage satisfies this in production. */
 export interface OurSpaceStorage {
   getItem(key: string): Promise<string | null>;
@@ -58,6 +110,12 @@ const KEYS = {
   timeline: "openmuse.ourspace.v1.timeline",
   tellLater: "openmuse.ourspace.v1.telllater",
   status: "openmuse.ourspace.v1.status",
+  // v2 additions (new keys — v1 data untouched)
+  couple: "openmuse.ourspace.v2.couple",
+  feed: "openmuse.ourspace.v2.feed",
+  replies: "openmuse.ourspace.v2.replies",
+  anniversaries: "openmuse.ourspace.v2.anniversaries",
+  works: "openmuse.ourspace.v2.works",
 } as const;
 
 function newId(): string {
@@ -241,6 +299,196 @@ export class OurSpaceStore {
     const next = all.filter((i) => i.id !== id);
     if (next.length === all.length) return false;
     await writeJson(this.storage, KEYS.tellLater, next);
+    this.emit();
+    return true;
+  }
+
+  // ============ v2: couple profile ============
+
+  async getCoupleProfile(): Promise<CoupleProfile | null> {
+    return readJson<CoupleProfile | null>(this.storage, KEYS.couple, null);
+  }
+
+  async setAvatar(who: "her" | "ai", uri: string | null): Promise<CoupleProfile> {
+    const cur = (await this.getCoupleProfile()) ?? {
+      herAvatarUri: null,
+      aiAvatarUri: null,
+      updatedAt: 0,
+    };
+    const next: CoupleProfile = {
+      ...cur,
+      herAvatarUri: who === "her" ? uri : cur.herAvatarUri,
+      aiAvatarUri: who === "ai" ? uri : cur.aiAvatarUri,
+      updatedAt: Date.now(),
+    };
+    await writeJson(this.storage, KEYS.couple, next);
+    this.emit();
+    return next;
+  }
+
+  // ============ v2: social feed ============
+
+  async listFeed(limit = 100): Promise<FeedPost[]> {
+    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+    return newestFirst(all, (p) => p.createdAt).slice(0, Math.max(1, limit));
+  }
+
+  async addFeedPost(
+    author: FeedAuthor,
+    text: string,
+    imageUri?: string,
+  ): Promise<FeedPost> {
+    const t = text.trim();
+    if (!t && !imageUri) throw new Error("Feed post needs text or an image.");
+    const post: FeedPost = {
+      id: newId(),
+      author,
+      text: t,
+      imageUri: imageUri?.trim() || undefined,
+      createdAt: Date.now(),
+      likedByHer: false,
+      likedByAi: false,
+    };
+    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+    all.push(post);
+    await writeJson(this.storage, KEYS.feed, all);
+    this.emit();
+    return post;
+  }
+
+  async deleteFeedPost(id: string): Promise<boolean> {
+    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+    const next = all.filter((p) => p.id !== id);
+    if (next.length === all.length) return false;
+    await writeJson(this.storage, KEYS.feed, next);
+    // Cascade: drop replies to the deleted post.
+    const replies = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+    await writeJson(
+      this.storage,
+      KEYS.replies,
+      replies.filter((r) => r.postId !== id),
+    );
+    this.emit();
+    return true;
+  }
+
+  async toggleFeedLike(id: string, who: FeedAuthor): Promise<FeedPost | null> {
+    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+    const post = all.find((p) => p.id === id);
+    if (!post) return null;
+    if (who === "her") post.likedByHer = !post.likedByHer;
+    else post.likedByAi = !post.likedByAi;
+    await writeJson(this.storage, KEYS.feed, all);
+    this.emit();
+    return post;
+  }
+
+  async listReplies(postId: string): Promise<FeedReply[]> {
+    const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+    return all
+      .filter((r) => r.postId === postId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  async addReply(postId: string, author: FeedAuthor, text: string): Promise<FeedReply> {
+    const t = text.trim();
+    if (!t) throw new Error("Reply text is required.");
+    const posts = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+    if (!posts.some((p) => p.id === postId)) throw new Error("Post not found.");
+    const reply: FeedReply = { id: newId(), postId, author, text: t, createdAt: Date.now() };
+    const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+    all.push(reply);
+    await writeJson(this.storage, KEYS.replies, all);
+    this.emit();
+    return reply;
+  }
+
+  async deleteReply(id: string): Promise<boolean> {
+    const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+    const next = all.filter((r) => r.id !== id);
+    if (next.length === all.length) return false;
+    await writeJson(this.storage, KEYS.replies, next);
+    this.emit();
+    return true;
+  }
+
+  // ============ v2: anniversaries ============
+
+  async listAnniversaries(): Promise<Anniversary[]> {
+    const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+    return all.slice().sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async addAnniversary(
+    title: string,
+    date: string,
+    description = "",
+  ): Promise<Anniversary> {
+    const t = title.trim();
+    if (!t) throw new Error("Anniversary title is required.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
+    const item: Anniversary = {
+      id: newId(),
+      title: t,
+      date,
+      description: description.trim(),
+      createdAt: Date.now(),
+    };
+    const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+    all.push(item);
+    await writeJson(this.storage, KEYS.anniversaries, all);
+    this.emit();
+    return item;
+  }
+
+  async deleteAnniversary(id: string): Promise<boolean> {
+    const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+    const next = all.filter((a) => a.id !== id);
+    if (next.length === all.length) return false;
+    await writeJson(this.storage, KEYS.anniversaries, next);
+    this.emit();
+    return true;
+  }
+
+  // ============ v2: works drawer ============
+
+  async listWorks(limit = 200): Promise<WorkItem[]> {
+    const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
+    return newestFirst(all, (w) => w.createdAt).slice(0, Math.max(1, limit));
+  }
+
+  async addWork(
+    type: WorkType,
+    title: string,
+    uri: string,
+    description = "",
+    thumbnailUri?: string,
+  ): Promise<WorkItem> {
+    const t = title.trim();
+    const u = uri.trim();
+    if (!t) throw new Error("Work title is required.");
+    if (!u) throw new Error("Work URI is required.");
+    const item: WorkItem = {
+      id: newId(),
+      type,
+      title: t,
+      uri: u,
+      thumbnailUri: thumbnailUri?.trim() || undefined,
+      description: description.trim(),
+      createdAt: Date.now(),
+    };
+    const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
+    all.push(item);
+    await writeJson(this.storage, KEYS.works, all);
+    this.emit();
+    return item;
+  }
+
+  async deleteWork(id: string): Promise<boolean> {
+    const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
+    const next = all.filter((w) => w.id !== id);
+    if (next.length === all.length) return false;
+    await writeJson(this.storage, KEYS.works, next);
     this.emit();
     return true;
   }
