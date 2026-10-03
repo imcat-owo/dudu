@@ -734,6 +734,8 @@ export const enStrings: Record<StringKey, string> = {
   "appearance.aiAvatar": "AI avatar",
   "appearance.changeImage": "Change image",
   "appearance.restoreDefault": "Restore default",
+  "appearance.stickerLabel": "Devil stickers",
+  "appearance.stickerOption": "Sticker {n}",
   "appearance.permissionDenied": "Photo library permission is required",
 
   // ---- threads ----

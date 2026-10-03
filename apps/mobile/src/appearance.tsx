@@ -29,10 +29,12 @@ import {
   User,
   X,
 } from "lucide-react-native";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { type StringKey, t } from "./i18n";
+import { MASCOT_COUNT } from "./mascot";
+import { mascotSource, mascotUri } from "./mascot-assets";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
 import { useTheme } from "./theme/ThemeContext";
@@ -273,6 +275,12 @@ export function AppearanceScreen() {
     } catch {
       setNotice(t("appearance.saveFailed"));
     }
+  };
+
+  const pickSticker = (who: "user" | "assistant", index: number) => {
+    const uri = mascotUri(index);
+    if (!uri) return;
+    tryOn({ ...bundle, avatar: { ...(bundle.avatar ?? {}), [who]: uri } });
   };
 
   const restoreAvatar = (who: "user" | "assistant") => {
@@ -671,6 +679,11 @@ export function AppearanceScreen() {
             onRestore={() => restoreAvatar("user")}
             canRestore={!!bundle.avatar?.user}
           />
+          <StickerPicker
+            selectedUri={bundle.avatar?.user}
+            tokens={tokens}
+            onSelect={(index) => pickSticker("user", index)}
+          />
           <AvatarRow
             label={t("appearance.aiAvatar")}
             uri={bundle.avatar?.assistant}
@@ -679,6 +692,11 @@ export function AppearanceScreen() {
             onPick={() => void pickAvatar("assistant")}
             onRestore={() => restoreAvatar("assistant")}
             canRestore={!!bundle.avatar?.assistant}
+          />
+          <StickerPicker
+            selectedUri={bundle.avatar?.assistant}
+            tokens={tokens}
+            onSelect={(index) => pickSticker("assistant", index)}
           />
         </Card>
       </View>
@@ -780,6 +798,57 @@ function DimSlider({
           backgroundColor: tokens.accent.accent,
         }}
       />
+    </View>
+  );
+}
+
+function StickerPicker({
+  selectedUri,
+  tokens,
+  onSelect,
+}: {
+  selectedUri?: string;
+  tokens: Tokens;
+  onSelect: (index: number) => void;
+}) {
+  const fg = tokens.text.fg;
+  // Resolved once: the 10 sticker URIs that get stored in the theme token.
+  const stickerUris = useMemo(
+    () => Array.from({ length: MASCOT_COUNT }, (_, i) => mascotUri(i)),
+    [],
+  );
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+        {t("appearance.stickerLabel")}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {stickerUris.map((uri, i) => {
+            const selected = !!uri && uri === selectedUri;
+            return (
+              <Pressable
+                key={`sticker-${i}`}
+                accessibilityRole="radio"
+                accessibilityLabel={t("appearance.stickerOption", { n: i + 1 })}
+                accessibilityState={{ checked: selected }}
+                onPress={() => onSelect(i)}
+                style={{
+                  borderRadius: 24,
+                  borderWidth: selected ? 2 : 0,
+                  borderColor: selected ? tokens.accent.fg : "transparent",
+                  padding: selected ? 1 : 3,
+                }}
+              >
+                <Image
+                  source={mascotSource(i)}
+                  style={{ width: 42, height: 42, borderRadius: 21 }}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
     </View>
   );
 }

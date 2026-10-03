@@ -714,6 +714,8 @@ const zhHans = {
   "appearance.aiAvatar": "AI 头像",
   "appearance.changeImage": "更换图片",
   "appearance.restoreDefault": "恢复默认",
+  "appearance.stickerLabel": "小恶魔贴纸",
+  "appearance.stickerOption": "贴纸 {n}",
   "appearance.permissionDenied": "需要相册权限才能选图",
 
   // ---- threads ----
