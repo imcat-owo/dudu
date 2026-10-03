@@ -40,23 +40,7 @@ import DateTimeEditor from "./DateTimeEditor";
 import { localDateTime, zonedInstant } from "./date-time";
 import { type StringKey, t } from "./i18n";
 import PdfReader from "./PdfReader";
-import {
-  Button,
-  Card,
-  CheckRow,
-  Chip,
-  colors,
-  dateLabel,
-  Empty,
-  ErrorNotice,
-  Field,
-  LinkRow,
-  resultSummary,
-  SectionHeading,
-  Sheet,
-  s,
-  timeLabel,
-} from "./ui";
+import {Button, Card, CheckRow, Chip, useColors, dateLabel, Empty, ErrorNotice, Field, LinkRow, resultSummary, SectionHeading, Sheet, useStyles, timeLabel, } from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();
@@ -99,6 +83,8 @@ export function Details({ detail }: { detail: Detail }) {
   );
 }
 function MailDetail({ mail: m }: { mail: Mail }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, open, close } = useWorkspace();
   const [error, setError] = useState("");
   const [importing, setImporting] = useState("");
@@ -220,6 +206,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
   );
 }
 function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } }) {
+  const s = useStyles();
   const { workspace: w, api, refresh, open, close, notify } = useWorkspace();
   const [to, setTo] = useState(draft?.to?.join(", ") || "");
   const [cc, setCc] = useState(draft?.cc?.join(", ") || "");
@@ -377,6 +364,8 @@ function EventEditor({
   draft?: EventDraft;
   neighbors?: CalendarEvent[];
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const seed = e || draft;
   const { workspace: w, api, open, close, refresh } = useWorkspace();
   const initialStart = new Date();
@@ -543,6 +532,8 @@ function EventEditor({
   );
 }
 function ReviewDetail({ initial }: { initial: ActionProposal }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, close, open } = useWorkspace();
   const [local, setLocal] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -741,6 +732,7 @@ function arrayText(value: unknown) {
   return Array.isArray(value) ? value.map(String).join(", ") : "";
 }
 function ReviewLine({ label, value }: { label: string; value: string }) {
+  const s = useStyles();
   return (
     <View style={{ gap: 4 }}>
       <Text style={s.label}>{label}</Text>
@@ -751,6 +743,7 @@ function ReviewLine({ label, value }: { label: string; value: string }) {
   );
 }
 function FileDetail({ file: f }: { file: Artifact }) {
+  const s = useStyles();
   const { api, refresh, open, close } = useWorkspace();
   const [values, setValues] = useState<Record<string, string | boolean>>(() =>
     Object.fromEntries(
@@ -858,6 +851,8 @@ function FileDetail({ file: f }: { file: Artifact }) {
   );
 }
 function BrowserDetail({ initial }: { initial: BrowserSession }) {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace: w, api, refresh, close, notify } = useWorkspace();
   const [local, setLocal] = useState(initial);
   const [url, setUrl] = useState(initial.url);
