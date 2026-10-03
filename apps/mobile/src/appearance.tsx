@@ -29,7 +29,7 @@ import {
   User,
   X,
 } from "lucide-react-native";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { type StringKey, t } from "./i18n";
@@ -147,14 +147,33 @@ export function AppearanceScreen() {
       ...(bundle.avatar ? { avatar: bundle.avatar } : {}),
     });
 
-  const commitColor = (key: keyof DraftSeed, text: string) => {
+  const commitColor = (key: keyof DraftSeed, text: string, immediate = false) => {
     const next = { ...draft, [key]: text };
     setDraft(next);
-    const p = validHex(next.primary);
-    const s = validHex(next.secondary);
-    const a = validHex(next.accent);
+    stageSeed(next, immediate);
+  };
+
+  // Debounced try-on for typed hex: HCT surface derivation must not run
+  // per keystroke. Swatch taps pass immediate=true for instant feedback.
+  const colorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (colorTimer.current) clearTimeout(colorTimer.current);
+    };
+  }, []);
+
+  const stageSeed = (seed: DraftSeed, immediate: boolean) => {
+    const p = validHex(seed.primary);
+    const s = validHex(seed.secondary);
+    const a = validHex(seed.accent);
     if (!p || !s || !a) return; // wait until every field is a valid hex
-    tryOn(withSeed({ primary: p, secondary: s, accent: a }));
+    const staged = withSeed({ primary: p, secondary: s, accent: a });
+    if (colorTimer.current) clearTimeout(colorTimer.current);
+    if (immediate) {
+      tryOn(staged);
+    } else {
+      colorTimer.current = setTimeout(() => tryOn(staged), 350);
+    }
   };
 
   const saveCustom = async () => {
@@ -479,7 +498,7 @@ export function AppearanceScreen() {
                       accessibilityRole="radio"
                       accessibilityState={{ checked: selected }}
                       accessibilityLabel={`${row.label} ${hex}`}
-                      onPress={() => commitColor(row.key, hex)}
+                      onPress={() => commitColor(row.key, hex, true)}
                       style={{
                         width: 36,
                         height: 36,
