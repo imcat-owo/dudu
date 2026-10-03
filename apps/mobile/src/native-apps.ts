@@ -281,9 +281,8 @@ export async function checkHealthKitStatus(): Promise<NativeAppStatus> {
     ) => void;
   } | null;
   if (!Health?.isAvailable) return "unavailable";
-  const available = await new Promise<boolean>((resolve) =>
-    Health.isAvailable!((_, ok) => resolve(!!ok)),
-  );
+  const isAvailable = Health.isAvailable;
+  const available = await new Promise<boolean>((resolve) => isAvailable((_, ok) => resolve(!!ok)));
   if (!available) return "unavailable";
   // react-native-health has no silent "get status" — initHealthKit prompts.
   // We report undetermined until she authorizes once; the result is cached.
@@ -298,11 +297,11 @@ export async function requestHealthKit(): Promise<NativeAppStatus> {
     ) => void;
   } | null;
   if (!Health?.initHealthKit) return "unavailable";
+  const initHealthKit = Health.initHealthKit;
   try {
     const result = await new Promise<unknown>((resolve, reject) =>
-      Health.initHealthKit!(
-        { permissions: { read: [...HEALTH_READ_TYPES], write: [] } },
-        (err, res) => (err ? reject(err) : resolve(res)),
+      initHealthKit({ permissions: { read: [...HEALTH_READ_TYPES], write: [] } }, (err, res) =>
+        err ? reject(err) : resolve(res),
       ),
     );
     return result ? "granted" : "denied";
@@ -320,9 +319,10 @@ export async function readTodaySteps(): Promise<number> {
     ) => void;
   } | null;
   if (!Health?.getStepCount) throw new Error(t("napp.healthkit.unavailable"));
+  const getStepCount = Health.getStepCount;
   const today = new Date().toISOString();
   const res = await new Promise<{ value: number }>((resolve, reject) =>
-    Health.getStepCount!({ date: today }, (err, r) => (err ? reject(err) : resolve(r))),
+    getStepCount({ date: today }, (err, r) => (err ? reject(err) : resolve(r))),
   );
   return Math.round(res.value);
 }

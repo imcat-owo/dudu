@@ -5,6 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { getManual } from "../src/manuals/index.js";
 import {
   checkAppleMusicStatus,
   checkCalendarStatus,
@@ -16,7 +17,6 @@ import {
   NATIVE_APPS,
 } from "../src/native-apps.js";
 import { createNativeAppTools } from "../src/native-apps-tools.js";
-import { getManual } from "../src/manuals/index.js";
 
 describe("native-apps definitions", () => {
   it("has 9 capabilities in a stable order", () => {
@@ -37,7 +37,10 @@ describe("native-apps definitions", () => {
 
   it("wired capabilities are the 5 with real packages", () => {
     const wired = NATIVE_APP_ORDER.filter((id) => NATIVE_APPS[id].wired);
-    assert.deepEqual(wired.sort(), ["apple-music", "calendar", "contacts", "healthkit", "reminders"].sort());
+    assert.deepEqual(
+      wired.sort(),
+      ["apple-music", "calendar", "contacts", "healthkit", "reminders"].sort(),
+    );
   });
 
   it("unwired capabilities have setup instructions", () => {
@@ -91,7 +94,8 @@ describe("native-apps tools", () => {
     const tools = createNativeAppTools({
       getAuthState: async () => "undetermined",
     });
-    const cal = tools.find((t) => t.name === "napp_calendar_today")!;
+    const cal = tools.find((t) => t.name === "napp_calendar_today");
+    assert.ok(cal, "napp_calendar_today tool not found");
     await assert.rejects(() => cal.run({}, {} as never), /未授权/);
   });
 
@@ -99,7 +103,8 @@ describe("native-apps tools", () => {
     const tools = createNativeAppTools({
       getAuthState: async () => "granted",
     });
-    const cal = tools.find((t) => t.name === "napp_calendar_today")!;
+    const cal = tools.find((t) => t.name === "napp_calendar_today");
+    assert.ok(cal, "napp_calendar_today tool not found");
     // No listTodayEvents hook → empty list → honest "没安排"
     const result = await cal.run({}, {} as never);
     assert.ok(result.includes("没安排"));
@@ -116,7 +121,8 @@ describe("native-apps manual", () => {
   it("every tool manualId resolves", () => {
     const tools = createNativeAppTools({});
     for (const tool of tools) {
-      assert.ok(getManual(tool.manualId!), `manual ${tool.manualId} not found for ${tool.name}`);
+      assert.ok(tool.manualId, `tool ${tool.name} missing manualId`);
+      assert.ok(getManual(tool.manualId), `manual ${tool.manualId} not found for ${tool.name}`);
     }
   });
 });

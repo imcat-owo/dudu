@@ -35,7 +35,7 @@ import {
   type NativeAppStatus,
   requesters,
 } from "./native-apps";
-import { Button, useColors, useStyles } from "./ui";
+import { Button, Sheet, useColors, useStyles } from "./ui";
 
 const ICONS: Record<NativeAppId, typeof Music> = {
   "apple-music": Music,
@@ -181,17 +181,19 @@ export function NativeAppsSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <View style={{ gap: 4 }}>
-      <TText style={[s.small, { marginBottom: 8 }]}>{t("napp.intro")}</TText>
-      {NATIVE_APP_ORDER.map((id) => (
-        <NativeAppRow
-          key={id}
-          id={id}
-          status={statuses[id]}
-          busy={busy === id}
-          onRequest={() => void handleRequest(id)}
-        />
-      ))}
-    </View>
+    <Sheet title={t("napp.title")} onClose={onClose}>
+      <View style={{ gap: 4 }}>
+        <TText style={[s.small, { marginBottom: 8 }]}>{t("napp.intro")}</TText>
+        {NATIVE_APP_ORDER.map((id) => (
+          <NativeAppRow
+            key={id}
+            id={id}
+            status={statuses[id]}
+            busy={busy === id}
+            onRequest={() => void handleRequest(id)}
+          />
+        ))}
+      </View>
+    </Sheet>
   );
 }
