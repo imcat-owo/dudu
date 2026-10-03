@@ -21,13 +21,13 @@ import {
   setAiAuthPreference,
   useAiAuthPreference,
 } from "./ai-authorization";
-import { CAPABILITIES, CAPABILITY_ORDER, type CapabilityId } from "./capabilities";
+import { CAPABILITIES, CAPABILITY_ORDER, type DeviceCapabilityId } from "./capabilities";
 import { checkers, type PermissionStatus, requesters } from "./device-permissions";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, Sheet, useColors, useStyles } from "./ui";
 
-const ICONS: Record<CapabilityId, typeof Camera> = {
+const ICONS: Record<DeviceCapabilityId, typeof Camera> = {
   bluetooth: Bluetooth,
   photos: Camera,
   location: LocateFixed,
@@ -65,7 +65,7 @@ function CapabilityRow({
   busy,
   onRequest,
 }: {
-  id: CapabilityId;
+  id: DeviceCapabilityId;
   status: PermissionStatus;
   busy: boolean;
   onRequest: () => void;
@@ -162,19 +162,19 @@ function CapabilityRow({
 
 export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
   const s = useStyles();
-  const [statuses, setStatuses] = useState<Record<CapabilityId, PermissionStatus>>({
+  const [statuses, setStatuses] = useState<Record<DeviceCapabilityId, PermissionStatus>>({
     bluetooth: "unavailable",
     photos: "undetermined",
     location: "undetermined",
     clipboard: "granted",
     notifications: "undetermined",
   });
-  const [busy, setBusy] = useState<CapabilityId | null>(null);
+  const [busy, setBusy] = useState<DeviceCapabilityId | null>(null);
 
   useEffect(() => {
     let active = true;
     void (async () => {
-      const next: Record<CapabilityId, PermissionStatus> = {
+      const next: Record<DeviceCapabilityId, PermissionStatus> = {
         bluetooth: "unavailable",
         photos: "undetermined",
         location: "undetermined",
@@ -196,7 +196,7 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
   }, []);
 
   /** Apple HIG: explain WHY before the system dialog. */
-  async function requestWithRationale(id: CapabilityId) {
+  async function requestWithRationale(id: DeviceCapabilityId) {
     const def = CAPABILITIES[id];
     const go = await new Promise<boolean>((resolve) => {
       Alert.alert(

@@ -18,7 +18,13 @@
 
 import type { StringKey } from "./i18n";
 
-export type CapabilityId = "bluetooth" | "photos" | "location" | "clipboard" | "notifications";
+export type CapabilityId =
+  | "bluetooth"
+  | "photos"
+  | "location"
+  | "clipboard"
+  | "notifications"
+  | "sandbox";
 
 /** Every capability in this registry crosses the app boundary. */
 export type CapabilityScope = "out-of-app";
@@ -73,9 +79,20 @@ export const CAPABILITIES: Record<CapabilityId, CapabilityDef> = {
     aiDescriptionKey: "perm.aiDesc.notifications",
     whyKey: "perm.why.notifications",
   },
+  sandbox: {
+    id: "sandbox",
+    scope: "out-of-app",
+    nameKey: "perm.kind.sandbox",
+    aiDescriptionKey: "perm.aiDesc.sandbox",
+    whyKey: "perm.why.sandbox",
+  },
 };
 
-export const CAPABILITY_ORDER: CapabilityId[] = [
+/** Device permissions with iOS system prompts (sandbox is AI-only, not a device permission). */
+export type DeviceCapabilityId = Exclude<CapabilityId, "sandbox">;
+
+/** Device permissions shown in the iOS settings UI (sandbox has its own UI). */
+export const CAPABILITY_ORDER: DeviceCapabilityId[] = [
   "bluetooth",
   "photos",
   "location",
@@ -83,13 +100,17 @@ export const CAPABILITY_ORDER: CapabilityId[] = [
   "notifications",
 ];
 
+/** All capabilities the AI knows about (device + sandbox). */
+export const AI_CAPABILITY_ORDER: CapabilityId[] = [...CAPABILITY_ORDER, "sandbox"];
+
 export function isCapabilityId(raw: string | null | undefined): raw is CapabilityId {
   return (
     raw === "bluetooth" ||
     raw === "photos" ||
     raw === "location" ||
     raw === "clipboard" ||
-    raw === "notifications"
+    raw === "notifications" ||
+    raw === "sandbox"
   );
 }
 
@@ -100,7 +121,7 @@ export function isCapabilityId(raw: string | null | undefined): raw is Capabilit
  * AI knows exactly which capabilities exist and that it must ask her first.
  */
 export function buildCapabilityPromptSection(resolve: (key: StringKey) => string): string {
-  const lines = CAPABILITY_ORDER.map((id) => {
+  const lines = AI_CAPABILITY_ORDER.map((id) => {
     const def = CAPABILITIES[id];
     return `- ${resolve(def.nameKey)}: ${resolve(def.aiDescriptionKey)}`;
   });

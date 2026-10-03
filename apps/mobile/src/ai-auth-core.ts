@@ -39,6 +39,7 @@ const DEFAULTS: Record<CapabilityId, AiAuthPreference> = {
   location: "ask",
   clipboard: "ask",
   notifications: "ask",
+  sandbox: "ask",
 };
 
 export function createAiAuthStore(backend: AiAuthBackend) {
