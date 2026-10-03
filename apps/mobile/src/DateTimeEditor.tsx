@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import DateFields from "./DateFields";
 import { isCompleteInstant, localDateTime, zonedInstant } from "./date-time";
-import { colors, s } from "./ui";
+import {useColors, useStyles} from "./ui";
 export default function DateTimeEditor({
   label,
   value,
@@ -16,6 +16,8 @@ export default function DateTimeEditor({
   allDay: boolean;
   onChange: (value: string) => void;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const [date, setDate] = useState(value.slice(0, 10));
   const [time, setTime] = useState("09:00");
   const [error, setError] = useState("");
