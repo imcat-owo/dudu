@@ -28,6 +28,7 @@ import {
 import { useChatMode } from "./api-groups/mode";
 import { groupStore } from "./api-groups/store";
 import { runConversationTurn } from "./conversation-run";
+import { useIncognito } from "./incognito";
 
 export interface AgentMessage {
   id: string;
@@ -121,6 +122,14 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
 } {
   // biome-ignore lint/correctness/useHookAtTopLevel: useLocalAgent runs only in useChatAgent's local branch; remount-on-mode-change (key={mode}) keeps hook order stable.
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+  // Incognito is read live at every save point via a ref, so toggling
+  // incognito doesn't require recreating the agent — and toggling it ON
+  // can never wipe the saved normal history (saves are skipped, not emptied).
+  // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
+  const { incognito } = useIncognito();
+  // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
+  const incognitoRef = useRef(incognito);
+  incognitoRef.current = incognito;
   // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
   const ref = useRef<ChatAgent | null>(null);
   // biome-ignore lint/correctness/useHookAtTopLevel: same remount discipline as above.
@@ -140,6 +149,7 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
       getGroup: () =>
         groupStore.getSnapshot().groups.find((g) => g.id === groupStore.getSnapshot().activeId) ??
         null,
+      isIncognito: () => incognitoRef.current,
     });
     // Bridge LocalAgent notifications into React renders
     // (cloud mode gets this from useAgent internally).
