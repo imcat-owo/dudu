@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import { colors, s } from "./ui";
+import {useColors, useStyles} from "./ui";
 
 interface DateFieldsProps {
   label: string;
@@ -9,6 +9,8 @@ interface DateFieldsProps {
   onChange: (date: string, time: string) => void;
 }
 export default function DateFields({ label, date, time, allDay, onChange }: DateFieldsProps) {
+  const colors = useColors();
+  const s = useStyles();
   const style = {
     border: `1px solid ${colors.line}`,
     borderRadius: 12,
