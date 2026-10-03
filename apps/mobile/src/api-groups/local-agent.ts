@@ -502,7 +502,7 @@ export function createLocalAgent(opts: {
               const args = parseToolArgs(tc.arguments);
               result = await registry.execute(tc.name, args, toolCtx);
               if (tc.name === READ_MANUAL_TOOL_NAME) {
-                const mid = args["manual_id"];
+                const mid = args.manual_id;
                 if (typeof mid === "string" && mid) readManuals.add(mid);
               }
             } catch (e) {
