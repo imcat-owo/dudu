@@ -100,6 +100,34 @@ const zhHans = {
   "perm.kind.notifications": "通知",
   "perm.kind.bluetooth": "蓝牙",
   "perm.bluetoothNote": "首次使用蓝牙扫描需要系统蓝牙权限。",
+  "perm.sysPerm": "系统权限",
+  "perm.openSettings": "去设置打开",
+  "perm.whyTitle": "为什么需要",
+  "perm.whyContinue": "继续",
+  "perm.whyLater": "以后再说",
+  "perm.why.bluetooth": "用来搜索并连接她身边的蓝牙设备，比如音响、耳机。",
+  "perm.why.photos": "用来读取她选择的照片，发给 AI 看或使用。",
+  "perm.why.location": "用来获取当前位置，提供和位置相关的帮助。",
+  "perm.why.clipboard": "用来读取她复制的内容，帮她处理。",
+  "perm.why.notifications": "用来在重要事情发生时提醒她。",
+  "perm.aiDesc.bluetooth":
+    "蓝牙：搜索并连接她身边的蓝牙设备（比如音响、耳机）。这是跨出 App 的操作，每次使用前必须先问她，得到允许才能做。",
+  "perm.aiDesc.photos":
+    "相册：读取她手机相册里的照片。这是她的私人照片，每次读取前必须先问她，得到允许才能做。",
+  "perm.aiDesc.location":
+    "定位：获取她当前所在的位置。这是敏感隐私，每次获取前必须先问她，得到允许才能做。",
+  "perm.aiDesc.clipboard":
+    "剪贴板：读取她复制的内容。剪贴板里可能有密码等敏感信息，每次读取前必须先问她，得到允许才能做。",
+  "perm.aiDesc.notifications":
+    "通知：给她发系统通知。不要打扰她，每次发送前必须先问她，得到允许才能做。",
+  "perm.aiAuth.title": "AI 想用{capability}",
+  "perm.aiAuth.allowOnce": "允许一次",
+  "perm.aiAuth.alwaysAllow": "总是允许",
+  "perm.aiAuth.deny": "不允许",
+  "perm.aiAuth.ask": "每次都问",
+  "perm.aiAuth.always": "总是允许",
+  "perm.aiAuth.never": "从不允许",
+  "perm.aiAuth.section": "AI 使用前是否要问你",
 
   // ---- computer (computer.tsx) ----
   "computer.entry": "电脑",

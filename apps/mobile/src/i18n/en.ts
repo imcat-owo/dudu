@@ -97,6 +97,34 @@ export const enStrings: Record<StringKey, string> = {
   "perm.kind.notifications": "Notifications",
   "perm.kind.bluetooth": "Bluetooth",
   "perm.bluetoothNote": "Bluetooth scanning needs the system Bluetooth permission on first use.",
+  "perm.sysPerm": "System permission",
+  "perm.openSettings": "Open Settings",
+  "perm.whyTitle": "Why it's needed",
+  "perm.whyContinue": "Continue",
+  "perm.whyLater": "Not now",
+  "perm.why.bluetooth": "To scan for and connect to Bluetooth devices near her, like speakers or headphones.",
+  "perm.why.photos": "To read photos she picks, so the AI can see or use them.",
+  "perm.why.location": "To get the current location for location-aware help.",
+  "perm.why.clipboard": "To read copied content so the AI can work with it.",
+  "perm.why.notifications": "To alert her when something important happens.",
+  "perm.aiDesc.bluetooth":
+    "Bluetooth: scan for and connect to Bluetooth devices near her (e.g. speakers, headphones). This leaves the app — you MUST ask her first every time and only proceed with her permission.",
+  "perm.aiDesc.photos":
+    "Photo library: read photos from her phone. These are her private photos — you MUST ask her first every time and only proceed with her permission.",
+  "perm.aiDesc.location":
+    "Location: get her current position. This is sensitive private data — you MUST ask her first every time and only proceed with her permission.",
+  "perm.aiDesc.clipboard":
+    "Clipboard: read what she copied. The clipboard may hold passwords and other sensitive info — you MUST ask her first every time and only proceed with her permission.",
+  "perm.aiDesc.notifications":
+    "Notifications: send her system notifications. Never pester her — you MUST ask her first every time and only proceed with her permission.",
+  "perm.aiAuth.title": "The AI wants to use {capability}",
+  "perm.aiAuth.allowOnce": "Allow once",
+  "perm.aiAuth.alwaysAllow": "Always allow",
+  "perm.aiAuth.deny": "Don't allow",
+  "perm.aiAuth.ask": "Ask each time",
+  "perm.aiAuth.always": "Always allow",
+  "perm.aiAuth.never": "Never allow",
+  "perm.aiAuth.section": "Ask me before the AI uses it",
 
   // ---- computer (computer.tsx) ----
   "computer.entry": "Computer",
