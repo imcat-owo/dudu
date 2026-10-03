@@ -226,10 +226,26 @@ class AppleMusicSource implements MusicSource {
     return loadAppleBridge() !== null;
   }
 
+  /**
+   * Cached auth state. LIMITATION (documented, not hidden):
+   * @wwdrew/expo-apple-music@1.1.3 exposes no silent authorization-status
+   * query — only the interactive Auth.authorize(). So between app launches we
+   * trust the cached state, with two guards:
+   * 1. "authorized" without a stored user token is an inconsistent cache
+   *    (crashed mid-flow, storage wiped) -> "unknown", forcing a clean re-auth.
+   * 2. If the user revokes Apple Music access in iOS Settings, the stale
+   *    "authorized" cache self-corrects: every search()/load() goes through the
+   *    native bridge, which fails honestly, and the UI surfaces the real error
+   *    with a re-authorize prompt instead of fake playback.
+   */
   async getAuthState(): Promise<SourceAuthState> {
     if (!this.isAvailable()) return "unavailable";
     const cached = await AsyncStorage.getItem(APPLE_STATE_KEY);
     if (cached === "authorized" || cached === "denied" || cached === "not-subscribed") {
+      if (cached === "authorized") {
+        const token = await AsyncStorage.getItem(APPLE_TOKEN_KEY);
+        if (!token) return "unknown";
+      }
       return cached;
     }
     return "unknown";

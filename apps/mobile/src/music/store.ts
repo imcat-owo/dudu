@@ -474,7 +474,8 @@ export class MusicStore {
   }
 
   async addToPlaylist(playlistId: string, trackId: string): Promise<boolean> {
-    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();
+    return this.enqueueWrite(async () => {
       const track = await this.getTrack(trackId);
       if (!track) throw new Error("Track not found.");
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
@@ -490,7 +491,8 @@ export class MusicStore {
   }
 
   async removeFromPlaylist(playlistId: string, trackId: string): Promise<boolean> {
-    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();
+    return this.enqueueWrite(async () => {
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
       const p = all.find((x) => x.id === playlistId);
       if (!p) return false;
@@ -504,7 +506,8 @@ export class MusicStore {
   }
 
   async moveInPlaylist(playlistId: string, trackId: string, dir: -1 | 1): Promise<boolean> {
-    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();
+    return this.enqueueWrite(async () => {
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
       const p = all.find((x) => x.id === playlistId);
       if (!p) return false;

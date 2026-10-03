@@ -319,8 +319,13 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           return `I couldn't find "${ref}" in the library. Add it first with music_track_add.`;
         await store.setNowPlaying(t.id);
         await store.sendIntent("play", ai, t.id);
-        await store.bumpPlayCount(t.id);
-        const audioNote = t.audioUri
+        // Only count real plays: no play count for tracks with nothing to play
+        // (same playability rule as the UI: apple-music needs sourceRef,
+        // local needs audioUri).
+        const playable =
+          t.source === "apple-music" ? t.sourceRef.trim().length > 0 : t.audioUri.trim().length > 0;
+        if (playable) await store.bumpPlayCount(t.id);
+        const audioNote = playable
           ? ""
           : " (Note: this song has no audio attached yet — the room will say so.)";
         return `Now playing: ${t.title} — ${t.artist}.${audioNote}`;

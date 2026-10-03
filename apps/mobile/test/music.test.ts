@@ -320,11 +320,11 @@ describe("music tools", () => {
 
   it("music_ours_add marks ours + fires the memory hook", async () => {
     const store = new MusicStore(fakeStorage());
-    let remembered: Track | null = null;
+    const seen: { track: Track | null } = { track: null };
     const reg = createToolRegistry(
       createMusicTools(store, {
         onOursMarked: async (t) => {
-          remembered = t;
+          seen.track = t;
         },
       }),
     );
@@ -335,7 +335,7 @@ describe("music tools", () => {
       (await store.listPlaylistTracks(OURS_PLAYLIST_ID)).map((x) => x.id),
       [t.id],
     );
-    assert.equal(remembered?.id, t.id);
+    assert.equal(seen.track?.id, t.id);
   });
 
   it("music_apple_search without hook is honest", async () => {
@@ -391,5 +391,28 @@ describe("music tools", () => {
     await reg.execute("music_comment_add", { track: t.id, text: "AI 觉得好听" }, ctx);
     const out = await reg.execute("music_comment_read", { track: t.id }, ctx);
     assert.match(out, /AI 觉得好听/);
+  });
+});
+
+describe("music: manual wiring", () => {
+  it("every music tool manualId resolves in the registry", async () => {
+    const { getManual } = await import("../src/manuals/index.js");
+    const store = new MusicStore(fakeStorage());
+    const tools = createMusicTools(store);
+    const missing: string[] = [];
+    for (const t of tools) {
+      const mid = (t as { manualId?: string }).manualId;
+      if (mid && !getManual(mid)) missing.push(`${t.name} -> ${mid}`);
+    }
+    assert.deepEqual(missing, [], `unresolved manualIds: ${missing.join(", ")}`);
+  });
+
+  it("dj_play does not bump play count for tracks with no audio", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const t = await store.addTrack({ title: "Silent", addedBy: "her" });
+    const out = await reg.execute("dj_play", { track: t.id }, ctx);
+    assert.match(out, /no audio/);
+    assert.equal((await store.getTrack(t.id))?.playCount, 0);
   });
 });
