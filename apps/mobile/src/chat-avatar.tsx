@@ -13,7 +13,7 @@
  */
 import { User } from "lucide-react-native";
 import { useState } from "react";
-import { Image, View } from "react-native";
+import { Image, PixelRatio, View } from "react-native";
 import { useFontSizeSetting } from "./app-settings";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
@@ -25,9 +25,13 @@ const DEFAULT_AVATAR_SIZE = 30;
 export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   const colors = useColors();
   const { bundle } = useTheme();
-  const { scale } = useFontSizeSetting();
+  const { scale, followSystem } = useFontSizeSetting();
   const [failedUri, setFailedUri] = useState<string | null>(null);
-  const size = Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * scale);
+  // "system" follows the OS text size: RN Text scales automatically via
+  // allowFontScaling, but the avatar is a View/Image, so it must read the
+  // OS font scale explicitly (review P3-9, 2026-10-03).
+  const effectiveScale = followSystem ? PixelRatio.getFontScale() : scale;
+  const size = Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * effectiveScale);
   const rawUri = who === "assistant" ? bundle.avatar?.assistant : bundle.avatar?.user;
   // Remember WHICH uri failed, not just that one failed: picking a new
   // avatar in Settings retries the new URI, while the same dead URI stays
