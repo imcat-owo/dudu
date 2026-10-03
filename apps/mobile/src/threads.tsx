@@ -12,7 +12,7 @@ import {
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { t } from "./i18n";
-import { Button, colors, ErrorNotice, Field, LinkRow, Sheet, s } from "./ui";
+import {Button, useColors, ErrorNotice, Field, LinkRow, Sheet, useStyles} from "./ui";
 import { useWorkspace } from "./workspace";
 
 function newThreadId() {
@@ -101,6 +101,8 @@ export function useMuseThread() {
   return context;
 }
 export function ThreadsSheet({ onClose }: { onClose: () => void }) {
+  const colors = useColors();
+  const s = useStyles();
   const {
     enabled,
     selection,
