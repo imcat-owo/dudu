@@ -1286,6 +1286,12 @@ const zhHans = {
   "space.tasks.bgGenerating": "正在生图…",
   "space.tasks.bgPromptHint": "描述一下想要的画面，不写就按任务名来",
   "space.tasks.bgClear": "恢复默认背景",
+  "space.tasks.buddyTitle": "换动画",
+  "space.tasks.buddyHint": "小伙伴默认是穹妹。传你自己的视频，给每个状态换上你定的动画。",
+  "space.tasks.buddyCustom": "已换成你的",
+  "space.tasks.buddyDefault": "穹妹默认",
+  "space.tasks.buddyPick": "选视频",
+  "space.tasks.buddyReset": "恢复默认",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

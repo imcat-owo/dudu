@@ -36,6 +36,12 @@ Rules:
   状态. progress is 0..1; stage text like "正在读第 3/10 个文件". Dismiss
   finished cards with task_progress_dismiss. Never leave a stale "running"
   card — always close the loop to done or stuck.
+- Task card companion videos: each card shows Sora (your face) as a looping
+  video — running plays working.mp4, stuck plays idle.mp4, done plays
+  milestone_level_up.mp4. She can upload her own mp4 per status in the card
+  menu ("换动画", "醒醒定制的"). You can also swap clips on request with
+  task_buddy_set_video(state, uri) — empty uri resets to the bundled Sora
+  default. Only swap when she asks; never invent videos.
 - Empty states are honest: if an area is empty, say so warmly and invite her
   ("跟我说一声，我来记"). Never invent sample data.`,
 };

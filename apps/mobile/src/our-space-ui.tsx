@@ -53,8 +53,6 @@ import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
 import { ourSpaceStore } from "./our-space/instance";
-import { TaskCards } from "./our-space/task-cards-ui";
-import { taskProgressStore } from "./our-space/task-progress-instance";
 import type {
   AiStatus,
   Anniversary,
@@ -69,6 +67,9 @@ import type {
   WorkItem,
   WorkType,
 } from "./our-space/store";
+import { taskBuddyVideoStore } from "./our-space/task-buddy-video-instance";
+import { TaskCards } from "./our-space/task-cards-ui";
+import { taskProgressStore } from "./our-space/task-progress-instance";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
 
@@ -297,6 +298,7 @@ function StatusView() {
 
   useEffect(() => {
     void taskProgressStore.load().catch(() => null);
+    void taskBuddyVideoStore.load().catch(() => null);
   }, []);
 
   if (!status) return <EmptyState icon={Activity} text={t("space.status.empty")} />;

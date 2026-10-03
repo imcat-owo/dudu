@@ -616,7 +616,8 @@ export const enStrings: Record<StringKey, string> = {
   "browser.startDetail":
     "Open a session above to keep your browsing together. Live previews appear when the browser worker is configured.",
   "browser.aiBrowserTitle": "AI Browser",
-  "browser.aiBrowserDetail": "Dudu uses this browser to read pages, click buttons, and fill forms for you. You talk, it acts.",
+  "browser.aiBrowserDetail":
+    "Dudu uses this browser to read pages, click buttons, and fill forms for you. You talk, it acts.",
 
   // ---- files screen ----
   "files.tagline": "Documents, with a little room to work.",
@@ -1330,4 +1331,11 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.bgGenerating": "Generating…",
   "space.tasks.bgPromptHint": "Describe the picture; blank uses the task name",
   "space.tasks.bgClear": "Reset to default",
+  "space.tasks.buddyTitle": "Change animation",
+  "space.tasks.buddyHint":
+    "The buddy defaults to Sora. Upload your own videos to customize each state.",
+  "space.tasks.buddyCustom": "Custom",
+  "space.tasks.buddyDefault": "Sora default",
+  "space.tasks.buddyPick": "Pick video",
+  "space.tasks.buddyReset": "Reset",
 };
