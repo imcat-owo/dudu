@@ -28,7 +28,7 @@ import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { runConversationTurn } from "./conversation-run";
-import { useIncognito } from "./incognito";
+import { t } from "./i18n";
 import {
   buildImageUrl,
   encodeImageMessage,
@@ -36,18 +36,19 @@ import {
   parseImageCommand,
   parseImageMessage,
 } from "./image-generation";
-import {
-  encodeVoiceMessage,
-  parseVoiceMessage,
-  VoiceBubble,
-  VoiceRecorderButton,
-} from "./voice-message";
+import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, colors, ErrorNotice, s } from "./ui";
+import {
+  encodeVoiceMessage,
+  parseVoiceMessage,
+  VoiceBubble,
+  VoiceRecorderButton,
+} from "./voice-message";
 import { useWorkspace } from "./workspace";
 
 const displayParameters = z.record(z.string(), z.unknown());
@@ -98,7 +99,7 @@ export function WorkspaceTools() {
     description: "Display delegated work",
     parameters: displayParameters,
     render: ({ result, status }) => (
-      <ServerToolCard name="Task" result={result} loading={status !== "complete"} />
+      <ServerToolCard name={t("toolcard.task")} result={result} loading={status !== "complete"} />
     ),
   });
   useRenderTool({
@@ -106,7 +107,11 @@ export function WorkspaceTools() {
     description: "Display saved agent progress",
     parameters: displayParameters,
     render: ({ result, status }) => (
-      <ServerToolCard name="Agent progress" result={result} loading={status !== "complete"} />
+      <ServerToolCard
+        name={t("toolcard.progress")}
+        result={result}
+        loading={status !== "complete"}
+      />
     ),
   });
   useRenderTool({
@@ -114,7 +119,7 @@ export function WorkspaceTools() {
     description: "Display a saved goal",
     parameters: displayParameters,
     render: ({ result, status }) => (
-      <ServerToolCard name="Goal" result={result} loading={status !== "complete"} />
+      <ServerToolCard name={t("toolcard.goal")} result={result} loading={status !== "complete"} />
     ),
   });
   useRenderTool({
@@ -122,7 +127,11 @@ export function WorkspaceTools() {
     description: "Display a saved page watch",
     parameters: displayParameters,
     render: ({ result, status }) => (
-      <ServerToolCard name="Tracking" result={result} loading={status !== "complete"} />
+      <ServerToolCard
+        name={t("toolcard.tracking")}
+        result={result}
+        loading={status !== "complete"}
+      />
     ),
   });
   useRenderTool({
@@ -130,7 +139,7 @@ export function WorkspaceTools() {
     description: "Display saved personal context",
     parameters: displayParameters,
     render: ({ result, status }) => (
-      <ServerToolCard name="Memory" result={result} loading={status !== "complete"} />
+      <ServerToolCard name={t("toolcard.memory")} result={result} loading={status !== "complete"} />
     ),
   });
   return null;
@@ -167,27 +176,27 @@ function ServerToolCard({
   if (task) return <TaskThreadCard task={task} />;
   return (
     <Card style={{ padding: 16, gap: 10 }}>
-      <Text style={s.heading}>{loading ? `Saving ${name.toLowerCase()}…` : name}</Text>
+      <Text style={s.heading}>
+        {loading ? t("toolcard.saving", { name: name.toLowerCase() }) : name}
+      </Text>
       {parsed.success && parsed.data.error ? (
         <ErrorNotice error={parsed.data.error} />
       ) : (
-        <Text style={s.muted}>
-          {loading ? "Waiting for the server." : "Open the workspace to see the saved result."}
-        </Text>
+        <Text style={s.muted}>{loading ? t("toolcard.waiting") : t("toolcard.openWorkspace")}</Text>
       )}
       <Button
         small
         onPress={() =>
           navigate(
-            name === "Goal" || name === "Tracking"
+            name === t("toolcard.goal") || name === t("toolcard.tracking")
               ? "goals"
-              : name === "Memory"
+              : name === t("toolcard.memory")
                 ? "apps"
                 : "activity",
           )
         }
       >
-        View {name.toLowerCase()}
+        {t("toolcard.view", { name: name.toLowerCase() })}
       </Button>
     </Card>
   );
@@ -263,7 +272,7 @@ export function ChatScreen({
         if (active) {
           setLoaded(false);
           setHistoryError(
-            `无法加载对话。你的已保存消息没有被改动。${e instanceof Error ? e.message : String(e)}`,
+            t("chat.historyLoadFailed", { error: e instanceof Error ? e.message : String(e) }),
           );
         }
       }
@@ -274,7 +283,17 @@ export function ChatScreen({
       replay.unsubscribe();
       if (richThreads) void agent.detachActiveRun().catch(() => {});
     };
-  }, [agent, agentId, api, copilotkit, isReady, historyAttempt, richThreads, selection.existing, incognitoOn]);
+  }, [
+    agent,
+    agentId,
+    api,
+    copilotkit,
+    isReady,
+    historyAttempt,
+    richThreads,
+    selection.existing,
+    incognitoOn,
+  ]);
   const saveHistory = useCallback(async () => {
     // Incognito mode: never persist chat history.
     if (incognitoOn) {
@@ -287,7 +306,7 @@ export function ChatScreen({
   const run = useCallback(
     async (message?: QueuedMessage) => {
       if (runLock.current || agent.isRunning || !isReady || !loaded)
-        throw new Error("对话还没准备好。");
+        throw new Error(t("chat.notReady"));
       runLock.current = true;
       setBusy(true);
       setError("");
@@ -304,9 +323,7 @@ export function ChatScreen({
           await saveHistory();
         } catch (e) {
           queue.pause();
-          setSaveError(
-            `Conversation could not be saved: ${e instanceof Error ? e.message : String(e)}`,
-          );
+          setSaveError(t("chat.saveFailed", { error: e instanceof Error ? e.message : String(e) }));
         } finally {
           runLock.current = false;
           setBusy(false);
@@ -346,10 +363,10 @@ export function ChatScreen({
     (text: string, retry = false): Promise<void> => {
       const snapshot = queue.getSnapshot();
       if (!loaded || !isReady || saveError || (!retry && snapshot.paused))
-        return Promise.reject(new Error("The conversation is not ready for a choice yet."));
+        return Promise.reject(new Error(t("chat.notReadyForChoice")));
       if (retry) {
         if (runLock.current || agent.isRunning || snapshot.running || snapshot.pending.length)
-          return Promise.reject(new Error("Wait for the current response before retrying."));
+          return Promise.reject(new Error(t("chat.waitBeforeRetry")));
         if (snapshot.paused) queue.resume();
       }
       const id = `choice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -386,7 +403,7 @@ export function ChatScreen({
     try {
       await copilotkit.stopAgent({ agent });
     } catch (e) {
-      setError(`Could not stop response: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t("chat.stopFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
   }
   function send() {
@@ -435,7 +452,7 @@ export function ChatScreen({
       <View style={[s.row, { justifyContent: "flex-end", paddingHorizontal: 16, paddingTop: 8 }]}>
         <Pressable
           accessibilityRole="switch"
-          accessibilityLabel="Incognito chat"
+          accessibilityLabel={t("a11y.incognito")}
           accessibilityState={{ checked: incognitoOn }}
           onPress={toggleIncognito}
           style={{
@@ -448,14 +465,16 @@ export function ChatScreen({
             backgroundColor: incognitoOn ? "#2B2B2E" : "#F1F2F3",
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? "#FFF" : colors.muted }}>
-            {incognitoOn ? "隐身开" : "隐身"}
+          <Text
+            style={{ fontSize: 12, fontWeight: "600", color: incognitoOn ? "#FFF" : colors.muted }}
+          >
+            {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
           </Text>
         </Pressable>
       </View>
       {incognitoOn && (
         <Text style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
-          隐身模式下不保存历史记录。
+          {t("chat.incognitoNote")}
         </Text>
       )}
       <ScrollView
@@ -478,7 +497,7 @@ export function ChatScreen({
           <>
             <ErrorNotice error={historyError} />
             <Button onPress={() => setHistoryAttempt((attempt) => attempt + 1)}>
-              Retry loading conversation
+              {t("chat.retryLoad")}
             </Button>
           </>
         )}
@@ -502,23 +521,22 @@ export function ChatScreen({
                 maxWidth: 350,
               }}
             >
-              一点帮助，生活多很多空间。
+              {t("chat.welcomeTitle")}
             </Text>
             <Text style={[s.muted, { maxWidth: 320, textAlign: "center", lineHeight: 23 }]}>
-              告诉我在想什么。我可以做计划、帮你ur apps, and use my
-              computer to help.
+              {t("chat.welcomeBody")}
             </Text>
             <View style={{ width: "100%", maxWidth: 360, marginTop: 14, gap: 8 }}>
               {[
                 {
-                  text: "Find cool things on Hacker News",
+                  text: t("chat.suggest.hn"),
                   action: () => enqueue("Check out Hacker News for cool stuff"),
                 },
                 {
-                  text: "Summarize copilotkit.ai",
+                  text: t("chat.suggest.summarize"),
                   action: () => enqueue("Summarize copilotkit.ai"),
                 },
-                { text: "Keep an eye on a website", action: () => navigate("goals") },
+                { text: t("chat.suggest.watch"), action: () => navigate("goals") },
               ].map((item) => (
                 <Button key={item.text} onPress={item.action}>
                   {item.text}
@@ -637,7 +655,7 @@ export function ChatScreen({
                 style={{ alignSelf: "flex-start", marginTop: 6 }}
                 onPress={() => setShowResults(!showResults)}
               >
-                {showResults ? "Hide recent results" : "Recent results"}
+                {showResults ? t("chat.hideResults") : t("chat.showResults")}
               </Button>
             )}
             {showResults && (
@@ -674,7 +692,7 @@ export function ChatScreen({
         {(!richThreads || selection.id === mainId) && <BackgroundUpdates />}
         {(busy || agent.isRunning) && (
           <View
-            accessibilityLabel="Agent is working"
+            accessibilityLabel={t("a11y.agentWorking")}
             style={[
               s.row,
               {
@@ -715,7 +733,7 @@ export function ChatScreen({
                 .catch((e) => setError(e instanceof Error ? e.message : String(e)));
             }}
           >
-            重试回复
+            {t("chat.retryReply")}
           </Button>
         )}
       </ScrollView>
@@ -730,7 +748,7 @@ export function ChatScreen({
             list.current?.scrollToEnd({ animated: true });
           }}
         >
-          最新消息
+          {t("chat.latestMessages")}
         </Button>
       )}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -743,13 +761,13 @@ export function ChatScreen({
               void saveHistory().catch((e) => setSaveError(String(e)));
             }}
           >
-            Retry saving conversation
+            {t("chat.retrySave")}
           </Button>
         )}
         {!!outbox.pending.length && (
           <View style={{ padding: 12, gap: 6 }}>
             <Text style={s.small}>
-              {outbox.paused ? "Messages on hold" : "Up next"} · Keep the app open until sent
+              {outbox.paused ? t("chat.onHold") : t("chat.upNext")} · {t("chat.keepOpen")}
             </Text>
             {outbox.pending.map((message) => (
               <View key={message.id} style={[s.row, { gap: 8 }]}>
@@ -758,13 +776,15 @@ export function ChatScreen({
                 </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove queued message: ${displayJevUserMessage(message.text, messages)}`}
+                  accessibilityLabel={t("a11y.removeQueued", {
+                    text: displayJevUserMessage(message.text, messages),
+                  })}
                   hitSlop={10}
                   onPress={() => {
                     queue.remove(message.id);
                     choiceCompletions.current
                       .get(message.id)
-                      ?.reject(new Error("Choice removed from queue."));
+                      ?.reject(new Error(t("chat.choiceRemoved")));
                     choiceCompletions.current.delete(message.id);
                   }}
                   style={{ padding: 8 }}
@@ -782,14 +802,14 @@ export function ChatScreen({
                   flush();
                 }}
               >
-                Send queued messages
+                {t("chat.sendQueued")}
               </Button>
             )}
           </View>
         )}
         {picking && (
           <Card style={{ marginBottom: 12, padding: 15 }}>
-            <Text style={s.heading}>添加文档</Text>
+            <Text style={s.heading}>{t("chat.addDocument")}</Text>
             <ScrollView style={{ maxHeight: 230 }} keyboardShouldPersistTaps="handled">
               {w.files.length ? (
                 w.files.map((f) => (
@@ -807,7 +827,7 @@ export function ChatScreen({
                   />
                 ))
               ) : (
-                <Text style={s.muted}>在文件里导入 PDF，就可以在对话中使用。</Text>
+                <Text style={s.muted}>{t("chat.importPdfHint")}</Text>
               )}
             </ScrollView>
             <Button
@@ -815,7 +835,7 @@ export function ChatScreen({
               onPress={() => setPicking(false)}
               style={{ alignSelf: "flex-end", marginTop: 8 }}
             >
-              完成
+              {t("common.done")}
             </Button>
           </Card>
         )}
@@ -841,7 +861,7 @@ export function ChatScreen({
                   <Pressable
                     key={f.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Remove attachment: ${f.name}`}
+                    accessibilityLabel={t("a11y.removeAttachment", { name: f.name })}
                     onPress={() => setAttachments((ids) => ids.filter((id) => id !== f.id))}
                     style={[
                       s.row,
@@ -870,7 +890,7 @@ export function ChatScreen({
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Attach a document"
+              accessibilityLabel={t("a11y.attachDoc")}
               accessibilityState={{ expanded: picking }}
               onPress={() => setPicking(!picking)}
               style={({ pressed }) => ({
@@ -887,7 +907,7 @@ export function ChatScreen({
               </Text>
             </Pressable>
             <TextInput
-              accessibilityLabel="Message OpenMuse"
+              accessibilityLabel={t("a11y.messageInput")}
               value={draft}
               onChangeText={setDraft}
               onContentSizeChange={(event) =>
@@ -895,12 +915,12 @@ export function ChatScreen({
               }
               placeholder={
                 !isReady
-                  ? "连接中…"
+                  ? t("chat.placeholder.connecting")
                   : !loaded
                     ? historyError
-                      ? "Conversation unavailable"
-                      : "加载对话中…"
-                    : "发消息…"
+                      ? t("chat.unavailable")
+                      : t("chat.placeholder.loading")
+                    : t("chat.placeholder.message")
               }
               placeholderTextColor="#949B9F"
               selectionColor={colors.blueDark}
@@ -941,7 +961,7 @@ export function ChatScreen({
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={replying ? "停止回复" : "发送消息"}
+              accessibilityLabel={replying ? t("a11y.stopReply") : t("a11y.sendMessage")}
               disabled={!replying && (!draft.trim() || !loaded || !isReady)}
               onPress={replying ? () => void stop() : send}
               style={({ pressed }) => ({

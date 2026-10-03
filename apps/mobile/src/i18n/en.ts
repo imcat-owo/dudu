@@ -150,6 +150,10 @@ export const enStrings: Record<StringKey, string> = {
   "chat.choiceRemoved": "Choice removed from queue.",
   "chat.sendQueued": "Send queued messages",
   "chat.unavailable": "Conversation unavailable",
+  "chat.notReady": "The conversation is not ready yet.",
+  "chat.historyLoadFailed":
+    "Could not load the conversation. Your saved messages were not modified. {error}",
+  "chat.saveFailed": "Conversation could not be saved: {error}",
   "chat.notReadyForChoice": "The conversation is not ready for a choice yet.",
   "chat.waitBeforeRetry": "Wait for the current response before retrying.",
   "chat.stopFailed": "Could not stop response: {error}",
