@@ -37,6 +37,7 @@ import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
+import { BackupSection } from "./backup-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
@@ -836,6 +837,8 @@ export function AppearanceScreen() {
         </Button>
       </View>
       {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
+
+      <BackupSection />
     </View>
   );
 }
