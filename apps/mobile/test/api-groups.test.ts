@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createSseParser, GroupError, parseSseData, streamChat } from "../src/api-groups/direct-transport.js";
+import { createSseParser, GroupError, parseSseData, parseSseThinking, streamChat } from "../src/api-groups/direct-transport.js";
 import { createGroupStore, type SecureBackend } from "../src/api-groups/store.js";
 import {
   type ApiGroup,
@@ -253,5 +253,61 @@ describe("streamChat 8s fallback (P0: promise must settle)", () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe("parseSseThinking", () => {
+  it("extracts reasoning_content deltas (OpenAI-compatible)", () => {
+    const thinking = parseSseThinking(
+      JSON.stringify({ choices: [{ delta: { reasoning_content: "let me think" } }] }),
+    );
+    assert.equal(thinking, "let me think");
+  });
+  it("extracts thinking deltas (Anthropic-mapped proxies)", () => {
+    const thinking = parseSseThinking(
+      JSON.stringify({ choices: [{ delta: { thinking: "hmm" } }] }),
+    );
+    assert.equal(thinking, "hmm");
+  });
+  it("returns null for [DONE], content-only deltas, and malformed JSON", () => {
+    assert.equal(parseSseThinking("[DONE]"), null);
+    assert.equal(
+      parseSseThinking(JSON.stringify({ choices: [{ delta: { content: "hi" } }] })),
+      null,
+    );
+    assert.equal(parseSseThinking("not json{{{"), null);
+  });
+  it("never throws on error payloads — thinking is best-effort", () => {
+    assert.equal(
+      parseSseThinking(JSON.stringify({ error: { message: "bad key" } })),
+      null,
+    );
+  });
+});
+
+describe("createSseParser thinking", () => {
+  it("emits thinking deltas alongside content deltas", () => {
+    const tokens: string[] = [];
+    const thinkings: string[] = [];
+    const parser = createSseParser(
+      "g",
+      (d) => tokens.push(d),
+      (d) => thinkings.push(d),
+    );
+    parser.push(
+      `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: "step1" } }] })}\n` +
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "hi" } }] })}\n` +
+        `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: "step2" } }] })}\n`,
+    );
+    assert.deepEqual(tokens, ["hi"]);
+    assert.deepEqual(thinkings, ["step1", "step2"]);
+  });
+  it("works without an onThinking callback (backward compatible)", () => {
+    const tokens: string[] = [];
+    const parser = createSseParser("g", (d) => tokens.push(d));
+    parser.push(
+      `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: "x", content: "y" } }] })}\n`,
+    );
+    assert.deepEqual(tokens, ["y"]);
   });
 });
