@@ -15,8 +15,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { type StringKey, t } from "../i18n";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
-import { createOurSpaceTools } from "../our-space/tools.js";
+import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
+import { memoryStore } from "../memory/instance.js";
+import type { MemoryStore } from "../memory/store.js";
 import { ourSpaceStore } from "../our-space/instance.js";
+import { createOurSpaceTools } from "../our-space/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import {
@@ -191,6 +194,7 @@ export function buildLocalSystemPrompt(
   tools: LocalTool[],
   resolve: (key: StringKey) => string,
   basePrompt?: string,
+  extraSections?: string[],
 ): string {
   const parts: string[] = [];
   if (basePrompt) parts.push(basePrompt);
@@ -215,6 +219,11 @@ export function buildLocalSystemPrompt(
   parts.push(
     'If you are unsure how a feature works, call read_manual("<id>") BEFORE acting. If you already know it, do not read — save the tokens.',
   );
+  if (extraSections) {
+    for (const s of extraSections) {
+      if (s) parts.push(s);
+    }
+  }
   return parts.join("\n");
 }
 
@@ -308,6 +317,11 @@ export function createLocalAgent(opts: {
    * (so UI and AI tools see the same data); injectable for tests.
    */
   ourSpaceStore?: import("../our-space/store.js").OurSpaceStore;
+  /**
+   * AI memory store. Defaults to the shared AsyncStorage-backed singleton;
+   * injectable for tests.
+   */
+  memoryStore?: MemoryStore;
 }): ChatAgent {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
@@ -389,9 +403,11 @@ export function createLocalAgent(opts: {
 
       // Tool setup: registry + system prompt (built once per turn so a
       // changed tool set takes effect without recreating the agent).
+      const memStore: MemoryStore = opts.memoryStore ?? memoryStore;
       const tools = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
+        ...createMemoryTools(memStore),
         ...sandboxTools(sandboxManager),
       ];
       const registry = createToolRegistry(tools);
@@ -399,7 +415,11 @@ export function createLocalAgent(opts: {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.
         authorize: async () => false,
       };
-      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt);
+      // Memory read path: profile + top-k relevant memories for this turn.
+      // The last user message drives relevance; empty section when no memories.
+      const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      const memorySection = await buildMemorySection(memStore, lastUserText);
+      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [memorySection]);
       const wireTools = registry.definitions();
 
       // Build the wire messages, resolving image attachments via vision.
@@ -546,6 +566,31 @@ export function createLocalAgent(opts: {
         aborter = null;
         emit();
         persist(messages);
+        // Memory write path: async extraction, OFF the critical path.
+        // Incognito turns never enter the pipeline (gated inside).
+        // Fire-and-forget: extraction must never break the chat.
+        const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const lastAsst = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+        if (lastUser || lastAsst) {
+          extractMemoriesAsync(
+            memStore,
+            { userText: lastUser, assistantText: lastAsst },
+            incognito(),
+            async (prompt: string) => {
+              let text = "";
+              await streamChat(activeGroup, [{ role: "user", content: prompt }], {
+                onToken: (d: string) => {
+                  text += d;
+                },
+                onThinking: () => {},
+                onToolCalls: () => {},
+                onDone: () => {},
+                onError: () => {},
+              });
+              return text;
+            },
+          );
+        }
       }
     },
     async stop(): Promise<void> {

@@ -24,6 +24,7 @@
 import { API_GROUPS_MANUAL } from "./api-groups.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
+import { MEMORY_MANUAL } from "./memory.js";
 import { OUR_SPACE_MANUAL } from "./our-space.js";
 import { PERMISSIONS_MANUAL } from "./permissions.js";
 import { SANDBOX_MANUAL } from "./sandbox.js";
@@ -56,6 +57,7 @@ export const MANUALS: ManualEntry[] = [
   API_GROUPS_MANUAL,
   SANDBOX_MANUAL,
   OUR_SPACE_MANUAL,
+  MEMORY_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {
