@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  messageToolActions,
-  toolCallToAction,
-} from "../src/activity-drawer-model.js";
+import { messageToolActions, toolCallToAction } from "../src/activity-drawer-model.js";
 
 function aguiCall(over: Record<string, unknown> = {}) {
   return {
@@ -57,10 +54,7 @@ describe("toolCallToAction", () => {
 
   it("keeps raw arguments when they are not JSON (never throws)", () => {
     const raw = "not-json-at-all";
-    const a = toolCallToAction(
-      aguiCall({ function: { name: "x", arguments: raw } }),
-      undefined,
-    );
+    const a = toolCallToAction(aguiCall({ function: { name: "x", arguments: raw } }), undefined);
     assert.deepEqual(a.inputs, [{ name: "arguments", value: raw }]);
   });
 
@@ -86,9 +80,16 @@ describe("messageToolActions", () => {
     const msg = {
       id: "asst_1",
       role: "assistant",
-      toolCalls: [aguiCall(), aguiCall({ id: "call_2", function: { name: "ls", arguments: "{}" } })],
+      toolCalls: [
+        aguiCall(),
+        aguiCall({ id: "call_2", function: { name: "ls", arguments: "{}" } }),
+      ],
     };
-    const all = [msg, aguiMessage(), aguiMessage({ id: "msg_tool_2", toolCallId: "call_2", content: "out2" })];
+    const all = [
+      msg,
+      aguiMessage(),
+      aguiMessage({ id: "msg_tool_2", toolCallId: "call_2", content: "out2" }),
+    ];
     const actions = messageToolActions(msg, all);
     assert.equal(actions.length, 2);
     assert.equal(actions[0].status, "done");
