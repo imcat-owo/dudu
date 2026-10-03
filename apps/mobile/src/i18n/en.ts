@@ -81,7 +81,6 @@ export const enStrings: Record<StringKey, string> = {
   // ---- device permissions ----
   "common.allow": "Allow",
   "common.deny": "Deny",
-  "perm.confirmAction": "Allow this action?",
   "perm.sheetTitle": "Device permissions",
   "perm.sheetSubtitle": "What the assistant may access",
   "perm.intro":

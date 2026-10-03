@@ -3,7 +3,6 @@ import * as Clipboard from "expo-clipboard";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
 import * as Notifications from "expo-notifications";
-import { Alert } from "react-native";
 import { t } from "./i18n";
 
 export type PermissionKind =
@@ -169,21 +168,3 @@ export const checkers: Record<PermissionKind, () => Promise<PermissionStatus>> =
     ),
 };
 
-/**
- * Permission model: the AI has full access to in-app capabilities.
- * Anything crossing the app boundary (photos, location, bluetooth, sharing
- * outward) requires an explicit user confirmation popup first.
- */
-export function confirmBoundaryAction(action: string, detail: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    Alert.alert(
-      t("perm.confirmAction"),
-      `${action}\n\n${detail}`,
-      [
-        { text: t("common.deny"), style: "cancel", onPress: () => resolve(false) },
-        { text: t("common.allow"), onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
-  });
-}

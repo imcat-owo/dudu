@@ -34,7 +34,6 @@ import {
   type LocalTool,
   type ToolContext,
   type ToolDeps,
-  ToolError,
 } from "./local-tools";
 import type { ApiGroup } from "./types";
 
@@ -73,7 +72,7 @@ export const MAX_TOOL_ITERATIONS = 10;
  * JSON becomes an empty args object (the tool reports the problem).
  */
 export function parseToolArgs(raw: string): Record<string, unknown> {
-  if (!raw || !raw.trim()) return {};
+  if (!raw?.trim()) return {};
   try {
     const parsed: unknown = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {

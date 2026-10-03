@@ -85,7 +85,6 @@ const zhHans = {
   // ---- device permissions ----
   "common.allow": "允许",
   "common.deny": "拒绝",
-  "perm.confirmAction": "允许这个操作吗？",
   "perm.sheetTitle": "设备权限",
   "perm.sheetSubtitle": "助手可以访问的内容",
   "perm.intro": "助手在 App 内有完整权限，跨出 App 的操作会先问你。",
