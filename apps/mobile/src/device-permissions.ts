@@ -1,4 +1,7 @@
-import { Audio } from "expo-av";
+import {
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+} from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
@@ -31,10 +34,10 @@ function normalize(status: string | undefined): PermissionStatus {
   return "undetermined";
 }
 
-/** Microphone — expo-av */
+/** Microphone — expo-audio */
 export async function requestAudioPermission(): Promise<PermissionStatus> {
   try {
-    const res = await Audio.requestPermissionsAsync();
+    const res = await requestRecordingPermissionsAsync();
     return normalize(res.status);
   } catch {
     return "unavailable";
@@ -43,7 +46,7 @@ export async function requestAudioPermission(): Promise<PermissionStatus> {
 
 export async function checkAudioPermission(): Promise<PermissionStatus> {
   try {
-    const res = await Audio.getPermissionsAsync();
+    const res = await getRecordingPermissionsAsync();
     return normalize(res.status);
   } catch {
     return "unavailable";
