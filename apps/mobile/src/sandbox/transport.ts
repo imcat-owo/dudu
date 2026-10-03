@@ -5,7 +5,7 @@
  * (ssh2 is Node-only; react-native-ssh is archived). The backend, Docker
  * protocol layer, config UI, and terminal UI are all real and complete —
  * they talk to this interface. The raw SSH socket needs either a native
- * module or the companion relay script (see sandbox-relay/); until one is
+ * module or a companion relay script; until one is
  * present the backend honestly reports "unavailable" instead of faking it.
  *
  * A future transport implements:

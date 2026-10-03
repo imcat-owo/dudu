@@ -96,14 +96,14 @@ function BackendCard({
           <StatusDot state={state} />
           <TText style={{ fontSize: 12, color: colors.muted }}>{statusKey(state)}</TText>
         </View>
-      {(() => {
-        const detail = backend.stateDetail();
-        return detail ? (
-          <TText style={{ fontSize: 11, color: colors.muted }} numberOfLines={2}>
-            {t(detail as StringKey)}
-          </TText>
-        ) : null;
-      })()}
+        {(() => {
+          const detail = backend.stateDetail();
+          return detail ? (
+            <TText style={{ fontSize: 11, color: colors.muted }} numberOfLines={2}>
+              {t(detail as StringKey)}
+            </TText>
+          ) : null;
+        })()}
       </View>
       {active ? (
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.blueDark }} />
@@ -308,9 +308,7 @@ function Terminal({ backend }: { backend: SandboxBackend }) {
     try {
       const envs = await backend.listEnvironments();
       const id =
-        envs.find((e) => e.status === "running" || e.status === "booted")?.id ??
-        envs[0]?.id ??
-        "";
+        envs.find((e) => e.status === "running" || e.status === "booted")?.id ?? envs[0]?.id ?? "";
       const r = await backend.runCommand(id, cmd, (chunk) => {
         setOutput((o) => `${o}${chunk.data}`);
       });
@@ -364,7 +362,6 @@ function Terminal({ backend }: { backend: SandboxBackend }) {
 
 export function SandboxSheet({ onClose }: { onClose: () => void }) {
   const colors = useColors();
-  const s = useStyles();
   const [ready, setReady] = useState(false);
   const [activeId, setActiveId] = useState<SandboxBackendId>("cloud");
   const [tick, setTick] = useState(0);
