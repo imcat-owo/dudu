@@ -34,6 +34,8 @@ import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "rea
 import { API_URL } from "./api";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
+import { ColorWheel } from "./color-wheel";
+import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
@@ -47,10 +49,8 @@ import {
   type ThemeBundle,
   type ThemeMode,
 } from "./theme/types";
-import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 import { ShareSection } from "./theme-share-ui";
-import { TText, useFont } from "./font";
-import { ColorWheel } from "./color-wheel";
+import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -474,11 +474,7 @@ export function AppearanceScreen() {
             {t("appearance.fontCurrent")}：{fontName ?? t("appearance.fontSystem")}
           </TText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            <Button
-              small
-              busy={fontBusy}
-              onPress={() => void pickFontFile()}
-            >
+            <Button small busy={fontBusy} onPress={() => void pickFontFile()}>
               {t("appearance.fontUpload")}
             </Button>
             {fontName ? (
@@ -494,7 +490,8 @@ export function AppearanceScreen() {
       </View>
 
       <View>
-        <SectionHeading title={t("appearance.presetsLabel")} />       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <SectionHeading title={t("appearance.presetsLabel")} />{" "}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row", gap: 12, paddingRight: 4 }}>
             {[...PRESETS, ...customs].map((preset) => {
               const selected = bundle.id === preset.id;
@@ -689,7 +686,9 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <TText style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}>
+                <TText
+                  style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}
+                >
                   {t("appearance.sampleUser")}
                 </TText>
               </View>
@@ -876,7 +875,11 @@ function AiThemeModeSection() {
 
   const options: { key: AiThemeMode; titleKey: StringKey; descKey: StringKey }[] = [
     { key: "stable", titleKey: "appearance.aiModeStable", descKey: "appearance.aiModeStableDesc" },
-    { key: "creative", titleKey: "appearance.aiModeCreative", descKey: "appearance.aiModeCreativeDesc" },
+    {
+      key: "creative",
+      titleKey: "appearance.aiModeCreative",
+      descKey: "appearance.aiModeCreativeDesc",
+    },
     { key: "off", titleKey: "appearance.aiModeOff", descKey: "appearance.aiModeOffDesc" },
   ];
 
@@ -1096,7 +1099,7 @@ function StickerPicker({
             const selected = !!uri && uri === selectedUri;
             return (
               <Pressable
-                key={`sticker-${i}`}
+                key={uri}
                 accessibilityRole="radio"
                 accessibilityLabel={t("appearance.stickerOption", { n: i + 1 })}
                 accessibilityState={{ checked: selected }}

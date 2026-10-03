@@ -15,6 +15,7 @@ import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { Pressable, Share, TextInput, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { TText } from "./font";
 import { t } from "./i18n";
 import {
   bundleFitsQr,
@@ -26,7 +27,6 @@ import {
 import { useTheme } from "./theme/ThemeContext";
 import type { ThemeBundle } from "./theme/types";
 import { Button, Card, SectionHeading, Sheet, useColors } from "./ui";
-import { TText } from "./font";
 
 function importErrorText(code: ImportErrorCode): string {
   switch (code) {

@@ -14,14 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Font from "expo-font";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { Text, type TextProps } from "react-native";
 
 const FONT_STORAGE_KEY = "openmuse.font.v1";
@@ -98,7 +91,15 @@ export function FontProvider({ children }: { children: ReactNode }) {
 
   const pickFont = useCallback(async (): Promise<"ok" | "cancelled" | "invalid"> => {
     const res = await DocumentPicker.getDocumentAsync({
-      type: ["font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-otf", "*.ttf", "*.otf", "*.ttc"],
+      type: [
+        "font/ttf",
+        "font/otf",
+        "application/x-font-ttf",
+        "application/x-font-otf",
+        "*.ttf",
+        "*.otf",
+        "*.ttc",
+      ],
       copyToCacheDirectory: true,
     });
     if (res.canceled || !res.assets?.[0]) return "cancelled";

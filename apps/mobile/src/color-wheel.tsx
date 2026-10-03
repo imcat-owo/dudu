@@ -52,14 +52,7 @@ function WheelSvg({ h, s }: { h: number; s: number }) {
       </Defs>
       {paths}
       <Circle cx={RADIUS} cy={RADIUS} r={RADIUS} fill="url(#sat)" />
-      <Circle
-        cx={dotX}
-        cy={dotY}
-        r={9}
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth={3}
-      />
+      <Circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#ffffff" strokeWidth={3} />
       <Circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#00000055" strokeWidth={1} />
     </Svg>
   );
@@ -119,7 +112,11 @@ export function ColorWheel({
 
   return (
     <View style={{ gap: 10, alignItems: "center" }}>
-      <View {...wheelPan.panHandlers} accessibilityRole="adjustable" accessibilityLabel="color wheel">
+      <View
+        {...wheelPan.panHandlers}
+        accessibilityRole="adjustable"
+        accessibilityLabel="color wheel"
+      >
         <WheelSvg h={h} s={s} />
       </View>
       <View

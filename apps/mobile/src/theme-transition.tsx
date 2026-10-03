@@ -9,7 +9,7 @@
  * is already smooth); see ThemeContext.transitionKey.
  */
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Animated, Easing } from "react-native";
 import { useTheme } from "./theme/ThemeContext";
 

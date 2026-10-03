@@ -27,8 +27,8 @@ import {
 } from "react";
 import { useColorScheme } from "react-native";
 import { API_URL } from "../api";
-import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { applyCssOverrides } from "./css";
+import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { defaultPreset } from "./presets";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
@@ -147,7 +147,10 @@ async function loadHistory(): Promise<ThemeHistoryEntry[]> {
 
 async function persistHistory(entries: ThemeHistoryEntry[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(THEME_HISTORY_KEY, JSON.stringify(entries.slice(0, THEME_HISTORY_LIMIT)));
+    await AsyncStorage.setItem(
+      THEME_HISTORY_KEY,
+      JSON.stringify(entries.slice(0, THEME_HISTORY_LIMIT)),
+    );
   } catch {
     // History is a nice-to-have; never break theming over it.
   }
@@ -270,14 +273,17 @@ export function ThemeProvider({
   }, [apiToken]);
 
   // ---- try-on staging (defined before refreshFromServer, which stages AI try-ons) ----
-  const stageBundle = useCallback((bundle: ThemeBundle): boolean => {
-    if (!isThemeBundle(bundle)) return false;
-    // Discrete start of a try-on bumps the transition; continuous
-    // updates during a color drag do not (the live preview is already smooth).
-    if (!stagedRef.current) bumpTransition();
-    setStaged(bundle); // in memory only — never persisted
-    return true;
-  }, [bumpTransition]);
+  const stageBundle = useCallback(
+    (bundle: ThemeBundle): boolean => {
+      if (!isThemeBundle(bundle)) return false;
+      // Discrete start of a try-on bumps the transition; continuous
+      // updates during a color drag do not (the live preview is already smooth).
+      if (!stagedRef.current) bumpTransition();
+      setStaged(bundle); // in memory only — never persisted
+      return true;
+    },
+    [bumpTransition],
+  );
 
   const refreshFromServer = useCallback(async (): Promise<void> => {
     const remote = await fetchRemote();
