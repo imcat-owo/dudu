@@ -1292,6 +1292,7 @@ const zhHans = {
   "space.tasks.buddyDefault": "穹妹默认",
   "space.tasks.buddyPick": "选视频",
   "space.tasks.buddyReset": "恢复默认",
+  "space.tasks.buddyResetAll": "全部恢复默认",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

@@ -1338,4 +1338,5 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.buddyDefault": "Sora default",
   "space.tasks.buddyPick": "Pick video",
   "space.tasks.buddyReset": "Reset",
+  "space.tasks.buddyResetAll": "Reset all",
 };

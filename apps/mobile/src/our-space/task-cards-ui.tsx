@@ -204,6 +204,24 @@ function BuddyVideoSection({
           )}
         </View>
       ))}
+
+      {states.some((s) => overrides[s]) && (
+        <Pressable
+          onPress={() => {
+            void taskBuddyVideoStore.resetAll().then(() => setVersion((v) => v + 1));
+          }}
+          style={{
+            backgroundColor: colors.secondaryBg,
+            borderRadius: 10,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            alignSelf: "flex-start",
+            marginTop: 4,
+          }}
+        >
+          <TText style={{ color: colors.danger, fontSize: 13 }}>{t("space.tasks.buddyResetAll")}</TText>
+        </Pressable>
+      )}
     </View>
   );
 }

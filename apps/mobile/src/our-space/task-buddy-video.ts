@@ -63,7 +63,7 @@ export class TaskBuddyVideoStore {
 
   /** Set a custom video for a status. Empty/blank URI resets to default. */
   async set(state: BuddyVideoState, uri: string | null): Promise<void> {
-    const clean = uri && uri.trim() ? uri.trim() : null;
+    const clean = uri?.trim() ? uri.trim() : null;
     this.overrides = { ...this.overrides, [state]: clean };
     await this.persist();
     this.emit();
