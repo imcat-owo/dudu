@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { t } from "./i18n";
 import { Button, colors, ErrorNotice, Field, LinkRow, Sheet, s } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -133,7 +134,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet
       title="OpenMuse"
-      subtitle={workspace.mode === "sample" ? "Your workspace" : workspace.profile.name}
+      subtitle={workspace.mode === "sample" ? t("detail.homeTitle") : workspace.profile.name}
       onClose={onClose}
     >
       <View style={{ gap: 14 }}>
