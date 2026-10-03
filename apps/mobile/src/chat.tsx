@@ -1,14 +1,19 @@
 import {
   type Message,
   type ToolMessage,
-  useAgent,
   useAgentContext,
-  useCopilotKit,
   useRenderTool,
   useRenderToolCall,
 } from "@copilotkit/react-native/headless";
 import { ArrowDown, ArrowUp, FileText, RotateCcw, Square, X } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -23,13 +28,16 @@ import { z } from "zod";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
 import { AnimatedAvatar } from "./animated-avatar";
+import { ActiveGroupChip } from "./api-groups/api-settings";
+import { useChatMode } from "./api-groups/mode";
+import { useApiGroups } from "./api-groups/store";
 import { AssistantResponse } from "./assistant-response";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
-import { runConversationTurn } from "./conversation-run";
+import { TText } from "./font";
 import { t } from "./i18n";
 import {
   buildImageUrl,
@@ -46,6 +54,7 @@ import { useTheme } from "./theme/ThemeContext";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
+import { type AgentMessage, loadLocalHistory, useChatAgent } from "./use-chat-agent";
 import {
   encodeVoiceMessage,
   parseVoiceMessage,
@@ -53,7 +62,6 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -187,7 +195,9 @@ function ServerToolCard({
       {parsed.success && parsed.data.error ? (
         <ErrorNotice error={parsed.data.error} />
       ) : (
-        <TText style={s.muted}>{loading ? t("toolcard.waiting") : t("toolcard.openWorkspace")}</TText>
+        <TText style={s.muted}>
+          {loading ? t("toolcard.waiting") : t("toolcard.openWorkspace")}
+        </TText>
       )}
       <Button
         small
@@ -206,6 +216,21 @@ function ServerToolCard({
     </Card>
   );
 }
+/**
+ * useRenderToolCall throws without a CopilotKitProvider above. Local mode
+ * has neither the provider nor tool calls, so skip the hook there.
+ * (Remount on mode change keeps hook order stable.)
+ */
+function useSafeRenderToolCall(): (args: { toolCall: unknown; toolMessage: unknown }) => ReactNode {
+  const mode = useChatMode();
+  if (mode === "local") return () => null;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useRenderToolCall() as unknown as (args: {
+    toolCall: unknown;
+    toolMessage: unknown;
+  }) => ReactNode;
+}
+
 export function ChatScreen({
   prompt,
   thread,
@@ -220,13 +245,18 @@ export function ChatScreen({
   const { tokens } = useTheme();
   const { api, workspace: w, refresh, navigate } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
-  const { enabled: richThreads, mainId, claimPrompt } = useMuseThread();
+  const { enabled: threadsEnabled, mainId, claimPrompt } = useMuseThread();
+  // Dual-mode: cloud → CopilotKit agent via backend; local → direct SSE agent.
+  // The caller remounts on mode change (key={mode}) so hook order stays stable.
+  const mode = useChatMode();
+  // Local mode has no backend threads — force the simple local path.
+  const richThreads = mode === "local" ? false : threadsEnabled;
   const selection = thread || { id: "local", existing: false };
   const threadId = richThreads ? selection.id : "local-main";
   const agentId = `openmuse-${threadId}`;
-  const { agent, isReady } = useAgent({ agentId, runtimeAgentId: "default", threadId });
-  const { copilotkit } = useCopilotKit();
-  const renderToolCall = useRenderToolCall();
+  const { agent, isReady } = useChatAgent({ agentId, threadId });
+  const renderToolCall = useSafeRenderToolCall();
+  const { active: activeGroup } = useApiGroups();
   const [draft, setDraft] = useState("");
   const [focused, setFocused] = useState(false);
   const [inputHeight, setInputHeight] = useState(44);
@@ -261,16 +291,18 @@ export function ChatScreen({
     });
     async function hydrate() {
       try {
-        if (incognitoOn) {
+        if (mode === "local") {
+          // Local mode: history lives on-device in AsyncStorage.
+          // Incognito still starts empty and never persists.
+          if (active)
+            agent.setMessages(
+              (incognitoOn ? [] : await loadLocalHistory(threadId)) as AgentMessage[],
+            );
+        } else if (incognitoOn) {
           // Incognito: start with an empty conversation, never load saved history.
           if (active) agent.setMessages([]);
         } else if (richThreads) {
-          if (selection.existing)
-            await runConversationTurn(
-              agentId,
-              () => copilotkit.connectAgent({ agent }),
-              (onError) => copilotkit.subscribe({ onError }),
-            );
+          if (selection.existing) await agent.connect();
         } else {
           const { messages } = await api.request<{ messages: Message[] }>("/api/conversation");
           if (active) agent.setMessages(messages);
@@ -289,13 +321,13 @@ export function ChatScreen({
     return () => {
       active = false;
       replay.unsubscribe();
-      if (richThreads) void agent.detachActiveRun().catch(() => {});
+      if (richThreads) void agent.stop().catch(() => {});
     };
   }, [
     agent,
     agentId,
     api,
-    copilotkit,
+    mode,
     isReady,
     historyAttempt,
     richThreads,
@@ -308,23 +340,26 @@ export function ChatScreen({
       setSaveError("");
       return;
     }
+    // Local mode: LocalAgent persists to AsyncStorage on every change.
+    if (mode === "local") {
+      setSaveError("");
+      return;
+    }
     if (!richThreads) await api.request("/api/conversation", { messages: agent.messages }, "PUT");
     setSaveError("");
-  }, [agent, api, richThreads, incognitoOn]);
+  }, [agent, api, mode, richThreads, incognitoOn]);
   const run = useCallback(
     async (message?: QueuedMessage) => {
       if (runLock.current || agent.isRunning || !isReady || !loaded)
         throw new Error(t("chat.notReady"));
+      // Local mode needs an API group before it can talk.
+      if (mode === "local" && !activeGroup) throw new Error(t("apigroup.noActive"));
       runLock.current = true;
       setBusy(true);
       setError("");
       if (message) agent.addMessage({ id: message.id, role: "user", content: message.text });
       try {
-        await runConversationTurn(
-          agentId,
-          () => copilotkit.runAgent({ agent }),
-          (onError) => copilotkit.subscribe({ onError }),
-        );
+        await agent.runTurn();
         await Promise.all([refresh(), refreshAgent()]);
       } finally {
         try {
@@ -338,7 +373,7 @@ export function ChatScreen({
         }
       }
     },
-    [agent, agentId, copilotkit, isReady, loaded, refresh, refreshAgent, saveHistory, queue],
+    [agent, agentId, activeGroup, mode, isReady, loaded, refresh, refreshAgent, saveHistory, queue],
   );
   const runQueued = useCallback(
     async (message: QueuedMessage) => {
@@ -397,19 +432,13 @@ export function ChatScreen({
       enqueue(prompt.text);
   }, [active, prompt, isReady, loaded, enqueue, claimPrompt]);
   useEffect(() => {
-    const subscription = copilotkit.subscribe({
-      onError: (event) => {
-        if (event.context?.agentId && event.context.agentId !== agentId) return;
-        const failure = event.error instanceof Error ? event.error : new Error(String(event.error));
-        setError(failure.message);
-      },
-    });
+    const subscription = agent.onTransportError((failure) => setError(failure.message));
     return () => subscription.unsubscribe();
-  }, [copilotkit, agentId, queue]);
+  }, [agent, queue]);
   async function stop() {
     queue.pause();
     try {
-      await copilotkit.stopAgent({ agent });
+      await agent.stop();
     } catch (e) {
       setError(t("chat.stopFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
@@ -457,7 +486,11 @@ export function ChatScreen({
   const replying = busy || agent.isRunning;
   return (
     <View style={{ flex: 1 }}>
-      <View style={[s.row, { justifyContent: "flex-end", paddingHorizontal: 16, paddingTop: 8 }]}>
+      <View
+        style={[s.row, { justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8 }]}
+      >
+        {/* Dual-mode: which group/model is answering — subtle, compact. */}
+        <ActiveGroupChip />
         <Pressable
           accessibilityRole="switch"
           accessibilityLabel={t("a11y.incognito")}
@@ -488,6 +521,17 @@ export function ChatScreen({
         <TText style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
           {t("chat.incognitoNote")}
         </TText>
+      )}
+      {mode === "local" && !activeGroup && loaded && (
+        <Card style={{ margin: 16 }}>
+          <TText style={{ fontWeight: "700", marginBottom: 4 }}>{t("apigroup.noActive")}</TText>
+          <TText style={[s.small, { color: colors.muted, marginBottom: 12 }]}>
+            {t("apigroup.subtitle")}
+          </TText>
+          <Button primary onPress={() => navigate("apps")}>
+            {t("apigroup.add")}
+          </Button>
+        </Card>
       )}
       <ScrollView
         ref={list}
@@ -678,7 +722,7 @@ export function ChatScreen({
             );
           })
         )}
-        {!richThreads && (
+        {!richThreads && mode === "cloud" && (
           <>
             {(w.files.some((file) => file.parentId) ||
               w.browsers.some((browser) => browser.status === "active") ||
@@ -849,7 +893,7 @@ export function ChatScreen({
             )}
           </View>
         )}
-        {picking && (
+        {picking && mode === "cloud" && (
           <Card style={{ marginBottom: 12, padding: 15 }}>
             <TText style={s.heading}>{t("chat.addDocument")}</TText>
             <ScrollView style={{ maxHeight: 230 }} keyboardShouldPersistTaps="handled">
@@ -930,24 +974,29 @@ export function ChatScreen({
             </View>
           )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("a11y.attachDoc")}
-              accessibilityState={{ expanded: picking }}
-              onPress={() => setPicking(!picking)}
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 24,
-                backgroundColor: picking || pressed ? colors.sky : "transparent",
-              })}
-            >
-              <TText style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}>
-                +
-              </TText>
-            </Pressable>
+            {/* Local mode has no backend file store — hide the attach button. */}
+            {mode === "cloud" && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("a11y.attachDoc")}
+                accessibilityState={{ expanded: picking }}
+                onPress={() => setPicking(!picking)}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 24,
+                  backgroundColor: picking || pressed ? colors.sky : "transparent",
+                })}
+              >
+                <TText
+                  style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}
+                >
+                  +
+                </TText>
+              </Pressable>
+            )}
             <TextInput
               accessibilityLabel={t("a11y.messageInput")}
               value={draft}

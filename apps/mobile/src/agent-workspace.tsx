@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -94,4 +95,22 @@ export function useAgentWorkspace() {
   const context = useContext(AgentContext);
   if (!context) throw new Error("Agent workspace is unavailable");
   return context;
+}
+
+/**
+ * Local-mode stub: no backend agent workspace. Data stays undefined,
+ * refresh is a noop, mutations fail loudly with a cloud-mode message.
+ */
+export function LocalAgentWorkspaceProvider({ children }: { children: ReactNode }) {
+  const value = useMemo<AgentContextValue>(
+    () => ({
+      data: undefined,
+      error: "",
+      refresh: () => Promise.resolve(),
+      mutate: () => Promise.reject(new Error("cloudModeRequired")),
+      delegate: () => Promise.reject(new Error("cloudModeRequired")),
+    }),
+    [],
+  );
+  return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;
 }
