@@ -51,7 +51,7 @@ export function shouldExtract(turn: MemoryTurn, isIncognito: boolean): boolean {
 const SENSITIVE_PATTERNS: RegExp[] = [
   /\b\d{15,19}\b/, // card-like number runs
   /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/, // email
-  /密码|password|passwd|密钥|secret|token|key/i,
+  /密码|passwd|密钥|\bpassword\b|\bsecret\b|\btokens?\b|\b(api|secret)\s+keys?\b|\bkeys?\s*[:=]/i,
   /身份证|护照|社保|驾照/,
 ];
 

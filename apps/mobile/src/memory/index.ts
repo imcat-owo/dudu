@@ -17,7 +17,7 @@
  */
 
 import { buildMemorySection } from "./read-path.js";
-import type { MemoryStore } from "./store.js";
+import type { MemoryStorage, MemoryStore } from "./store.js";
 import { createMemoryTools } from "./tools.js";
 import { gardenStateOf } from "./types.js";
 import { extractMemories, type MemoryTurn, shouldExtract } from "./write-path.js";
@@ -68,16 +68,37 @@ export function memoryPromptSection(store: MemoryStore, userText: string): Promi
  * @param turn     the just-finished turn
  * @param isIncognito  live incognito state
  * @param complete LLM completion for extraction: (prompt) => Promise<string>
+ * @param opts     optional: { autoExtract } — user-facing kill switch
  */
 export function extractMemoriesAsync(
   store: MemoryStore,
   turn: MemoryTurn,
   isIncognito: boolean,
   complete: (prompt: string) => Promise<string>,
+  opts: { autoExtract?: boolean } = {},
 ): void {
+  if (opts.autoExtract === false) return;
   if (!shouldExtract(turn, isIncognito)) return;
   // Fire and forget — extraction must never break the chat.
   void extractMemories(store, turn, complete).catch(() => {});
+}
+
+/** Storage key for the auto-extract user preference. */
+export const AUTO_EXTRACT_KEY = "openmuse.memory.v1.autoExtract";
+
+/** Read the user's auto-extract preference (default true). */
+export async function getAutoExtract(storage: MemoryStorage): Promise<boolean> {
+  try {
+    const raw = await storage.getItem(AUTO_EXTRACT_KEY);
+    return raw !== "0";
+  } catch {
+    return true;
+  }
+}
+
+/** Set the user's auto-extract preference. */
+export async function setAutoExtract(storage: MemoryStorage, on: boolean): Promise<void> {
+  await storage.setItem(AUTO_EXTRACT_KEY, on ? "1" : "0");
 }
 
 export { gardenStateOf as memoryGardenState };

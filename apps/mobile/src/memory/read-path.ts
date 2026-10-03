@@ -74,8 +74,10 @@ export async function buildMemorySection(store: MemoryStore, userText: string): 
   let section = `Your memory of her:\n${lines.join("\n")}`;
   // Hard budget — cut from the end (memories go before profile would be
   // wrong; profile is more important, so trim memory lines first).
+  // Truncate on a line boundary so we never cut a memory mid-sentence.
   if (section.length > MEMORY_SECTION_BUDGET) {
-    section = `${section.slice(0, MEMORY_SECTION_BUDGET - 3)}...`;
+    const cut = section.lastIndexOf("\n", MEMORY_SECTION_BUDGET - 3);
+    section = `${section.slice(0, cut > 0 ? cut : MEMORY_SECTION_BUDGET - 3)}...`;
   }
   return section;
 }

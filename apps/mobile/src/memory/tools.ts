@@ -73,11 +73,14 @@ export function createMemoryTools(store: MemoryStore): LocalTool[] {
             : args.confidence === "question"
               ? "question"
               : "unsure";
+        // Audit honesty: confident = she told it; otherwise it's the AI's own
+        // inference — the log must say so.
+        const isUserTold = confidence === "confident";
         const rec = await store.addMemory(content, {
           category,
           confidence,
-          source: "user-told",
-          actor: "user",
+          source: isUserTold ? "user-told" : "ai-inferred",
+          actor: isUserTold ? "user" : "ai",
         });
         return `Remembered (${gardenStateOf(rec)}): ${rec.content}`;
       },

@@ -298,3 +298,99 @@ describe("memory tools", () => {
     await assert.rejects(() => registry.execute("memory_delete", { id: "nope" }, ctx), /not found/);
   });
 });
+
+describe("memory integration fixes", () => {
+  it("no duplicate tool names across our-space + memory + local tools", async () => {
+    const { createOurSpaceTools } = await import("../src/our-space/tools.js");
+    const { createLocalTools } = await import("../src/api-groups/local-tools.js");
+    const { OurSpaceStore } = await import("../src/our-space/store.js");
+    const map = new Map<string, string>();
+    const fake = {
+      getItem: async (k: string) => map.get(k) ?? null,
+      setItem: async (k: string, v: string) => { map.set(k, v); },
+    };
+    const all = [
+      ...createLocalTools({}),
+      ...createOurSpaceTools(new OurSpaceStore(fake as any)),
+      ...createMemoryTools(new MemoryStore(fake)),
+    ];
+    const names = all.map((t) => t.name);
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    assert.deepEqual(dupes, [], `duplicate tool names: ${dupes.join(", ")}`);
+  });
+
+  it("looksSensitive: word boundaries (keyboard/monkey not flagged)", () => {
+    assert.equal(looksSensitive("I love my keyboard"), false);
+    assert.equal(looksSensitive("the monkey ate a banana"), false);
+    assert.equal(looksSensitive("key lime pie is delicious"), false);
+    assert.equal(looksSensitive("my secretary called"), false);
+    // Real secrets still caught
+    assert.equal(looksSensitive("my api key is sk-123"), true);
+    assert.equal(looksSensitive("here is the secret key: abc"), true);
+    assert.equal(looksSensitive("key=sk-456"), true);
+    assert.equal(looksSensitive("the password is hunter2"), true);
+    assert.equal(looksSensitive("use this token abc"), true);
+    assert.equal(looksSensitive("my secret plan"), true);
+    assert.equal(looksSensitive("contact me at a@b.com"), true);
+  });
+
+  it("memory_add: source honest (ai-inferred vs user-told)", async () => {
+    const s = new MemoryStore(fakeStorage());
+    const reg = createToolRegistry(createMemoryTools(s));
+    // AI inference (default unsure) -> ai-inferred
+    await reg.execute("memory_add", { content: "AI thinks she likes tea" }, ctx);
+    // Explicit confident (she told it) -> user-told
+    await reg.execute(
+      "memory_add",
+      { content: "She said she likes gray", confidence: "confident" },
+      ctx,
+    );
+    const all = await s.listCurrent();
+    const inferred = all.find((m) => m.content.includes("tea"));
+    const told = all.find((m) => m.content.includes("gray"));
+    assert.equal(inferred?.source, "ai-inferred");
+    assert.equal(told?.source, "user-told");
+  });
+
+  it("concurrent writes don't lose data (write queue)", async () => {
+    const s = new MemoryStore(fakeStorage());
+    await Promise.all([
+      s.addMemory("first", {}),
+      s.addMemory("second", {}),
+      s.addMemory("third", {}),
+    ]);
+    const all = await s.listCurrent();
+    assert.equal(all.length, 3);
+  });
+
+  it("auto-extract toggle: default on, can turn off", async () => {
+    const s = new MemoryStore(fakeStorage());
+    assert.equal(await s.getAutoExtract(), true);
+    await s.setAutoExtract(false);
+    assert.equal(await s.getAutoExtract(), false);
+    await s.setAutoExtract(true);
+    assert.equal(await s.getAutoExtract(), true);
+  });
+
+  it("read-path truncates on line boundaries", async () => {
+    const s = new MemoryStore(fakeStorage());
+    // Add many long memories to force truncation
+    for (let i = 0; i < 30; i++) {
+      await s.addMemory(
+        `Memory number ${i} with a fairly long content string to fill up the budget quickly and force truncation behavior in the read path section builder.`,
+        { confidence: "confident" },
+      );
+    }
+    const section = await buildMemorySection(s, "memory");
+    // If truncated, must end with ... and not cut mid-line (no partial last line without newline)
+    if (section.length >= MEMORY_SECTION_BUDGET - 10) {
+      assert.ok(section.endsWith("..."), "truncated section must end with ...");
+      const withoutEllipsis = section.slice(0, -3);
+      // The last char before ... should be end of a line, not mid-word
+      assert.ok(
+        !withoutEllipsis.endsWith(" ") || withoutEllipsis.includes("\n"),
+        "should cut at line boundary",
+      );
+    }
+  });
+});

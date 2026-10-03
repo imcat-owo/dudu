@@ -572,24 +572,31 @@ export function createLocalAgent(opts: {
         const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
         const lastAsst = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
         if (lastUser || lastAsst) {
-          extractMemoriesAsync(
-            memStore,
-            { userText: lastUser, assistantText: lastAsst },
-            incognito(),
-            async (prompt: string) => {
-              let text = "";
-              await streamChat(activeGroup, [{ role: "user", content: prompt }], {
-                onToken: (d: string) => {
-                  text += d;
+          // User kill-switch for auto-extract (checked async, fire-and-forget).
+          void memStore
+            .getAutoExtract()
+            .catch(() => true)
+            .then((autoExtract) => {
+              extractMemoriesAsync(
+                memStore,
+                { userText: lastUser, assistantText: lastAsst },
+                incognito(),
+                async (prompt: string) => {
+                  let text = "";
+                  await streamChat(activeGroup, [{ role: "user", content: prompt }], {
+                    onToken: (d: string) => {
+                      text += d;
+                    },
+                    onThinking: () => {},
+                    onToolCalls: () => {},
+                    onDone: () => {},
+                    onError: () => {},
+                  });
+                  return text;
                 },
-                onThinking: () => {},
-                onToolCalls: () => {},
-                onDone: () => {},
-                onError: () => {},
-              });
-              return text;
-            },
-          );
+                { autoExtract },
+              );
+            });
         }
       }
     },
