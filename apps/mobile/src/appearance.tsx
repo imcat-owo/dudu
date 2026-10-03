@@ -47,6 +47,7 @@ import {
   type ThemeMode,
 } from "./theme/types";
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
+import { ShareSection } from "./theme-share-ui";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -717,6 +718,8 @@ export function AppearanceScreen() {
           </Button>
         </Card>
       </View>
+
+      <ShareSection />
     </View>
   );
 }

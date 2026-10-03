@@ -27,7 +27,13 @@
       "expo-media-library",
       "expo-location",
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "允许 OpenMuse 使用相机扫描二维码以导入主题。"
+        }
+      ]
     ]
   }
 }
