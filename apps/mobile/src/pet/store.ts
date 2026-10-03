@@ -17,7 +17,10 @@
 
 import { clampMascotIndex, DEFAULT_MASCOT_INDEX } from "../mascot";
 
-export type PetSkin = { kind: "sora" } | { kind: "devil"; index: number };
+export type PetSkin =
+  | { kind: "sora" }
+  | { kind: "devil"; index: number }
+  | { kind: "custom"; imageUri: string; videoUri?: string };
 
 export type PetLocation = "chat" | "space";
 
@@ -57,8 +60,13 @@ function clamp01(v: number): number {
 
 export function normalizeSkin(skin: unknown): PetSkin {
   if (skin && typeof skin === "object") {
-    const s = skin as { kind?: unknown; index?: unknown };
+    const s = skin as { kind?: unknown; index?: unknown; imageUri?: unknown; videoUri?: unknown };
     if (s.kind === "devil") return { kind: "devil", index: clampMascotIndex(Number(s.index)) };
+    if (s.kind === "custom" && typeof s.imageUri === "string" && s.imageUri) {
+      const custom: PetSkin = { kind: "custom", imageUri: s.imageUri };
+      if (typeof s.videoUri === "string" && s.videoUri) custom.videoUri = s.videoUri;
+      return custom;
+    }
   }
   return { kind: "sora" };
 }

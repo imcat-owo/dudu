@@ -65,15 +65,19 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
   );
 
   useEffect(() => {
-    if (videoState && skin.kind === "sora") {
+    if (videoState && (skin.kind === "sora" || (skin.kind === "custom" && skin.videoUri))) {
       try {
-        player.replace(avatarVideoSource(videoState));
+        player.replace(
+          skin.kind === "custom" && skin.videoUri
+            ? { uri: skin.videoUri }
+            : avatarVideoSource(videoState),
+        );
         player.play();
       } catch {
         // video swap failed → static poster stays visible
       }
     }
-  }, [videoState, skin.kind, player]);
+  }, [videoState, skin, player]);
 
   // Built-in motion for static skins / states without a video.
   const breathe = useRef(new Animated.Value(0)).current;
@@ -106,7 +110,8 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
     outputRange: [0, mood === "bopping" ? -7 : -3, 0],
   });
 
-  const showVideo = skin.kind === "sora" && videoState !== null;
+  const showVideo =
+    (skin.kind === "sora" || (skin.kind === "custom" && !!skin.videoUri)) && videoState !== null;
   const dimmed = mood === "sleepy" || mood === "dragged";
 
   return (
@@ -130,7 +135,20 @@ function PetFace({ skin, mood, size }: { skin: PetSkin; mood: PetMood; size: num
           backgroundColor: "transparent",
         }}
       >
-        {skin.kind === "sora" ? (
+        {skin.kind === "custom" ? (
+          <>
+            <Image source={{ uri: skin.imageUri }} resizeMode="cover" style={StyleSheet.absoluteFill} />
+            {showVideo && skin.videoUri && (
+              <VideoView
+                player={player}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                nativeControls={false}
+                allowsPictureInPicture={false}
+              />
+            )}
+          </>
+        ) : skin.kind === "sora" ? (
           <>
             <Image source={soraSource()} resizeMode="cover" style={StyleSheet.absoluteFill} />
             {showVideo && (
