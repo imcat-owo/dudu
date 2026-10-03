@@ -221,10 +221,38 @@ export function ThemeProvider({
 
   const rollback = useCallback(async (): Promise<void> => {
     const target = previousRef.current ?? defaultPreset;
+    const stamped: ThemeBundle = {
+      ...target,
+      meta: { ...target.meta, updatedAt: new Date().toISOString() },
+    };
     setStaged(null);
-    setConfirmed(target);
-    await persistLocal(target);
-  }, []);
+    setConfirmed(stamped);
+    await persistLocal(stamped);
+    if (apiToken) {
+      // Push the rollback to the server too, and adopt the new server
+      // version — otherwise the 30s poll would fetch the pre-rollback
+      // bundle and silently undo the rollback (review P2-1, 2026-10-03).
+      try {
+        const res = await fetch(`${API_URL}/api/theme`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ bundle: stamped }),
+        });
+        if (res.ok) {
+          const payload = (await res.json()) as { version?: unknown };
+          if (typeof payload.version === "number") {
+            serverVersionRef.current = payload.version;
+            setServerVersion(payload.version);
+          }
+        }
+      } catch {
+        // Server unreachable: the local cache stays the source of truth.
+      }
+    }
+  }, [apiToken]);
 
   const effective = staged ?? confirmed;
   const resolvedMode = resolveMode(effective.mode, systemScheme === "dark");
