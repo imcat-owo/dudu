@@ -27,7 +27,7 @@
       "expo-media-library",
       "expo-location",
       "expo-notifications",
-      "expo-av"
+      "expo-audio"
     ]
   }
 }
