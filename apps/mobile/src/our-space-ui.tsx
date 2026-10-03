@@ -213,9 +213,8 @@ function todayLine(): string {
 }
 
 /** Warm, inviting empty state — Sora waits with you instead of a dead icon. */
-function EmptyState({ icon: Icon, text }: { icon: typeof Heart; text: string }) {
+function EmptyState({ text }: { text: string }) {
   const colors = useColors();
-  void Icon;
   return (
     <View style={{ paddingVertical: 56, paddingHorizontal: 36, alignItems: "center" }}>
       <View style={{ marginBottom: 18 }}>
@@ -294,7 +293,7 @@ function StatusView() {
     void ambientVideoStore.load().catch(() => null);
   }, []);
 
-  if (!status) return <EmptyState icon={Activity} text={t("space.status.empty")} />;
+  if (!status) return <EmptyState text={t("space.status.empty")} />;
   return (
     <FadeIn>
       <SoftCard>
@@ -349,7 +348,7 @@ function DiaryView() {
     void ourSpaceStore.listDiary(50).then(setEntries);
   }, [v]);
 
-  if (entries.length === 0) return <EmptyState icon={BookOpen} text={t("space.diary.empty")} />;
+  if (entries.length === 0) return <EmptyState text={t("space.diary.empty")} />;
   return (
     <FadeIn>
       <View style={{ gap: 20 }}>
@@ -413,7 +412,7 @@ function TimelineView() {
     void ourSpaceStore.listTimeline(100).then(setEvents);
   }, [v]);
 
-  if (events.length === 0) return <EmptyState icon={History} text={t("space.timeline.empty")} />;
+  if (events.length === 0) return <EmptyState text={t("space.timeline.empty")} />;
 
   // Group newest-first by month, preserving order.
   const groups: { label: string; items: TimelineEvent[] }[] = [];
@@ -537,7 +536,7 @@ function GardenView() {
     void memoryStore.listCurrent().then(setItems);
   }, [mv]);
 
-  if (items.length === 0) return <EmptyState icon={Flower2} text={t("space.garden.empty")} />;
+  if (items.length === 0) return <EmptyState text={t("space.garden.empty")} />;
 
   return (
     <FadeIn>
@@ -633,7 +632,7 @@ function TellLaterView() {
     void ourSpaceStore.listTellLater(true).then(setItems);
   }, [v]);
 
-  if (items.length === 0) return <EmptyState icon={Bell} text={t("space.tellLater.empty")} />;
+  if (items.length === 0) return <EmptyState text={t("space.tellLater.empty")} />;
 
   const pending = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done);
@@ -1239,7 +1238,7 @@ function FeedPage() {
     return (
       <>
         <FeedComposer onPosted={() => setTick((x) => x + 1)} />
-        <EmptyState icon={MessageCircle} text={t("space.feed.empty")} />
+        <EmptyState text={t("space.feed.empty")} />
       </>
     );
   }
@@ -1279,7 +1278,7 @@ function WorksPage() {
   return (
     <View>
       {works.length === 0 ? (
-        <EmptyState icon={Images} text={t("space.works.empty")} />
+        <EmptyState text={t("space.works.empty")} />
       ) : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
           {works.map((w) => {
@@ -1422,7 +1421,7 @@ function AnniversaryPage() {
   return (
     <View style={{ gap: 14 }}>
       {items.length === 0 ? (
-        <EmptyState icon={CalendarHeart} text={t("space.anniversary.empty")} />
+        <EmptyState text={t("space.anniversary.empty")} />
       ) : (
         items.map((a, i) => {
           const dc = dayCount(a.date);
