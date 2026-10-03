@@ -59,6 +59,7 @@ import {
   useDropZone,
 } from "./pet/registry";
 import { petActivity } from "./pet/store";
+import { resolveAvatarState } from "./avatar-state";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
@@ -571,9 +572,15 @@ export function ChatScreen({
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const replying = busy || agent.isRunning;
   // The desktop pet watches this: while the AI is working it shows busy.
+  // Same source of truth as AnimatedAvatar (resolveAvatarState) — the pet
+  // mirrors the avatar's state video.
   useEffect(() => {
     petActivity.setAiBusy(replying);
-    return () => petActivity.setAiBusy(false);
+    petActivity.setAvatarState(resolveAvatarState({ busy, running: agent.isRunning }));
+    return () => {
+      petActivity.setAiBusy(false);
+      petActivity.setAvatarState("idle");
+    };
   }, [replying]);
   // Id of the last assistant message with a visible bubble — the pet's
   // "sit on the AI bubble" drop target.

@@ -16,6 +16,7 @@
  */
 
 import { clampMascotIndex, DEFAULT_MASCOT_INDEX } from "../mascot";
+import type { AvatarState } from "../avatar-state";
 
 export type PetSkin =
   | { kind: "sora" }
@@ -268,16 +269,23 @@ export class PetStore {
 
 /**
  * Live activity signals (module-level, NOT persisted). chat.tsx reports
- * AI-busy; music-ui.tsx reports playback. The pet overlay subscribes and
- * derives mood from these + drag state + interaction timers.
+ * AI-busy + the resolved AvatarState (same source of truth as
+ * AnimatedAvatar via resolveAvatarState); music-ui.tsx reports playback.
+ * The pet overlay subscribes and derives mood from these + drag state +
+ * interaction timers.
+ *
+ * avatarState is the full AI state (idle/working/making_something/
+ * milestone_level_up). Today chat.tsx can only produce idle/working —
+ * the richer states flow through automatically once wired there.
  */
 export interface PetActivity {
   aiBusy: boolean;
   musicPlaying: boolean;
+  avatarState: AvatarState;
 }
 
 const activityListeners = new Set<(a: PetActivity) => void>();
-const activityState: PetActivity = { aiBusy: false, musicPlaying: false };
+const activityState: PetActivity = { aiBusy: false, musicPlaying: false, avatarState: "idle" };
 
 function emitActivity(): void {
   for (const l of activityListeners) {
@@ -296,6 +304,11 @@ export const petActivity = {
   setAiBusy(b: boolean): void {
     if (activityState.aiBusy === b) return;
     activityState.aiBusy = b;
+    emitActivity();
+  },
+  setAvatarState(s: AvatarState): void {
+    if (activityState.avatarState === s) return;
+    activityState.avatarState = s;
     emitActivity();
   },
   setMusicPlaying(b: boolean): void {

@@ -26,6 +26,7 @@ import { BROWSER_MANUAL } from "./browser.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
 import { KNOWLEDGE_MANUAL } from "./knowledge.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
+import { MEDIA_MANUAL } from "./media.js";
 import { MEMORY_MANUAL } from "./memory.js";
 import { MUSIC_ROOM_MANUAL } from "./music-room.js";
 import { NATIVE_APPS_MANUAL } from "./native-apps.js";
@@ -68,6 +69,7 @@ export const MANUALS: ManualEntry[] = [
   NATIVE_APPS_MANUAL,
   SKILLS_MANUAL,
   KNOWLEDGE_MANUAL,
+  MEDIA_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {

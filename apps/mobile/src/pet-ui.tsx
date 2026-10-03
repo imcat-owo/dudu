@@ -5,7 +5,10 @@
  * - Drag with PanResponder + Animated (no new native deps).
  * - Drop zones (registered by screens): AI bubble, input top, dialog,
  *   space/chat tab buttons.
- * - Sora skin (default): reuses the 4 bundled avatar-anim mp4s by mood;
+ * - Sora skin (default): reuses the 4 bundled avatar-anim mp4s. The "busy"
+ *   mood mirrors the AI's AvatarState via the same mapping as
+ *   AnimatedAvatar (idle→idle.mp4, working→working.mp4,
+ *   making_something→making_something.mp4, milestone→milestone_level_up.mp4);
  *   static webp underneath as poster/fallback. Devil skins: static
  *   sticker + built-in motion (breathing / bounce).
  * - Mood is derived: dragged > happy (2.5s after drop/tap) > AI-busy >
@@ -50,6 +53,8 @@ const MOOD_VIDEO: Record<PetMood, AvatarState | null> = {
   idle: "idle",
   dragged: "idle",
   happy: "milestone_level_up",
+  // busy is resolved dynamically from the AI's AvatarState (same source of
+  // truth as AnimatedAvatar) — see PetFace below.
   busy: "working",
   bopping: "idle",
   sleepy: null,
@@ -70,15 +75,20 @@ function PetFace({
   mood,
   size,
   interaction,
+  aiState,
   onInteractionEnd,
 }: {
   skin: PetSkin;
   mood: PetMood;
   size: number;
   interaction: PetInteraction | null;
+  /** The AI's current AvatarState — drives the "busy" mood video, mirroring AnimatedAvatar. */
+  aiState: AvatarState;
   onInteractionEnd: () => void;
 }) {
-  const videoState = MOOD_VIDEO[mood];
+  // "busy" mirrors the AI state (idle/working/making_something/...) via the
+  // same AVATAR_STATE_VIDEO mapping as AnimatedAvatar; other moods are fixed.
+  const videoState: AvatarState | null = mood === "busy" ? aiState : MOOD_VIDEO[mood];
   const player = useVideoPlayer(
     videoState ? avatarVideoSource(videoState) : avatarVideoSource("idle"),
     (p) => {
@@ -576,6 +586,7 @@ export function PetOverlay({
           mood={mood}
           size={PET_SIZE}
           interaction={interaction}
+          aiState={activity.avatarState}
           onInteractionEnd={handleInteractionEnd}
         />
       </Animated.View>
