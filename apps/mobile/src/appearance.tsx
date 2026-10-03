@@ -24,6 +24,7 @@ import {
   MonitorSmartphone,
   Moon,
   RotateCcw,
+  ShieldCheck,
   Sun,
   Trash2,
   User,
@@ -35,6 +36,7 @@ import { API_URL } from "./api";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { ColorWheel } from "./color-wheel";
+import { DevicePermissionsSheet } from "./device-permissions-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
@@ -110,6 +112,7 @@ export function AppearanceScreen() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [wheelSlot, setWheelSlot] = useState<keyof DraftSeed>("primary");
+  const [permOpen, setPermOpen] = useState(false);
 
   // Load user-saved custom presets (after the built-ins).
   useEffect(() => {
@@ -822,6 +825,17 @@ export function AppearanceScreen() {
       <AiThemeModeSection />
 
       <HistorySection />
+
+      <View>
+        <SectionHeading title={t("perm.sheetTitle")} />
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+          {t("perm.intro")}
+        </TText>
+        <Button icon={ShieldCheck} onPress={() => setPermOpen(true)}>
+          {t("perm.sheetTitle")}
+        </Button>
+      </View>
+      {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
     </View>
   );
 }
