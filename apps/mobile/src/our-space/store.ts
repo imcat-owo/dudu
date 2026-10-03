@@ -73,6 +73,18 @@ function newId(): string {
   return `os_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Newest-first sort with insertion-order tiebreak. Entries are appended on
+ * add, so a higher index means newer. Without the tiebreak, two entries in
+ * the same millisecond (common when the AI writes via dialog) sort unstably.
+ */
+function newestFirst<T>(items: T[], ts: (e: T) => number): T[] {
+  return items
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => ts(b.e) - ts(a.e) || b.i - a.i)
+    .map(({ e }) => e);
+}
+
 function todayStr(d: Date = new Date()): string {
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   const day = `${d.getDate()}`.padStart(2, "0");
@@ -135,10 +147,7 @@ export class OurSpaceStore {
 
   async listDiary(limit = 50): Promise<DiaryEntry[]> {
     const all = await readJson<DiaryEntry[]>(this.storage, KEYS.diary, []);
-    return all
-      .slice()
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, Math.max(1, limit));
+    return newestFirst(all, (e) => e.createdAt).slice(0, Math.max(1, limit));
   }
 
   async addDiary(title: string, content: string, date?: string): Promise<DiaryEntry> {
@@ -173,10 +182,7 @@ export class OurSpaceStore {
 
   async listTimeline(limit = 100): Promise<TimelineEvent[]> {
     const all = await readJson<TimelineEvent[]>(this.storage, KEYS.timeline, []);
-    return all
-      .slice()
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, Math.max(1, limit));
+    return newestFirst(all, (e) => e.timestamp).slice(0, Math.max(1, limit));
   }
 
   async addTimeline(
@@ -214,7 +220,7 @@ export class OurSpaceStore {
   async listMemories(confidence?: MemoryConfidence): Promise<MemoryItem[]> {
     const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
     const filtered = confidence ? all.filter((m) => m.confidence === confidence) : all;
-    return filtered.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    return newestFirst(filtered, (m) => m.updatedAt);
   }
 
   async addMemory(text: string, confidence: MemoryConfidence = "sprouting"): Promise<MemoryItem> {
@@ -241,7 +247,7 @@ export class OurSpaceStore {
     const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
     const item = all.find((m) => m.id === id);
     if (!item) return null;
-    if (patch.text !== undefined && patch.text.trim()) item.text = patch.text.trim();
+    if (patch.text?.trim()) item.text = patch.text.trim();
     if (patch.confidence) item.confidence = patch.confidence;
     item.updatedAt = Date.now();
     await writeJson(this.storage, KEYS.memory, all);
