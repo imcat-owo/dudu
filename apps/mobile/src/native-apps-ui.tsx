@@ -21,6 +21,7 @@ import {
   House,
   Mic,
   Music,
+  Smartphone,
   Users,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -43,6 +44,7 @@ const ICONS: Record<NativeAppId, typeof Music> = {
   reminders: BellRing,
   contacts: Users,
   healthkit: HeartPulse,
+  "device-info": Smartphone,
   homekit: House,
   siri: Mic,
   weather: CloudSun,

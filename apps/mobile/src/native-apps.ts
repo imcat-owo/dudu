@@ -9,6 +9,7 @@
  * - calendar / reminders: expo-calendar
  * - contacts: expo-contacts
  * - healthkit: react-native-health (needs dev build / prebuild)
+ * - device-info: expo-battery + expo-device (permission-free, no auth needed)
  *
  * Capabilities with no Expo package are shown honestly as "needs native
  * module" — never faked:
@@ -29,6 +30,7 @@ export type NativeAppId =
   | "reminders"
   | "contacts"
   | "healthkit"
+  | "device-info"
   | "homekit"
   | "siri"
   | "weather"
@@ -86,6 +88,13 @@ export const NATIVE_APPS: Record<NativeAppId, NativeAppDef> = {
     wired: true,
     icon: "HeartPulse",
   },
+  "device-info": {
+    id: "device-info",
+    nameKey: "napp.deviceInfo.name",
+    descKey: "napp.deviceInfo.desc",
+    wired: true,
+    icon: "Smartphone",
+  },
   homekit: {
     id: "homekit",
     nameKey: "napp.homekit.name",
@@ -126,6 +135,7 @@ export const NATIVE_APP_ORDER: NativeAppId[] = [
   "reminders",
   "contacts",
   "healthkit",
+  "device-info",
   "homekit",
   "siri",
   "weather",
@@ -327,6 +337,96 @@ export async function readTodaySteps(): Promise<number> {
   return Math.round(res.value);
 }
 
+/* ---------------- Device info (expo-battery + expo-device) ---------------- */
+
+/**
+ * Device info. Permission-free — no iOS authorization needed, the system
+ * clock and battery APIs are open to every app.
+ */
+export interface DeviceInfo {
+  /** Battery level 0-100, null when unknown. */
+  batteryLevel: number | null;
+  batteryState: "unknown" | "unplugged" | "charging" | "full";
+  lowPowerMode: boolean | null;
+  modelName: string | null;
+  osName: string | null;
+  osVersion: string | null;
+  deviceName: string | null;
+}
+
+export function formatBatteryState(state: DeviceInfo["batteryState"]): StringKey {
+  switch (state) {
+    case "charging":
+      return "napp.deviceInfo.charging";
+    case "full":
+      return "napp.deviceInfo.full";
+    case "unplugged":
+      return "napp.deviceInfo.unplugged";
+    default:
+      return "napp.deviceInfo.unknown";
+  }
+}
+
+/** Read battery + device info. Throws if the native modules are missing. */
+export async function getDeviceInfo(): Promise<DeviceInfo> {
+  const Battery = tryRequire("expo-battery") as {
+    getBatteryLevelAsync?: () => Promise<number>;
+    getBatteryStateAsync?: () => Promise<number>;
+    isLowPowerModeEnabledAsync?: () => Promise<boolean>;
+  } | null;
+  const Device = tryRequire("expo-device") as {
+    modelName?: string | null;
+    osName?: string | null;
+    osVersion?: string | null;
+    deviceName?: string | null;
+  } | null;
+  if (!Battery && !Device) throw new Error(t("napp.deviceInfo.unavailable"));
+
+  let batteryLevel: number | null = null;
+  let batteryState: DeviceInfo["batteryState"] = "unknown";
+  let lowPowerMode: boolean | null = null;
+  if (Battery) {
+    try {
+      const lvl = await Battery.getBatteryLevelAsync?.();
+      batteryLevel = typeof lvl === "number" && lvl >= 0 ? Math.round(lvl * 100) : null;
+    } catch {
+      // leave null — honest unknown
+    }
+    try {
+      const st = await Battery.getBatteryStateAsync?.();
+      batteryState = st === 2 ? "charging" : st === 3 ? "full" : st === 1 ? "unplugged" : "unknown";
+    } catch {
+      // leave unknown
+    }
+    try {
+      const lpm = await Battery.isLowPowerModeEnabledAsync?.();
+      lowPowerMode = typeof lpm === "boolean" ? lpm : null;
+    } catch {
+      // leave null
+    }
+  }
+
+  return {
+    batteryLevel,
+    batteryState,
+    lowPowerMode,
+    modelName: Device?.modelName ?? null,
+    osName: Device?.osName ?? null,
+    osVersion: Device?.osVersion ?? null,
+    deviceName: Device?.deviceName ?? null,
+  };
+}
+
+/**
+ * Device info needs no authorization — "granted" here means the native
+ * modules are present and working. Nothing to request, so request = check.
+ */
+export async function checkDeviceInfoStatus(): Promise<NativeAppStatus> {
+  const Battery = tryRequire("expo-battery");
+  const Device = tryRequire("expo-device");
+  return Battery || Device ? "granted" : "unavailable";
+}
+
 /* ---------------- Unwired capabilities (honest states) ---------------- */
 
 export async function checkUnwired(): Promise<NativeAppStatus> {
@@ -339,6 +439,7 @@ export const checkers: Record<NativeAppId, () => Promise<NativeAppStatus>> = {
   reminders: checkRemindersStatus,
   contacts: checkContactsStatus,
   healthkit: checkHealthKitStatus,
+  "device-info": checkDeviceInfoStatus,
   homekit: checkUnwired,
   siri: checkUnwired,
   weather: checkUnwired,
@@ -351,6 +452,7 @@ export const requesters: Record<NativeAppId, () => Promise<NativeAppStatus>> = {
   reminders: requestReminders,
   contacts: requestContacts,
   healthkit: requestHealthKit,
+  "device-info": checkDeviceInfoStatus,
   homekit: checkUnwired,
   siri: checkUnwired,
   weather: checkUnwired,

@@ -16,6 +16,8 @@ WIRED (real authorization flows, real tools):
 - reminders (napp_reminders_list / napp_reminder_add): expo-calendar.
 - contacts (napp_contacts_search): expo-contacts.
 - healthkit (napp_health_steps): react-native-health (needs dev build).
+- device-info (napp_battery_status): expo-battery + expo-device. Permission-free,
+  no auth needed — always works on a real device.
 
 NOT WIRED YET (shown honestly, never faked):
 - homekit: needs com.apple.developer.homekit entitlement + native module.

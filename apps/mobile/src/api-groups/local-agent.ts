@@ -560,6 +560,10 @@ export function createLocalAgent(opts: {
             const { readTodaySteps } = await import("../native-apps.js");
             return readTodaySteps();
           },
+          getBatteryStatus: async () => {
+            const { getDeviceInfo } = await import("../native-apps.js");
+            return getDeviceInfo();
+          },
         }),
       ];
       const registry = createToolRegistry(tools);

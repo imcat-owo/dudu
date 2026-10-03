@@ -6,6 +6,7 @@
  * - reminders: list reminders, create reminders
  * - contacts: search contacts by name
  * - healthkit: read today's step count
+ * - device-info: battery level / charging state / device model (permission-free)
  *
  * Every tool checks the iOS authorization state FIRST via the hooks —
  * the RN layer owns the native bridges, this pure module must not import them.
@@ -17,6 +18,7 @@
  */
 
 import type { LocalTool } from "./api-groups/local-tools.js";
+import type { DeviceInfo } from "./native-apps.js";
 
 export interface NativeAppToolHooks {
   /** iOS auth state for a capability: granted / denied / undetermined / unavailable / needs-setup */
@@ -46,6 +48,8 @@ export interface NativeAppToolHooks {
   ) => Promise<Array<{ name: string; phone: string | null; id: string }>>;
   /** Today's step count (RN layer implements via react-native-health) */
   getTodaySteps?: () => Promise<number>;
+  /** Battery + device info (RN layer implements via expo-battery/expo-device). No auth needed. */
+  getBatteryStatus?: () => Promise<DeviceInfo>;
 }
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -187,6 +191,37 @@ export function createNativeAppTools(hooks: NativeAppToolHooks = {}): LocalTool[
         const steps = await hooks.getTodaySteps?.();
         if (steps == null) throw new Error("步数现在读不到。");
         return `今天走了 ${steps} 步。`;
+      },
+    },
+    {
+      name: "napp_battery_status",
+      description:
+        "Read the phone's battery level, charging state, and device info (电量）. Permission-free — no authorization needed, always available when the app runs on a real device. Use when she asks about battery, or when you want to warn her the phone is low before something heavy (e.g. a long voice call). Never invent numbers — report what the hook returns.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "native-apps",
+      run: async () => {
+        const info = await hooks.getBatteryStatus?.();
+        if (!info) throw new Error("电量信息现在读不到。");
+        const parts: string[] = [];
+        if (info.batteryLevel != null) {
+          parts.push(`电量 ${info.batteryLevel}%`);
+        }
+        const stateText =
+          info.batteryState === "charging"
+            ? "正在充电"
+            : info.batteryState === "full"
+              ? "已充满"
+              : info.batteryState === "unplugged"
+                ? "没在充电"
+                : null;
+        if (stateText) parts.push(stateText);
+        if (info.lowPowerMode) parts.push("省电模式开着");
+        const device = [info.modelName, info.osName, info.osVersion ? `${info.osVersion}` : null]
+          .filter(Boolean)
+          .join(" · ");
+        if (device) parts.push(device);
+        if (parts.length === 0) return "电量信息读到了，但是空的。";
+        return `${parts.join("，")}。`;
       },
     },
   ];
