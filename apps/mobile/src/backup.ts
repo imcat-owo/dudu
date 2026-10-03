@@ -60,10 +60,12 @@ const PLAIN_KEYS = [
   CUSTOMS_KEY,
   FONT_KEY,
   FONT_SIZE_KEY,
-  TTS_KEY,
-  STT_KEY,
   VOICE_SETTINGS_KEY,
 ];
+
+// TTS/STT configs live in SecureStore in production (voice/store.ts) —
+// never in plain AsyncStorage. They are read/written via the secure backend.
+const SECURE_VOICE_KEYS = [TTS_KEY, STT_KEY] as const;
 
 export interface SecretsExcluded {
   apiKeys: number;
@@ -103,7 +105,7 @@ function stripApiGroup(g: unknown): { group: unknown; hadKey: boolean } {
   const o = g as Record<string, unknown>;
   const hadKey = typeof o.apiKey === "string" && o.apiKey.length > 0;
   const { apiKey: _ak, headers: _h, ...rest } = o;
-  return { group: rest, hadKey };
+  return { group: sanitizeConfigUrls(rest), hadKey };
 }
 
 function stripVoiceConfig(
@@ -127,20 +129,62 @@ async function readJson(kv: KeyValueStore, key: string): Promise<unknown> {
   }
 }
 
+async function readSecureJson(secure: SecureKV, key: string): Promise<unknown> {
+  try {
+    const raw = await secure.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Strip query-string secrets from a URL (e.g. a key pasted as
+ * `?key=sk-xxx` into a URL field). Non-secret params are kept;
+ * non-URL strings pass through untouched.
+ */
+const SECRET_QUERY_PARAM =
+  /^(key|api_key|apikey|token|access_token|secret|password|passwd|auth|authorization)$/i;
+
+export function sanitizeUrl(url: unknown): unknown {
+  if (typeof url !== "string") return url;
+  const q = url.indexOf("?");
+  if (q === -1) return url;
+  const base = url.slice(0, q);
+  const kept = url
+    .slice(q + 1)
+    .split("&")
+    .filter((pair) => {
+      const name = pair.split("=")[0] ?? "";
+      try {
+        return !SECRET_QUERY_PARAM.test(decodeURIComponent(name));
+      } catch {
+        return !SECRET_QUERY_PARAM.test(name);
+      }
+    });
+  return kept.length > 0 ? `${base}?${kept.join("&")}` : base;
+}
+
+/** Sanitize URL-ish fields on a config object (baseUrl/customUrl/url). */
+function sanitizeConfigUrls(cfg: unknown): unknown {
+  if (typeof cfg !== "object" || cfg === null) return cfg;
+  const o = { ...(cfg as Record<string, unknown>) };
+  for (const f of ["baseUrl", "customUrl", "url"]) {
+    if (typeof o[f] === "string") o[f] = sanitizeUrl(o[f]);
+  }
+  return o;
+}
+
 /**
  * Collect everything for a backup. Secrets are stripped (counted in
  * secretsExcluded). Incognito content is never in storage, so it cannot
  * appear here.
  */
-export async function collectBackup(
-  kv: KeyValueStore,
-  secure: SecureKV,
-): Promise<BackupFile> {
+export async function collectBackup(kv: KeyValueStore, secure: SecureKV): Promise<BackupFile> {
   // Chat threads: enumerate by key prefix.
   const allKeys = await kv.getAllKeys();
-  const chatKeys = allKeys.filter(
-    (k) => k.startsWith(CHAT_PREFIX) && k.endsWith(CHAT_SUFFIX),
-  );
+  const chatKeys = allKeys.filter((k) => k.startsWith(CHAT_PREFIX) && k.endsWith(CHAT_SUFFIX));
   const threads: BackupChatThread[] = [];
   for (const key of chatKeys) {
     const id = key.slice(CHAT_PREFIX.length, -CHAT_SUFFIX.length);
@@ -172,25 +216,25 @@ export async function collectBackup(
     const v = await readJson(kv, key);
     if (v !== null) plain[key] = v;
   }
-  // Voice configs: strip custom keys, count them.
+  // Voice configs live in SecureStore in production (voice/store.ts writes
+  // TTS_KEY/STT_KEY there, never to AsyncStorage) — read them from the
+  // secure backend, then strip custom keys and sanitize URLs.
   let ttsKeys = 0;
   let sttKeys = 0;
-  if (plain[TTS_KEY] !== undefined) {
-    const { config, hadKey } = stripVoiceConfig(plain[TTS_KEY], "customKey");
-    plain[TTS_KEY] = config;
-    if (hadKey) ttsKeys += 1;
-  }
-  if (plain[STT_KEY] !== undefined) {
-    const { config, hadKey } = stripVoiceConfig(plain[STT_KEY], "customKey");
-    plain[STT_KEY] = config;
-    if (hadKey) sttKeys += 1;
+  for (const key of SECURE_VOICE_KEYS) {
+    const raw = await readSecureJson(secure, key);
+    if (raw === null) continue;
+    const { config, hadKey } = stripVoiceConfig(raw, "customKey");
+    plain[key] = sanitizeConfigUrls(config);
+    if (hadKey) {
+      if (key === TTS_KEY) ttsKeys += 1;
+      else sttKeys += 1;
+    }
   }
 
   // AI-auth preferences: base key + per-capability keys.
   const aiAuth: Record<string, unknown> = {};
-  const aiAuthKeys = allKeys.filter(
-    (k) => k === AI_AUTH_KEY || k.startsWith(`${AI_AUTH_KEY}.`),
-  );
+  const aiAuthKeys = allKeys.filter((k) => k === AI_AUTH_KEY || k.startsWith(`${AI_AUTH_KEY}.`));
   for (const key of aiAuthKeys) {
     const v = await readJson(kv, key);
     if (v !== null) aiAuth[key] = v;
@@ -268,26 +312,41 @@ export async function applyBackup(
   kv: KeyValueStore,
   secure: SecureKV,
 ): Promise<void> {
-  // Chat threads: wipe existing chat keys first, then write backup's.
-  const allKeys = await kv.getAllKeys();
-  for (const key of allKeys) {
-    if (key.startsWith(CHAT_PREFIX)) {
-      await kv.setItem(key, JSON.stringify([]));
-    }
-  }
+  // Chat threads: write the backup's threads FIRST, then clear stale keys.
+  // Crash-safe ordering — a crash midway leaves old data plus new data,
+  // never a wiped store with nothing written.
+  const wantedIds = new Set<string>();
   for (const thread of backup.chat.threads) {
     if (typeof thread.id !== "string") continue;
+    wantedIds.add(thread.id);
     await kv.setItem(
       `${CHAT_PREFIX}${thread.id}${CHAT_SUFFIX}`,
       JSON.stringify(Array.isArray(thread.messages) ? thread.messages : []),
     );
   }
+  const allKeys = await kv.getAllKeys();
+  for (const key of allKeys) {
+    if (!key.startsWith(CHAT_PREFIX) || !key.endsWith(CHAT_SUFFIX)) continue;
+    const id = key.slice(CHAT_PREFIX.length, -CHAT_SUFFIX.length);
+    if (!wantedIds.has(id)) {
+      await kv.setItem(key, JSON.stringify([]));
+    }
+  }
 
   // API groups (keyless) go back to SecureStore.
   await secure.setItem(GROUPS_KEY, JSON.stringify(backup.apiGroups));
 
-  // Plain keys.
+  // Voice configs go back to SecureStore (production layout — voice/store.ts
+  // reads TTS_KEY/STT_KEY from the secure backend, never AsyncStorage).
+  for (const key of SECURE_VOICE_KEYS) {
+    if (key in backup.plain) {
+      await secure.setItem(key, JSON.stringify(backup.plain[key]));
+    }
+  }
+
+  // Plain keys (voice keys are handled above via the secure backend).
   for (const [key, value] of Object.entries(backup.plain)) {
+    if ((SECURE_VOICE_KEYS as readonly string[]).includes(key)) continue;
     if (!PLAIN_KEYS.includes(key)) continue; // never write unknown keys
     await kv.setItem(key, JSON.stringify(value));
   }
@@ -298,7 +357,8 @@ export async function applyBackup(
     await kv.setItem(key, JSON.stringify(value));
   }
 
-  await kv.setItem(LAST_BACKUP_KEY, JSON.stringify(new Date().toISOString()));
+  // NOTE: LAST_BACKUP_KEY is deliberately NOT written here — "last backup"
+  // means when an export happened, and a restore is not an export.
 }
 
 export async function getLastBackupAt(kv: KeyValueStore): Promise<string | null> {
