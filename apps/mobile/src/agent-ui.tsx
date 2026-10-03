@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Bell,
   CalendarDays,
+  Check,
   ChevronRight,
   CircleDollarSign,
   ClipboardList,
@@ -543,14 +544,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               <TText style={s.heading}>计划</TText>
               {task.plan.map((step, index) => (
                 <View key={step.id} style={[s.row, { gap: 10, alignItems: "flex-start" }]}>
-                  <TText
-                    style={[
-                      s.text,
-                      { color: step.status === "succeeded" ? colors.blueDark : colors.muted },
-                    ]}
-                  >
-                    {step.status === "succeeded" ? "✓" : `${index + 1}.`}
-                  </TText>
+                  {step.status === "succeeded" ? (
+                    <Check size={15} color={colors.blueDark} style={{ marginTop: 3 }} />
+                  ) : (
+                    <TText style={[s.text, { color: colors.muted }]}>{`${index + 1}.`}</TText>
+                  )}
                   <View style={{ flex: 1, gap: 3 }}>
                     <TText style={s.text}>{step.title}</TText>
                     <TText style={s.small}>

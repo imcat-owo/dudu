@@ -107,7 +107,7 @@ function TtsSection() {
       await setAudioModeAsync({ playsInSilentMode: true });
       const player = createAudioPlayer(uri);
       player.play();
-      setTestMsg(`${t("voice.test")} ✓`);
+      setTestMsg(t("voice.test"));
     } catch (e) {
       setTestMsg(e instanceof Error ? e.message : String(e));
     } finally {
