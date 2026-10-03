@@ -152,7 +152,9 @@ export const requesters: Record<PermissionKind, () => Promise<PermissionStatus>>
   location: requestLocationPermission,
   clipboard: () => Promise.resolve<PermissionStatus>("granted"),
   notifications: requestNotificationPermission,
-  bluetooth: () => Promise.resolve<PermissionStatus>("granted"),
+  // BLE module not bundled — never claim granted. UI hides the Allow button
+  // for "unavailable" so this is unreachable, but honesty matters.
+  bluetooth: () => Promise.resolve<PermissionStatus>("unavailable"),
 };
 
 export const checkers: Record<PermissionKind, () => Promise<PermissionStatus>> = {

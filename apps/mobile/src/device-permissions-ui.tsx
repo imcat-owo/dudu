@@ -1,34 +1,39 @@
-import { Bell, Bluetooth, Camera, Clipboard, LocateFixed, Mic } from "lucide-react-native";
+/**
+ * Device permissions settings — her P0 permission suite UI.
+ *
+ * For each of the 5 out-of-app capabilities:
+ *  1. System permission state (granted / denied / not asked / unavailable)
+ *     - "Allow" first explains WHY (Apple HIG), then opens the iOS dialog.
+ *     - Denied offers a path to iOS Settings.
+ *     - Bluetooth honestly reports "unavailable" (no BLE module in this build).
+ *  2. AI authorization preference: ask each time / always allow / never allow.
+ *     Revocable here at any time — this is HER switch, not the AI's.
+ *
+ * Sora gray, compact refined type (12–14px), lucide icons only. Zero emoji.
+ */
+
+import { Bell, Bluetooth, Camera, Check, Clipboard, LocateFixed } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, View } from "react-native";
 import {
-  checkers,
-  PERMISSION_LABELS,
-  type PermissionKind,
-  type PermissionStatus,
-  requesters,
-} from "./device-permissions";
+  AI_AUTH_PREFERENCES,
+  type AiAuthPreference,
+  setAiAuthPreference,
+  useAiAuthPreference,
+} from "./ai-authorization";
+import { CAPABILITIES, CAPABILITY_ORDER, type CapabilityId } from "./capabilities";
+import { checkers, type PermissionStatus, requesters } from "./device-permissions";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, Sheet, useColors, useStyles } from "./ui";
-import { TText } from "./font";
 
-const ICONS: Record<PermissionKind, typeof Mic> = {
-  audio: Mic,
+const ICONS: Record<CapabilityId, typeof Camera> = {
+  bluetooth: Bluetooth,
   photos: Camera,
   location: LocateFixed,
   clipboard: Clipboard,
   notifications: Bell,
-  bluetooth: Bluetooth,
 };
-
-const ORDER: PermissionKind[] = [
-  "audio",
-  "photos",
-  "location",
-  "clipboard",
-  "notifications",
-  "bluetooth",
-];
 
 function statusText(status: PermissionStatus): string {
   switch (status) {
@@ -43,28 +48,144 @@ function statusText(status: PermissionStatus): string {
   }
 }
 
-export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
+function aiAuthLabel(pref: AiAuthPreference): string {
+  switch (pref) {
+    case "always":
+      return t("perm.aiAuth.always");
+    case "never":
+      return t("perm.aiAuth.never");
+    default:
+      return t("perm.aiAuth.ask");
+  }
+}
+
+function CapabilityRow({
+  id,
+  status,
+  busy,
+  onRequest,
+}: {
+  id: CapabilityId;
+  status: PermissionStatus;
+  busy: boolean;
+  onRequest: () => void;
+}) {
   const colors = useColors();
   const s = useStyles();
-  const [statuses, setStatuses] = useState<Record<PermissionKind, PermissionStatus>>({
-    audio: "undetermined",
+  const def = CAPABILITIES[id];
+  const Icon = ICONS[id];
+  const aiPref = useAiAuthPreference(id);
+
+  const statusColor =
+    status === "granted" ? colors.green : status === "denied" ? colors.danger : colors.muted;
+
+  return (
+    <View
+      style={{
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.line,
+        gap: 8,
+      }}
+    >
+      {/* Name + system status */}
+      <View style={[s.between]}>
+        <View style={[s.row, { gap: 10, flex: 1 }]}>
+          <Icon size={18} color={colors.text} />
+          <TText style={[s.text, { fontSize: 14 }]}>{t(def.nameKey)}</TText>
+        </View>
+        <TText style={[s.small, { color: statusColor }]}>{statusText(status)}</TText>
+      </View>
+
+      {/* What this lets the AI do (human language) */}
+      <TText style={[s.small, { fontSize: 12 }]}>{t(def.aiDescriptionKey)}</TText>
+
+      {/* System permission control */}
+      <View style={[s.between]}>
+        <TText style={s.small}>{t("perm.sysPerm")}</TText>
+        {busy ? (
+          <ActivityIndicator color={colors.blueDark} size="small" />
+        ) : status === "granted" ? (
+          <Check size={16} color={colors.green} />
+        ) : status === "denied" ? (
+          <Button small onPress={() => void Linking.openSettings()}>
+            {t("perm.openSettings")}
+          </Button>
+        ) : status === "unavailable" ? (
+          <TText style={s.small}>{t("perm.status.unavailable")}</TText>
+        ) : (
+          <Button small onPress={onRequest}>
+            {t("common.allow")}
+          </Button>
+        )}
+      </View>
+
+      {/* AI authorization preference — her revocable switch */}
+      <View style={[s.between]}>
+        <TText style={s.small}>{t("perm.aiAuth.section")}</TText>
+        <View
+          style={{
+            flexDirection: "row",
+            borderRadius: 8,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: colors.line,
+          }}
+        >
+          {AI_AUTH_PREFERENCES.map((pref) => {
+            const active = aiPref === pref;
+            return (
+              <Pressable
+                key={pref}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => void setAiAuthPreference(id, pref)}
+                style={{
+                  paddingVertical: 5,
+                  paddingHorizontal: 9,
+                  backgroundColor: active ? colors.blueDark : "transparent",
+                }}
+              >
+                <TText
+                  style={[s.small, { fontSize: 11, color: active ? colors.onBlue : colors.muted }]}
+                >
+                  {aiAuthLabel(pref)}
+                </TText>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
+  const s = useStyles();
+  const [statuses, setStatuses] = useState<Record<CapabilityId, PermissionStatus>>({
+    bluetooth: "unavailable",
     photos: "undetermined",
     location: "undetermined",
     clipboard: "granted",
     notifications: "undetermined",
-    bluetooth: "undetermined",
   });
-  const [busy, setBusy] = useState<PermissionKind | null>(null);
+  const [busy, setBusy] = useState<CapabilityId | null>(null);
 
   useEffect(() => {
     let active = true;
     void (async () => {
-      const next = { ...statuses };
-      for (const kind of ORDER) {
+      const next: Record<CapabilityId, PermissionStatus> = {
+        bluetooth: "unavailable",
+        photos: "undetermined",
+        location: "undetermined",
+        clipboard: "granted",
+        notifications: "undetermined",
+      };
+      for (const id of CAPABILITY_ORDER) {
         try {
-          next[kind] = await checkers[kind]();
+          next[id] = (await checkers[id]()) as PermissionStatus;
         } catch {
-          next[kind] = "unavailable";
+          next[id] = "unavailable";
         }
       }
       if (active) setStatuses(next);
@@ -72,14 +193,29 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function request(kind: PermissionKind) {
-    setBusy(kind);
+  /** Apple HIG: explain WHY before the system dialog. */
+  async function requestWithRationale(id: CapabilityId) {
+    const def = CAPABILITIES[id];
+    const go = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        t("perm.whyTitle"),
+        `${t(def.nameKey)}\n\n${t(def.whyKey)}`,
+        [
+          { text: t("perm.whyLater"), style: "cancel", onPress: () => resolve(false) },
+          { text: t("perm.whyContinue"), onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+    if (!go) return;
+    setBusy(id);
     try {
-      const status = await requesters[kind]();
-      setStatuses((prev) => ({ ...prev, [kind]: status }));
+      const status = (await requesters[id]()) as PermissionStatus;
+      setStatuses((prev) => ({ ...prev, [id]: status }));
+    } catch {
+      setStatuses((prev) => ({ ...prev, [id]: "unavailable" as PermissionStatus }));
     } finally {
       setBusy(null);
     }
@@ -87,44 +223,19 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title={t("perm.sheetTitle")} subtitle={t("perm.sheetSubtitle")} onClose={onClose}>
-      <View style={{ gap: 4 }}>
-        <TText style={s.muted}>{t("perm.intro")}</TText>
-        {ORDER.map((kind) => {
-          const Icon = ICONS[kind];
-          const status = statuses[kind];
-          return (
-            <View
-              key={kind}
-              style={[
-                s.between,
-                {
-                  paddingVertical: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.line,
-                },
-              ]}
-            >
-              <View style={[s.row, { gap: 12, flex: 1 }]}>
-                <Icon size={19} color={colors.text} />
-                <View style={{ flex: 1 }}>
-                  <TText style={s.text}>{PERMISSION_LABELS[kind]}</TText>
-                  <TText style={s.small}>{statusText(status)}</TText>
-                </View>
-              </View>
-              {busy === kind ? (
-                <ActivityIndicator color={colors.blueDark} />
-              ) : (
-                status !== "granted" &&
-                status !== "unavailable" && (
-                  <Button small onPress={() => void request(kind)}>
-                    {t("common.allow")}
-                  </Button>
-                )
-              )}
-            </View>
-          );
-        })}
-        <TText style={[s.small, { marginTop: 12 }]}>{t("perm.bluetoothNote")}</TText>
+      <View>
+        <TText style={[s.muted, { fontSize: 13, marginBottom: 4 }]}>{t("perm.intro")}</TText>
+        {CAPABILITY_ORDER.map((id) => (
+          <CapabilityRow
+            key={id}
+            id={id}
+            status={statuses[id]}
+            busy={busy === id}
+            onRequest={() => void requestWithRationale(id)}
+          />
+        ))}
+        <TText style={[s.small, { marginTop: 12, fontSize: 12 }]}>{t("perm.bluetoothNote")}</TText>
+        <View style={{ height: 8 }} />
       </View>
     </Sheet>
   );
