@@ -732,6 +732,13 @@ const zhHans = {
   "threads.savedInWorkspace": "保存在此工作区",
   "threads.planSummary": "计划、文档或消费总结",
   "threads.browserDetail": "浏览器、会话和文档",
+  "threads.newSideChat": "新建侧聊",
+  "threads.retry": "重试对话",
+  "threads.restore": "恢复",
+  "threads.archive": "归档",
+  "threads.loadMore": "加载更多对话",
+  "threads.sideChatNote": "侧边聊天有自己的对话上下文，你的 agent 的记忆是共享的。",
+  "threads.appsNote": "你的对话保存在这个工作区。你可以在 Apps 里管理连接。",
 
   // ---- browser tool card ----
   "browsercard.opening": "正在打开页面",
@@ -795,7 +802,7 @@ const zhHans = {
   "ui.closeDetails": "关闭详情",
   "web.consoleTitle": "远程浏览器会话控制台",
   "web.pdfTitle": "PDF 文档阅读器",
-  "agent.fieldsJsonExample": "{\"full_name\":\"你的名字\",\"consent\":true}",
+  "agent.fieldsJsonExample": '{"full_name":"你的名字","consent":true}',
   "agent.planTitle": "计划：{title}",
   "memory.addedInApps": "在 App 里添加",
   "cal.fallbackName": "你的日历",

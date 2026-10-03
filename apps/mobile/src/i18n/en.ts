@@ -752,6 +752,15 @@ export const enStrings: Record<StringKey, string> = {
   "threads.savedInWorkspace": "Saved in this workspace",
   "threads.planSummary": "A plan, document, or spending summary",
   "threads.browserDetail": "Browser, sessions and documents",
+  "threads.newSideChat": "New side chat",
+  "threads.retry": "Retry conversations",
+  "threads.restore": "Restore",
+  "threads.archive": "Archive",
+  "threads.loadMore": "Load more conversations",
+  "threads.sideChatNote":
+    "Side chats have their own conversation context. Your agent's saved memory is shared.",
+  "threads.appsNote":
+    "Your conversations are saved in this workspace. You can manage connections in Apps.",
 
   // ---- browser tool card ----
   "browsercard.opening": "Opening a page",
@@ -795,7 +804,8 @@ export const enStrings: Record<StringKey, string> = {
   // ---- date & time ----
   "datetime.incomplete": "Enter a complete date and time.",
   "datetime.invalid": "Choose a valid date and time.",
-  "datetime.nonexistent": "This time does not exist in the selected time zone. Choose another time.",
+  "datetime.nonexistent":
+    "This time does not exist in the selected time zone. Choose another time.",
   "datetime.badTimezone": "Choose a valid time zone.",
   "datetime.dateLabel": "{label} date",
   "datetime.timeLabel": "{label} time",
@@ -815,7 +825,7 @@ export const enStrings: Record<StringKey, string> = {
   "ui.closeDetails": "Close details",
   "web.consoleTitle": "Remote browser session console",
   "web.pdfTitle": "PDF document reader",
-  "agent.fieldsJsonExample": "{\"full_name\":\"Your name\",\"consent\":true}",
+  "agent.fieldsJsonExample": '{"full_name":"Your name","consent":true}',
   "agent.planTitle": "Plan: {title}",
   "memory.addedInApps": "User added in Apps",
   "cal.fallbackName": "Your calendar",
