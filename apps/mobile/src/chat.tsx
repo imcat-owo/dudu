@@ -16,6 +16,7 @@ import {
 } from "react";
 import {
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -55,11 +56,19 @@ import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
 import { type AgentMessage, loadLocalHistory, useChatAgent } from "./use-chat-agent";
 import {
+  encodeUserMessageWithImages,
+  parseUserMessageWithImages,
+  type UserImageAttachment,
+} from "./vision/describe";
+import {
   encodeVoiceMessage,
   parseVoiceMessage,
   VoiceBubble,
   VoiceRecorderButton,
 } from "./voice-message";
+import { SpeakButton } from "./voice/speak-button";
+import { transcribeAudio } from "./voice/stt";
+import { useVoiceConfig } from "./voice/store";
 import { useWorkspace } from "./workspace";
 
 const displayParameters = z.record(z.string(), z.unknown());
@@ -265,6 +274,11 @@ export function ChatScreen({
   const [loaded, setLoaded] = useState(false);
   const [picking, setPicking] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  // Local-mode image attachments (vision): picked via expo-image-picker,
+  // processed by the local agent at runTurn time.
+  const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
+  const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
   const [queue] = useState(() => new ConversationQueue());
   const choiceCompletions = useRef(
@@ -444,7 +458,7 @@ export function ChatScreen({
   }
   function send() {
     const text = draft.trim();
-    if (!text || !isReady || !loaded) return;
+    if ((!text && imageAttachments.length === 0) || !isReady || !loaded) return;
     // A new submission can continue after Stop; held follow-ups still need explicit resume.
     if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
       queue.resume();
@@ -452,16 +466,25 @@ export function ChatScreen({
     const files = w.files.filter((f) => attachments.includes(f.id));
     // /img <prompt> → generate an image via Pollinations, insert as image message.
     const imagePrompt = parseImageCommand(text);
-    const outgoing = imagePrompt
-      ? encodeImageMessage(buildImageUrl(imagePrompt), imagePrompt)
-      : text +
+    let outgoing: string;
+    if (imagePrompt) {
+      outgoing = encodeImageMessage(buildImageUrl(imagePrompt), imagePrompt);
+    } else if (imageAttachments.length > 0) {
+      // Local-mode vision: text + images encoded; the local agent resolves
+      // them at runTurn (native image_url or describe pipeline).
+      outgoing = encodeUserMessageWithImages(text, imageAttachments);
+    } else {
+      outgoing =
+        text +
         (files.length
           ? `\n\nAttached documents: ${files.map((f) => `${f.name} (artifact ID: ${f.id})`).join(", ")}`
           : "");
+    }
     enqueue(outgoing);
     setDraft("");
     setInputHeight(44);
     setAttachments([]);
+    setImageAttachments([]);
     setPicking(false);
   }
   function sendVoice(uri: string, duration: number) {
@@ -470,6 +493,45 @@ export function ChatScreen({
       queue.resume();
     setShowResults(false);
     enqueue(encodeVoiceMessage(uri, duration));
+  }
+  async function pickImage() {
+    try {
+      const ImagePicker = await import("expo-image-picker");
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        setError(t("vision.noVision"));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      setImageAttachments((prev) => [
+        ...prev,
+        { uri: asset.uri, name: asset.fileName ?? `image-${Date.now()}.jpg` },
+      ]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+  async function handleRecorded(uri: string, duration: number) {
+    // STT mode: transcribe into the input (editable before send) so the AI
+    // hears text. Voice-message mode: send as an audio bubble (existing).
+    if (voiceSettings.micMode === "transcribe") {
+      setTranscribing(true);
+      try {
+        const text = await transcribeAudio(uri, activeGroup, sttConfig);
+        setDraft((d) => (d.trim() ? `${d.trim()} ${text}` : text));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setTranscribing(false);
+      }
+      return;
+    }
+    sendVoice(uri, duration);
   }
   const messages = agent.messages || [];
   const latestPanelId = latestJevPanelId(messages, threadId);
@@ -615,6 +677,10 @@ export function ChatScreen({
               typeof message.content === "string" ? parseVoiceMessage(message.content) : null;
             const generatedImage =
               typeof message.content === "string" ? parseImageMessage(message.content) : null;
+            const userImages =
+              user && typeof message.content === "string"
+                ? parseUserMessageWithImages(message.content)
+                : null;
             const toolCalls = "toolCalls" in message ? message.toolCalls || [] : [];
             // Social-app row: AI avatar + bubble on the left, user bubble + avatar
             // on the right. Compact by default (owner direction 2026-10-03):
@@ -623,7 +689,7 @@ export function ChatScreen({
             const radius = bubble.radius ?? 16;
             // Tool-call-only assistant messages have no bubble — render the
             // avatar row only when there is visible bubble content.
-            const hasBubble = !!voice || !!generatedImage || !!text;
+            const hasBubble = !!voice || !!generatedImage || !!text || !!userImages;
             return (
               <View key={message.id} style={{ gap: 6 }}>
                 {hasBubble && (
@@ -641,6 +707,31 @@ export function ChatScreen({
                         <VoiceBubble voice={voice} user={user} />
                       ) : generatedImage ? (
                         <ImageBubble image={generatedImage} user={user} />
+                      ) : userImages ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 9,
+                            borderRadius: radius,
+                            borderBottomRightRadius: 6,
+                            backgroundColor: bubble.bg,
+                            gap: 8,
+                          }}
+                        >
+                          {userImages.images.map((img) => (
+                            <Image
+                              key={img.uri}
+                              source={{ uri: img.uri }}
+                              style={{ width: 180, height: 180, borderRadius: 10 }}
+                              resizeMode="cover"
+                            />
+                          ))}
+                          {!!userImages.text.trim() && (
+                            <TText selectable style={[s.text, { color: bubble.fg }]}>
+                              {userImages.text}
+                            </TText>
+                          )}
+                        </View>
                       ) : (
                         !!text && (
                           <View
@@ -658,7 +749,12 @@ export function ChatScreen({
                                 {text}
                               </TText>
                             ) : (
-                              <AssistantResponse content={text} />
+                              <View>
+                                <AssistantResponse content={text} />
+                                <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+                                  <SpeakButton text={text} bubbleFg={bubble.fg} />
+                                </View>
+                              </View>
                             )}
                           </View>
                         )
@@ -972,9 +1068,62 @@ export function ChatScreen({
                 ))}
             </View>
           )}
+          {imageAttachments.length > 0 && (
+            <View style={[s.row, { gap: 6, flexWrap: "wrap", padding: 9 }]}>
+              {imageAttachments.map((img) => (
+                <Pressable
+                  key={img.uri}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("a11y.removeAttachment", { name: img.name })}
+                  onPress={() =>
+                    setImageAttachments((prev) => prev.filter((p) => p.uri !== img.uri))
+                  }
+                  style={[
+                    s.row,
+                    {
+                      gap: 7,
+                      maxWidth: "100%",
+                      backgroundColor: colors.sky,
+                      borderRadius: 16,
+                      paddingHorizontal: 11,
+                      paddingVertical: 8,
+                    },
+                  ]}
+                >
+                  <TText
+                    numberOfLines={1}
+                    style={{ flexShrink: 1, fontSize: 12, color: colors.text }}
+                  >
+                    {img.name}
+                  </TText>
+                  <X size={13} color={colors.muted} />
+                </Pressable>
+              ))}
+            </View>
+          )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
-            {/* Local mode has no backend file store — hide the attach button. */}
-            {mode === "cloud" && (
+            {/* Local mode: image attach for vision (no backend file store needed). */}
+            {mode === "local" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("vision.attachImage")}
+                onPress={() => void pickImage()}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 24,
+                  backgroundColor: pressed ? colors.sky : "transparent",
+                })}
+              >
+                <TText
+                  style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}
+                >
+                  +
+                </TText>
+              </Pressable>
+            ) : (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("a11y.attachDoc")}
@@ -1046,9 +1195,12 @@ export function ChatScreen({
               }
             />
             <VoiceRecorderButton
-              onRecorded={(uri, duration) => sendVoice(uri, duration)}
-              disabled={!loaded || !isReady}
+              onRecorded={(uri, duration) => void handleRecorded(uri, duration)}
+              disabled={!loaded || !isReady || transcribing}
             />
+            {transcribing && (
+              <TText style={[s.small, { color: colors.muted }]}>{t("voice.transcribing")}</TText>
+            )}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={replying ? t("a11y.stopReply") : t("a11y.sendMessage")}
