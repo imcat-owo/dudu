@@ -14,7 +14,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
-import { type StringKey, getLocale, t } from "../i18n";
+import { getLocale, type StringKey, t } from "../i18n";
+import { createImageTools } from "../image/tools.js";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -23,8 +24,6 @@ import { memoryStore } from "../memory/instance.js";
 import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
-import { voiceStore } from "../voice/store.js";
-import { createPodcastTools } from "../voice/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { taskBuddyVideoStore } from "../our-space/task-buddy-video-instance.js";
@@ -48,6 +47,8 @@ import {
   parseUserMessageWithImages,
   VisionError,
 } from "../vision/describe";
+import { voiceStore } from "../voice/store.js";
+import { createPodcastTools } from "../voice/tools.js";
 import {
   type ChatContentBlock,
   type ChatMessage,
@@ -508,7 +509,12 @@ export function createLocalAgent(opts: {
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
         ...createAmbientVideoTools(ambientVideoStore),
-        ...createPodcastTools(voiceStore, taskProgressStore, getLocale() === "en" ? "en" : "zh-Hans"),
+        ...createPodcastTools(
+          voiceStore,
+          taskProgressStore,
+          getLocale() === "en" ? "en" : "zh-Hans",
+        ),
+        ...createImageTools(),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
