@@ -18,6 +18,8 @@ import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
 import { memoryStore } from "../memory/instance.js";
 import type { MemoryStore } from "../memory/store.js";
+import { musicStore } from "../music/instance.js";
+import { createMusicTools } from "../music/tools.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { createOurSpaceTools } from "../our-space/tools.js";
 import { sandboxManager } from "../sandbox/manager";
@@ -318,6 +320,11 @@ export function createLocalAgent(opts: {
    */
   ourSpaceStore?: import("../our-space/store.js").OurSpaceStore;
   /**
+   * Music room store. Defaults to the shared AsyncStorage-backed singleton
+   * (so UI and AI tools see the same data); injectable for tests.
+   */
+  musicStore?: import("../music/store.js").MusicStore;
+  /**
    * AI memory store. Defaults to the shared AsyncStorage-backed singleton;
    * injectable for tests.
    */
@@ -408,6 +415,15 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createMemoryTools(memStore),
+        ...createMusicTools(opts.musicStore ?? musicStore, {
+          // "我们的歌": the AI truly remembers which songs are special.
+          onOursMarked: async (track) => {
+            await memStore.addMemory(
+              `我们的歌：「${track.title}」${track.artist ? ` — ${track.artist}` : ""}。这是我们俩的歌，要记得。`,
+              { category: "relationship", confidence: "confident", source: "music-room", actor: "ai" },
+            );
+          },
+        }),
         ...sandboxTools(sandboxManager),
       ];
       const registry = createToolRegistry(tools);
