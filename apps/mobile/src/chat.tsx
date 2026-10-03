@@ -42,7 +42,7 @@ import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
-import { Button, Card, CheckRow, colors, ErrorNotice, s } from "./ui";
+import {Button, Card, CheckRow, useColors, ErrorNotice, useStyles} from "./ui";
 import {
   encodeVoiceMessage,
   parseVoiceMessage,
@@ -153,6 +153,7 @@ function ServerToolCard({
   result: unknown;
   loading: boolean;
 }) {
+  const s = useStyles();
   const { data } = useAgentWorkspace();
   const { navigate } = useWorkspace();
   let value = result;
@@ -210,6 +211,8 @@ export function ChatScreen({
   thread?: Selection;
   active?: boolean;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { api, workspace: w, refresh, navigate } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
   const { enabled: richThreads, mainId, claimPrompt } = useMuseThread();
