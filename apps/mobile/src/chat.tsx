@@ -279,7 +279,9 @@ export function ChatScreen({
   // processed by the local agent at runTurn time.
   const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
   const [transcribing, setTranscribing] = useState(false);
-  const [thinkingViewing, setThinkingViewing] = useState<string | null>(null);
+  // Thinking drawer: track the message id (not a text snapshot) so the
+  // drawer content live-updates while thinking is still streaming in.
+  const [thinkingId, setThinkingId] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
   const [queue] = useState(() => new ConversationQueue());
@@ -719,7 +721,7 @@ export function ChatScreen({
                         <ThinkingStatus
                           thinking={thinking}
                           streaming={thinkingStreaming}
-                          onOpen={() => setThinkingViewing(thinking)}
+                          onOpen={() => setThinkingId(message.id)}
                         />
                       )}
                       {voice ? (
@@ -1249,9 +1251,13 @@ export function ChatScreen({
         </View>
       </KeyboardAvoidingView>
       <ThinkingDrawer
-        visible={thinkingViewing !== null}
-        thinking={thinkingViewing ?? ""}
-        onClose={() => setThinkingViewing(null)}
+        visible={thinkingId !== null}
+        thinking={
+          (thinkingId
+            ? (messages.find((m) => m.id === thinkingId)?.thinking as string | undefined)
+            : undefined) ?? ""
+        }
+        onClose={() => setThinkingId(null)}
       />
     </View>
   );
