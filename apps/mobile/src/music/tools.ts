@@ -37,6 +37,12 @@ function fmtTrack(t: Track): string {
   return `- ${t.title} — ${t.artist || "unknown artist"} [${t.id}] (${audio}, plays: ${t.playCount})`;
 }
 
+export interface SourceSearchHit {
+  id: string;
+  title: string;
+  artist: string;
+}
+
 export interface MusicToolHooks {
   /**
    * Called after a track is marked as one of "我们的歌".
@@ -44,6 +50,12 @@ export interface MusicToolHooks {
    * truly remembers which songs are special to the two of them.
    */
   onOursMarked?: (track: Track) => Promise<void>;
+  /**
+   * Apple Music catalog search. Wired in local-agent.ts (the RN layer owns
+   * the native MusicKit bridge; this pure module must not import it).
+   * Returns hits or throws with an honest, user-facing reason.
+   */
+  appleSearch?: (query: string, limit: number) => Promise<SourceSearchHit[]>;
 }
 
 /**
@@ -65,14 +77,20 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "music_track_add",
       description:
-        "Add a song to the shared music library (听歌房). Use when she asks you to add/find a song (点歌）. title is required; artist/album/audioUri/lyricsLrc are optional. If you don't have an audio URL, OMIT audioUri — the track becomes a placeholder she can attach audio to later in the music room; tell her honestly it has no audio yet. Optionally put it straight into a playlist via playlistId (default: the 共享歌单 shared playlist).",
+        "Add a song to the shared music library (听歌房). Use when she asks you to add/find a song (点歌）. title is required; artist/album/audioUri/lyricsLrc are optional. LOCAL tracks: if you don't have an audio URL, OMIT audioUri — the track becomes a placeholder she can attach audio to later in the music room; tell her honestly it has no audio yet. APPLE MUSIC tracks: first music_apple_search the catalog, then add with source=\"apple-music\", sourceRef=<catalog song id>, artworkUrl=<artwork> — these play through her Apple Music subscription. Optionally put it straight into a playlist via playlistId (default: the 共享歌单 shared playlist).",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string", description: "Song title (required)." },
           artist: { type: "string", description: "Artist name." },
           album: { type: "string", description: "Album name." },
-          audioUri: { type: "string", description: "Audio file URL or local URI. Omit if unknown." },
+          audioUri: { type: "string", description: "Audio file URL or local URI (local tracks). Omit if unknown." },
+          source: {
+            type: "string",
+            description: 'Where it plays from: "local" (default) or "apple-music" (needs the Apple Music catalog song id as sourceRef).',
+          },
+          sourceRef: { type: "string", description: "Apple Music catalog song id (required when source is apple-music)." },
+          artworkUrl: { type: "string", description: "Remote artwork URL (e.g. from Apple Music catalog search)." },
           lyricsLrc: { type: "string", description: "Lyrics in LRC format ([mm:ss.xx] line)." },
           playlistId: { type: "string", description: "Playlist to add into (default: shared)." },
         },
@@ -85,7 +103,10 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           title: strArg(args, "title"),
           artist: strArg(args, "artist"),
           album: strArg(args, "album"),
+          source: strArg(args, "source") === "apple-music" ? "apple-music" : "local",
+          sourceRef: strArg(args, "sourceRef"),
           audioUri: strArg(args, "audioUri"),
+          artworkUrl: strArg(args, "artworkUrl"),
           lyricsLrc: strArg(args, "lyricsLrc") || undefined,
           addedBy: ai,
         });
@@ -119,6 +140,35 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           .slice(0, 10)
           .map(fmtTrack)
           .join("\n");
+      },
+    },
+    {
+      name: "music_apple_search",
+      description:
+        "Search the Apple Music catalog (needs her Apple Music authorization + subscription — if it fails, tell her honestly to authorize Apple Music in the music room instead of pretending). Returns catalog songs with ids; feed a chosen id into music_track_add with source=\"apple-music\" so it becomes playable in the room.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Song title / artist to search." },
+          limit: { type: "number", description: "Max results (default 10)." },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+      manualId: "music-room",
+      run: async (args) => {
+        if (!hooks.appleSearch) {
+          return "Apple Music search is not wired up in this context. Local tracks still work.";
+        }
+        try {
+          const hits = await hooks.appleSearch(strArg(args, "query"), 10);
+          if (hits.length === 0) return "No matching songs in the Apple Music catalog.";
+          return hits.map((s) => `- ${s.title} — ${s.artist} [catalog id: ${s.id}]`).join("\n");
+        } catch (e) {
+          // The hook throws honest, user-facing reasons (not available /
+          // not authorized / no subscription) — pass them straight through.
+          return e instanceof Error ? e.message : "Apple Music search failed.";
+        }
       },
     },
     {

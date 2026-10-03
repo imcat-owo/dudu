@@ -29,6 +29,12 @@
       "expo-notifications",
       "expo-audio",
       [
+        "@wwdrew/expo-apple-music",
+        {
+          "musicUsageDescription": "听歌房用 Apple Music 播放你点播的歌曲。"
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "允许 OpenMuse 使用相机扫描二维码以导入主题。"

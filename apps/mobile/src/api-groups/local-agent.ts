@@ -423,6 +423,30 @@ export function createLocalAgent(opts: {
               { category: "relationship", confidence: "confident", source: "music-room", actor: "ai" },
             );
           },
+          // Apple Music catalog search (RN layer owns the MusicKit bridge).
+          appleSearch: async (query, limit) => {
+            const { getMusicSource } = await import("../music/sources.js");
+            const src = getMusicSource("apple-music");
+            if (!src.isAvailable()) {
+              throw new Error(
+                "Apple Music is not available in this build (the native MusicKit module is missing — the app needs a fresh native build with the Apple Music plugin). Local tracks still work.",
+              );
+            }
+            const state = await src.getAuthState();
+            if (state !== "authorized") {
+              const hint =
+                state === "not-subscribed"
+                  ? "She doesn't have an active Apple Music subscription, so catalog playback won't work."
+                  : state === "denied"
+                    ? "She declined Apple Music access."
+                    : "She hasn't authorized Apple Music yet.";
+              throw new Error(
+                `${hint} Ask her to authorize Apple Music in the music room first — I can't search the catalog until she does.`,
+              );
+            }
+            const hits = await src.search(query, limit);
+            return hits.map((h) => ({ id: h.id, title: h.title, artist: h.artist }));
+          },
         }),
         ...sandboxTools(sandboxManager),
       ];

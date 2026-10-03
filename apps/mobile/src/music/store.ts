@@ -28,19 +28,47 @@ export interface LyricLine {
   text: string;
 }
 
+/** Where a track plays from. Pluggable — future sources add a value here. */
+export type TrackSource = "local" | "apple-music";
+
 export interface Track {
   id: string;
   title: string;
   artist: string;
   album: string;
-  /** Audio file/URL. Empty string = no audio yet (UI must say so honestly). */
+  /** Where this track plays from. */
+  source: TrackSource;
+  /**
+   * Source-scoped playable reference. local: unused (audioUri is the ref).
+   * apple-music: the Apple Music catalog song id.
+   */
+  sourceRef: string;
+  /** Audio file/URL for local tracks. Empty string = no audio yet (UI must say so honestly). */
   audioUri: string;
-  /** Cover image URI. Empty = default art. */
+  /** Cover image URI (picked). Empty = default art. */
   coverUri: string;
+  /** Remote artwork URL (e.g. Apple Music artwork). Fallback when coverUri is empty. */
+  artworkUrl: string;
   lyrics: LyricLine[];
   addedBy: MusicAuthor;
   playCount: number;
   createdAt: number;
+}
+
+/**
+ * Migration guard: tracks stored before multi-source support lack the new
+ * fields. Normalize on read so old data keeps working.
+ */
+export function normalizeTrack(t: Track): Track {
+  return {
+    ...t,
+    source: t.source === "apple-music" ? "apple-music" : "local",
+    sourceRef: typeof t.sourceRef === "string" ? t.sourceRef : "",
+    artworkUrl: typeof t.artworkUrl === "string" ? t.artworkUrl : "",
+    audioUri: typeof t.audioUri === "string" ? t.audioUri : "",
+    coverUri: typeof t.coverUri === "string" ? t.coverUri : "",
+    lyrics: Array.isArray(t.lyrics) ? t.lyrics : [],
+  };
 }
 
 export type PlaylistKind = "shared" | "ours" | "custom";
@@ -208,21 +236,31 @@ export class MusicStore {
     title: string;
     artist?: string;
     album?: string;
+    source?: TrackSource;
+    sourceRef?: string;
     audioUri?: string;
     coverUri?: string;
+    artworkUrl?: string;
     lyricsLrc?: string;
     addedBy: MusicAuthor;
   }): Promise<Track> {
     return this.enqueueWrite(async () => {
       const title = input.title.trim();
       if (!title) throw new Error("Track title is required.");
+      const source: TrackSource = input.source === "apple-music" ? "apple-music" : "local";
+      if (source === "apple-music" && !(input.sourceRef ?? "").trim()) {
+        throw new Error("Apple Music tracks need a catalog song id (sourceRef).");
+      }
       const track: Track = {
         id: newId("trk"),
         title,
         artist: (input.artist ?? "").trim(),
         album: (input.album ?? "").trim(),
+        source,
+        sourceRef: (input.sourceRef ?? "").trim(),
         audioUri: (input.audioUri ?? "").trim(),
         coverUri: (input.coverUri ?? "").trim(),
+        artworkUrl: (input.artworkUrl ?? "").trim(),
         lyrics: input.lyricsLrc ? parseLrc(input.lyricsLrc) : [],
         addedBy: input.addedBy,
         playCount: 0,
@@ -238,12 +276,13 @@ export class MusicStore {
 
   async getTrack(id: string): Promise<Track | null> {
     const all = await readJson<Track[]>(this.storage, KEYS.tracks, []);
-    return all.find((t) => t.id === id) ?? null;
+    const t = all.find((x) => x.id === id);
+    return t ? normalizeTrack(t) : null;
   }
 
   async listTracks(): Promise<Track[]> {
     const all = await readJson<Track[]>(this.storage, KEYS.tracks, []);
-    return [...all].sort((a, b) => b.createdAt - a.createdAt);
+    return all.map(normalizeTrack).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   async searchTracks(query: string): Promise<Track[]> {
@@ -260,7 +299,16 @@ export class MusicStore {
 
   async updateTrack(
     id: string,
-    patch: { title?: string; artist?: string; album?: string; audioUri?: string; coverUri?: string; lyricsLrc?: string },
+    patch: {
+      title?: string;
+      artist?: string;
+      album?: string;
+      audioUri?: string;
+      coverUri?: string;
+      artworkUrl?: string;
+      sourceRef?: string;
+      lyricsLrc?: string;
+    },
   ): Promise<Track | null> {
     return this.enqueueWrite(async () => {
       const all = await readJson<Track[]>(this.storage, KEYS.tracks, []);
@@ -275,6 +323,8 @@ export class MusicStore {
       if (patch.album !== undefined) t.album = patch.album.trim();
       if (patch.audioUri !== undefined) t.audioUri = patch.audioUri.trim();
       if (patch.coverUri !== undefined) t.coverUri = patch.coverUri.trim();
+      if (patch.artworkUrl !== undefined) t.artworkUrl = patch.artworkUrl.trim();
+      if (patch.sourceRef !== undefined) t.sourceRef = patch.sourceRef.trim();
       if (patch.lyricsLrc !== undefined) t.lyrics = parseLrc(patch.lyricsLrc);
       await writeJson(this.storage, KEYS.tracks, all);
       this.emit();
