@@ -10,7 +10,7 @@
  */
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import type { MemoryConfidence, OurSpaceStore, TimelineKind } from "./store.js";
+import type { OurSpaceStore, TimelineKind } from "./store.js";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -165,82 +165,6 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       },
     },
 
-    // ---- Memory garden ----
-    {
-      name: "memory_add",
-      description:
-        "Plant a memory in the memory garden. confidence: blooming (you are sure about this), sprouting (you are not quite sure yet), ask (you want to ask her about it). Be honest about confidence — never mark blooming what you are unsure of.",
-      parameters: {
-        type: "object",
-        properties: {
-          text: { type: "string", description: "What you want to remember." },
-          confidence: { type: "string", description: "blooming, sprouting, or ask." },
-        },
-        required: ["text"],
-        additionalProperties: false,
-      },
-      manualId: "our-space",
-      run: async (args) => {
-        const cRaw = strArg(args, "confidence");
-        const confidence: MemoryConfidence =
-          cRaw === "blooming" || cRaw === "ask" ? cRaw : "sprouting";
-        const item = await store.addMemory(strArg(args, "text"), confidence);
-        return `Memory planted (${item.confidence}).`;
-      },
-    },
-    {
-      name: "memory_read",
-      description:
-        "Read memories from the garden. Optionally filter by confidence: blooming, sprouting, or ask.",
-      parameters: {
-        type: "object",
-        properties: {
-          confidence: {
-            type: "string",
-            description: "Optional filter: blooming, sprouting, or ask.",
-          },
-        },
-        additionalProperties: false,
-      },
-      manualId: "our-space",
-      run: async (args) => {
-        const cRaw = strArg(args, "confidence");
-        const confidence: MemoryConfidence | undefined =
-          cRaw === "blooming" || cRaw === "sprouting" || cRaw === "ask" ? cRaw : undefined;
-        const items = await store.listMemories(confidence);
-        if (items.length === 0) return "The memory garden is empty.";
-        return items.map((m) => `— [${m.confidence}] ${m.text} (id: ${m.id})`).join("\n");
-      },
-    },
-    {
-      name: "memory_update",
-      description:
-        "Update a planted memory: correct its text, or change its confidence (e.g. sprouting -> blooming when she confirms it, or ask -> blooming after she answers).",
-      parameters: {
-        type: "object",
-        properties: {
-          id: { type: "string", description: "The memory id (from memory_read)." },
-          text: { type: "string", description: "Corrected text (optional)." },
-          confidence: { type: "string", description: "New confidence (optional)." },
-        },
-        required: ["id"],
-        additionalProperties: false,
-      },
-      manualId: "our-space",
-      run: async (args) => {
-        const id = strArg(args, "id");
-        if (!id) throw new ToolError("Missing required argument: id.");
-        const cRaw = strArg(args, "confidence");
-        const item = await store.updateMemory(id, {
-          text: strArg(args, "text") || undefined,
-          confidence:
-            cRaw === "blooming" || cRaw === "sprouting" || cRaw === "ask" ? cRaw : undefined,
-        });
-        if (!item) throw new ToolError(`No memory with id "${id}".`);
-        return `Memory updated (${item.confidence}): ${item.text}`;
-      },
-    },
-
     // ---- Tell-her-later ----
     {
       name: "tell_later_add",
@@ -277,8 +201,7 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       },
       manualId: "our-space",
       run: async (args) => {
-        const includeDone =
-          args.include_done === undefined ? true : args.include_done === true;
+        const includeDone = args.include_done === undefined ? true : args.include_done === true;
         const items = await store.listTellLater(includeDone);
         if (items.length === 0) return "Nothing queued to tell her.";
         return items

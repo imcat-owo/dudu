@@ -53,17 +53,18 @@ describe("our-space store", () => {
     assert.equal(list[1].kind, "moment");
   });
 
-  it("memory garden: confidence states and update", async () => {
-    const s = new OurSpaceStore(fakeStorage());
-    const m1 = await s.addMemory("She likes gray", "blooming");
-    await s.addMemory("Maybe she likes tea", "sprouting");
-    await s.addMemory("Ask about the trip", "ask");
-    assert.equal((await s.listMemories()).length, 3);
-    assert.equal((await s.listMemories("blooming")).length, 1);
-    const updated = await s.updateMemory(m1.id, { confidence: "sprouting" });
-    assert.equal(updated?.confidence, "sprouting");
-    assert.equal(await s.updateMemory("nope", {}), null);
-    assert.equal(await s.deleteMemory(m1.id), true);
+  it("memory garden: reads from canonical backend via gardenStateOf", async () => {
+    // The garden UI reads from the canonical memory store (one truth source).
+    const { MemoryStore } = await import("../src/memory/store.js");
+    const { gardenStateOf } = await import("../src/memory/types.js");
+    const ms = new MemoryStore(fakeStorage());
+    await ms.addMemory("She likes gray", { confidence: "confident" });
+    await ms.addMemory("Maybe she likes tea", { confidence: "unsure" });
+    await ms.addMemory("Ask about the trip", { confidence: "question" });
+    const all = await ms.listCurrent();
+    assert.equal(all.length, 3);
+    const states = all.map(gardenStateOf).sort();
+    assert.deepEqual(states, ["ask", "blooming", "sprouting"]);
   });
 
   it("tell-later: queue, complete, filter", async () => {
@@ -110,18 +111,21 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 12 dialog-operated tools", () => {
+  it("exposes 9 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 12);
+    assert.equal(tools.length, 9);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read", "my_status_update",
       "diary_write", "diary_read",
       "timeline_add", "timeline_read",
-      "memory_add", "memory_read", "memory_update",
       "tell_later_add", "tell_later_read", "tell_later_done",
     ]) {
       assert.ok(names.includes(n), `missing tool ${n}`);
+    }
+    // No duplicate memory tools — the canonical memory/ system owns memory_*.
+    for (const n of ["memory_add", "memory_read", "memory_update"]) {
+      assert.ok(!names.includes(n), `duplicate tool ${n}`);
     }
   });
 
@@ -134,20 +138,20 @@ describe("our-space tools", () => {
     assert.match(read, /Test day/);
   });
 
-  it("memory_add defaults to sprouting, update to blooming", async () => {
-    const store = new OurSpaceStore(fakeStorage());
-    const reg = createToolRegistry(createOurSpaceTools(store));
-    await reg.execute("memory_add", { text: "unsure thing" }, ctx);
-    const list = await store.listMemories();
-    assert.equal(list[0].confidence, "sprouting");
-    const upd = await reg.execute("memory_update", { id: list[0].id, confidence: "blooming" }, ctx);
-    assert.match(upd, /blooming/);
+  it("canonical memory tools: add/search/confirm round-trip", async () => {
+    const { MemoryStore } = await import("../src/memory/store.js");
+    const { createMemoryTools } = await import("../src/memory/tools.js");
+    const ms = new MemoryStore(fakeStorage());
+    const reg = createToolRegistry(createMemoryTools(ms));
+    const out = await reg.execute("memory_add", { content: "She likes gray" }, ctx);
+    assert.match(out, /remembered/i);
+    const found = await reg.execute("memory_search", { query: "gray" }, ctx);
+    assert.match(found, /She likes gray/);
   });
 
   it("unknown ids throw helpful errors", async () => {
     const store = new OurSpaceStore(fakeStorage());
     const reg = createToolRegistry(createOurSpaceTools(store));
-    await assert.rejects(() => reg.execute("memory_update", { id: "nope" }, ctx));
     await assert.rejects(() => reg.execute("tell_later_done", { id: "nope" }, ctx));
     await assert.rejects(() => reg.execute("no_such_tool", {}, ctx));
   });

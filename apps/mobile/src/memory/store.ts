@@ -66,6 +66,63 @@ function isRecord(v: unknown): v is MemoryRecord {
 export class MemoryStore {
   constructor(private storage: MemoryStorage) {}
 
+  // ---------- reactivity ----------
+  private listeners = new Set<() => void>();
+
+  /** Subscribe to any mutation. Returns unsubscribe. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(): void {
+    for (const l of this.listeners) {
+      try {
+        l();
+      } catch {
+        // A broken listener must never break the store.
+      }
+    }
+  }
+
+  // ---------- write serialization ----------
+  // Mutations are read-modify-write on full JSON; serialize them so
+  // concurrent writes (extract task + tool call) can't lose one.
+  private writeChain: Promise<void> = Promise.resolve();
+
+  private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.writeChain.then(fn, fn);
+    // Keep the chain alive even if this write fails; the caller still
+    // sees the real error. Emit on success so the UI refreshes live.
+    this.writeChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run.then((v) => {
+      this.emit();
+      return v;
+    });
+  }
+
+  // ---------- auto-extract preference ----------
+
+  /** User-facing kill switch for background memory extraction (default on). */
+  async getAutoExtract(): Promise<boolean> {
+    try {
+      const raw = await this.storage.getItem("openmuse.memory.v1.autoExtract");
+      return raw !== "0";
+    } catch {
+      return true;
+    }
+  }
+
+  async setAutoExtract(on: boolean): Promise<void> {
+    await this.storage.setItem("openmuse.memory.v1.autoExtract", on ? "1" : "0");
+    this.emit();
+  }
+
   // ---------- low-level ----------
 
   private async loadMemories(): Promise<MemoryRecord[]> {
@@ -134,44 +191,48 @@ export class MemoryStore {
   }
 
   async setProfile(key: string, value: string, actor: "ai" | "user" = "ai"): Promise<ProfileEntry> {
-    const k = key.trim();
-    if (!k) throw new Error("Profile key must not be empty.");
-    const v = value.trim();
-    if (!v) throw new Error("Profile value must not be empty.");
-    let raw: Record<string, ProfileEntry> = {};
-    try {
-      const existing = await this.storage.getItem(KEYS.profile);
-      if (existing) {
-        const parsed: unknown = JSON.parse(existing);
-        if (typeof parsed === "object" && parsed !== null)
-          raw = parsed as Record<string, ProfileEntry>;
+    return this.enqueueWrite(async () => {
+      const k = key.trim();
+      if (!k) throw new Error("Profile key must not be empty.");
+      const v = value.trim();
+      if (!v) throw new Error("Profile value must not be empty.");
+      let raw: Record<string, ProfileEntry> = {};
+      try {
+        const existing = await this.storage.getItem(KEYS.profile);
+        if (existing) {
+          const parsed: unknown = JSON.parse(existing);
+          if (typeof parsed === "object" && parsed !== null)
+            raw = parsed as Record<string, ProfileEntry>;
+        }
+      } catch {
+        raw = {};
       }
-    } catch {
-      raw = {};
-    }
-    const entry: ProfileEntry = { key: k, value: v, updatedAt: Date.now() };
-    raw[k] = entry;
-    await this.storage.setItem(KEYS.profile, JSON.stringify(raw));
-    await this.logEvent(null, "profile_set", actor, k);
-    return entry;
+      const entry: ProfileEntry = { key: k, value: v, updatedAt: Date.now() };
+      raw[k] = entry;
+      await this.storage.setItem(KEYS.profile, JSON.stringify(raw));
+      await this.logEvent(null, "profile_set", actor, k);
+      return entry;
+    });
   }
 
   async deleteProfile(key: string): Promise<boolean> {
-    let raw: Record<string, ProfileEntry> = {};
-    try {
-      const existing = await this.storage.getItem(KEYS.profile);
-      if (existing) {
-        const parsed: unknown = JSON.parse(existing);
-        if (typeof parsed === "object" && parsed !== null)
-          raw = parsed as Record<string, ProfileEntry>;
+    return this.enqueueWrite(async () => {
+      let raw: Record<string, ProfileEntry> = {};
+      try {
+        const existing = await this.storage.getItem(KEYS.profile);
+        if (existing) {
+          const parsed: unknown = JSON.parse(existing);
+          if (typeof parsed === "object" && parsed !== null)
+            raw = parsed as Record<string, ProfileEntry>;
+        }
+      } catch {
+        return false;
       }
-    } catch {
-      return false;
-    }
-    if (!(key in raw)) return false;
-    delete raw[key];
-    await this.storage.setItem(KEYS.profile, JSON.stringify(raw));
-    return true;
+      if (!(key in raw)) return false;
+      delete raw[key];
+      await this.storage.setItem(KEYS.profile, JSON.stringify(raw));
+      return true;
+    });
   }
 
   // ---------- memories ----------
@@ -201,28 +262,30 @@ export class MemoryStore {
       actor?: "ai" | "user";
     } = {},
   ): Promise<MemoryRecord> {
-    const text = content.trim();
-    if (!text) throw new Error("Memory content must not be empty.");
-    if (text.length > 2000) throw new Error("Memory content too long (max 2000 chars).");
-    const now = Date.now();
-    const rec: MemoryRecord = {
-      id: newId("mem"),
-      content: text,
-      category: opts.category && isMemoryCategory(opts.category) ? opts.category : "other",
-      confidence:
-        opts.confidence && isMemoryConfidence(opts.confidence) ? opts.confidence : "unsure",
-      validFrom: now,
-      validTo: null,
-      supersededBy: null,
-      source: (opts.source ?? "").slice(0, 300),
-      createdAt: now,
-      updatedAt: now,
-    };
-    const list = await this.loadMemories();
-    list.push(rec);
-    await this.saveMemories(list);
-    await this.logEvent(rec.id, "add", opts.actor ?? "ai");
-    return rec;
+    return this.enqueueWrite(async () => {
+      const text = content.trim();
+      if (!text) throw new Error("Memory content must not be empty.");
+      if (text.length > 2000) throw new Error("Memory content too long (max 2000 chars).");
+      const now = Date.now();
+      const rec: MemoryRecord = {
+        id: newId("mem"),
+        content: text,
+        category: opts.category && isMemoryCategory(opts.category) ? opts.category : "other",
+        confidence:
+          opts.confidence && isMemoryConfidence(opts.confidence) ? opts.confidence : "unsure",
+        validFrom: now,
+        validTo: null,
+        supersededBy: null,
+        source: (opts.source ?? "").slice(0, 300),
+        createdAt: now,
+        updatedAt: now,
+      };
+      const list = await this.loadMemories();
+      list.push(rec);
+      await this.saveMemories(list);
+      await this.logEvent(rec.id, "add", opts.actor ?? "ai");
+      return rec;
+    });
   }
 
   /**
@@ -235,33 +298,35 @@ export class MemoryStore {
     newContent: string,
     opts: { actor?: "ai" | "user"; source?: string } = {},
   ): Promise<MemoryRecord> {
-    const text = newContent.trim();
-    if (!text) throw new Error("Memory content must not be empty.");
-    const list = await this.loadMemories();
-    const old = list.find((m) => m.id === id);
-    if (!old) throw new Error(`Memory not found: ${id}.`);
-    if (old.validTo !== null)
-      throw new Error("That memory is already superseded; add a new one instead.");
-    const now = Date.now();
-    const next: MemoryRecord = {
-      id: newId("mem"),
-      content: text,
-      category: old.category,
-      confidence: old.confidence,
-      validFrom: now,
-      validTo: null,
-      supersededBy: null,
-      source: (opts.source ?? old.source).slice(0, 300),
-      createdAt: now,
-      updatedAt: now,
-    };
-    old.validTo = now;
-    old.supersededBy = next.id;
-    old.updatedAt = now;
-    list.push(next);
-    await this.saveMemories(list);
-    await this.logEvent(next.id, "supersede", opts.actor ?? "ai", `replaces ${old.id}`);
-    return next;
+    return this.enqueueWrite(async () => {
+      const text = newContent.trim();
+      if (!text) throw new Error("Memory content must not be empty.");
+      const list = await this.loadMemories();
+      const old = list.find((m) => m.id === id);
+      if (!old) throw new Error(`Memory not found: ${id}.`);
+      if (old.validTo !== null)
+        throw new Error("That memory is already superseded; add a new one instead.");
+      const now = Date.now();
+      const next: MemoryRecord = {
+        id: newId("mem"),
+        content: text,
+        category: old.category,
+        confidence: old.confidence,
+        validFrom: now,
+        validTo: null,
+        supersededBy: null,
+        source: (opts.source ?? old.source).slice(0, 300),
+        createdAt: now,
+        updatedAt: now,
+      };
+      old.validTo = now;
+      old.supersededBy = next.id;
+      old.updatedAt = now;
+      list.push(next);
+      await this.saveMemories(list);
+      await this.logEvent(next.id, "supersede", opts.actor ?? "ai", `replaces ${old.id}`);
+      return next;
+    });
   }
 
   /**
@@ -269,16 +334,18 @@ export class MemoryStore {
    * in dialog (memory_confirm). Only the confidence changes.
    */
   async confirmMemory(id: string, actor: "ai" | "user" = "user"): Promise<MemoryRecord> {
-    const list = await this.loadMemories();
-    const rec = list.find((m) => m.id === id);
-    if (!rec) throw new Error(`Memory not found: ${id}.`);
-    if (rec.validTo !== null)
-      throw new Error("That memory is superseded; confirm the current one instead.");
-    rec.confidence = "confident";
-    rec.updatedAt = Date.now();
-    await this.saveMemories(list);
-    await this.logEvent(rec.id, "confirm", actor);
-    return rec;
+    return this.enqueueWrite(async () => {
+      const list = await this.loadMemories();
+      const rec = list.find((m) => m.id === id);
+      if (!rec) throw new Error(`Memory not found: ${id}.`);
+      if (rec.validTo !== null)
+        throw new Error("That memory is superseded; confirm the current one instead.");
+      rec.confidence = "confident";
+      rec.updatedAt = Date.now();
+      await this.saveMemories(list);
+      await this.logEvent(rec.id, "confirm", actor);
+      return rec;
+    });
   }
 
   /**
@@ -286,13 +353,15 @@ export class MemoryStore {
    * only the fact that a delete happened, not the content.
    */
   async deleteMemory(id: string, actor: "ai" | "user" = "user"): Promise<boolean> {
-    const list = await this.loadMemories();
-    const idx = list.findIndex((m) => m.id === id);
-    if (idx === -1) return false;
-    list.splice(idx, 1);
-    await this.saveMemories(list);
-    await this.logEvent(null, "delete", actor, `deleted ${id}`);
-    return true;
+    return this.enqueueWrite(async () => {
+      const list = await this.loadMemories();
+      const idx = list.findIndex((m) => m.id === id);
+      if (idx === -1) return false;
+      list.splice(idx, 1);
+      await this.saveMemories(list);
+      await this.logEvent(null, "delete", actor, `deleted ${id}`);
+      return true;
+    });
   }
 
   /** Wipe everything (hers to decide). Returns counts. */

@@ -29,13 +29,15 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
 import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
+import { memoryStore } from "./memory/instance";
+import type { MemoryRecord } from "./memory/types";
+import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { ourSpaceStore } from "./our-space/instance";
 import type {
   AiStatus,
   DiaryEntry,
   MemoryConfidence,
-  MemoryItem,
   TellLaterItem,
   TimelineEvent,
 } from "./our-space/store";
@@ -503,14 +505,17 @@ const GARDEN_SECTIONS: {
 ];
 
 function GardenView() {
-  const v = useOurSpaceVersion();
   const colors = useColors();
   const { tokens } = useTheme();
-  const [items, setItems] = useState<MemoryItem[]>([]);
+  const [items, setItems] = useState<MemoryRecord[]>([]);
+  const [mv, setMv] = useState(0);
 
+  // Garden reads from the canonical memory backend (one truth source).
+  // gardenStateOf maps confident->blooming, unsure->sprouting, question->ask.
+  useEffect(() => memoryStore.subscribe(() => setMv((x) => x + 1)), []);
   useEffect(() => {
-    void ourSpaceStore.listMemories().then(setItems);
-  }, [v]);
+    void memoryStore.listCurrent().then(setItems);
+  }, [mv]);
 
   if (items.length === 0) return <EmptyState icon={Flower2} text={t("space.garden.empty")} />;
 
@@ -518,7 +523,7 @@ function GardenView() {
     <FadeIn>
       <View style={{ gap: 24 }}>
         {GARDEN_SECTIONS.map((sec) => {
-          const list = items.filter((m) => m.confidence === sec.confidence);
+          const list = items.filter((m) => gardenStateOf(m) === sec.confidence);
           if (list.length === 0) return null;
           const Icon = sec.icon;
           const isBloom = sec.confidence === "blooming";
@@ -583,7 +588,7 @@ function GardenView() {
                       <TText
                         style={{ flex: 1, color: colors.text, fontSize: 13.5, lineHeight: 22 }}
                       >
-                        {m.text}
+                        {m.content}
                       </TText>
                     </View>
                   </StaggerIn>

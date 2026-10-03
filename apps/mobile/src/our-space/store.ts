@@ -33,14 +33,6 @@ export interface TimelineEvent {
   kind: TimelineKind;
 }
 
-export interface MemoryItem {
-  id: string;
-  text: string;
-  confidence: MemoryConfidence;
-  createdAt: number;
-  updatedAt: number;
-}
-
 export interface TellLaterItem {
   id: string;
   text: string;
@@ -64,7 +56,6 @@ export interface OurSpaceStorage {
 const KEYS = {
   diary: "openmuse.ourspace.v1.diary",
   timeline: "openmuse.ourspace.v1.timeline",
-  memory: "openmuse.ourspace.v1.memory",
   tellLater: "openmuse.ourspace.v1.telllater",
   status: "openmuse.ourspace.v1.status",
 } as const;
@@ -211,55 +202,6 @@ export class OurSpaceStore {
     const next = all.filter((e) => e.id !== id);
     if (next.length === all.length) return false;
     await writeJson(this.storage, KEYS.timeline, next);
-    this.emit();
-    return true;
-  }
-
-  // ---- Memory garden ----
-
-  async listMemories(confidence?: MemoryConfidence): Promise<MemoryItem[]> {
-    const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
-    const filtered = confidence ? all.filter((m) => m.confidence === confidence) : all;
-    return newestFirst(filtered, (m) => m.updatedAt);
-  }
-
-  async addMemory(text: string, confidence: MemoryConfidence = "sprouting"): Promise<MemoryItem> {
-    const t = text.trim();
-    if (!t) throw new Error("Memory text is required.");
-    const item: MemoryItem = {
-      id: newId(),
-      text: t,
-      confidence,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
-    all.push(item);
-    await writeJson(this.storage, KEYS.memory, all);
-    this.emit();
-    return item;
-  }
-
-  async updateMemory(
-    id: string,
-    patch: { text?: string; confidence?: MemoryConfidence },
-  ): Promise<MemoryItem | null> {
-    const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
-    const item = all.find((m) => m.id === id);
-    if (!item) return null;
-    if (patch.text?.trim()) item.text = patch.text.trim();
-    if (patch.confidence) item.confidence = patch.confidence;
-    item.updatedAt = Date.now();
-    await writeJson(this.storage, KEYS.memory, all);
-    this.emit();
-    return item;
-  }
-
-  async deleteMemory(id: string): Promise<boolean> {
-    const all = await readJson<MemoryItem[]>(this.storage, KEYS.memory, []);
-    const next = all.filter((m) => m.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.memory, next);
     this.emit();
     return true;
   }
