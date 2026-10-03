@@ -57,6 +57,7 @@ import {
   timeLabel,
 } from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
+import { t, type StringKey } from "./i18n";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();
   if (detail.type === "computer") return <ComputerSheet />;
@@ -71,14 +72,14 @@ export function Details({ detail }: { detail: Detail }) {
   if (detail.type === "review") return <ReviewDetail initial={detail.action} />;
   if (detail.type === "browser") return <BrowserDetail initial={detail.browser} />;
   return (
-    <Sheet title="Your workspace" subtitle="万物皆有容身之处。" onClose={close}>
+    <Sheet title={t("detail.homeTitle")} subtitle={t("detail.homeSubtitle")} onClose={close}>
       {[
-        { section: "mail" as const, title: "Mail", icon: MailIcon },
-        { section: "calendar" as const, title: "Calendar", icon: CalendarDays },
-        { section: "browser" as const, title: "Browser", icon: Globe2 },
-        { section: "files" as const, title: "Files", icon: FileText },
-        { section: "activity" as const, title: "Activity", icon: Clock3 },
-        { section: "connections" as const, title: "Connections", icon: ShieldCheck },
+        { section: "mail" as const, title: t("section.mail.title"), icon: MailIcon },
+        { section: "calendar" as const, title: t("section.calendar.title"), icon: CalendarDays },
+        { section: "browser" as const, title: t("section.browser.title"), icon: Globe2 },
+        { section: "files" as const, title: t("section.files.title"), icon: FileText },
+        { section: "activity" as const, title: t("section.activity.title"), icon: Clock3 },
+        { section: "connections" as const, title: t("section.connections.title"), icon: ShieldCheck },
       ].map((item) => (
         <LinkRow
           key={item.section}
@@ -135,13 +136,13 @@ function MailDetail({ mail: m }: { mail: Mail }) {
   return (
     <Sheet
       title={m.subject}
-      subtitle={`${thread.length} message${thread.length === 1 ? "" : "s"} in this conversation`}
+      subtitle={t("mail.threadMessages", { count: thread.length })}
       onClose={close}
     >
       {loading && (
         <View style={[s.row, { gap: 10, paddingBottom: 20 }]}>
           <ActivityIndicator color={colors.blueDark} />
-          <Text style={s.muted}>加载对话中…</Text>
+          <Text style={s.muted}>{t("chat.placeholder.loading")}</Text>
         </View>
       )}
       {thread.map((message) => (
@@ -150,7 +151,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
             <View style={{ gap: 4, flex: 1 }}>
               <Text style={s.heading}>{message.sender}</Text>
               <Text style={s.small}>{message.from}</Text>
-              <Text style={s.small}>To: {message.to.join(", ")}</Text>
+              <Text style={s.small}>{t("mail.to")}: {message.to.join(", ")}</Text>
             </View>
             <Text style={s.small}>
               {dateLabel(message.date)} · {timeLabel(message.date)}
@@ -166,7 +167,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
               <LinkRow
                 key={id}
                 title={file.name}
-                detail={`${file.pageCount} pages · PDF attachment`}
+                detail={t("mail.pdfAttachment", { count: file.pageCount })}
                 icon={FileText}
                 onPress={() => open({ type: "file", file })}
               />
@@ -177,14 +178,14 @@ function MailDetail({ mail: m }: { mail: Mail }) {
                 icon={FileText}
                 onPress={() => void importAttachment(id)}
               >
-                {decodeURIComponent(id.split(":").slice(2).join(":")) || "Open attachment"}
+                {decodeURIComponent(id.split(":").slice(2).join(":")) || t("mail.openAttachment")}
               </Button>
             );
           })}
         </Card>
       ))}
       <ErrorNotice error={error} />
-      {!!error && <Button onPress={() => setRetry(retry + 1)}>重新加载对话</Button>}
+      {!!error && <Button onPress={() => setRetry(retry + 1)}>{t("mail.reloadConversation")}</Button>}
       <Button
         primary
         icon={Reply}
@@ -205,7 +206,7 @@ function MailDetail({ mail: m }: { mail: Mail }) {
           })
         }
       >
-        Write a reply
+        {t("mail.writeReply")}
       </Button>
     </Sheet>
   );
@@ -257,7 +258,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
           ...(draft?.id ? { id: draft.id } : {}),
         });
         await refresh();
-        notify("Draft saved in OpenMuse.");
+        notify(t("mail.draftSaved"));
         close();
       }
     } catch (e) {
@@ -268,12 +269,12 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
   }
   return (
     <Sheet
-      title={draft?.threadId ? "Write a reply" : "A new message"}
-      subtitle={`From ${w.profile.email} · saved privately in OpenMuse`}
+      title={draft?.threadId ? t("mail.replyTitle") : t("mail.newTitle")}
+      subtitle={t("mail.editorSubtitle", { email: w.profile.email })}
       onClose={close}
     >
       <Field
-        label="To"
+        label={t("mail.to")}
         value={to}
         onChangeText={setTo}
         placeholder="person@example.com"
@@ -283,40 +284,40 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
       <View style={{ flexDirection: "row", gap: 16 }}>
         <View style={{ flex: 1 }}>
           <Field
-            label="Cc"
+            label={t("mail.cc")}
             value={cc}
             onChangeText={setCc}
-            placeholder="可选"
+            placeholder={t("mail.optional")}
             autoCapitalize="none"
           />
         </View>
         <View style={{ flex: 1 }}>
           <Field
-            label="Bcc"
+            label={t("mail.bcc")}
             value={bcc}
             onChangeText={setBcc}
-            placeholder="可选"
+            placeholder={t("mail.optional")}
             autoCapitalize="none"
           />
         </View>
       </View>
       <Field
-        label="Subject"
+        label={t("mail.subject")}
         value={subject}
         onChangeText={setSubject}
-        placeholder="你在想什么？"
+        placeholder={t("mail.subjectPlaceholder")}
       />
       <Field
-        label="Message"
+        label={t("mail.message")}
         value={body}
         onChangeText={setBody}
         multiline
-        placeholder="开始你的消息…"
+        placeholder={t("mail.bodyPlaceholder")}
         style={{ minHeight: 210 }}
       />
       {w.files.length > 0 && (
         <Card style={{ padding: 16, marginBottom: 18 }}>
-          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>附件</Text>
+          <Text style={[s.heading, { fontSize: 13, marginBottom: 5 }]}>{t("mail.attachments")}</Text>
           {w.files.map((f) => (
             <CheckRow
               key={f.id}
@@ -342,7 +343,7 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
           disabled={!!busy}
           onPress={() => void save(true)}
         >
-          Review email
+          {t("mail.reviewEmail")}
         </Button>
         <Button
           icon={Save}
@@ -350,11 +351,11 @@ function EmailEditor({ draft }: { draft?: Partial<EmailDraft> & { id?: string } 
           disabled={!!busy}
           onPress={() => void save(false)}
         >
-          Save draft
+          {t("mail.saveDraft")}
         </Button>
       </View>
       <Text style={[s.small, { marginTop: 13 }]}>
-        你会核对具体的收件人、消息和附件 before anything is sent.
+        {t("mail.reviewNote")}
       </Text>
     </Sheet>
   );
@@ -437,20 +438,20 @@ function EventEditor({
   }
   return (
     <Sheet
-      title={e ? "Make a little time" : "Something to look forward to"}
+      title={e ? t("event.editTitle") : t("event.newTitle")}
       subtitle={
-        e ? "Edit this event, then review your changes." : "Create an event in your calendar."
+        e ? t("event.editSubtitle") : t("event.newSubtitle")
       }
       onClose={close}
     >
       <Field
-        label="Event title"
+        label={t("event.title")}
         value={title}
         onChangeText={setTitle}
-        placeholder="你要为什么安排时间？"
+        placeholder={t("event.titlePlaceholder")}
       />
       <CheckRow
-        label="All-day event"
+        label={t("event.allDay")}
         checked={allDay}
         onPress={() => {
           try {
@@ -472,46 +473,46 @@ function EventEditor({
         }}
       />
       <DateTimeEditor
-        label="Starts"
+        label={t("event.starts")}
         value={start}
         onChange={setStart}
         timeZone={zone}
         allDay={allDay}
       />
-      <DateTimeEditor label="Ends" value={end} onChange={setEnd} timeZone={zone} allDay={allDay} />
+      <DateTimeEditor label={t("event.ends")} value={end} onChange={setEnd} timeZone={zone} allDay={allDay} />
       {allDay && (
         <Text style={[s.small, { marginBottom: 15 }]}>
-          结束日期是你活动最后一天的后一天。
+          {t("event.allDayNote")}
         </Text>
       )}
       <Field
-        label="Time zone"
+        label={t("event.timeZone")}
         value={zone}
         onChangeText={setZone}
         placeholder="America/Los_Angeles"
       />
       <Field
-        label="Location or meeting link"
+        label={t("event.location")}
         value={location}
         onChangeText={setLocation}
-        placeholder="可选"
+        placeholder={t("mail.optional")}
       />
       <Field
-        label="Attendees"
+        label={t("event.attendees")}
         value={attendees}
         onChangeText={setAttendees}
-        placeholder="邮箱地址，用逗号分隔"
+        placeholder={t("event.attendeesPlaceholder")}
       />
       <Field
-        label="Notes"
+        label={t("event.notes")}
         value={description}
         onChangeText={setDescription}
         multiline
-        placeholder="还有其他要注意的吗？"
+        placeholder={t("event.notesPlaceholder")}
       />
       {!!conflicts.length && (
         <Card style={{ backgroundColor: colors.orange, padding: 16, marginBottom: 16 }}>
-          <Text style={s.heading}>这个时间重叠了</Text>
+          <Text style={s.heading}>{t("event.conflictTitle")}</Text>
           {conflicts.map((c) => (
             <Text key={c.id} style={s.muted}>
               {c.title} · {timeLabel(c.start, c.timeZone)}–{timeLabel(c.end, c.timeZone)}
@@ -522,11 +523,11 @@ function EventEditor({
       <ErrorNotice error={error} />
       <View style={[s.row, { gap: 10, flexWrap: "wrap" }]}>
         <Button primary icon={ShieldCheck} busy={busy} onPress={() => void propose()}>
-          Review {e ? "changes" : "event"}
+          {e ? t("event.reviewChanges") : t("event.reviewEvent")}
         </Button>
         {e && (
           <Button icon={Trash2} disabled={busy} danger onPress={() => void propose(true)}>
-            Review deletion
+            {t("event.reviewDeletion")}
           </Button>
         )}
       </View>
@@ -570,7 +571,7 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
         if (action.kind === "calendar.update") {
           const eventId = action.data.eventId;
           if (typeof eventId !== "string" || !eventId)
-            throw new Error("The event reference is missing. Open the event in Calendar again.");
+            throw new Error(t("event.refMissing"));
           next = { type: "event", event: { ...draft, id: eventId } };
         } else next = { type: "event", draft };
       }
@@ -589,11 +590,11 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
   const email = action.kind === "email.send";
   return (
     <Sheet
-      title={pending ? "One last look" : action.title}
+      title={pending ? t("review.lastLook") : action.title}
       subtitle={
         w.mode === "sample"
-          ? "This action stays in your local workspace."
-          : "Review this exact action before it changes your connected account."
+          ? t("review.localOnly")
+          : t("review.reviewExact")
       }
       onClose={close}
     >
@@ -606,43 +607,43 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
           <Text style={s.small}>{action.kind.replace(".", " · ")}</Text>
         </View>
         <Chip tint={pending ? colors.lavender : colors.green}>
-          {action.status.replace(/_/g, " ")}
+          {t(`review.status.${action.status}` as StringKey)}
         </Chip>
       </View>
       <Card style={{ gap: 13 }}>
-        <ReviewLine label="Account" value={action.account || w.profile.email} />
+        <ReviewLine label={t("review.account")} value={action.account || w.profile.email} />
         {email ? (
           <>
-            <ReviewLine label="To" value={arrayText(d.to)} />
-            <ReviewLine label="Cc" value={arrayText(d.cc) || "None"} />
-            <ReviewLine label="Bcc" value={arrayText(d.bcc) || "None"} />
-            <ReviewLine label="Subject" value={String(d.subject || "")} />
+            <ReviewLine label={t("mail.to")} value={arrayText(d.to)} />
+            <ReviewLine label={t("mail.cc")} value={arrayText(d.cc) || t("review.none")} />
+            <ReviewLine label={t("mail.bcc")} value={arrayText(d.bcc) || t("review.none")} />
+            <ReviewLine label={t("mail.subject")} value={String(d.subject || "")} />
             <View style={s.divider} />
             <Text selectable style={[s.text, { lineHeight: 25 }]}>
               {String(d.body || "")}
             </Text>
             <View style={s.divider} />
-            <Text style={s.label}>附件</Text>
+            <Text style={s.label}>{t("mail.attachments")}</Text>
             {Array.isArray(d.attachmentIds) && d.attachmentIds.length ? (
               d.attachmentIds.map((id) => {
                 const file = w.files.find((f) => f.id === id);
                 return (
                   <Text key={String(id)} style={s.text}>
-                    {file?.name || String(id)} · version {String(id).slice(-8)}
+                    {file?.name || String(id)} · {t("review.version", { v: String(id).slice(-8) })}
                   </Text>
                 );
               })
             ) : (
-              <Text style={s.muted}>无附件</Text>
+              <Text style={s.muted}>{t("review.noAttachments")}</Text>
             )}
           </>
         ) : (
           <>
-            <ReviewLine label="Event" value={String(d.title || "")} />
+            <ReviewLine label={t("review.event")} value={String(d.title || "")} />
             {action.kind !== "calendar.delete" && (
               <>
                 <ReviewLine
-                  label="Starts"
+                  label={t("event.starts")}
                   value={
                     d.allDay
                       ? String(d.start || "")
@@ -650,25 +651,25 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
                   }
                 />
                 <ReviewLine
-                  label="Ends"
+                  label={t("event.ends")}
                   value={
                     d.allDay
-                      ? `${String(d.end || "")} (exclusive)`
+                      ? `${String(d.end || "")} ${t("event.exclusive")}`
                       : `${dateLabel(String(d.end || ""), { year: "numeric", month: "short", day: "numeric", timeZone: String(d.timeZone || "UTC") })} · ${timeLabel(String(d.end || ""), String(d.timeZone || "UTC"))}`
                   }
                 />
-                <ReviewLine label="Time zone" value={String(d.timeZone || "")} />
-                <ReviewLine label="All day" value={d.allDay ? "Yes" : "No"} />
-                <ReviewLine label="Location" value={String(d.location || "None")} />
-                <ReviewLine label="Attendees" value={arrayText(d.attendees) || "Just you"} />
-                <ReviewLine label="Notes" value={String(d.description || "None")} />
+                <ReviewLine label={t("event.timeZone")} value={String(d.timeZone || "")} />
+                <ReviewLine label={t("review.allDay")} value={d.allDay ? t("review.yes") : t("review.no")} />
+                <ReviewLine label={t("review.location")} value={String(d.location || t("review.none"))} />
+                <ReviewLine label={t("event.attendees")} value={arrayText(d.attendees) || t("review.justYou")} />
+                <ReviewLine label={t("event.notes")} value={String(d.description || t("review.none"))} />
               </>
             )}
-            <ReviewLine label="Calendar" value={String(d.calendarId || "primary")} />
+            <ReviewLine label={t("review.calendar")} value={String(d.calendarId || "primary")} />
             <Text style={s.small}>
               {action.kind === "calendar.delete"
-                ? "This removes the event and may notify its attendees."
-                : "Attendees may receive an invitation or update from your connected calendar."}
+                ? t("review.deleteWarning")
+                : t("review.updateWarning")}
             </Text>
           </>
         )}
@@ -684,38 +685,36 @@ function ReviewDetail({ initial }: { initial: ActionProposal }) {
       {pending ? (
         <>
           <Text style={[s.small, { marginVertical: 17 }]}>
-            Review expires{" "}
-            {new Date(action.expiresAt).toLocaleString(undefined, {
+            {t("review.expiryNote", { date: new Date(action.expiresAt).toLocaleString(undefined, {
               year: "numeric",
               month: "short",
               day: "numeric",
               hour: "numeric",
               minute: "2-digit",
               timeZoneName: "short",
-            })}
-            . Your approval applies only to the details shown above.
+            }) })}
           </Text>
           <View style={[s.row, { gap: 10, flexWrap: "wrap" }]}>
             <Button primary icon={Check} busy={busy} onPress={() => void decide("approve")}>
               {w.mode === "sample"
-                ? "Approve locally"
+                ? t("review.approveLocally")
                 : email
-                  ? "Approve & send"
-                  : "Approve change"}
+                  ? t("review.approveSend")
+                  : t("review.approveChange")}
             </Button>
             {action.kind !== "calendar.delete" && (
               <Button icon={Edit3} disabled={busy} onPress={() => void edit()}>
-                Edit details
+                {t("review.editDetails")}
               </Button>
             )}
             <Button icon={X} disabled={busy} onPress={() => void decide("deny")}>
-              Don’t proceed
+              {t("review.dontProceed")}
             </Button>
           </View>
         </>
       ) : (
         <Button style={{ alignSelf: "flex-start", marginTop: 19 }} onPress={close}>
-          Done
+          {t("common.done")}
         </Button>
       )}
     </Sheet>
@@ -775,7 +774,7 @@ function FileDetail({ file: f }: { file: Artifact }) {
       });
       if (await Sharing.isAvailableAsync())
         await Sharing.shareAsync(target, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
-      else throw new Error("Sharing is not available on this device.");
+      else throw new Error(t("file.shareUnavailable"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -783,32 +782,32 @@ function FileDetail({ file: f }: { file: Artifact }) {
   return (
     <Sheet
       title={f.name}
-      subtitle={`${f.pageCount} pages · ${Math.max(1, Math.round(f.size / 1024))} KB · ${f.source}`}
+      subtitle={t("file.sizeDetail", { pages: f.pageCount, kb: Math.max(1, Math.round(f.size / 1024)), source: f.source })}
       onClose={close}
       wide
     >
       <PdfReader url={url} token={api.token} pageCount={f.pageCount} />
       <View style={[s.row, { gap: 10, marginVertical: 18, flexWrap: "wrap" }]}>
         <Button icon={Download} onPress={() => void share()}>
-          {Platform.OS === "web" ? "Open / download" : "Save or share"}
+          {Platform.OS === "web" ? t("file.openDownload") : t("file.saveOrShare")}
         </Button>
         <Button
           icon={Send}
           onPress={() => open({ type: "email", draft: { attachmentIds: [f.id] } })}
         >
-          Attach to email
+          {t("file.attachToEmail")}
         </Button>
       </View>
       {f.fields && f.fields.length > 0 && (
         <Card>
-          <SectionHeading title="填写此表单" />
+          <SectionHeading title={t("file.fillForm")} />
           <Text style={[s.muted, { marginBottom: 18 }]}>
-            在下面填写详情。保存会创建新副本并保留 the original intact.
+            {t("file.fillNote")}
           </Text>
           {f.fields.map((field) =>
             field.type === "unsupported" ? (
               <Text key={field.name} style={s.muted}>
-                {field.name} · this field type is not supported
+                {t("file.unsupportedField", { name: field.name })}
               </Text>
             ) : field.type === "checkbox" ? (
               <CheckRow
@@ -827,14 +826,14 @@ function FileDetail({ file: f }: { file: Artifact }) {
             ),
           )}
           <Button primary icon={Save} busy={busy} onPress={() => void fill()}>
-            Save filled copy
+            {t("file.saveFilled")}
           </Button>
         </Card>
       )}
       <ErrorNotice error={error} />
       <Text style={[s.small, { marginTop: 15 }]}>
-        Added {dateLabel(f.createdAt)}
-        {f.parentId ? " · filled copy" : ""}
+        {t("file.addedOn", { date: dateLabel(f.createdAt) })}
+        {f.parentId ? t("file.filledCopy") : ""}
       </Text>
     </Sheet>
   );
@@ -888,8 +887,8 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
       const files = result.files;
       notify(
         files.length
-          ? `${files.length} PDF download${files.length === 1 ? "" : "s"} added to Files.`
-          : "No new PDF downloads in this session.",
+          ? t("browser.pdfsAdded", { count: files.length })
+          : t("browser.noNewPdfs"),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -919,14 +918,14 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
   return (
     <Sheet
       title={browserSite(browser.url)}
-      subtitle={`${browser.status} · updated ${timeLabel(browser.updatedAt)}`}
+      subtitle={t("browser.statusLine", { status: t(`browser.status.${browser.status}` as StringKey), time: timeLabel(browser.updatedAt) })}
       onClose={close}
       wide
     >
       <View style={[s.row, { gap: 10, marginBottom: 16 }]}>
         <View style={{ flex: 1 }}>
           <Field
-            label="Website address"
+            label={t("browser.addressLabel")}
             value={url}
             onChangeText={setUrl}
             autoCapitalize="none"
@@ -935,18 +934,18 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
           />
         </View>
         <Button primary busy={busy} disabled={loading || !url.trim()} onPress={() => void mutate()}>
-          {browser.status === "closed" ? "Reopen" : browser.status === "error" ? "Reconnect" : "Go"}
+          {browser.status === "closed" ? t("browser.reopenShort") : browser.status === "error" ? t("browser.reconnectShort") : t("browser.go")}
         </Button>
       </View>
       <ErrorNotice error={error} />
       {loading ? (
         <View style={[s.row, { gap: 10, paddingVertical: 24 }]}>
           {error ? (
-            <Button onPress={() => setRetry(retry + 1)}>重试连接</Button>
+            <Button onPress={() => setRetry(retry + 1)}>{t("browser.reconnectShort")}</Button>
           ) : (
             <>
               <ActivityIndicator color={colors.blueDark} />
-              <Text style={s.muted}>连接浏览器中…</Text>
+              <Text style={s.muted}>{t("browser.connectingBrowser")}</Text>
             </>
           )}
         </View>
@@ -962,12 +961,12 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
         <Empty
           icon={Globe2}
           title={
-            browser.status === "closed" ? "This session is closed" : "Preview is not available"
+            browser.status === "closed" ? t("browser.sessionClosed") : t("browser.noPreview")
           }
           detail={
             browser.status === "closed"
-              ? "Your profile and downloads are saved. Reopen to continue where you left off."
-              : "Reconnect to continue with your saved browser profile."
+              ? t("browser.profileSaved")
+              : t("browser.reconnectProfile")
           }
         />
       )}
@@ -977,22 +976,22 @@ function BrowserDetail({ initial }: { initial: BrowserSession }) {
             icon={ExternalLink}
             onPress={() => void Linking.openURL(api.url(browser.consoleUrl || ""))}
           >
-            Open browser in a window
+            {t("browser.openInWindow")}
           </Button>
         )}
         {!loading && (
           <Button icon={RotateCw} disabled={busy} onPress={() => setRetry(retry + 1)}>
-            Refresh connection
+            {t("browser.refreshConnection")}
           </Button>
         )}
         {!loading && browser.status !== "closed" && (
           <Button icon={Download} busy={busy} onPress={() => void importDownloads()}>
-            Import PDF downloads
+            {t("browser.importPdfs")}
           </Button>
         )}
         {!loading && browser.status !== "closed" && (
           <Button icon={X} danger busy={busy} onPress={() => void mutate(true)}>
-            Close session
+            {t("browser.closeSession")}
           </Button>
         )}
       </View>

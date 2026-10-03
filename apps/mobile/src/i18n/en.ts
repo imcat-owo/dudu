@@ -281,6 +281,7 @@ export const enStrings: Record<StringKey, string> = {
   "event.reviewEvent": "Review event",
   "event.reviewDeletion": "Review deletion",
   "event.refMissing": "The event reference is missing. Open the event in Calendar again.",
+  "event.exclusive": "(exclusive)",
 
   // ---- review / approval ----
   "review.lastLook": "One last look",

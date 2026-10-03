@@ -278,6 +278,7 @@ const zhHans = {
   "event.reviewEvent": "检查日程",
   "event.reviewDeletion": "检查删除",
   "event.refMissing": "找不到这个日程，请去日历里重新打开。",
+  "event.exclusive": "（不含当日）",
 
   // ---- review / approval ----
   "review.lastLook": "最后一眼",
