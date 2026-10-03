@@ -467,6 +467,7 @@ export function createTaskProgressTools(
           status,
           backgroundUri: null,
         });
+        await taskStore.saveIndex();
         return `Task card updated: "${task.name}" ${Math.round(task.progress * 100)}% (${task.status}).`;
       },
     },
@@ -486,6 +487,7 @@ export function createTaskProgressTools(
         const id = strArg(args, "id");
         if (!id) throw new ToolError("id is required.");
         await taskStore.remove(id);
+        await taskStore.saveIndex();
         return `Task card "${id}" dismissed.`;
       },
     },
