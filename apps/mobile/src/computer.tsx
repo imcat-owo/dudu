@@ -13,6 +13,7 @@ import type { BrowserSession } from "../../../packages/domain/src";
 import { browserAddress } from "./browser-address";
 import { useComputerDraft } from "./computer-drafts";
 import { LinuxWorkspace } from "./computer-workspace";
+import { t } from "./i18n";
 import { Button, Card, colors, ErrorNotice, Field, LinkRow, Sheet, s } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -25,7 +26,7 @@ export function ComputerEntry() {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Agent computer — take control"
+      accessibilityLabel={t("a11y.computerEntry")}
       onPress={() => open({ type: "computer" })}
       style={[
         s.row,
@@ -41,8 +42,12 @@ export function ComputerEntry() {
     >
       <Monitor size={13} color={colors.muted} />
       <Text style={{ fontSize: 12, color: colors.muted }}>
-        Computer
-        {!available ? " · offline" : active ? " · take control" : " · ready"}
+        {t("computer.entry")}
+        {!available
+          ? t("computer.offline")
+          : active
+            ? t("computer.takeControlShort")
+            : t("computer.ready")}
       </Text>
       <View
         style={{
@@ -70,19 +75,19 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.text, { fontWeight: "600" }]}>浏览器</Text>
+          <Text style={[s.text, { fontWeight: "600" }]}>{t("computer.tab.browser")}</Text>
           <Text numberOfLines={1} style={s.small}>
             {browser.status === "closed"
-              ? "Session saved"
+              ? t("browser.sessionSaved")
               : browser.status === "error"
-                ? "Needs attention"
+                ? t("browser.needsAttention")
                 : browser.title}
           </Text>
         </View>
       </View>
       {browser.previewUrl && browser.status === "active" && !failed ? (
         <Image
-          accessibilityLabel={`Browser preview: ${browser.title}`}
+          accessibilityLabel={t("a11y.browserPreview", { title: browser.title })}
           source={{ uri: browser.previewUrl }}
           style={{ width: "100%", aspectRatio: 1.6, borderRadius: 11, backgroundColor: "#FFF" }}
           resizeMode="contain"
@@ -100,16 +105,16 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
         >
           <Globe2 size={30} color={colors.muted} />
           <Text numberOfLines={2} style={[s.muted, { textAlign: "center" }]}>
-            {failed ? "Preview unavailable. Open the browser to reconnect." : browser.url}
+            {failed ? t("browser.previewUnavailable") : browser.url}
           </Text>
         </View>
       )}
       <Button onPress={() => open({ type: "browser", browser })}>
         {browser.status === "closed"
-          ? "Reopen browser"
+          ? t("browser.reopen")
           : browser.status === "error"
-            ? "Reconnect browser"
-            : "Take control"}
+            ? t("browser.reconnect")
+            : t("browser.takeControl")}
       </Button>
     </Card>
   );
@@ -154,8 +159,8 @@ export function ComputerSheet() {
   }
   return (
     <Sheet
-      title="Agent 电脑"
-      subtitle="Your agent works here. Step in whenever you need."
+      title={t("computer.sheetTitle")}
+      subtitle={t("computer.sheetSubtitle")}
       onClose={close}
     >
       <View style={{ gap: 20 }}>
@@ -165,11 +170,13 @@ export function ComputerSheet() {
           >
             <Monitor size={28} color={colors.blueDark} />
             <View style={{ flex: 1 }}>
-              <Text style={s.heading}>{available ? "Browser connected" : "Browser offline"}</Text>
+              <Text style={s.heading}>
+                {available ? t("computer.browserConnected") : t("computer.browserOffline")}
+              </Text>
               <Text style={s.muted}>
                 {available
-                  ? "Your agent’s browser and documents, in one place."
-                  : "Start the browser worker to connect this computer."}
+                  ? t("computer.browserConnectedDesc")
+                  : t("computer.browserOfflineDesc")}
               </Text>
             </View>
           </View>
@@ -182,7 +189,11 @@ export function ComputerSheet() {
               icon={item === "Browser" ? Globe2 : item === "Terminal" ? Terminal : FolderOpen}
               onPress={() => setTab(item)}
             >
-              {item}
+              {item === "Browser"
+                ? t("computer.tab.browser")
+                : item === "Terminal"
+                  ? t("computer.tab.terminal")
+                  : t("computer.tab.files")}
             </Button>
           ))}
         </View>
@@ -194,7 +205,7 @@ export function ComputerSheet() {
           <>
             <View>
               <Field
-                label="Website address"
+                label={t("browser.addressLabel")}
                 value={url}
                 onChangeText={setUrl}
                 placeholder="https://example.com"
@@ -209,7 +220,7 @@ export function ComputerSheet() {
                 disabled={!available || !url.trim()}
                 onPress={() => void create()}
               >
-                Open a browser session
+                {t("browser.openSession")}
               </Button>
             </View>
             {[...workspace.browsers]
@@ -218,26 +229,20 @@ export function ComputerSheet() {
                 <BrowserThreadCard key={browser.id} browser={browser} />
               ))}
             {!workspace.browsers.length && (
-              <Text style={s.muted}>
-                在这里打开页面，或让你的 agent 去查点东西。s browsing sessions will
-                appear here.
-              </Text>
+              <Text style={s.muted}>{t("browser.emptyHint")}</Text>
             )}
-            <Text style={s.small}>
-              浏览会话有自己的登录和下载。打开 one to take over, then
-              return to your conversation.
-            </Text>
+            <Text style={s.small}>{t("browser.takeoverHint")}</Text>
           </>
         ) : tab === "Files" ? (
           <>
-            <Text style={s.heading}>文档</Text>
-            <Text style={s.small}>从邮件保存的 PDF、浏览器下载和你的上传。</Text>
+            <Text style={s.heading}>{t("computer.filesHeading")}</Text>
+            <Text style={s.small}>{t("computer.filesDesc")}</Text>
             {workspace.files.map((file) => (
               <LinkRow
                 key={file.id}
                 icon={FileText}
                 title={file.name}
-                detail={`${file.pageCount} pages · PDF`}
+                detail={t("computer.fileDetail", { count: file.pageCount })}
                 onPress={() => open({ type: "file", file })}
               />
             ))}
@@ -248,7 +253,7 @@ export function ComputerSheet() {
                 navigate("files");
               }}
             >
-              Import a document
+              {t("computer.importDoc")}
             </Button>
           </>
         ) : null}
@@ -261,7 +266,7 @@ export function ComputerSheet() {
               .catch((e) => setError(String(e)))
           }
         >
-          Refresh computer
+          {t("computer.refresh")}
         </Button>
       </View>
     </Sheet>
