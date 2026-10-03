@@ -2,7 +2,7 @@ import { Audio } from "expo-av";
 import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { colors, s } from "./ui";
+import {useColors, useStyles} from "./ui";
 
 export type VoiceMessage = {
   uri: string;
@@ -84,6 +84,8 @@ export function VoiceBubble({
   voice: VoiceMessage;
   user: boolean;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0); // seconds
   const [error, setError] = useState("");
@@ -212,6 +214,8 @@ export function VoiceRecorderButton({
   onRecorded: (uri: string, duration: number) => void;
   disabled?: boolean;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [hint, setHint] = useState("");
