@@ -145,6 +145,7 @@ export function AppearanceScreen() {
       mode: bundle.mode,
       ...(bundle.wallpaper ? { wallpaper: bundle.wallpaper } : {}),
       ...(bundle.avatar ? { avatar: bundle.avatar } : {}),
+      ...(bundle.css ? { css: bundle.css } : {}),
     });
 
   const commitColor = (key: keyof DraftSeed, text: string, immediate = false) => {
@@ -192,6 +193,7 @@ export function AppearanceScreen() {
       mode: bundle.mode,
       ...(bundle.wallpaper ? { wallpaper: bundle.wallpaper } : {}),
       ...(bundle.avatar ? { avatar: bundle.avatar } : {}),
+      ...(bundle.css ? { css: bundle.css } : {}),
     });
     setBusy(true);
     try {
@@ -213,6 +215,7 @@ export function AppearanceScreen() {
       ...preset,
       ...(bundle.wallpaper ? { wallpaper: bundle.wallpaper } : {}),
       ...(bundle.avatar ? { avatar: bundle.avatar } : {}),
+      ...(bundle.css ? { css: bundle.css } : {}),
     });
   };
 
