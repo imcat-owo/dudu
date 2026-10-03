@@ -206,6 +206,15 @@ export async function generatePodcastAudio(
   let totalLen = 0;
   for (let i = 0; i < segments.length; i++) {
     const uri = await synthesizeSpeech(segments[i], cfg);
+    // P1-1: only MP3 segments can be frame-concatenated. Other formats
+    // (wav/ogg/...) would silently produce a broken file — fail loudly.
+    const ext = uri.split(".").pop()?.toLowerCase() ?? "";
+    if (ext !== "mp3") {
+      throw new Error(
+        `podcast needs MP3 segments but TTS returned .${ext} — ` +
+          `use an MP3 TTS voice or provider for podcasts.`,
+      );
+    }
     const b64 = await fs.readAsStringAsync(uri, { encoding: "base64" });
     const bytes = base64Decode(b64);
     chunks.push(bytes);

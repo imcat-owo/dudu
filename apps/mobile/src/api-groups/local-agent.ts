@@ -14,7 +14,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
-import { type StringKey, t } from "../i18n";
+import { type StringKey, getLocale, t } from "../i18n";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -508,7 +508,7 @@ export function createLocalAgent(opts: {
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
         ...createAmbientVideoTools(ambientVideoStore),
-        ...createPodcastTools(voiceStore, taskProgressStore),
+        ...createPodcastTools(voiceStore, taskProgressStore, getLocale() === "en" ? "en" : "zh-Hans"),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),

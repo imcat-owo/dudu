@@ -93,10 +93,7 @@ describe("createPodcastTools", () => {
     const tools = createPodcastTools(fakeVoiceStore as never, fakeTaskStore as never, "en");
     await assert.rejects(() => tools[0].run({ text: "Hello." }, {} as never));
     assert.ok(stages.length > 0, "should have recorded stage text");
-    assert.ok(
-      stages[0].includes("Synthesizing"),
-      `expected English stage, got: ${stages[0]}`,
-    );
+    assert.ok(stages[0].includes("Synthesizing"), `expected English stage, got: ${stages[0]}`);
   });
 
   it("uses Chinese stage text by default", async () => {
