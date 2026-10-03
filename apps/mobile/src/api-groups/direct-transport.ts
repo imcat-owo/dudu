@@ -18,9 +18,43 @@
 import { type ApiGroup, normalizeBaseUrl } from "./types";
 
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   /** Plain text, or OpenAI content blocks (for native vision image_url). */
   content: string | ChatContentBlock[];
+  /** For role "tool": the id of the tool call this result answers. */
+  tool_call_id?: string;
+  /** For role "assistant": tool calls the model requested. */
+  tool_calls?: WireToolCall[];
+}
+
+/** OpenAI wire shape for a requested tool call. */
+export interface WireToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+/** A fully-accumulated tool call from streaming deltas. */
+export interface CompletedToolCall {
+  id: string;
+  name: string;
+  /** JSON-encoded arguments string. */
+  arguments: string;
+}
+
+/** Tool definitions (OpenAI function-calling format) sent with the request. */
+export interface WireToolDef {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required?: string[];
+      additionalProperties?: boolean;
+    };
+  };
 }
 
 export type ChatContentBlock =
@@ -51,17 +85,32 @@ function requestHeaders(group: ApiGroup): Record<string, string> {
   return { ...headers, ...group.headers };
 }
 
-function requestBody(group: ApiGroup, messages: ChatMessage[], stream: boolean): string {
-  return JSON.stringify({ model: group.model, messages, stream });
+function requestBody(
+  group: ApiGroup,
+  messages: ChatMessage[],
+  stream: boolean,
+  tools?: WireToolDef[],
+): string {
+  const body: Record<string, unknown> = { model: group.model, messages, stream };
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    // Let the model decide when tools are useful; don't force it.
+    body.tool_choice = "auto";
+  }
+  return JSON.stringify(body);
 }
 
 interface SseCallbacks {
   onToken: (delta: string) => void;
   /** Reasoning/thinking deltas, when the model streams them separately. */
   onThinking?: (delta: string) => void;
+  /** Accumulated tool calls, delivered once when the stream completes. */
+  onToolCalls?: (calls: CompletedToolCall[]) => void;
   onDone: () => void;
   onError: (error: Error) => void;
   signal?: AbortSignal;
+  /** Tool definitions to send (OpenAI function-calling). Enables tool_choice=auto. */
+  tools?: WireToolDef[];
 }
 
 /**
@@ -122,6 +171,7 @@ export function createSseParser(
   groupName: string,
   onToken: (delta: string) => void,
   onThinking?: (delta: string) => void,
+  onToolCallDelta?: (delta: WireToolCallDelta) => void,
 ): { push(chunk: string): void } {
   let buffer = "";
   return {
@@ -140,7 +190,89 @@ export function createSseParser(
           const thinking = parseSseThinking(data);
           if (thinking) onThinking(thinking);
         }
+        if (onToolCallDelta) {
+          for (const tc of parseSseToolCallDeltas(data)) onToolCallDelta(tc);
+        }
       }
+    },
+  };
+}
+
+/**
+ * One streaming tool-call delta frame. The model streams the call in pieces:
+ * first the index/id/name, then the arguments string in chunks.
+ */
+export interface WireToolCallDelta {
+  index: number;
+  id?: string;
+  name?: string;
+  argumentsChunk?: string;
+}
+
+/**
+ * Parse `delta.tool_calls` from one SSE data payload. Returns the deltas
+ * (usually one per frame). Never throws — malformed frames are skipped.
+ */
+export function parseSseToolCallDeltas(data: string): WireToolCallDelta[] {
+  if (data === "[DONE]") return [];
+  let payload: unknown;
+  try {
+    payload = JSON.parse(data);
+  } catch {
+    return [];
+  }
+  const delta = (payload as { choices?: Array<{ delta?: Record<string, unknown> }> }).choices?.[0]
+    ?.delta;
+  if (!delta || typeof delta !== "object") return [];
+  const raw = delta.tool_calls;
+  if (!Array.isArray(raw)) return [];
+  const out: WireToolCallDelta[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const rec = item as Record<string, unknown>;
+    const index = typeof rec.index === "number" ? rec.index : 0;
+    const fn = (rec.function ?? {}) as Record<string, unknown>;
+    out.push({
+      index,
+      id: typeof rec.id === "string" ? rec.id : undefined,
+      name: typeof fn.name === "string" ? fn.name : undefined,
+      argumentsChunk: typeof fn.arguments === "string" ? fn.arguments : undefined,
+    });
+  }
+  return out;
+}
+
+/**
+ * Accumulate streaming tool-call deltas (keyed by index) into complete
+ * calls. Pure and defensive — never throws.
+ */
+export function accumulateToolCalls(): {
+  push: (delta: WireToolCallDelta) => void;
+  complete: () => CompletedToolCall[];
+} {
+  const byIndex = new Map<number, { id: string; name: string; args: string }>();
+  return {
+    push(delta) {
+      let acc = byIndex.get(delta.index);
+      if (!acc) {
+        acc = { id: "", name: "", args: "" };
+        byIndex.set(delta.index, acc);
+      }
+      if (delta.id) acc.id = delta.id;
+      if (delta.name) acc.name = delta.name;
+      if (delta.argumentsChunk) acc.args += delta.argumentsChunk;
+    },
+    complete() {
+      return [...byIndex.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([, acc], i) => ({
+          // Some proxies omit ids; synthesize a stable one so pairing works.
+          id: acc.id || `tool_${i}`,
+          name: acc.name,
+          arguments: acc.args,
+        }))
+        // Drop empty frames (no name = not a real call).
+        .filter((c) => c.name);
     },
   };
 }
@@ -168,7 +300,13 @@ export function streamChat(
   callbacks: SseCallbacks,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const parser = createSseParser(group.name, callbacks.onToken, callbacks.onThinking);
+    const toolAcc = accumulateToolCalls();
+    const parser = createSseParser(
+      group.name,
+      callbacks.onToken,
+      callbacks.onThinking,
+      (d) => toolAcc.push(d),
+    );
     const xhr = new XMLHttpRequest();
     let settled = false;
     let seen = 0;
@@ -187,6 +325,12 @@ export function streamChat(
         xhr.abort();
       } catch {
         // already gone
+      }
+      // Deliver any tool calls the model requested (empty when none).
+      try {
+        callbacks.onToolCalls?.(toolAcc.complete());
+      } catch {
+        // tool delivery is informational; the reply itself succeeded.
       }
       callbacks.onDone();
       resolve();
@@ -288,7 +432,7 @@ export function streamChat(
     };
 
     try {
-      xhr.send(requestBody(group, messages, true));
+      xhr.send(requestBody(group, messages, true, callbacks.tools));
     } catch (e) {
       fail(e instanceof Error ? e : new Error(String(e)));
     }
@@ -301,7 +445,7 @@ export function streamChat(
       void fetch(endpointFor(group), {
         method: "POST",
         headers: requestHeaders(group),
-        body: requestBody(group, messages, false),
+        body: requestBody(group, messages, false, callbacks.tools),
         signal: callbacks.signal,
       })
         .then(async (res) => {
@@ -309,7 +453,15 @@ export function streamChat(
           if (!res.ok) throw statusError(group, res.status, text);
           const parsed = JSON.parse(text) as {
             choices?: Array<{
-              message?: { content?: unknown; reasoning_content?: unknown; thinking?: unknown };
+              message?: {
+                content?: unknown;
+                reasoning_content?: unknown;
+                thinking?: unknown;
+                tool_calls?: Array<{
+                  id?: unknown;
+                  function?: { name?: unknown; arguments?: unknown };
+                }>;
+              };
             }>;
             error?: { message?: string } | string;
           };
@@ -330,6 +482,25 @@ export function streamChat(
               (typeof msg?.thinking === "string" && msg.thinking) ||
               null;
             if (thinking) callbacks.onThinking(thinking);
+          }
+          // Non-streaming tool calls arrive whole on the message.
+          if (callbacks.onToolCalls && Array.isArray(msg?.tool_calls)) {
+            const calls: CompletedToolCall[] = [];
+            for (const tc of msg.tool_calls) {
+              const fn = (tc.function ?? {}) as { name?: unknown; arguments?: unknown };
+              if (typeof fn.name === "string" && fn.name) {
+                calls.push({
+                  id: typeof tc.id === "string" && tc.id ? tc.id : `tool_${calls.length}`,
+                  name: fn.name,
+                  arguments: typeof fn.arguments === "string" ? fn.arguments : "",
+                });
+              }
+            }
+            try {
+              callbacks.onToolCalls(calls);
+            } catch {
+              // informational only
+            }
           }
           succeed();
         })
