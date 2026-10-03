@@ -12,6 +12,8 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { buildCapabilityPromptSection } from "../capabilities";
+import { t, type StringKey } from "../i18n";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -22,14 +24,33 @@ import {
 import {
   type ChatContentBlock,
   type ChatMessage,
+  type CompletedToolCall,
   GroupError,
   streamChat,
 } from "./direct-transport";
+import {
+  createLocalTools,
+  createToolRegistry,
+  type LocalTool,
+  type ToolContext,
+  type ToolDeps,
+  ToolError,
+} from "./local-tools";
 import type { ApiGroup } from "./types";
+
+export interface LocalToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    /** JSON-encoded arguments string. */
+    arguments: string;
+  };
+}
 
 export interface LocalChatMessage {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
   /**
    * Reasoning/thinking text streamed separately from the visible reply
@@ -38,6 +59,30 @@ export interface LocalChatMessage {
    * into the visible content.
    */
   thinking?: string;
+  /** Tool calls the assistant requested (OpenAI format, for the drawer + wire). */
+  toolCalls?: LocalToolCall[];
+  /** For role "tool": the id of the tool call this result answers. */
+  toolCallId?: string;
+}
+
+/** Max tool-calling iterations per turn — hard cap, no infinite loops. */
+export const MAX_TOOL_ITERATIONS = 10;
+
+/**
+ * Parse a tool call's JSON arguments string. Never throws — malformed
+ * JSON becomes an empty args object (the tool reports the problem).
+ */
+export function parseToolArgs(raw: string): Record<string, unknown> {
+  if (!raw || !raw.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
 }
 
 export interface ChatAgent {
@@ -81,13 +126,19 @@ export async function loadLocalHistory(
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (m): m is LocalChatMessage =>
-        typeof m === "object" &&
-        m !== null &&
-        typeof (m as LocalChatMessage).id === "string" &&
-        ((m as LocalChatMessage).role === "user" || (m as LocalChatMessage).role === "assistant"),
-    );
+    return parsed.filter((m): m is LocalChatMessage => {
+      if (typeof m !== "object" || m === null) return false;
+      const msg = m as LocalChatMessage;
+      if (typeof msg.id !== "string") return false;
+      // Tool messages and tool_calls ride along so the drawer can show
+      // past tool activity; the wire builder re-emits them correctly.
+      return (
+        msg.role === "user" ||
+        msg.role === "assistant" ||
+        msg.role === "system" ||
+        msg.role === "tool"
+      );
+    });
   } catch {
     return [];
   }
@@ -124,6 +175,34 @@ export interface VisionCache {
 
 export function newVisionCache(): VisionCache {
   return { describe: new Map(), dataUri: new Map() };
+}
+
+/**
+ * Build the local agent's system prompt: base instructions + what tools
+ * exist + the capability/permission model (via buildCapabilityPromptSection).
+ * resolve: (key) => localized string — pass t() on device, test stub in tests.
+ */
+export function buildLocalSystemPrompt(
+  tools: LocalTool[],
+  resolve: (key: StringKey) => string,
+  basePrompt?: string,
+): string {
+  const parts: string[] = [];
+  if (basePrompt) parts.push(basePrompt);
+  parts.push(
+    "You are a helpful on-device AI assistant. You have tools you can call to get things done — use them when they help answer, don't narrate them.",
+  );
+  if (tools.length > 0) {
+    parts.push("Your tools:");
+    for (const tool of tools) {
+      parts.push(`- ${tool.name}: ${tool.description}`);
+    }
+  }
+  parts.push(
+    "Capabilities (out-of-app actions — the system asks her for permission before these run; if she denies, you get a tool error, explain it honestly and move on):",
+  );
+  parts.push(buildCapabilityPromptSection(resolve));
+  return parts.join("\n");
 }
 
 /**
@@ -202,6 +281,15 @@ export function createLocalAgent(opts: {
   isIncognito?: () => boolean;
   /** Storage backend for history. Defaults to AsyncStorage; injectable for tests. */
   historyStore?: HistoryStore;
+  /**
+   * Local tools for the tool-calling loop. Defaults to the built-in
+   * in-app set; pass real device-backed tools from the app layer.
+   */
+  tools?: LocalTool[];
+  /** Authorization gate for out-of-app tools. Required when tools exist. */
+  toolContext?: ToolContext;
+  /** Device implementations for capability tools (injected by the app layer). */
+  toolDeps?: ToolDeps;
 }): ChatAgent {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
@@ -249,7 +337,14 @@ export function createLocalAgent(opts: {
       emit();
       persist(messages);
     },
-    addMessage(m) {
+    addMessage(m: {
+      id: string;
+      role: "user" | "assistant" | "system" | "tool";
+      content: string;
+      thinking?: string;
+      toolCalls?: LocalToolCall[];
+      toolCallId?: string;
+    }) {
       messages = [
         ...messages,
         {
@@ -257,6 +352,8 @@ export function createLocalAgent(opts: {
           role: m.role,
           content: m.content,
           ...(m.thinking ? { thinking: m.thinking } : {}),
+          ...(m.toolCalls ? { toolCalls: m.toolCalls } : {}),
+          ...(m.toolCallId ? { toolCallId: m.toolCallId } : {}),
         },
       ];
       emit();
@@ -269,53 +366,150 @@ export function createLocalAgent(opts: {
       aborter = new AbortController();
       emit();
 
-      const replyId = newId("asst");
-      let replyText = "";
-      let thinkingText = "";
-      // Insert the (initially empty) assistant message so the UI streams in place.
-      messages = [...messages, { id: replyId, role: "assistant", content: "" }];
-      emit();
+      // Narrowed for closures below (opts.getGroup() returns nullable).
+      const activeGroup: ApiGroup = group;
+
+      // Tool setup: registry + system prompt (built once per turn so a
+      // changed tool set takes effect without recreating the agent).
+      const tools = opts.tools ?? createLocalTools(opts.toolDeps);
+      const registry = createToolRegistry(tools);
+      const toolCtx: ToolContext = opts.toolContext ?? {
+        // No gate wired (tests) — in-app tools run, capability tools fail closed.
+        authorize: async () => false,
+      };
+      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt);
+      const wireTools = registry.definitions();
 
       // Build the wire messages, resolving image attachments via vision.
+      // History tool calls/results ride along so multi-turn tool use works.
       const wire: ChatMessage[] = [];
-      if (opts.systemPrompt) wire.push({ role: "system", content: opts.systemPrompt });
+      wire.push({ role: "system", content: systemPrompt });
       for (const m of messages) {
-        if (m.id === replyId || (m.role !== "user" && m.role !== "assistant")) continue;
-        if (m.role === "assistant") {
-          wire.push({ role: "assistant", content: m.content });
-          continue;
+        if (m.role === "user") {
+          wire.push(await toWireUserMessage(group, m.content, visionCache));
+        } else if (m.role === "assistant") {
+          const entry: ChatMessage = { role: "assistant", content: m.content };
+          if (m.toolCalls && m.toolCalls.length > 0) {
+            entry.tool_calls = m.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: "function" as const,
+              function: { name: tc.function.name, arguments: tc.function.arguments },
+            }));
+          }
+          wire.push(entry);
+        } else if (m.role === "tool" && m.toolCallId) {
+          wire.push({ role: "tool", content: m.content, tool_call_id: m.toolCallId });
         }
-        wire.push(await toWireUserMessage(group, m.content, visionCache));
+        // "system" messages in history are not re-sent (the fresh system
+        // prompt above is authoritative).
+      }
+
+      /**
+       * Run one model completion, streaming into a fresh assistant message.
+       * Returns the completed tool calls (empty when the model just answered).
+       */
+      async function runCompletion(): Promise<{
+        replyId: string;
+        toolCalls: CompletedToolCall[];
+      }> {
+        const replyId = newId("asst");
+        let replyText = "";
+        let thinkingText = "";
+        let toolCalls: CompletedToolCall[] = [];
+        // Insert the (initially empty) assistant message so the UI streams in place.
+        messages = [...messages, { id: replyId, role: "assistant", content: "" }];
+        emit();
+
+        try {
+          await streamChat(activeGroup, wire, {
+            signal: aborter?.signal,
+            tools: wireTools,
+            onToken: (delta) => {
+              replyText += delta;
+              messages = messages.map((m) =>
+                m.id === replyId ? { ...m, content: replyText } : m,
+              );
+              emit();
+            },
+            onThinking: (delta) => {
+              thinkingText += delta;
+              messages = messages.map((m) =>
+                m.id === replyId ? { ...m, thinking: thinkingText } : m,
+              );
+              emit();
+            },
+            onToolCalls: (calls) => {
+              toolCalls = calls;
+            },
+            onDone: () => {},
+            // streamChat rejects on error — onError here is informational only.
+            onError: () => {},
+          });
+        } catch (e) {
+          // Mark the failure on the reply bubble so the user sees WHICH
+          // group failed, then rethrow for the screen's error path.
+          const label =
+            e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
+          messages = messages.map((m) =>
+            m.id === replyId && !replyText ? { ...m, content: label } : m,
+          );
+          emit();
+          throw e;
+        }
+
+        // Attach tool calls to the message so the drawer can show them.
+        if (toolCalls.length > 0) {
+          const localCalls: LocalToolCall[] = toolCalls.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.name, arguments: tc.arguments },
+          }));
+          messages = messages.map((m) =>
+            m.id === replyId ? { ...m, toolCalls: localCalls } : m,
+          );
+          // The wire needs the tool_calls on the assistant message for the
+          // next iteration (OpenAI requires it before tool results).
+          wire.push({
+            role: "assistant",
+            content: replyText,
+            tool_calls: toolCalls.map((tc) => ({
+              id: tc.id,
+              type: "function" as const,
+              function: { name: tc.name, arguments: tc.arguments },
+            })),
+          });
+          emit();
+        }
+        return { replyId, toolCalls };
       }
 
       try {
-        await streamChat(group, wire, {
-          signal: aborter.signal,
-          onToken: (delta) => {
-            replyText += delta;
-            messages = messages.map((m) => (m.id === replyId ? { ...m, content: replyText } : m));
+        // Tool-calling loop: hard cap, no infinite loops.
+        for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+          const { toolCalls } = await runCompletion();
+          if (toolCalls.length === 0) break;
+
+          // Execute each tool call, feed results back as tool messages.
+          for (const tc of toolCalls) {
+            let result: string;
+            try {
+              const args = parseToolArgs(tc.arguments);
+              result = await registry.execute(tc.name, args, toolCtx);
+            } catch (e) {
+              // Auth denials, unknown tools, executor failures — all become
+              // tool ERRORS the model sees, never silent drops.
+              result = `Error: ${e instanceof Error ? e.message : String(e)}`;
+            }
+            const toolMsgId = newId("tool");
+            messages = [
+              ...messages,
+              { id: toolMsgId, role: "tool", content: result, toolCallId: tc.id },
+            ];
+            wire.push({ role: "tool", content: result, tool_call_id: tc.id });
             emit();
-          },
-          onThinking: (delta) => {
-            thinkingText += delta;
-            messages = messages.map((m) =>
-              m.id === replyId ? { ...m, thinking: thinkingText } : m,
-            );
-            emit();
-          },
-          onDone: () => {},
-          // streamChat rejects on error — onError here is informational only.
-          onError: () => {},
-        });
-      } catch (e) {
-        // Mark the failure on the reply bubble so the user sees WHICH
-        // group failed, then rethrow for the screen's error path.
-        const label = e instanceof GroupError ? `[${group.name}] ${e.message}` : String(e);
-        messages = messages.map((m) =>
-          m.id === replyId && !replyText ? { ...m, content: label } : m,
-        );
-        emit();
-        throw e;
+          }
+          // Loop: the model sees tool results and either answers or calls more.
+        }
       } finally {
         running = false;
         aborter = null;
