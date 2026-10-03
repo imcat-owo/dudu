@@ -30,6 +30,7 @@ import { NATIVE_APPS_MANUAL } from "./native-apps.js";
 import { OUR_SPACE_MANUAL } from "./our-space.js";
 import { PERMISSIONS_MANUAL } from "./permissions.js";
 import { SANDBOX_MANUAL } from "./sandbox.js";
+import { SKILLS_MANUAL } from "./skills.js";
 import { THEMES_MANUAL } from "./themes.js";
 import { THINKING_DRAWER_MANUAL } from "./thinking-drawer.js";
 import { VISION_MANUAL } from "./vision.js";
@@ -62,6 +63,7 @@ export const MANUALS: ManualEntry[] = [
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,
+  SKILLS_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {

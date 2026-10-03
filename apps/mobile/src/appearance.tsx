@@ -26,6 +26,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   Sun,
   Terminal,
   Trash2,
@@ -40,14 +41,15 @@ import { soraSource } from "./avatar-assets";
 import { BackupSection } from "./backup-ui";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
-import { NativeAppsSheet } from "./native-apps-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
+import { NativeAppsSheet } from "./native-apps-ui";
 import { petStore } from "./pet/instance";
 import type { PetSkin } from "./pet/store";
 import { SandboxSheet } from "./sandbox/sandbox-ui";
+import { SkillsSheet } from "./skills-ui";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
 import { useTheme } from "./theme/ThemeContext";
@@ -121,6 +123,7 @@ export function AppearanceScreen() {
   const [wheelSlot, setWheelSlot] = useState<keyof DraftSeed>("primary");
   const [permOpen, setPermOpen] = useState(false);
   const [nappOpen, setNappOpen] = useState(false);
+  const [skillsOpen, setSkillsOpen] = useState(false);
   const [sandboxOpen, setSandboxOpen] = useState(false);
 
   // Load user-saved custom presets (after the built-ins).
@@ -858,6 +861,17 @@ export function AppearanceScreen() {
         </Button>
       </View>
       {nappOpen ? <NativeAppsSheet onClose={() => setNappOpen(false)} /> : null}
+
+      <View>
+        <SectionHeading title={t("skill.title")} />
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+          {t("skill.intro")}
+        </TText>
+        <Button icon={Sparkles} onPress={() => setSkillsOpen(true)}>
+          {t("skill.title")}
+        </Button>
+      </View>
+      {skillsOpen ? <SkillsSheet onClose={() => setSkillsOpen(false)} /> : null}
 
       <View>
         <SectionHeading title={t("sandbox.title")} />

@@ -25,6 +25,8 @@ import { ourSpaceStore } from "../our-space/instance.js";
 import { createOurSpaceTools } from "../our-space/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
+import { skillStore } from "../skills/instance.js";
+import { createSkillTools } from "../skills/tools.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -335,6 +337,11 @@ export function createLocalAgent(opts: {
    * injectable for tests.
    */
   memoryStore?: MemoryStore;
+  /**
+   * Skills store. Defaults to the shared AsyncStorage-backed singleton
+   * (so UI and AI tools see the same data); injectable for tests.
+   */
+  skillStore?: import("../skills/store.js").SkillStore;
 }): ChatAgent {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
@@ -421,6 +428,7 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createMemoryTools(memStore),
+        ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {
           // "我们的歌": the AI truly remembers which songs are special.
           onOursMarked: async (track) => {
@@ -563,7 +571,13 @@ export function createLocalAgent(opts: {
       // The last user message drives relevance; empty section when no memories.
       const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
       const memorySection = await buildMemorySection(memStore, lastUserText);
-      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [memorySection]);
+      // Skills index: one line per enabled skill (token-minimal, same pattern
+      // as the manual index). Empty string when she has no enabled skills.
+      const skillSection = await (opts.skillStore ?? skillStore).buildSkillIndex();
+      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [
+        memorySection,
+        skillSection,
+      ]);
       const wireTools = registry.definitions();
 
       // Build the wire messages, resolving image attachments via vision.

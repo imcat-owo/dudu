@@ -1211,7 +1211,8 @@ export const enStrings: Record<StringKey, string> = {
   "sandbox.terminal.empty": "Run a command to see output here.",
   // Native app authorizations
   "napp.title": "Native App Authorizations",
-  "napp.intro": "Native capabilities Apple lets apps request. I can only help once you allow them — your call.",
+  "napp.intro":
+    "Native capabilities Apple lets apps request. I can only help once you allow them — your call.",
   "napp.sysAuth": "System authorization",
   "napp.openSettings": "Open Settings",
   "napp.status.granted": "Authorized",
@@ -1220,9 +1221,11 @@ export const enStrings: Record<StringKey, string> = {
   "napp.status.unavailable": "Unavailable",
   "napp.status.needsSetup": "Needs setup",
   "napp.appleMusic.name": "Apple Music",
-  "napp.appleMusic.desc": "Plays the songs you request in the music room. Same authorization as the music room.",
+  "napp.appleMusic.desc":
+    "Plays the songs you request in the music room. Same authorization as the music room.",
   "napp.calendar.name": "Calendar",
-  "napp.calendar.desc": "I can check your schedule and note appointments, no need to flip through the calendar.",
+  "napp.calendar.desc":
+    "I can check your schedule and note appointments, no need to flip through the calendar.",
   "napp.reminders.name": "Reminders",
   "napp.reminders.desc": "Nudges you on time, so nothing slips.",
   "napp.contacts.name": "Contacts",
@@ -1238,8 +1241,24 @@ export const enStrings: Record<StringKey, string> = {
   "napp.siri.setup": "Needs the native App Intents module, not bundled in this build yet.",
   "napp.weather.name": "Weather",
   "napp.weather.desc": "Tells you the weather before you head out.",
-  "napp.weather.setup": "WeatherKit needs a paid developer account plus a server — skipping for now.",
+  "napp.weather.setup":
+    "WeatherKit needs a paid developer account plus a server — skipping for now.",
   "napp.shazam.name": "Music Recognition",
   "napp.shazam.desc": "Hear something nice? Ask me what it is.",
   "napp.shazam.setup": "Needs the native ShazamKit module, not bundled in this build yet.",
+  "skill.title": "Skills",
+  "skill.intro":
+    "Little capability packs you write for me: a name, a note, the steps. I'll follow them when the topic comes up.",
+  "skill.empty": "No skills yet — write the first one.",
+  "skill.create": "New skill",
+  "skill.example": "example",
+  "skill.name": "Name",
+  "skill.nameHint": "e.g. Trip planning",
+  "skill.description": "One-line note",
+  "skill.descriptionHint": "What this skill is for",
+  "skill.instructions": "Steps",
+  "skill.instructionsHint": "Write it step by step, the more concrete the better",
+  "skill.nameRequired": "Give it a name first",
+  "skill.deleteTitle": "Delete this skill?",
+  "skill.deleteConfirm": 'Delete "{name}"?',
 };

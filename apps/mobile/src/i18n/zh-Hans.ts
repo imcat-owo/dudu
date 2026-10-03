@@ -1207,6 +1207,20 @@ const zhHans = {
   "napp.shazam.name": "听歌识曲",
   "napp.shazam.desc": "听到好听的歌，问我这是什么。",
   "napp.shazam.setup": "要接原生 ShazamKit 模块，这个版本还没装。",
+  "skill.title": "本事包",
+  "skill.intro": "写给我的小本事：名字、说明、做法。聊到相关话题，我会按着来。",
+  "skill.empty": "还没有本事，写第一个吧。",
+  "skill.create": "写个新本事",
+  "skill.example": "示例",
+  "skill.name": "名字",
+  "skill.nameHint": "比如：旅行规划",
+  "skill.description": "一句话说明",
+  "skill.descriptionHint": "这个本事是干嘛的",
+  "skill.instructions": "具体做法",
+  "skill.instructionsHint": "一步一步写清楚，越具体越好",
+  "skill.nameRequired": "起个名字吧",
+  "skill.deleteTitle": "删掉这个本事？",
+  "skill.deleteConfirm": "确定删掉「{name}」？",
 } as const;
 
 export type StringKey = keyof typeof zhHans;
