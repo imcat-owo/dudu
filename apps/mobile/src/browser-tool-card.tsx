@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Image, Text, View } from "react-native";
 import { z } from "zod";
 import type { BrowserSession } from "../../../packages/domain/src";
-import { Button, Card, colors, ErrorNotice, s } from "./ui";
+import {Button, Card, useColors, ErrorNotice, useStyles} from "./ui";
 import { useWorkspace } from "./workspace";
 
 export const BrowserRunContext = createContext({ running: false, active: false });
@@ -42,6 +42,8 @@ export function BrowserToolCard({
   result: unknown;
   loading: boolean;
 }) {
+  const colors = useColors();
+  const s = useStyles();
   const { api, workspace, open } = useWorkspace();
   const { running, active } = useContext(BrowserRunContext);
   const working = loading && active;
