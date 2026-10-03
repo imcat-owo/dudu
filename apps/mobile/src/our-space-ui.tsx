@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
 import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
+import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { ourSpaceStore } from "./our-space/instance";
 import type {
   AiStatus,
@@ -40,7 +41,6 @@ import type {
 } from "./our-space/store";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
-import { DUR, EASE, STAGGER, exitDuration } from "./motion";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
 
@@ -167,20 +167,24 @@ function PressableScale({
 
 function timeAgo(ts: number, now: number): string {
   const s = Math.max(0, Math.floor((now - ts) / 1000));
-  if (s < 60) return "刚刚";
+  if (s < 60) return t("space.time.justNow");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} 分钟前`;
+  if (m < 60) return t("space.time.minutesAgo", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} 小时前`;
+  if (h < 24) return t("space.time.hoursAgo", { n: h });
   const d = Math.floor(h / 24);
-  if (d < 30) return `${d} 天前`;
+  if (d < 30) return t("space.time.daysAgo", { n: d });
   return new Date(ts).toLocaleDateString();
 }
 
 function todayLine(): string {
   const d = new Date();
-  const week = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
-  return `${d.getMonth() + 1}月${d.getDate()}日 · 星期${week}`;
+  const weekday = t(`space.time.weekday.${d.getDay()}` as StringKey);
+  return t("space.time.dateLine", {
+    month: d.getMonth() + 1,
+    day: d.getDate(),
+    weekday,
+  });
 }
 
 /** Warm, inviting empty state — each tab gets its own icon and breath. */
@@ -269,8 +273,7 @@ function StatusView() {
     };
   }, [status, pulse]);
 
-  if (!status)
-    return <EmptyState icon={Activity} text={t("space.status.empty")} />;
+  if (!status) return <EmptyState icon={Activity} text={t("space.status.empty")} />;
   return (
     <FadeIn>
       <SoftCard>
@@ -301,9 +304,7 @@ function StatusView() {
           {status.text}
         </TText>
         {!!status.detail && (
-          <TText
-            style={{ color: colors.muted, fontSize: 13.5, lineHeight: 22, marginBottom: 12 }}
-          >
+          <TText style={{ color: colors.muted, fontSize: 13.5, lineHeight: 22, marginBottom: 12 }}>
             {status.detail}
           </TText>
         )}
@@ -326,46 +327,45 @@ function DiaryView() {
     void ourSpaceStore.listDiary(50).then(setEntries);
   }, [v]);
 
-  if (entries.length === 0)
-    return <EmptyState icon={BookOpen} text={t("space.diary.empty")} />;
+  if (entries.length === 0) return <EmptyState icon={BookOpen} text={t("space.diary.empty")} />;
   return (
     <FadeIn>
       <View style={{ gap: 20 }}>
         {entries.map((e, i) => (
           <StaggerIn key={e.id} index={i}>
             <View>
-            <View
-              style={{ flexDirection: "row", alignItems: "baseline", gap: 10, marginBottom: 8 }}
-            >
+              <View
+                style={{ flexDirection: "row", alignItems: "baseline", gap: 10, marginBottom: 8 }}
+              >
+                <TText
+                  style={{
+                    color: colors.muted,
+                    fontSize: 12,
+                    letterSpacing: 2,
+                    fontWeight: "600",
+                  }}
+                >
+                  {e.date}
+                </TText>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+              </View>
               <TText
                 style={{
-                  color: colors.muted,
-                  fontSize: 12,
-                  letterSpacing: 2,
-                  fontWeight: "600",
+                  color: colors.text,
+                  fontSize: 17,
+                  fontWeight: "700",
+                  lineHeight: 25,
+                  letterSpacing: 0.3,
+                  marginBottom: 8,
                 }}
               >
-                {e.date}
+                {e.title}
               </TText>
-              <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
-            </View>
-            <TText
-              style={{
-                color: colors.text,
-                fontSize: 17,
-                fontWeight: "700",
-                lineHeight: 25,
-                letterSpacing: 0.3,
-                marginBottom: 8,
-              }}
-            >
-              {e.title}
-            </TText>
-            <TText
-              style={{ color: colors.text, fontSize: 14, lineHeight: 26, letterSpacing: 0.2 }}
-            >
-              {e.content}
-            </TText>
+              <TText
+                style={{ color: colors.text, fontSize: 14, lineHeight: 26, letterSpacing: 0.2 }}
+              >
+                {e.content}
+              </TText>
             </View>
           </StaggerIn>
         ))}
@@ -391,8 +391,7 @@ function TimelineView() {
     void ourSpaceStore.listTimeline(100).then(setEvents);
   }, [v]);
 
-  if (events.length === 0)
-    return <EmptyState icon={History} text={t("space.timeline.empty")} />;
+  if (events.length === 0) return <EmptyState icon={History} text={t("space.timeline.empty")} />;
 
   // Group newest-first by month, preserving order.
   const groups: { label: string; items: TimelineEvent[] }[] = [];
@@ -421,59 +420,59 @@ function TimelineView() {
                 const isMilestone = e.kind === "milestone";
                 return (
                   <StaggerIn key={e.id} index={i}>
-                  <View style={{ flexDirection: "row", gap: 14 }}>
-                    <View style={{ alignItems: "center", width: 16 }}>
-                      {isMilestone ? (
-                        <MoonStar size={14} color={tokens.accent.fg} strokeWidth={1.8} />
-                      ) : (
-                        <View
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: colors.muted,
-                            marginTop: 7,
-                            opacity: 0.7,
-                          }}
-                        />
-                      )}
-                      {i < g.items.length - 1 && (
-                        <View
-                          style={{
-                            width: 1.5,
-                            flex: 1,
-                            backgroundColor: colors.line,
-                            marginVertical: 4,
-                            opacity: 0.8,
-                          }}
-                        />
-                      )}
-                    </View>
-                    <View style={{ flex: 1, paddingBottom: 20 }}>
-                      <TText
-                        style={{
-                          color: colors.text,
-                          fontSize: isMilestone ? 15.5 : 14,
-                          fontWeight: isMilestone ? "700" : "600",
-                          lineHeight: 22,
-                          letterSpacing: 0.2,
-                          marginBottom: 3,
-                        }}
-                      >
-                        {e.title}
-                      </TText>
-                      {!!e.description && (
+                    <View style={{ flexDirection: "row", gap: 14 }}>
+                      <View style={{ alignItems: "center", width: 16 }}>
+                        {isMilestone ? (
+                          <MoonStar size={14} color={tokens.accent.fg} strokeWidth={1.8} />
+                        ) : (
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: colors.muted,
+                              marginTop: 7,
+                              opacity: 0.7,
+                            }}
+                          />
+                        )}
+                        {i < g.items.length - 1 && (
+                          <View
+                            style={{
+                              width: 1.5,
+                              flex: 1,
+                              backgroundColor: colors.line,
+                              marginVertical: 4,
+                              opacity: 0.8,
+                            }}
+                          />
+                        )}
+                      </View>
+                      <View style={{ flex: 1, paddingBottom: 20 }}>
                         <TText
-                          style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}
+                          style={{
+                            color: colors.text,
+                            fontSize: isMilestone ? 15.5 : 14,
+                            fontWeight: isMilestone ? "700" : "600",
+                            lineHeight: 22,
+                            letterSpacing: 0.2,
+                            marginBottom: 3,
+                          }}
                         >
-                          {e.description}
+                          {e.title}
                         </TText>
-                      )}
-                      <TText style={{ color: colors.muted, fontSize: 11, marginTop: 5, opacity: 0.8 }}>
-                        {new Date(e.timestamp).toLocaleDateString()}
-                      </TText>
+                        {!!e.description && (
+                          <TText style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>
+                            {e.description}
+                          </TText>
+                        )}
+                        <TText
+                          style={{ color: colors.muted, fontSize: 11, marginTop: 5, opacity: 0.8 }}
+                        >
+                          {new Date(e.timestamp).toLocaleDateString()}
+                        </TText>
+                      </View>
                     </View>
-                  </View>
                   </StaggerIn>
                 );
               })}
@@ -513,8 +512,7 @@ function GardenView() {
     void ourSpaceStore.listMemories().then(setItems);
   }, [v]);
 
-  if (items.length === 0)
-    return <EmptyState icon={Flower2} text={t("space.garden.empty")} />;
+  if (items.length === 0) return <EmptyState icon={Flower2} text={t("space.garden.empty")} />;
 
   return (
     <FadeIn>
@@ -526,9 +524,7 @@ function GardenView() {
           const isBloom = sec.confidence === "blooming";
           return (
             <View key={sec.confidence}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 4 }}
-              >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 4 }}>
                 <View
                   style={{
                     width: 30,
@@ -540,14 +536,15 @@ function GardenView() {
                     opacity: isBloom ? 0.92 : 1,
                   }}
                 >
-                  <Icon
-                    size={16}
-                    color={isBloom ? colors.card : colors.text}
-                    strokeWidth={1.8}
-                  />
+                  <Icon size={16} color={isBloom ? colors.card : colors.text} strokeWidth={1.8} />
                 </View>
                 <TText
-                  style={{ color: colors.text, fontSize: 14, fontWeight: "700", letterSpacing: 0.5 }}
+                  style={{
+                    color: colors.text,
+                    fontSize: 14,
+                    fontWeight: "700",
+                    letterSpacing: 0.5,
+                  }}
                 >
                   {t(sec.labelKey)}
                 </TText>
@@ -563,32 +560,32 @@ function GardenView() {
               <View style={{ gap: 10, marginTop: 6 }}>
                 {list.map((m, mi) => (
                   <StaggerIn key={m.id} index={mi}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 12,
-                      backgroundColor: colors.card,
-                      borderRadius: 16,
-                      borderTopRightRadius: 20,
-                      borderWidth: 1,
-                      borderColor: colors.line,
-                      padding: 15,
-                      paddingLeft: 16,
-                      // A living stem on the left, tinted by confidence.
-                      borderLeftWidth: 3,
-                      borderLeftColor: isBloom
-                        ? tokens.accent.fg
-                        : sec.confidence === "sprouting"
-                          ? colors.muted
-                          : colors.text,
-                    }}
-                  >
-                    <TText
-                      style={{ flex: 1, color: colors.text, fontSize: 13.5, lineHeight: 22 }}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 12,
+                        backgroundColor: colors.card,
+                        borderRadius: 16,
+                        borderTopRightRadius: 20,
+                        borderWidth: 1,
+                        borderColor: colors.line,
+                        padding: 15,
+                        paddingLeft: 16,
+                        // A living stem on the left, tinted by confidence.
+                        borderLeftWidth: 3,
+                        borderLeftColor: isBloom
+                          ? tokens.accent.fg
+                          : sec.confidence === "sprouting"
+                            ? colors.muted
+                            : colors.text,
+                      }}
                     >
-                      {m.text}
-                    </TText>
-                  </View>
+                      <TText
+                        style={{ flex: 1, color: colors.text, fontSize: 13.5, lineHeight: 22 }}
+                      >
+                        {m.text}
+                      </TText>
+                    </View>
                   </StaggerIn>
                 ))}
               </View>
@@ -611,59 +608,58 @@ function TellLaterView() {
     void ourSpaceStore.listTellLater(true).then(setItems);
   }, [v]);
 
-  if (items.length === 0)
-    return <EmptyState icon={Bell} text={t("space.tellLater.empty")} />;
+  if (items.length === 0) return <EmptyState icon={Bell} text={t("space.tellLater.empty")} />;
 
   const pending = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done);
 
   const row = (item: TellLaterItem, index: number) => (
     <StaggerIn key={item.id} index={index}>
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: item.done }}
-      onPress={() => void ourSpaceStore.completeTellLater(item.id, !item.done)}
-      style={{
-        flexDirection: "row",
-        gap: 13,
-        alignItems: "flex-start",
-        paddingVertical: 9,
-        paddingHorizontal: 2,
-      }}
-    >
-      <View
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: item.done }}
+        onPress={() => void ourSpaceStore.completeTellLater(item.id, !item.done)}
         style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
-          borderWidth: 1.5,
-          borderColor: item.done ? colors.muted : colors.text,
-          backgroundColor: item.done ? colors.text : "transparent",
-          alignItems: "center",
-          justifyContent: "center",
-          marginTop: 1,
-          opacity: item.done ? 0.55 : 1,
+          flexDirection: "row",
+          gap: 13,
+          alignItems: "flex-start",
+          paddingVertical: 9,
+          paddingHorizontal: 2,
         }}
       >
-        {item.done && <Check size={14} color={colors.card} strokeWidth={3} />}
-      </View>
-      <View style={{ flex: 1 }}>
-        <TText
+        <View
           style={{
-            color: item.done ? colors.muted : colors.text,
-            fontSize: 14,
-            lineHeight: 22,
-            textDecorationLine: item.done ? "line-through" : "none",
-            opacity: item.done ? 0.7 : 1,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            borderWidth: 1.5,
+            borderColor: item.done ? colors.muted : colors.text,
+            backgroundColor: item.done ? colors.text : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 1,
+            opacity: item.done ? 0.55 : 1,
           }}
         >
-          {item.text}
-        </TText>
-        <TText style={{ color: colors.muted, fontSize: 11, marginTop: 3, opacity: 0.75 }}>
-          {timeAgo(item.createdAt, Date.now())}
-        </TText>
-      </View>
-    </Pressable>
+          {item.done && <Check size={14} color={colors.card} strokeWidth={3} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <TText
+            style={{
+              color: item.done ? colors.muted : colors.text,
+              fontSize: 14,
+              lineHeight: 22,
+              textDecorationLine: item.done ? "line-through" : "none",
+              opacity: item.done ? 0.7 : 1,
+            }}
+          >
+            {item.text}
+          </TText>
+          <TText style={{ color: colors.muted, fontSize: 11, marginTop: 3, opacity: 0.75 }}>
+            {timeAgo(item.createdAt, Date.now())}
+          </TText>
+        </View>
+      </Pressable>
     </StaggerIn>
   );
 

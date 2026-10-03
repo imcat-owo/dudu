@@ -100,6 +100,18 @@ const zhHans = {
   "space.tellLater.empty": "没有要稍后告诉她的事。想到了就跟我说，我记下来。",
   "space.tellLater.pending": "等她看",
   "space.tellLater.doneSection": "已完成",
+  "space.time.justNow": "刚刚",
+  "space.time.minutesAgo": "{n} 分钟前",
+  "space.time.hoursAgo": "{n} 小时前",
+  "space.time.daysAgo": "{n} 天前",
+  "space.time.dateLine": "{month}月{day}日 · 星期{weekday}",
+  "space.time.weekday.0": "日",
+  "space.time.weekday.1": "一",
+  "space.time.weekday.2": "二",
+  "space.time.weekday.3": "三",
+  "space.time.weekday.4": "四",
+  "space.time.weekday.5": "五",
+  "space.time.weekday.6": "六",
 
   // ---- agent status line (App.tsx) ----
   "status.nextTask": "正在接下一个任务…",

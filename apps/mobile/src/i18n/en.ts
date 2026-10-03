@@ -96,6 +96,18 @@ export const enStrings: Record<StringKey, string> = {
   "space.tellLater.empty": "Nothing queued. Tell me when something comes up and I will remember it.",
   "space.tellLater.pending": "Waiting",
   "space.tellLater.doneSection": "Done",
+  "space.time.justNow": "Just now",
+  "space.time.minutesAgo": "{n} min ago",
+  "space.time.hoursAgo": "{n} hr ago",
+  "space.time.daysAgo": "{n} days ago",
+  "space.time.dateLine": "{month}/{day} · {weekday}",
+  "space.time.weekday.0": "Sun",
+  "space.time.weekday.1": "Mon",
+  "space.time.weekday.2": "Tue",
+  "space.time.weekday.3": "Wed",
+  "space.time.weekday.4": "Thu",
+  "space.time.weekday.5": "Fri",
+  "space.time.weekday.6": "Sat",
 
   // ---- agent status line (App.tsx) ----
   "status.nextTask": "Picking up your next task…",
