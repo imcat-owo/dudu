@@ -23,6 +23,7 @@ import {
   Check,
   ChevronLeft,
   Flower2,
+  Headphones,
   Heart,
   History,
   Images,
@@ -50,6 +51,7 @@ import { memoryStore } from "./memory/instance";
 import type { MemoryRecord } from "./memory/types";
 import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
+import { MusicRoomPage } from "./music-ui";
 import { ourSpaceStore } from "./our-space/instance";
 import type {
   AiStatus,
@@ -70,14 +72,14 @@ import { useColors } from "./ui";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
 
-function useOurSpaceVersion(): number {
+export function useOurSpaceVersion(): number {
   const [v, setV] = useState(0);
   useEffect(() => ourSpaceStore.subscribe(() => setV((x) => x + 1)), []);
   return v;
 }
 
 /** Soft fade-in when switching tabs or when content loads. */
-function FadeIn({ children }: { children: React.ReactNode }) {
+export function FadeIn({ children }: { children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translate = useRef(new Animated.Value(8)).current;
   useEffect(() => {
@@ -107,7 +109,7 @@ function FadeIn({ children }: { children: React.ReactNode }) {
  * Staggered entrance for list items — 90ms apart (Apple's word-rhythm).
  * Makes the garden bloom and the timeline unfold like a story.
  */
-function StaggerIn({ index, children }: { index: number; children: React.ReactNode }) {
+export function StaggerIn({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translate = useRef(new Animated.Value(12)).current;
   useEffect(() => {
@@ -137,7 +139,7 @@ function StaggerIn({ index, children }: { index: number; children: React.ReactNo
 }
 
 /** Press feedback: gentle 0.97 scale (Apple HIG micro-interaction). */
-function PressableScale({
+export function PressableScale({
   children,
   onPress,
   accessibilityRole,
@@ -240,7 +242,7 @@ function EmptyState({ icon: Icon, text }: { icon: typeof Heart; text: string }) 
 }
 
 /** Hand-drawn card: soft asymmetric radii, hairline border, no hard shadow. */
-function SoftCard({ children }: { children: React.ReactNode }) {
+export function SoftCard({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   return (
     <View
@@ -737,7 +739,8 @@ type SpacePage =
   | { type: "diary" }
   | { type: "garden" }
   | { type: "status" }
-  | { type: "tellLater" };
+  | { type: "tellLater" }
+  | { type: "music" };
 
 /** Couple header: her avatar + AI avatar overlapping, both customizable. */
 function CoupleHeader() {
@@ -873,6 +876,7 @@ const CARDS: CardDef[] = [
   { page: "status", labelKey: "space.tabs.status", icon: Activity },
   { page: "tellLater", labelKey: "space.tabs.tellLater", icon: Bell },
   { page: "works", labelKey: "space.cards.works", icon: Images },
+  { page: "music", labelKey: "space.cards.music", icon: Headphones },
 ];
 
 function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
@@ -1491,6 +1495,7 @@ export function OurSpaceScreen() {
       garden: t("space.garden.title"),
       status: t("space.status.title"),
       tellLater: t("space.tellLater.title"),
+      music: t("music.title"),
     };
     return (
       <View style={{ flex: 1, backgroundColor: colors.canvas }}>
@@ -1502,6 +1507,7 @@ export function OurSpaceScreen() {
           {page.type === "garden" && <GardenView />}
           {page.type === "status" && <StatusView />}
           {page.type === "tellLater" && <TellLaterView />}
+          {page.type === "music" && <MusicRoomPage />}
         </PageShell>
       </View>
     );
