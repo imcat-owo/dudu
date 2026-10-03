@@ -15,8 +15,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  KeyboardAvoidingView,
   Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -60,15 +60,15 @@ import {
   parseUserMessageWithImages,
   type UserImageAttachment,
 } from "./vision/describe";
+import { SpeakButton } from "./voice/speak-button";
+import { useVoiceConfig } from "./voice/store";
+import { transcribeAudio } from "./voice/stt";
 import {
   encodeVoiceMessage,
   parseVoiceMessage,
   VoiceBubble,
   VoiceRecorderButton,
 } from "./voice-message";
-import { SpeakButton } from "./voice/speak-button";
-import { transcribeAudio } from "./voice/stt";
-import { useVoiceConfig } from "./voice/store";
 import { useWorkspace } from "./workspace";
 
 const displayParameters = z.record(z.string(), z.unknown());
@@ -499,7 +499,7 @@ export function ChatScreen({
       const ImagePicker = await import("expo-image-picker");
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        setError(t("vision.noVision"));
+        setError(t("perm.photoDenied"));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({

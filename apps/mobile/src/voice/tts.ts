@@ -48,6 +48,18 @@ async function cacheDir(): Promise<string> {
   return dir;
 }
 
+/** Pick a file extension from a response Content-Type (P3-3: don't lie about the format). */
+function extForContentType(ct: string | null): string {
+  const t = (ct ?? "").toLowerCase();
+  if (t.includes("wav")) return "wav";
+  if (t.includes("ogg")) return "ogg";
+  if (t.includes("flac")) return "flac";
+  if (t.includes("m4a") || t.includes("mp4")) return "m4a";
+  if (t.includes("webm")) return "webm";
+  // mpeg/mp3 and unknown: expo-audio sniffs content anyway, mp3 is the safe default.
+  return "mp3";
+}
+
 async function writeBytes(bytes: Uint8Array, ext: string): Promise<string> {
   const fs = await loadFs();
   const dir = await cacheDir();
@@ -114,7 +126,7 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
   }
   const buf = await res.arrayBuffer();
   if (buf.byteLength === 0) throw new TtsError("TTS returned empty audio");
-  return writeBytes(new Uint8Array(buf), "mp3");
+  return writeBytes(new Uint8Array(buf), extForContentType(res.headers.get("content-type")));
 }
 
 /**
@@ -138,19 +150,30 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
   const fs = await loadFs();
   const dir = await cacheDir();
   const cacheKey = hashText(`${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${clean}`);
-  const cachedUri = `${dir}${cacheKey}.mp3`;
-  try {
-    const info = await fs.getInfoAsync(cachedUri);
-    if (info.exists) return cachedUri;
-  } catch {
-    // cache check failed — synthesize fresh
-  }
+  // Cache slot lookup: the stored extension follows the actual audio format
+  // (sniffed from Content-Type), so scan for any `${cacheKey}.*` — the .mp3
+  // fast path covers edge-tts and OpenAI-compatible defaults.
+  const findCached = async (): Promise<string | null> => {
+    try {
+      const info = await fs.getInfoAsync(`${dir}${cacheKey}.mp3`);
+      if (info.exists) return `${dir}${cacheKey}.mp3`;
+      const names = await fs.readDirectoryAsync(dir);
+      const hit = names.find((n) => n.startsWith(`${cacheKey}.`));
+      return hit ? `${dir}${hit}` : null;
+    } catch {
+      return null;
+    }
+  };
+  const hit = await findCached();
+  if (hit) return hit;
 
   const uri =
     cfg.provider === "edge-tts"
       ? await synthesizeEdgeTts(clean, cfg.voice)
       : await synthesizeCustom(clean, cfg);
-  // Move into the cache slot for next time (best-effort).
+  // Move into the cache slot for next time (best-effort), keeping the real extension.
+  const ext = uri.split(".").pop() ?? "mp3";
+  const cachedUri = `${dir}${cacheKey}.${ext}`;
   try {
     await fs.moveAsync({ from: uri, to: cachedUri });
     return cachedUri;

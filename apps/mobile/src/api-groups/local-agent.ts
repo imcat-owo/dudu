@@ -13,19 +13,19 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  type ChatContentBlock,
-  type ChatMessage,
-  GroupError,
-  streamChat,
-} from "./direct-transport";
-import type { ApiGroup } from "./types";
-import {
   describeImage,
   formatDescriptionBlock,
   nativeImageBlock,
   parseUserMessageWithImages,
   VisionError,
 } from "../vision/describe";
+import {
+  type ChatContentBlock,
+  type ChatMessage,
+  GroupError,
+  streamChat,
+} from "./direct-transport";
+import type { ApiGroup } from "./types";
 
 export interface LocalChatMessage {
   id: string;
@@ -150,7 +150,9 @@ export async function toWireUserMessage(
         // Loud, per-image — the user knows exactly which image failed and why.
         throw e instanceof VisionError || e instanceof GroupError
           ? e
-          : new VisionError(`识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`);
+          : new VisionError(
+              `识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`,
+            );
       }
       cache.describe.set(img.uri, description);
     }

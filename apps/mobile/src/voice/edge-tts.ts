@@ -55,16 +55,40 @@ export function chunkText(text: string, maxLen = 600): string[] {
   const chunks: string[] = [];
   // Split on CJK + western sentence terminators, keeping the delimiter.
   const sentences = text.match(/[^。！？!?\n]+[。！？!?\n]?/g) ?? [text];
+  // Hard-split any over-long run with no sentence boundary (P3-4): prefer a
+  // soft break (、，；, or space), else cut at maxLen.
+  const hardSplit = (s: string): string[] => {
+    if (s.length <= maxLen) return [s];
+    const out: string[] = [];
+    let rest = s;
+    while (rest.length > maxLen) {
+      let cut = maxLen;
+      const soft = rest.lastIndexOf("、", maxLen);
+      const softer = rest.lastIndexOf("，", maxLen);
+      const softest = Math.max(soft, softer);
+      if (softest > maxLen * 0.5) cut = softest + 1;
+      out.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+    if (rest) out.push(rest);
+    return out;
+  };
   let current = "";
+  const pushCurrent = () => {
+    if (current.trim()) {
+      for (const h of hardSplit(current)) chunks.push(h);
+      current = "";
+    }
+  };
   for (const s of sentences) {
     if ((current + s).length > maxLen && current) {
-      chunks.push(current);
+      pushCurrent();
       current = s;
     } else {
       current += s;
     }
   }
-  if (current.trim()) chunks.push(current);
+  pushCurrent();
   return chunks.length ? chunks : [text];
 }
 

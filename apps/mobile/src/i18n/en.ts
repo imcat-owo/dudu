@@ -975,7 +975,8 @@ export const enStrings: Record<StringKey, string> = {
   "vision.nativeDesc": "The model accepts images natively, no describing step",
   "vision.model": "Vision model",
   "vision.modelDesc": "Defaults to the chat model; text-only models use the describe pipeline",
-  "vision.noVision": "This group has no vision configured: enable vision or set a vision model in group settings",
+  "vision.noVision":
+    "This group has no vision configured: enable vision or set a vision model in group settings",
   "vision.attachImage": "Send an image",
   "vision.describing": "Looking at the image…",
 };

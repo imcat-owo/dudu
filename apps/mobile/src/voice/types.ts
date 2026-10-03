@@ -81,10 +81,7 @@ export function blankSttConfig(): SttConfig {
   return { provider: "group" };
 }
 
-export type SttValidationProblem =
-  | "sttUrlRequired"
-  | "sttUrlInvalid"
-  | "sttModelRequired";
+export type SttValidationProblem = "sttUrlRequired" | "sttUrlInvalid" | "sttModelRequired";
 export function validateSttConfig(c: SttConfig): SttValidationProblem | null {
   if (c.provider === "group") return null;
   const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");

@@ -102,6 +102,14 @@ describe("edge-tts chunkText", () => {
   it("empty text gives one empty chunk (caller rejects empty)", () => {
     assert.deepEqual(chunkText("   "), ["   "]);
   });
+
+  it("hard-splits an over-long run with no sentence boundary", () => {
+    const long = "啊".repeat(250);
+    const chunks = chunkText(long, 100);
+    assert.ok(chunks.length > 1);
+    for (const c of chunks) assert.ok(c.length <= 100, `chunk too long: ${c.length}`);
+    assert.equal(chunks.join(""), long, "no text lost");
+  });
 });
 
 describe("voice store", () => {
