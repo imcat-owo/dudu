@@ -80,6 +80,25 @@ async function saveLocalHistory(threadId: string, messages: LocalChatMessage[]):
 }
 
 /**
+ * Per-thread vision cache: describe results and base64 conversions are
+ * expensive (extra model calls / file reads). History images are re-sent
+ * every turn, so cache by image URI for the life of the agent (one agent
+ * instance == one thread). The 4-part describe output is an objective
+ * description independent of the accompanying question, so URI-keying is
+ * sound.
+ */
+export interface VisionCache {
+  /** imageUri -> 4-part description text (describe pipeline) */
+  describe: Map<string, string>;
+  /** imageUri -> data URI (native vision path) */
+  dataUri: Map<string, string>;
+}
+
+export function newVisionCache(): VisionCache {
+  return { describe: new Map(), dataUri: new Map() };
+}
+
+/**
  * Resolve a user message for the wire, processing image attachments.
  *
  * - No images: passthrough.
@@ -88,7 +107,12 @@ async function saveLocalHistory(threadId: string, messages: LocalChatMessage[]):
  *   structured blocks the text model can read.
  * - No vision config: throw loudly — never silently drop the image.
  */
-async function toWireUserMessage(group: ApiGroup, content: string): Promise<ChatMessage> {
+/** Exported for testing the vision cache behavior. */
+export async function toWireUserMessage(
+  group: ApiGroup,
+  content: string,
+  cache: VisionCache,
+): Promise<ChatMessage> {
   const parsed = parseUserMessageWithImages(content);
   if (!parsed || parsed.images.length === 0) return { role: "user", content };
 
@@ -104,7 +128,12 @@ async function toWireUserMessage(group: ApiGroup, content: string): Promise<Chat
     const blocks: ChatContentBlock[] = [];
     if (parsed.text.trim()) blocks.push({ type: "text", text: parsed.text });
     for (const img of parsed.images) {
-      blocks.push(await nativeImageBlock(img.uri));
+      let dataUri = cache.dataUri.get(img.uri);
+      if (!dataUri) {
+        dataUri = (await nativeImageBlock(img.uri)).image_url.url;
+        cache.dataUri.set(img.uri, dataUri);
+      }
+      blocks.push({ type: "image_url", image_url: { url: dataUri } });
     }
     return { role: "user", content: blocks };
   }
@@ -113,14 +142,17 @@ async function toWireUserMessage(group: ApiGroup, content: string): Promise<Chat
   const parts: string[] = [];
   if (parsed.text.trim()) parts.push(parsed.text);
   for (const img of parsed.images) {
-    let description: string;
-    try {
-      description = await describeImage(group, img.uri, parsed.text);
-    } catch (e) {
-      // Loud, per-image — the user knows exactly which image failed and why.
-      throw e instanceof VisionError || e instanceof GroupError
-        ? e
-        : new VisionError(`识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`);
+    let description = cache.describe.get(img.uri);
+    if (description === undefined) {
+      try {
+        description = await describeImage(group, img.uri, parsed.text);
+      } catch (e) {
+        // Loud, per-image — the user knows exactly which image failed and why.
+        throw e instanceof VisionError || e instanceof GroupError
+          ? e
+          : new VisionError(`识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`);
+      }
+      cache.describe.set(img.uri, description);
     }
     parts.push(formatDescriptionBlock(img.name, description));
   }
@@ -136,6 +168,9 @@ export function createLocalAgent(opts: {
   let running = false;
   let aborter: AbortController | null = null;
   const listeners = new Set<(e: { messages: LocalChatMessage[] }) => void>();
+  // Thread-scoped vision cache: one agent instance == one thread, so history
+  // images are described / base64-encoded once, not once per turn.
+  const visionCache = newVisionCache();
 
   function emit() {
     const snap = [...messages];
@@ -193,7 +228,7 @@ export function createLocalAgent(opts: {
           wire.push({ role: "assistant", content: m.content });
           continue;
         }
-        wire.push(await toWireUserMessage(group, m.content));
+        wire.push(await toWireUserMessage(group, m.content, visionCache));
       }
 
       try {
