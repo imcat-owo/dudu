@@ -470,7 +470,10 @@ export function PetOverlay({
           cancelLongPress();
           longPressTimer.current = setTimeout(() => {
             longPressTimer.current = null;
-            if (!movedFar.current && interactionRef.current === null) {
+            if (
+              !movedFar.current &&
+              (interactionRef.current === null || interactionRef.current === "headphones")
+            ) {
               longPressFired.current = true;
               setInteractionBoth("reach");
               logInteraction("reach");

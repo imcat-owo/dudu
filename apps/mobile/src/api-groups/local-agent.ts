@@ -35,6 +35,8 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools.js";
 import { recentInteraction } from "../pet/interactions.js";
+import { petInteractionVideos } from "../pet/instance.js";
+import { createPetInteractionVideoTools } from "../pet/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { skillStore } from "../skills/instance.js";
@@ -509,6 +511,7 @@ export function createLocalAgent(opts: {
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
         ...createAmbientVideoTools(ambientVideoStore),
+        ...createPetInteractionVideoTools(petInteractionVideos),
         ...createPodcastTools(
           voiceStore,
           taskProgressStore,
