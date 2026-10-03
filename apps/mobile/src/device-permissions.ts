@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
 import * as Notifications from "expo-notifications";
 import { Alert } from "react-native";
+import { t } from "./i18n";
 
 export type PermissionKind =
   | "audio"
@@ -16,12 +17,12 @@ export type PermissionKind =
 export type PermissionStatus = "granted" | "denied" | "undetermined" | "unavailable";
 
 export const PERMISSION_LABELS: Record<PermissionKind, string> = {
-  audio: "Microphone",
-  photos: "Photo library",
-  location: "Location",
-  clipboard: "Clipboard",
-  notifications: "Notifications",
-  bluetooth: "Bluetooth",
+  audio: t("perm.kind.audio"),
+  photos: t("perm.kind.photos"),
+  location: t("perm.kind.location"),
+  clipboard: t("perm.kind.clipboard"),
+  notifications: t("perm.kind.notifications"),
+  bluetooth: t("perm.kind.bluetooth"),
 };
 
 function normalize(status: string | undefined): PermissionStatus {
@@ -174,11 +175,11 @@ export const checkers: Record<PermissionKind, () => Promise<PermissionStatus>> =
 export function confirmBoundaryAction(action: string, detail: string): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
-      "Allow this action?",
+      t("perm.confirmAction"),
       `${action}\n\n${detail}`,
       [
-        { text: "Deny", style: "cancel", onPress: () => resolve(false) },
-        { text: "Allow", onPress: () => resolve(true) },
+        { text: t("common.deny"), style: "cancel", onPress: () => resolve(false) },
+        { text: t("common.allow"), onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     );

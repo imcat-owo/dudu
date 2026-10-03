@@ -8,6 +8,7 @@ import {
   type PermissionStatus,
   requesters,
 } from "./device-permissions";
+import { t } from "./i18n";
 import { Button, colors, Sheet, s } from "./ui";
 
 const ICONS: Record<PermissionKind, typeof Mic> = {
@@ -31,13 +32,13 @@ const ORDER: PermissionKind[] = [
 function statusText(status: PermissionStatus): string {
   switch (status) {
     case "granted":
-      return "Allowed";
+      return t("perm.status.granted");
     case "denied":
-      return "Denied";
+      return t("perm.status.denied");
     case "unavailable":
-      return "Unavailable";
+      return t("perm.status.unavailable");
     default:
-      return "Not asked";
+      return t("perm.status.undetermined");
   }
 }
 
@@ -82,12 +83,9 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="设备权限" subtitle="What the assistant may access" onClose={onClose}>
+    <Sheet title={t("perm.sheetTitle")} subtitle={t("perm.sheetSubtitle")} onClose={onClose}>
       <View style={{ gap: 4 }}>
-        <Text style={s.muted}>
-          助手在 App 内有完整权限。跨出 App 的ing the app boundary asks
-          you first.
-        </Text>
+        <Text style={s.muted}>{t("perm.intro")}</Text>
         {ORDER.map((kind) => {
           const Icon = ICONS[kind];
           const status = statuses[kind];
@@ -116,16 +114,14 @@ export function DevicePermissionsSheet({ onClose }: { onClose: () => void }) {
                 status !== "granted" &&
                 status !== "unavailable" && (
                   <Button small onPress={() => void request(kind)}>
-                    Allow
+                    {t("common.allow")}
                   </Button>
                 )
               )}
             </View>
           );
         })}
-        <Text style={[s.small, { marginTop: 12 }]}>
-          蓝牙扫描需要系统蓝牙权限 first use.
-        </Text>
+        <Text style={[s.small, { marginTop: 12 }]}>{t("perm.bluetoothNote")}</Text>
       </View>
     </Sheet>
   );
