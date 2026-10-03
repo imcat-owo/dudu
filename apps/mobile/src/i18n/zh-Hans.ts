@@ -1272,6 +1272,20 @@ const zhHans = {
   "kb.progress.chunking": "正在切分…",
   "kb.progress.embedding": "正在记住… {done}/{total}",
   "kb.formatsNote": "现在只支持 txt / md。PDF 和 Word 后面会支持。",
+  "kb.indexingTask": "知识库索引",
+  "kb.indexingStage": "正在记住… {done}/{total}",
+  "kb.indexingDone": "读完了，都记下了",
+  "space.tasks.status.running": "正在忙",
+  "space.tasks.status.stuck": "卡住了",
+  "space.tasks.status.done": "做完了",
+  "space.tasks.dismissTitle": "撤掉这张卡片？",
+  "space.tasks.dismissBody": "做完的任务卡可以撤掉，记录还在。确定撤掉吗？",
+  "space.tasks.bgTitle": "换卡片背景",
+  "space.tasks.bgUpload": "从相册选一张",
+  "space.tasks.bgGenerate": "让 AI 生一张",
+  "space.tasks.bgGenerating": "正在生图…",
+  "space.tasks.bgPromptHint": "描述一下想要的画面，不写就按任务名来",
+  "space.tasks.bgClear": "恢复默认背景",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

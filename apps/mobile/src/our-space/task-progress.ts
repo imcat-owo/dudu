@@ -1,0 +1,148 @@
+/**
+ * Task progress store — PURE module: no React Native / expo imports.
+ *
+ * iOS-widget-style small cards in 我们的空间 show background task progress.
+ * Any part of the app (knowledge indexer, AI tools, downloads) can report
+ * progress here; the UI subscribes and renders live.
+ *
+ * Storage is injectable (AsyncStorage in production, Map-backed fake in tests).
+ */
+
+export type TaskStatus = "running" | "stuck" | "done";
+
+export interface BackgroundTask {
+  id: string;
+  /** Display name, e.g. "知识库索引" */
+  name: string;
+  /** 0..1 */
+  progress: number;
+  /** Current stage text, e.g. "正在读第 3/10 个文件" */
+  stage: string;
+  status: TaskStatus;
+  /** Card background image URI (user-uploaded or AI-generated), null = theme default */
+  backgroundUri: string | null;
+  updatedAt: number;
+  createdAt: number;
+}
+
+export interface TaskProgressEvents {
+  onTask?: (task: BackgroundTask) => void;
+  onRemove?: (id: string) => void;
+}
+
+const KEY_PREFIX = "dudu.tasks.v1.";
+
+function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
+export interface TaskStorage {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
+
+export class TaskProgressStore {
+  private storage: TaskStorage;
+  private subs = new Set<() => void>();
+  private cache = new Map<string, BackgroundTask>();
+
+  constructor(storage: TaskStorage) {
+    this.storage = storage;
+  }
+
+  subscribe(fn: () => void): () => void {
+    this.subs.add(fn);
+    return () => {
+      this.subs.delete(fn);
+    };
+  }
+
+  private emit(): void {
+    for (const fn of this.subs) {
+      try {
+        fn();
+      } catch {
+        /* subscriber errors must not break the store */
+      }
+    }
+  }
+
+  /** Create or update a task. Progress is clamped to 0..1. */
+  async upsert(
+    input: Omit<BackgroundTask, "updatedAt" | "createdAt"> & { createdAt?: number },
+  ): Promise<BackgroundTask> {
+    const now = Date.now();
+    const prev = this.cache.get(input.id);
+    const task: BackgroundTask = {
+      ...input,
+      progress: clamp01(input.progress),
+      createdAt: prev?.createdAt ?? input.createdAt ?? now,
+      updatedAt: now,
+    };
+    // Auto-complete: progress hit 1 → status done (unless explicitly stuck)
+    if (task.progress >= 1 && task.status === "running") {
+      task.status = "done";
+    }
+    this.cache.set(task.id, task);
+    await this.storage.setItem(KEY_PREFIX + task.id, JSON.stringify(task)).catch(() => null);
+    this.emit();
+    return task;
+  }
+
+  async remove(id: string): Promise<void> {
+    this.cache.delete(id);
+    await this.storage.removeItem(KEY_PREFIX + id).catch(() => null);
+    this.emit();
+  }
+
+  /** All tasks, newest first. Done tasks sink below active ones. */
+  list(): BackgroundTask[] {
+    return [...this.cache.values()].sort((a, b) => {
+      const rank = (t: BackgroundTask) => (t.status === "done" ? 1 : 0);
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      return b.updatedAt - a.updatedAt;
+    });
+  }
+
+  get(id: string): BackgroundTask | null {
+    return this.cache.get(id) ?? null;
+  }
+
+  /** Set card background (uploaded or AI-generated image URI). */
+  async setBackground(id: string, uri: string | null): Promise<void> {
+    const task = this.cache.get(id);
+    if (!task) return;
+    await this.upsert({ ...task, backgroundUri: uri });
+  }
+
+  /** Hydrate from storage (call once at startup). */
+  async load(): Promise<void> {
+    // Storage backends without key enumeration: we track ids in an index key.
+    const indexRaw = await this.storage.getItem(`${KEY_PREFIX}__index`).catch(() => null);
+    if (!indexRaw) return;
+    let ids: string[] = [];
+    try {
+      ids = JSON.parse(indexRaw) as string[];
+    } catch {
+      return;
+    }
+    for (const id of ids) {
+      const raw = await this.storage.getItem(KEY_PREFIX + id).catch(() => null);
+      if (!raw) continue;
+      try {
+        const task = JSON.parse(raw) as BackgroundTask;
+        this.cache.set(id, task);
+      } catch {
+        /* skip corrupt entries */
+      }
+    }
+  }
+
+  /** Persist the id index (call after upsert/remove in production wiring). */
+  async saveIndex(): Promise<void> {
+    const ids = [...this.cache.keys()];
+    await this.storage.setItem(`${KEY_PREFIX}__index`, JSON.stringify(ids)).catch(() => null);
+  }
+}

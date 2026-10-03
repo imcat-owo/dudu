@@ -25,7 +25,8 @@ import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
 import { ourSpaceStore } from "../our-space/instance.js";
-import { createOurSpaceTools } from "../our-space/tools.js";
+import { createOurSpaceTools, createTaskProgressTools } from "../our-space/tools.js";
+import { taskProgressStore } from "../our-space/task-progress-instance.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { skillStore } from "../skills/instance.js";
@@ -470,6 +471,7 @@ export function createLocalAgent(opts: {
       const tools = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
+        ...createTaskProgressTools(taskProgressStore),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),

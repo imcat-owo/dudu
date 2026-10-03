@@ -366,7 +366,9 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       run: async () => {
         const items = await store.listAnniversaries();
         if (items.length === 0) return "No anniversaries yet.";
-        return items.map((a) => `— ${a.title} (${a.date})${a.description ? ` — ${a.description}` : ""}`).join("\n");
+        return items
+          .map((a) => `— ${a.title} (${a.date})${a.description ? ` — ${a.description}` : ""}`)
+          .join("\n");
       },
     },
 
@@ -415,6 +417,76 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const items = await store.listWorks();
         if (items.length === 0) return "The works drawer is empty.";
         return items.map((w) => `— [${w.type}] ${w.title} (id: ${w.id})`).join("\n");
+      },
+    },
+  ];
+}
+
+/**
+ * Task progress tools — let the AI report background work on widget cards.
+ * Bound to a TaskProgressStore instance.
+ */
+export function createTaskProgressTools(
+  taskStore: import("./task-progress.js").TaskProgressStore,
+): LocalTool[] {
+  return [
+    {
+      name: "task_progress_update",
+      description:
+        "Update a background task's progress card in Our Space (the iOS-widget-style cards she sees). Use when you start, advance, or finish background work so she can watch it live. progress is 0..1.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Task id (pick a stable one, e.g. 'kb-index-123')." },
+          name: { type: "string", description: "Display name, e.g. '知识库索引'." },
+          progress: { type: "number", description: "0..1 fraction complete." },
+          stage: {
+            type: "string",
+            description: "Current stage text, e.g. '正在读第 3/10 个文件'.",
+          },
+          status: {
+            type: "string",
+            description: "running | stuck | done. Defaults to running; 1.0 auto-completes.",
+          },
+        },
+        required: ["id", "name", "progress"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        const name = strArg(args, "name");
+        if (!id || !name) throw new ToolError("id and name are required.");
+        const statusRaw = strArg(args, "status");
+        const status = statusRaw === "stuck" || statusRaw === "done" ? statusRaw : "running";
+        const task = await taskStore.upsert({
+          id,
+          name,
+          progress: numArg(args, "progress", 0),
+          stage: strArg(args, "stage"),
+          status,
+          backgroundUri: null,
+        });
+        return `Task card updated: "${task.name}" ${Math.round(task.progress * 100)}% (${task.status}).`;
+      },
+    },
+    {
+      name: "task_progress_dismiss",
+      description: "Remove a finished task's progress card from Our Space.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Task id to remove." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("id is required.");
+        await taskStore.remove(id);
+        return `Task card "${id}" dismissed.`;
       },
     },
   ];

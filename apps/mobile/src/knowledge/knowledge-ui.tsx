@@ -15,6 +15,7 @@ import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { useApiGroups } from "../api-groups/store";
 import { TText } from "../font";
 import { t } from "../i18n";
+import { taskProgressStore } from "../our-space/task-progress-instance";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
 import { type IndexProgress, indexDocument } from "./indexer";
 import { knowledgeStore } from "./instance";
@@ -76,17 +77,57 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
       return;
     }
     setBusy(true);
+    const taskId = `kb-index-${Date.now()}`;
     try {
       const text = await FileSystem.readAsStringAsync(asset.uri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const kind = /\.md$/i.test(name) ? "md" : "txt";
       const doc = await knowledgeStore.addDoc(name, kind, asset.size ?? text.length);
-      await indexDocument(knowledgeStore, active, doc.id, text, kind === "md", {
-        onProgress: setProgress,
+      await taskProgressStore.upsert({
+        id: taskId,
+        name: t("kb.indexingTask"),
+        progress: 0,
+        stage: "",
+        status: "running",
+        backgroundUri: null,
       });
+      await taskProgressStore.saveIndex();
+      await indexDocument(knowledgeStore, active, doc.id, text, kind === "md", {
+        onProgress: (p) => {
+          setProgress(p);
+          const total = Math.max(1, p.total);
+          const pct = p.phase === "chunking" ? 0.1 : 0.1 + 0.9 * (p.done / total);
+          void taskProgressStore.upsert({
+            id: taskId,
+            name: t("kb.indexingTask"),
+            progress: pct,
+            stage: t("kb.indexingStage", { done: p.done, total: p.total }),
+            status: "running",
+            backgroundUri: null,
+          });
+        },
+      });
+      await taskProgressStore.upsert({
+        id: taskId,
+        name: t("kb.indexingTask"),
+        progress: 1,
+        stage: t("kb.indexingDone"),
+        status: "done",
+        backgroundUri: null,
+      });
+      await taskProgressStore.saveIndex();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      await taskProgressStore.upsert({
+        id: taskId,
+        name: t("kb.indexingTask"),
+        progress: 0,
+        stage: msg,
+        status: "stuck",
+        backgroundUri: null,
+      });
+      await taskProgressStore.saveIndex();
       setError(
         msg === "noApiGroup"
           ? t("kb.noApiGroup")

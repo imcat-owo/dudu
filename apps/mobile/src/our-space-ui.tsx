@@ -53,6 +53,8 @@ import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
 import { ourSpaceStore } from "./our-space/instance";
+import { TaskCards } from "./our-space/task-cards-ui";
+import { taskProgressStore } from "./our-space/task-progress-instance";
 import type {
   AiStatus,
   Anniversary,
@@ -293,6 +295,10 @@ function StatusView() {
     };
   }, [status, pulse]);
 
+  useEffect(() => {
+    void taskProgressStore.load().catch(() => null);
+  }, []);
+
   if (!status) return <EmptyState icon={Activity} text={t("space.status.empty")} />;
   return (
     <FadeIn>
@@ -332,6 +338,7 @@ function StatusView() {
           {t("space.status.updatedAgo")} · {timeAgo(status.updatedAt, now)}
         </TText>
       </SoftCard>
+      <TaskCards />
     </FadeIn>
   );
 }
