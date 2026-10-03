@@ -19,7 +19,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
   TextInput,
   type TextStyle,
   View,
@@ -224,7 +223,7 @@ function ServerToolCard({
 function useSafeRenderToolCall(): (args: { toolCall: unknown; toolMessage: unknown }) => ReactNode {
   const mode = useChatMode();
   if (mode === "local") return () => null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // biome-ignore lint/correctness/useHookAtTopLevel: local mode has no CopilotKitProvider; remount-on-mode-change (key={mode}) keeps hook order stable.
   return useRenderToolCall() as unknown as (args: {
     toolCall: unknown;
     toolMessage: unknown;
