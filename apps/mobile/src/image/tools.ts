@@ -52,7 +52,7 @@ export function createImageTools(): LocalTool[] {
         const style = strArg(args, "style").trim();
         const fullPrompt = style ? `${prompt}, ${style}` : prompt;
         const url = buildImageUrl(fullPrompt);
-        const encoded = encodeImageMessage(url, prompt);
+        const encoded = encodeImageMessage(url, fullPrompt);
         return (
           `Image generated for prompt: "${prompt}"\n` +
           `To show it to her, output EXACTLY the following as your entire next message (no other text, no code fences):\n` +
