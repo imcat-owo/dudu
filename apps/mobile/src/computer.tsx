@@ -14,10 +14,12 @@ import { browserAddress } from "./browser-address";
 import { useComputerDraft } from "./computer-drafts";
 import { LinuxWorkspace } from "./computer-workspace";
 import { t } from "./i18n";
-import { Button, Card, colors, ErrorNotice, Field, LinkRow, Sheet, s } from "./ui";
+import {Button, Card, useColors, ErrorNotice, Field, LinkRow, Sheet, useStyles} from "./ui";
 import { useWorkspace } from "./workspace";
 
 export function ComputerEntry() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace, open } = useWorkspace();
   const available = workspace.connections.some(
     (c) => c.id === "browser" && c.status === "connected",
@@ -61,6 +63,8 @@ export function ComputerEntry() {
   );
 }
 export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
+  const colors = useColors();
+  const s = useStyles();
   const { open } = useWorkspace();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -120,6 +124,8 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
   );
 }
 export function ComputerSheet() {
+  const colors = useColors();
+  const s = useStyles();
   const { workspace, api, refresh, close, open, navigate } = useWorkspace();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
