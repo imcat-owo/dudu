@@ -5,7 +5,7 @@ import {
   useRenderTool,
   useRenderToolCall,
 } from "@copilotkit/react-native/headless";
-import { ArrowDown, ArrowUp, FileText, RotateCcw, Square, X } from "lucide-react-native";
+import { ArrowDown, ArrowUp, EyeOff, FileText, RotateCcw, Square, X } from "lucide-react-native";
 import {
   type ReactNode,
   useCallback,
@@ -551,7 +551,7 @@ export function ChatScreen({
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const replying = busy || agent.isRunning;
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: incognitoOn ? "rgba(61,58,51,0.06)" : undefined }}>
       <View
         style={[s.row, { justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8 }]}
       >
@@ -572,6 +572,7 @@ export function ChatScreen({
             backgroundColor: incognitoOn ? colors.text : colors.line,
           }}
         >
+          <EyeOff size={13} color={incognitoOn ? colors.canvas : colors.muted} />
           <TText
             style={{
               fontSize: 12,
@@ -584,9 +585,18 @@ export function ChatScreen({
         </Pressable>
       </View>
       {incognitoOn && (
-        <TText style={[s.small, { textAlign: "center", paddingVertical: 4 }]}>
-          {t("chat.incognitoNote")}
-        </TText>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            paddingVertical: 6,
+          }}
+        >
+          <EyeOff size={12} color={colors.muted} />
+          <TText style={[s.small, { color: colors.muted }]}>{t("chat.incognitoNote")}</TText>
+        </View>
       )}
       {mode === "local" && !activeGroup && loaded && (
         <Card style={{ margin: 16 }}>
