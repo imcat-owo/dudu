@@ -37,9 +37,9 @@
 | 功能 | 状态 | 对齐目标 | 备注 |
 |---|---|---|---|
 | 双模式架构（本地直连默认＋云模式可选，随时切换） | ✅ 通过 | OpenMinis | 她拍板：两套自己控制，AI都能用、她都能看见；后端暂不部署；P0/P1/P2修完复验过 |
-| TTS（自定义 URL＋key，想接什么接什么） | ⬜ 待做 | Kelivo | 默认免费高质量中文语音打底 |
-| STT（语音转写，AI 能听见） | ⬜ 待做 | Kelivo | 录音不再是摆设 |
-| 识图（AI 看图管线：调识图模型当代眼） | ⬜ 待做 | pi-vision 等 | 专业提示词 4 段式已备好（vision-pipeline-research.md） |
+| TTS（自定义 URL＋key，想接什么接什么） | 🔨 进行中 | Kelivo | 默认免费高质量中文语音打底 |
+| STT（语音转写，AI 能听见） | 🔨 进行中 | Kelivo | 录音不再是摆设 |
+| 识图（AI 看图管线：调识图模型当代眼） | 🔨 进行中 | pi-vision 等 | 专业提示词 4 段式已备好（vision-pipeline-research.md） |
 | API 分组（URL+key+模型名，随时切换，她自己配） | ⬜ 待做 | Kelivo/OpenMinis | 服务端不预配key，只留接口 |
 | MCP（自定义地址＋鉴权＋工具挂载） | ⬜ 待做 | Kelivo＋RikkaHub | 走审批流 |
 | 本地权限套件（相册/定位/剪贴板/通知/麦克风＋AI 接线） | ⬜ 待做 | Apple HIG | 用时申请 |
