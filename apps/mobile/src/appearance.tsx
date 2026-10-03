@@ -30,7 +30,7 @@ import {
   X,
 } from "lucide-react-native";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { type StringKey, t } from "./i18n";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
@@ -705,16 +705,50 @@ function DimSlider({
   onChange: (v: number) => void;
   tokens: Tokens;
 }) {
-  const [width, setWidth] = useState(0);
+  const viewRef = useRef<View>(null);
+  const metrics = useRef({ width: 0, pageX: 0 });
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const measure = () => {
+    viewRef.current?.measure((_x, _y, width, _h, pageX) => {
+      metrics.current = { width, pageX };
+    });
+  };
+
+  const setFromPageX = (pageX: number) => {
+    const { width, pageX: originX } = metrics.current;
+    if (width > 0) {
+      onChangeRef.current(Math.min(1, Math.max(0, (pageX - originX) / width)));
+    }
+  };
+
+  // Tap AND drag: the old onPress-only version couldn't be dragged.
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        measure();
+        setFromPageX(e.nativeEvent.pageX);
+      },
+      onPanResponderMove: (e) => setFromPageX(e.nativeEvent.pageX),
+    }),
+  ).current;
+
   return (
-    <Pressable
+    <View
+      ref={viewRef}
       accessibilityRole="adjustable"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(value * 100) }}
       accessibilityLabel={t("appearance.dimLabel")}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-      onPress={(e) => {
-        if (width > 0) onChange(e.nativeEvent.locationX / width);
+      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "increment") onChange(Math.min(1, value + 0.05));
+        else if (e.nativeEvent.actionName === "decrement") onChange(Math.max(0, value - 0.05));
       }}
+      onLayout={measure}
+      {...pan.panHandlers}
       style={{ height: 36, justifyContent: "center" }}
     >
       <View
@@ -746,7 +780,7 @@ function DimSlider({
           backgroundColor: tokens.accent.accent,
         }}
       />
-    </Pressable>
+    </View>
   );
 }
 
