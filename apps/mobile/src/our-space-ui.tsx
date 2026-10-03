@@ -13,20 +13,37 @@
  * Every pixel earns its place; she judges with her eyes.
  */
 
+import * as ImagePicker from "expo-image-picker";
 import {
   Activity,
   Bell,
   BookOpen,
+  CalendarHeart,
+  Camera,
   Check,
+  ChevronLeft,
   Flower2,
   Heart,
   History,
+  Images,
+  MessageCircle,
   MessageCircleQuestion,
   MoonStar,
+  Send,
   Sprout,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
+import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
 import { memoryStore } from "./memory/instance";
@@ -36,23 +53,22 @@ import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { ourSpaceStore } from "./our-space/instance";
 import type {
   AiStatus,
+  Anniversary,
+  CoupleProfile,
   DiaryEntry,
+  FeedAuthor,
+  FeedPost,
+  FeedReply,
   MemoryConfidence,
   TellLaterItem,
   TimelineEvent,
+  WorkItem,
+  WorkType,
 } from "./our-space/store";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
-
-const TABS: { id: SpaceTab; labelKey: StringKey; icon: typeof Activity }[] = [
-  { id: "status", labelKey: "space.tabs.status", icon: Activity },
-  { id: "diary", labelKey: "space.tabs.diary", icon: BookOpen },
-  { id: "timeline", labelKey: "space.tabs.timeline", icon: History },
-  { id: "garden", labelKey: "space.tabs.garden", icon: Flower2 },
-  { id: "tellLater", labelKey: "space.tabs.tellLater", icon: Bell },
-];
 
 function useOurSpaceVersion(): number {
   const [v, setV] = useState(0);
@@ -711,84 +727,797 @@ function TellLaterView() {
 
 // ---- Screen ----
 
-export function OurSpaceScreen() {
+// ============ v2: couple space ============
+
+type SpacePage =
+  | { type: "home" }
+  | { type: "feed" }
+  | { type: "works" }
+  | { type: "anniversary" }
+  | { type: "diary" }
+  | { type: "garden" }
+  | { type: "status" }
+  | { type: "tellLater" };
+
+/** Couple header: her avatar + AI avatar overlapping, both customizable. */
+function CoupleHeader() {
+  const v = useOurSpaceVersion();
   const colors = useColors();
-  const { tokens } = useTheme();
-  const [tab, setTab] = useState<SpaceTab>("status");
+  const [profile, setProfile] = useState<CoupleProfile | null>(null);
+
+  useEffect(() => {
+    void ourSpaceStore.getCoupleProfile().then(setProfile);
+  }, [v]);
+
+  const pickAvatar = async (who: "her" | "ai") => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!res.canceled && res.assets[0]) {
+        const updated = await ourSpaceStore.setAvatar(who, res.assets[0].uri);
+        setProfile(updated);
+      }
+    } catch {
+      // Picker cancelled or failed — stay as-is.
+    }
+  };
+
+  const herSource = profile?.herAvatarUri ? { uri: profile.herAvatarUri } : null;
+  const aiSource: { uri: string } | number | null = profile?.aiAvatarUri
+    ? { uri: profile.aiAvatarUri }
+    : (soraSource() as { uri: string } | number);
+
+  const avatar = (
+    source: { uri: string } | number | null,
+    fallback: React.ReactNode,
+    who: "her" | "ai",
+    label: string,
+  ) => (
+    <PressableScale
+      onPress={() => void pickAvatar(who)}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} · ${t("space.couple.changeAvatar")}`}
+    >
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: colors.sky,
+          borderWidth: 3,
+          borderColor: colors.card,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+        }}
+      >
+        {source ? (
+          <Image source={source} style={{ width: 70, height: 70, borderRadius: 35 }} />
+        ) : (
+          fallback
+        )}
+      </View>
+    </PressableScale>
+  );
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ paddingHorizontal: 22, paddingTop: 18, paddingBottom: 4 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 3 }}>
-          <Heart size={20} color={tokens.accent.fg} strokeWidth={1.8} fill={tokens.accent.fg} />
-          <TText
-            style={{ color: colors.text, fontSize: 22, fontWeight: "800", letterSpacing: 0.5 }}
+    <View style={{ alignItems: "center", paddingTop: 26, paddingBottom: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {avatar(
+          herSource,
+          <Camera size={26} color={colors.muted} strokeWidth={1.5} />,
+          "her",
+          t("space.couple.herAvatar"),
+        )}
+        <View style={{ marginLeft: -18, marginRight: -18, zIndex: 2 }}>
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.line,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            {t("space.title")}
-          </TText>
+            <Heart size={16} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
+          </View>
         </View>
-        <TText style={{ color: colors.muted, fontSize: 13, marginLeft: 30 }}>
-          {t("space.subtitle")} · {todayLine()}
-        </TText>
+        {avatar(
+          aiSource,
+          <Heart size={26} color={colors.muted} strokeWidth={1.5} />,
+          "ai",
+          t("space.couple.aiAvatar"),
+        )}
       </View>
+      <TText
+        style={{
+          color: colors.text,
+          fontSize: 20,
+          fontWeight: "800",
+          letterSpacing: 0.5,
+          marginTop: 12,
+        }}
+      >
+        {t("space.title")}
+      </TText>
+      <TText style={{ color: colors.muted, fontSize: 12.5, marginTop: 3 }}>
+        {t("space.subtitle")} · {todayLine()}
+      </TText>
+    </View>
+  );
+}
 
+interface CardDef {
+  page: Exclude<SpacePage, { type: "home" }>["type"];
+  labelKey: StringKey;
+  icon: typeof Heart;
+  blurbKey?: StringKey;
+}
+
+const CARDS: CardDef[] = [
+  { page: "feed", labelKey: "space.cards.feed", icon: MessageCircle },
+  { page: "anniversary", labelKey: "space.cards.anniversary", icon: CalendarHeart },
+  { page: "diary", labelKey: "space.tabs.diary", icon: BookOpen },
+  { page: "garden", labelKey: "space.tabs.garden", icon: Flower2 },
+  { page: "status", labelKey: "space.tabs.status", icon: Activity },
+  { page: "tellLater", labelKey: "space.tabs.tellLater", icon: Bell },
+  { page: "works", labelKey: "space.cards.works", icon: Images },
+];
+
+function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
+  const colors = useColors();
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, paddingTop: 14 }}>
+      {CARDS.map((card, i) => {
+        const Icon = card.icon;
+        return (
+          <StaggerIn key={card.page} index={i}>
+            <PressableScale
+              onPress={() => onOpen({ type: card.page })}
+              accessibilityRole="button"
+              accessibilityLabel={t(card.labelKey)}
+              style={{ width: "100%" }}
+            >
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 20,
+                  borderTopLeftRadius: 22,
+                  borderBottomRightRadius: 24,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  padding: 16,
+                  alignItems: "center",
+                  gap: 8,
+                  minHeight: 108,
+                  justifyContent: "center",
+                }}
+              >
+                <Icon size={26} color={colors.text} strokeWidth={1.5} />
+                <TText style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>
+                  {t(card.labelKey)}
+                </TText>
+              </View>
+            </PressableScale>
+          </StaggerIn>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Page shell with back button for card detail pages. */
+function PageShell({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  children: React.ReactNode;
+}) {
+  const colors = useColors();
+  return (
+    <View style={{ flex: 1 }}>
       <View
         style={{
           flexDirection: "row",
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          gap: 2,
+          alignItems: "center",
+          paddingHorizontal: 14,
+          paddingTop: 14,
+          paddingBottom: 6,
+          gap: 6,
         }}
       >
-        {TABS.map((tb) => {
-          const active = tab === tb.id;
-          const Icon = tb.icon;
-          return (
-            <PressableScale
-              key={tb.id}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={t(tb.labelKey)}
-              onPress={() => setTab(tb.id)}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 10,
-                borderRadius: 16,
-                backgroundColor: active ? colors.text : "transparent",
-                gap: 4,
-              }}
-            >
-              <Icon
-                size={18}
-                color={active ? colors.card : colors.muted}
-                strokeWidth={active ? 2 : 1.6}
-              />
-              <TText
-                style={{
-                  color: active ? colors.card : colors.muted,
-                  fontSize: 11,
-                  fontWeight: active ? "700" : "400",
-                  letterSpacing: 0.3,
-                }}
-              >
-                {t(tb.labelKey)}
-              </TText>
-            </PressableScale>
-          );
-        })}
+        <PressableScale onPress={onBack} accessibilityRole="button" accessibilityLabel="Back">
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.line,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ChevronLeft size={20} color={colors.text} strokeWidth={1.8} />
+          </View>
+        </PressableScale>
+        <TText style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginLeft: 4 }}>
+          {title}
+        </TText>
       </View>
-
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 10, paddingBottom: 48 }}
+        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 8, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
-        {tab === "status" && <StatusView />}
-        {tab === "diary" && <DiaryView />}
-        {tab === "timeline" && <TimelineView />}
-        {tab === "garden" && <GardenView />}
-        {tab === "tellLater" && <TellLaterView />}
+        <FadeIn>{children}</FadeIn>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ---- v2: social feed (Moments-style) ----
+
+function FeedComposer({ onPosted }: { onPosted: () => void }) {
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [text, setText] = useState("");
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const pickImage = async () => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        quality: 0.8,
+      });
+      if (!res.canceled && res.assets[0]) setImageUri(res.assets[0].uri);
+    } catch {
+      // Stay as-is.
+    }
+  };
+
+  const post = async () => {
+    if ((!text.trim() && !imageUri) || busy) return;
+    setBusy(true);
+    try {
+      await ourSpaceStore.addFeedPost("her", text.trim(), imageUri ?? undefined);
+      setText("");
+      setImageUri(null);
+      onPosted();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: colors.line,
+        padding: 14,
+        marginBottom: 16,
+      }}
+    >
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        placeholder={t("space.feed.postHint")}
+        placeholderTextColor={colors.muted}
+        multiline
+        style={{ color: colors.text, fontSize: 14, minHeight: 40, textAlignVertical: "top" }}
+      />
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: "100%", height: 160, borderRadius: 12, marginTop: 8 }}
+          resizeMode="cover"
+        />
+      ) : null}
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, gap: 8 }}>
+        <PressableScale onPress={() => void pickImage()} accessibilityRole="button">
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: colors.sky,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Camera size={18} color={colors.muted} strokeWidth={1.6} />
+          </View>
+        </PressableScale>
+        <View style={{ flex: 1 }} />
+        <PressableScale onPress={() => void post()} accessibilityRole="button">
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              backgroundColor: tokens.accent.fg,
+              borderRadius: 999,
+              paddingHorizontal: 18,
+              paddingVertical: 9,
+              opacity: !text.trim() && !imageUri ? 0.45 : 1,
+            }}
+          >
+            <Send size={14} color="#fff" strokeWidth={2} />
+            <TText style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+              {t("space.feed.post")}
+            </TText>
+          </View>
+        </PressableScale>
+      </View>
+    </View>
+  );
+}
+
+function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => void }) {
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [replies, setReplies] = useState<FeedReply[]>([]);
+  const [replyText, setReplyText] = useState("");
+  const [showReply, setShowReply] = useState(false);
+  const now = Date.now();
+
+  useEffect(() => {
+    void ourSpaceStore.listReplies(post.id).then(setReplies);
+  }, [post.id]);
+
+  const toggleLike = async (who: FeedAuthor) => {
+    await ourSpaceStore.toggleFeedLike(post.id, who);
+    onChanged();
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+    await ourSpaceStore.addReply(post.id, "her", replyText.trim());
+    setReplyText("");
+    setShowReply(false);
+    const updated = await ourSpaceStore.listReplies(post.id);
+    setReplies(updated);
+  };
+
+  const likeCount = (post.likedByHer ? 1 : 0) + (post.likedByAi ? 1 : 0);
+
+  return (
+    <SoftCard>
+      <View style={{ gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: post.author === "ai" ? tokens.accent.bg : colors.sky,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TText style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+              {post.author === "ai" ? "AI" : "她"}
+            </TText>
+          </View>
+          <View style={{ flex: 1 }}>
+            <TText style={{ color: colors.text, fontSize: 13.5, fontWeight: "600" }}>
+              {post.author === "ai" ? t("space.couple.aiAvatar") : t("space.couple.herAvatar")}
+            </TText>
+            <TText style={{ color: colors.muted, fontSize: 11.5 }}>
+              {timeAgo(post.createdAt, now)}
+            </TText>
+          </View>
+        </View>
+
+        {post.text ? (
+          <TText style={{ color: colors.text, fontSize: 14.5, lineHeight: 23 }}>{post.text}</TText>
+        ) : null}
+        {post.imageUri ? (
+          <Image
+            source={{ uri: post.imageUri }}
+            style={{ width: "100%", height: 220, borderRadius: 14 }}
+            resizeMode="cover"
+          />
+        ) : null}
+
+        {replies.length > 0 && (
+          <View
+            style={{
+              backgroundColor: colors.sky,
+              borderRadius: 12,
+              padding: 10,
+              gap: 6,
+            }}
+          >
+            {replies.map((r) => (
+              <View key={r.id} style={{ flexDirection: "row", gap: 6 }}>
+                <TText style={{ color: tokens.accent.fg, fontSize: 12.5, fontWeight: "700" }}>
+                  {r.author === "ai" ? t("space.couple.aiAvatar") : t("space.couple.herAvatar")}:
+                </TText>
+                <TText style={{ color: colors.text, fontSize: 12.5, flex: 1 }}>{r.text}</TText>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 2 }}>
+          <PressableScale onPress={() => void toggleLike("her")} accessibilityRole="button">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Heart
+                size={17}
+                color={post.likedByHer ? "#C15F3C" : colors.muted}
+                fill={post.likedByHer ? "#C15F3C" : "transparent"}
+                strokeWidth={1.7}
+              />
+              <TText style={{ color: colors.muted, fontSize: 12 }}>
+                {likeCount > 0 ? likeCount : ""}
+              </TText>
+            </View>
+          </PressableScale>
+          <PressableScale onPress={() => setShowReply((s) => !s)} accessibilityRole="button">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <MessageCircle size={17} color={colors.muted} strokeWidth={1.7} />
+              <TText style={{ color: colors.muted, fontSize: 12 }}>
+                {replies.length > 0 ? replies.length : ""}
+              </TText>
+            </View>
+          </PressableScale>
+        </View>
+
+        {showReply && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TextInput
+              value={replyText}
+              onChangeText={setReplyText}
+              placeholder={t("space.feed.replyHint")}
+              placeholderTextColor={colors.muted}
+              style={{
+                flex: 1,
+                color: colors.text,
+                fontSize: 13,
+                backgroundColor: colors.sky,
+                borderRadius: 999,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+              }}
+            />
+            <PressableScale onPress={() => void sendReply()} accessibilityRole="button">
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: tokens.accent.fg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Send size={15} color="#fff" strokeWidth={2} />
+              </View>
+            </PressableScale>
+          </View>
+        )}
+      </View>
+    </SoftCard>
+  );
+}
+
+function FeedPage() {
+  const v = useOurSpaceVersion();
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    void ourSpaceStore.listFeed().then(setPosts);
+  }, [v, tick]);
+
+  if (posts.length === 0) {
+    return (
+      <>
+        <FeedComposer onPosted={() => setTick((x) => x + 1)} />
+        <EmptyState icon={MessageCircle} text={t("space.feed.empty")} />
+      </>
+    );
+  }
+
+  return (
+    <View style={{ gap: 14 }}>
+      <FeedComposer onPosted={() => setTick((x) => x + 1)} />
+      {posts.map((p, i) => (
+        <StaggerIn key={p.id} index={i}>
+          <FeedPostCard post={p} onChanged={() => setTick((x) => x + 1)} />
+        </StaggerIn>
+      ))}
+    </View>
+  );
+}
+
+// ---- v2: works drawer (Instagram-style) ----
+
+const WORK_ICONS: Record<WorkType, typeof Heart> = {
+  image: Camera,
+  html: MessageCircle,
+  theme: Heart,
+  file: BookOpen,
+};
+
+function WorksPage() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [works, setWorks] = useState<WorkItem[]>([]);
+  const [viewer, setViewer] = useState<WorkItem | null>(null);
+
+  useEffect(() => {
+    void ourSpaceStore.listWorks().then(setWorks);
+  }, [v]);
+
+  return (
+    <View>
+      {works.length === 0 ? (
+        <EmptyState icon={Images} text={t("space.works.empty")} />
+      ) : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+          {works.map((w) => {
+            const thumb = w.thumbnailUri ?? (w.type === "image" ? w.uri : undefined);
+            const Icon = WORK_ICONS[w.type];
+            return (
+              <PressableScale
+                key={w.id}
+                onPress={() => setViewer(w)}
+                accessibilityRole="button"
+                accessibilityLabel={w.title}
+                style={{ width: "32.5%" }}
+              >
+                <View
+                  style={{
+                    aspectRatio: 1,
+                    borderRadius: 6,
+                    backgroundColor: colors.sky,
+                    overflow: "hidden",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {thumb ? (
+                    <Image
+                      source={{ uri: thumb }}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Icon size={26} color={colors.muted} strokeWidth={1.5} />
+                  )}
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
+      )}
+
+      <Modal
+        visible={!!viewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewer(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() => setViewer(null)}
+        >
+          {viewer && (
+            <View style={{ width: "92%", maxHeight: "84%" }} onStartShouldSetResponder={() => true}>
+              {viewer.type === "image" && viewer.uri ? (
+                <Image
+                  source={{ uri: viewer.uri }}
+                  style={{ width: "100%", aspectRatio: 1, borderRadius: 12 }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View
+                  style={{
+                    backgroundColor: colors.card,
+                    borderRadius: 16,
+                    padding: 22,
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  {(() => {
+                    const Icon = WORK_ICONS[viewer.type];
+                    return <Icon size={40} color={tokens.accent.fg} strokeWidth={1.4} />;
+                  })()}
+                  <TText
+                    style={{
+                      color: colors.text,
+                      fontSize: 16,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    {viewer.title}
+                  </TText>
+                  {viewer.description ? (
+                    <TText style={{ color: colors.muted, fontSize: 13, textAlign: "center" }}>
+                      {viewer.description}
+                    </TText>
+                  ) : null}
+                  <TText style={{ color: colors.muted, fontSize: 11 }} selectable>
+                    {viewer.uri}
+                  </TText>
+                </View>
+              )}
+              <TText
+                style={{
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: "600",
+                  textAlign: "center",
+                  marginTop: 14,
+                }}
+              >
+                {viewer.title}
+              </TText>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// ---- v2: anniversaries ----
+
+function AnniversaryPage() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [items, setItems] = useState<Anniversary[]>([]);
+
+  useEffect(() => {
+    void ourSpaceStore.listAnniversaries().then(setItems);
+  }, [v]);
+
+  const dayCount = (dateStr: string): { label: string; past: boolean } => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const target = new Date(y, m - 1, d);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    const diff = Math.round((now.getTime() - target.getTime()) / 86400000);
+    if (diff === 0) return { label: t("space.anniversary.today"), past: true };
+    if (diff > 0) return { label: t("space.anniversary.daysTogether", { n: diff }), past: true };
+    return { label: t("space.anniversary.countdown", { n: -diff }), past: false };
+  };
+
+  return (
+    <View style={{ gap: 14 }}>
+      {items.length === 0 ? (
+        <EmptyState icon={CalendarHeart} text={t("space.anniversary.empty")} />
+      ) : (
+        items.map((a, i) => {
+          const dc = dayCount(a.date);
+          return (
+            <StaggerIn key={a.id} index={i}>
+              <SoftCard>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 26,
+                      backgroundColor: tokens.accent.bg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CalendarHeart size={24} color={tokens.accent.fg} strokeWidth={1.6} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TText style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+                      {a.title}
+                    </TText>
+                    <TText style={{ color: colors.muted, fontSize: 12.5, marginTop: 2 }}>
+                      {a.date}
+                      {a.description ? ` · ${a.description}` : ""}
+                    </TText>
+                  </View>
+                  <TText
+                    style={{
+                      color: tokens.accent.fg,
+                      fontSize: 13,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {dc.label}
+                  </TText>
+                </View>
+              </SoftCard>
+            </StaggerIn>
+          );
+        })
+      )}
+      <TText
+        style={{
+          color: colors.muted,
+          fontSize: 13,
+          fontWeight: "700",
+          marginTop: 8,
+          letterSpacing: 0.4,
+        }}
+      >
+        {t("space.timeline.title")}
+      </TText>
+      <TimelineView />
+    </View>
+  );
+}
+
+// ---- v2 main screen ----
+
+export function OurSpaceScreen() {
+  const [page, setPage] = useState<SpacePage>({ type: "home" });
+  const colors = useColors();
+
+  if (page.type !== "home") {
+    const titles: Record<Exclude<SpacePage, { type: "home" }>["type"], string> = {
+      feed: t("space.feed.title"),
+      works: t("space.works.title"),
+      anniversary: t("space.anniversary.title"),
+      diary: t("space.diary.title"),
+      garden: t("space.garden.title"),
+      status: t("space.status.title"),
+      tellLater: t("space.tellLater.title"),
+    };
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+        <PageShell title={titles[page.type]} onBack={() => setPage({ type: "home" })}>
+          {page.type === "feed" && <FeedPage />}
+          {page.type === "works" && <WorksPage />}
+          {page.type === "anniversary" && <AnniversaryPage />}
+          {page.type === "diary" && <DiaryView />}
+          {page.type === "garden" && <GardenView />}
+          {page.type === "status" && <StatusView />}
+          {page.type === "tellLater" && <TellLaterView />}
+        </PageShell>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 48 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <FadeIn>
+          <CoupleHeader />
+        </FadeIn>
+        <CardGrid onOpen={setPage} />
       </ScrollView>
     </View>
   );
