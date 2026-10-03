@@ -175,6 +175,8 @@ const zhHans = {
   "toolcard.openWorkspace": "去工作区看保存的结果。",
   "toolcard.view": "查看{name}",
   "a11y.incognito": "隐身聊天",
+  "a11y.aiAvatar": "AI 头像",
+  "a11y.userAvatar": "我的头像",
   "a11y.agentWorking": "Agent 正在工作",
   "a11y.attachDoc": "添加文档",
   "a11y.messageInput": "给 OpenMuse 发消息",

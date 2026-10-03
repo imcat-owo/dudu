@@ -176,6 +176,8 @@ export const enStrings: Record<StringKey, string> = {
   "toolcard.openWorkspace": "Open the workspace to see the saved result.",
   "toolcard.view": "View {name}",
   "a11y.incognito": "Incognito chat",
+  "a11y.aiAvatar": "AI avatar",
+  "a11y.userAvatar": "My avatar",
   "a11y.agentWorking": "Agent is working",
   "a11y.attachDoc": "Attach a document",
   "a11y.messageInput": "Message OpenMuse",
