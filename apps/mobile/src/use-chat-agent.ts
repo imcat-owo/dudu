@@ -19,7 +19,7 @@ import {
   useAgent,
   useCopilotKit,
 } from "@copilotkit/react-native/headless";
-import { useMemo, useRef } from "react";
+import { useMemo, useReducer, useRef } from "react";
 import {
   createLocalAgent,
   type LocalChatMessage,
@@ -119,6 +119,7 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
   agent: ChatAgent;
   isReady: boolean;
 } {
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const ref = useRef<ChatAgent | null>(null);
   if (!ref.current) {
     const local = createLocalAgent({
@@ -127,6 +128,9 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
         groupStore.getSnapshot().groups.find((g) => g.id === groupStore.getSnapshot().activeId) ??
         null,
     });
+    // Bridge LocalAgent notifications into React renders
+    // (cloud mode gets this from useAgent internally).
+    local.subscribe({ onMessagesChanged: () => forceUpdate() });
     const agent: ChatAgent = {
       get messages() {
         return local.messages as AgentMessage[];
