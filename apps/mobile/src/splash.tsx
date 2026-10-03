@@ -19,8 +19,8 @@
  * and the animation is a single gentle bloom, no spinning/zooming.
  */
 
-import { useEffect, useRef } from "react";
-import { Animated, Easing, Image, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AccessibilityInfo, Animated, Easing, Image, View } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { DUR, EASE, SPRING, STAGGER } from "./motion";
 
@@ -35,47 +35,69 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const titleUp = useRef(new Animated.Value(0)).current; // 0→1 title rise
   const subFade = useRef(new Animated.Value(0)).current; // 0→1 subtitle
   const fadeOut = useRef(new Animated.Value(1)).current; // 1→0 exit
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Honor the OS Reduce Motion setting: skip the shimmer sweep and settle
+  // the entrance instantly instead of choreographing it.
+  useEffect(() => {
+    let alive = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      if (alive) setReduceMotion(v);
+    });
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
-    // 1. Avatar bloom — soft spring, the hero moment.
-    Animated.spring(bloom, {
-      toValue: 1,
-      ...SPRING.soft,
-      useNativeDriver: true,
-    }).start();
+    if (reduceMotion) {
+      // Settle instantly: no bloom, no shimmer, no rise — just appear.
+      bloom.setValue(1);
+      titleUp.setValue(1);
+      subFade.setValue(1);
+    } else {
+      // 1. Avatar bloom — soft spring, the hero moment.
+      Animated.spring(bloom, {
+        toValue: 1,
+        ...SPRING.soft,
+        useNativeDriver: true,
+      }).start();
 
-    // 2. Shimmer sweep across the avatar (one-shot).
-    Animated.timing(shimmerX, {
-      toValue: 1,
-      duration: 800,
-      delay: STAGGER.splash,
-      easing: Easing.bezier(...EASE.inOut),
-      useNativeDriver: true,
-    }).start();
+      // 2. Shimmer sweep across the avatar (one-shot).
+      Animated.timing(shimmerX, {
+        toValue: 1,
+        duration: 800,
+        delay: STAGGER.splash,
+        easing: Easing.bezier(...EASE.inOut),
+        useNativeDriver: true,
+      }).start();
 
-    // 3. Title rises.
-    Animated.timing(titleUp, {
-      toValue: 1,
-      duration: DUR.normal,
-      delay: 350,
-      easing: Easing.bezier(...EASE.out),
-      useNativeDriver: true,
-    }).start();
+      // 3. Title rises.
+      Animated.timing(titleUp, {
+        toValue: 1,
+        duration: DUR.normal,
+        delay: 350,
+        easing: Easing.bezier(...EASE.out),
+        useNativeDriver: true,
+      }).start();
 
-    // 4. Subtitle fades.
-    Animated.timing(subFade, {
-      toValue: 1,
-      duration: DUR.normal,
-      delay: 500,
-      easing: Easing.bezier(...EASE.out),
-      useNativeDriver: true,
-    }).start();
+      // 4. Subtitle fades.
+      Animated.timing(subFade, {
+        toValue: 1,
+        duration: DUR.normal,
+        delay: 500,
+        easing: Easing.bezier(...EASE.out),
+        useNativeDriver: true,
+      }).start();
+    }
 
     // 5. Cross-fade out, then hand over.
     const t1 = setTimeout(() => {
       Animated.timing(fadeOut, {
         toValue: 0,
-        duration: 400,
+        duration: reduceMotion ? 0 : 400,
         easing: Easing.bezier(...EASE.in),
         useNativeDriver: true,
       }).start();
@@ -85,7 +107,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [bloom, shimmerX, titleUp, subFade, fadeOut, onDone]);
+  }, [bloom, shimmerX, titleUp, subFade, fadeOut, onDone, reduceMotion]);
 
   const avatarScale = bloom.interpolate({
     inputRange: [0, 1],
@@ -125,11 +147,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
             backgroundColor: "#EFE9DC",
           }}
         >
-          <Image
-            source={soraSource()}
-            style={{ width: 148, height: 148 }}
-            resizeMode="cover"
-          />
+          <Image source={soraSource()} style={{ width: 148, height: 148 }} resizeMode="cover" />
           {/* Shimmer band, clipped to the avatar circle */}
           <Animated.View
             pointerEvents="none"
@@ -155,9 +173,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
           alignItems: "center",
         }}
       >
-        <Animated.Text
-          style={{ fontSize: 26, fontWeight: "800", color: INK, letterSpacing: 4 }}
-        >
+        <Animated.Text style={{ fontSize: 26, fontWeight: "800", color: INK, letterSpacing: 4 }}>
           我们的空间
         </Animated.Text>
         <Animated.View style={{ opacity: subFade, marginTop: 10 }}>
