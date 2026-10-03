@@ -40,6 +40,7 @@ import type {
 } from "../../../packages/domain/src";
 import { API_URL } from "./api";
 import { localDateTime, zonedInstant } from "./date-time";
+import { t } from "./i18n";
 import {
   Button,
   Card,
@@ -93,7 +94,7 @@ export function TodayScreen() {
         <View style={{ flex: 1, gap: 15, zIndex: 1 }}>
           <View style={[s.row, { gap: 7 }]}>
             <Sparkles size={13} color={colors.blueDark} />
-            <Text style={[s.label, { color: colors.blueDark }]}>每天清晰一点</Text>
+            <Text style={[s.label, { color: colors.blueDark }]}>{t("today.kicker")}</Text>
           </View>
           <Text
             style={{
@@ -104,12 +105,14 @@ export function TodayScreen() {
               color: colors.text,
             }}
           >
-            Your day, with a little{"\n"}more room to breathe.
+            {t("today.headline")}
           </Text>
           <Text style={[s.muted, { maxWidth: 420, color: "#617680" }]}>
-            {events.length ? `${events.length} things on your calendar` : "Your calendar has room"}
-            {unread.length ? `, ${unread.length} unread emails` : ""}.{"\n"}Let’s make space for
-            what matters.
+            {events.length
+              ? t("today.thingsOnCalendar", { count: events.length })
+              : t("today.calendarRoom")}
+            {unread.length ? t("today.unreadEmails", { count: unread.length }) : ""}
+            {t("today.makeSpace")}
           </Text>
           <Button
             onPress={() => ask("Help me plan my day")}
@@ -117,7 +120,7 @@ export function TodayScreen() {
             primary
             style={{ alignSelf: "flex-start", marginTop: 5 }}
           >
-            Plan my day
+            {t("today.planDay")}
           </Button>
         </View>
         {wide && (
@@ -158,7 +161,7 @@ export function TodayScreen() {
               ]}
             >
               <Check size={14} color="#739174" />
-              <Text style={s.small}>轻松的一天</Text>
+              <Text style={s.small}>{t("today.easyDay")}</Text>
             </View>
             <View
               style={[
@@ -176,7 +179,7 @@ export function TodayScreen() {
               ]}
             >
               <CalendarDays size={17} color={colors.blueDark} />
-              <Text style={s.small}>一切，在一起</Text>
+              <Text style={s.small}>{t("today.allTogether")}</Text>
             </View>
           </View>
         )}
@@ -184,25 +187,25 @@ export function TodayScreen() {
       <View style={{ flexDirection: "row", gap: 13, flexWrap: "wrap" }}>
         {[
           {
-            label: "UNREAD EMAILS",
+            label: t("today.unreadLabel"),
             value: unread.length,
-            note: "A fresh look at your inbox",
+            note: t("today.unreadNote"),
             icon: Mail,
             section: "mail" as const,
             tint: colors.sky,
           },
           {
-            label: "ON THE CALENDAR",
+            label: t("today.onCalendar"),
             value: events.length,
-            note: "Make room for your priorities",
+            note: t("today.calendarNote"),
             icon: CalendarDays,
             section: "calendar" as const,
             tint: colors.green,
           },
           {
-            label: "WAITING FOR YOU",
+            label: t("today.waitingLabel"),
             value: pending.length,
-            note: "Your review keeps things moving",
+            note: t("today.waitingNote"),
             icon: ShieldCheck,
             section: "activity" as const,
             tint: colors.lavender,
@@ -237,8 +240,8 @@ export function TodayScreen() {
       <View style={{ flexDirection: wide ? "row" : "column", gap: 22 }}>
         <Card style={{ flex: 1 }}>
           <SectionHeading
-            title="On your calendar"
-            action="Full calendar"
+            title={t("today.calendarLabel")}
+            action={t("today.fullCalendar")}
             onPress={() => navigate("calendar")}
           />
           {events.length ? (
@@ -246,8 +249,8 @@ export function TodayScreen() {
           ) : (
             <Empty
               icon={CalendarDays}
-              title="Some breathing room"
-              detail="No events scheduled today."
+              title={t("today.breathingRoom")}
+              detail={t("today.noEvents")}
             />
           )}
           <Pressable
@@ -264,13 +267,13 @@ export function TodayScreen() {
             ]}
           >
             <Plus size={15} color={colors.muted} />
-            <Text style={s.small}>安排点时间</Text>
+            <Text style={s.small}>{t("today.scheduleTime")}</Text>
           </Pressable>
         </Card>
         <Card style={{ flex: 1 }}>
           <SectionHeading
-            title="来自收件箱"
-            action="Open mail"
+            title={t("today.fromInbox")}
+            action={t("today.openMail")}
             onPress={() => navigate("mail")}
           />
           {w.mail.length ? (
@@ -309,42 +312,34 @@ export function TodayScreen() {
               </Pressable>
             ))
           ) : (
-            <Empty
-              icon={Inbox}
-              title="收件箱很安静"
-              detail="Connect Google to bring your messages here."
-            />
+            <Empty icon={Inbox} title={t("today.inboxQuiet")} detail={t("today.connectGoogle")} />
           )}
         </Card>
       </View>
       <View style={{ flexDirection: wide ? "row" : "column", gap: 22 }}>
         <Card style={{ flex: 1, backgroundColor: "#F0F0E7" }}>
-          <SectionHeading title="帮你处理小事" />
-          <Text style={[s.muted, { marginBottom: 15 }]}>
-            从一个想法开始。剩下的交给我们。
-          </Text>
-          {[
-            "What needs my attention today?",
-            "Help me catch up on my inbox",
-            "Show my recent documents",
-          ].map((prompt) => (
-            <Pressable
-              key={prompt}
-              onPress={() => ask(prompt)}
-              style={[
-                s.between,
-                { borderTopWidth: 1, borderTopColor: "#E1E2D9", paddingVertical: 13 },
-              ]}
-            >
-              <Text style={[s.text, { fontSize: 12 }]}>{prompt}</Text>
-              <ArrowUpRight size={15} color={colors.muted} />
-            </Pressable>
-          ))}
+          <SectionHeading title={t("today.smallThings")} />
+          <Text style={[s.muted, { marginBottom: 15 }]}>{t("today.startWithIdea")}</Text>
+          {[t("today.prompt.attention"), t("today.prompt.inbox"), t("today.prompt.docs")].map(
+            (prompt) => (
+              <Pressable
+                key={prompt}
+                onPress={() => ask(prompt)}
+                style={[
+                  s.between,
+                  { borderTopWidth: 1, borderTopColor: "#E1E2D9", paddingVertical: 13 },
+                ]}
+              >
+                <Text style={[s.text, { fontSize: 12 }]}>{prompt}</Text>
+                <ArrowUpRight size={15} color={colors.muted} />
+              </Pressable>
+            ),
+          )}
         </Card>
         <Card style={{ flex: 1 }}>
           <SectionHeading
-            title={pending.length ? "Ready for your review" : "Recent activity"}
-            action="View all"
+            title={pending.length ? t("today.readyReview") : t("today.recentActivity")}
+            action={t("today.viewAll")}
             onPress={() => navigate("activity")}
           />
           {pending.length
@@ -354,7 +349,7 @@ export function TodayScreen() {
                   <LinkRow
                     key={a.id}
                     title={a.title}
-                    detail="Prepared · waiting for your approval"
+                    detail={t("today.preparedWaiting")}
                     onPress={() => open({ type: "review", action: a })}
                     icon={ShieldCheck}
                     tint={colors.lavender}
@@ -374,9 +369,7 @@ export function TodayScreen() {
                 </View>
               ))}
           {!pending.length && !w.activity.length && (
-            <Text style={s.muted}>
-              你的工作区准备好了。在这里做的事会出现在our activity.
-            </Text>
+            <Text style={s.muted}>{t("today.workspaceReady")}</Text>
           )}
         </Card>
       </View>
@@ -422,7 +415,7 @@ export function AgendaRow({
     >
       <View style={{ width: 65 }}>
         <Text style={[s.text, { fontSize: 11 }]}>
-          {e.allDay ? "All day" : timeLabel(e.start, e.timeZone)}
+          {e.allDay ? t("event.allDayShort") : timeLabel(e.start, e.timeZone)}
         </Text>
         {!e.allDay && (
           <Text style={[s.small, { fontSize: 10 }]}>{timeLabel(e.end, e.timeZone)}</Text>
@@ -439,7 +432,10 @@ export function AgendaRow({
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={[s.text, { fontSize: 13, fontWeight: "500" }]}>{e.title}</Text>
         <Text numberOfLines={1} style={[s.small, { fontSize: 11 }]}>
-          {e.location || (e.attendees.length ? `${e.attendees.length} attendees` : "Time for you")}
+          {e.location ||
+            (e.attendees.length
+              ? t("event.attendeeCount", { count: e.attendees.length })
+              : t("event.timeForYou"))}
         </Text>
       </View>
       <ChevronRight size={14} color={colors.muted} />
@@ -486,8 +482,8 @@ export function MailScreen() {
         >
           <Search size={16} color={colors.muted} />
           <TextInput
-            accessibilityLabel="Search mail"
-            placeholder="搜索收件箱"
+            accessibilityLabel={t("a11y.searchMail")}
+            placeholder={t("mail.searchPlaceholder")}
             placeholderTextColor={colors.muted}
             value={query}
             onChangeText={setQuery}
@@ -495,20 +491,20 @@ export function MailScreen() {
           />
         </View>
         <Button onPress={() => open({ type: "email" })} primary icon={Plus}>
-          Compose
+          {t("mail.compose")}
         </Button>
       </View>
       <ErrorNotice error={error} />
       <Card>
         <View style={[s.row, { gap: 10, marginBottom: 15, flexWrap: "wrap" }]}>
           <Button small primary={tab === "all"} onPress={() => setTab("all")}>
-            All messages
+            {t("mail.allMessages")}
           </Button>
           <Button small primary={tab === "unread"} onPress={() => setTab("unread")}>
-            Unread · {w.mail.filter((m) => m.unread).length}
+            {t("mail.unreadTab", { count: w.mail.filter((m) => m.unread).length })}
           </Button>
           <Button small primary={tab === "drafts"} onPress={() => setTab("drafts")}>
-            Drafts · {drafts.length}
+            {t("mail.draftsTab", { count: drafts.length })}
           </Button>
         </View>
         {tab === "drafts" ? (
@@ -518,16 +514,15 @@ export function MailScreen() {
                 key={d.id}
                 icon={Mail}
                 title={d.subject}
-                detail={`To: ${d.to.join(", ")} · saved ${dateLabel(d.createdAt)}`}
+                detail={t("mail.draftDetail", {
+                  to: d.to.join(", "),
+                  date: dateLabel(d.createdAt),
+                })}
                 onPress={() => open({ type: "email", draft: d })}
               />
             ))
           ) : (
-            <Empty
-              icon={Mail}
-              title="新的一页"
-              detail="Messages you save as drafts will be here when you’re ready."
-            />
+            <Empty icon={Mail} title={t("mail.freshPage")} detail={t("mail.draftsEmpty")} />
           )
         ) : items.length ? (
           items.map((m, i) => (
@@ -553,7 +548,7 @@ export function MailScreen() {
                   <View style={[s.row, { gap: 4, marginTop: 2 }]}>
                     <FileText size={12} color={colors.muted} />
                     <Text style={s.small}>
-                      {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
+                      {t("mail.attachmentCount", { count: m.attachments.length })}
                     </Text>
                   </View>
                 )}
@@ -568,12 +563,8 @@ export function MailScreen() {
         ) : (
           <Empty
             icon={Inbox}
-            title={query ? "No matching messages" : "Nothing in your inbox"}
-            detail={
-              query
-                ? "Try a different name or subject."
-                : "Connect Google in Connections to read your mail here."
-            }
+            title={query ? t("mail.noMatch") : t("mail.emptyInbox")}
+            detail={query ? t("mail.tryDifferent") : t("mail.connectGoogle")}
           />
         )}
       </Card>
@@ -683,22 +674,22 @@ export function CalendarScreen() {
           </Text>
           <IconButton
             icon={ChevronLeft}
-            label="Previous week"
+            label={t("a11y.prevWeek")}
             onPress={() => setDate(plusDays(date, -7))}
           />
           <IconButton
             icon={ChevronRight}
-            label="Next week"
+            label={t("a11y.nextWeek")}
             onPress={() => setDate(plusDays(date, 7))}
           />
         </View>
         <Button primary icon={Plus} disabled={!writable} onPress={newEvent}>
-          New event
+          {t("cal.newEvent")}
         </Button>
       </View>
       {calendars.length > 0 && (
         <View style={{ gap: 9 }}>
-          <Text style={s.label}>你的日历</Text>
+          <Text style={s.label}>{t("cal.yourCalendars")}</Text>
           <View style={[s.row, { gap: 8, flexWrap: "wrap" }]}>
             {calendars.map((c) => (
               <Button
@@ -708,7 +699,7 @@ export function CalendarScreen() {
                 onPress={() => setCalendarId(c.id)}
               >
                 {c.name}
-                {["owner", "writer"].includes(c.accessRole) ? "" : " · read only"}
+                {["owner", "writer"].includes(c.accessRole) ? "" : t("cal.readOnly")}
               </Button>
             ))}
           </View>
@@ -767,26 +758,26 @@ export function CalendarScreen() {
         <View style={[s.between, { gap: 10, flexWrap: "wrap" }]}>
           <Text style={s.heading}>
             {all
-              ? "The next 30 days"
+              ? t("cal.next30")
               : dateLabel(`${date}T12:00:00`, { weekday: "long", month: "long", day: "numeric" })}
           </Text>
           <Button small onPress={() => setAll(!all)}>
-            {all ? "Selected day" : "Next 30 days"}
+            {all ? t("cal.selectedDay") : t("cal.next30")}
           </Button>
         </View>
         <Text style={[s.small, { marginTop: 7, marginBottom: 13 }]}>
-          {selected?.name || "Your calendar"} · {zone}. Events show their own time zone.
+          {t("cal.tzNote", { name: selected?.name || "Your calendar", zone })}
         </Text>
         <ErrorNotice error={error} />
         {!!error && (
           <Button small onPress={() => setRetry(retry + 1)}>
-            Try again
+            {t("common.retry")}
           </Button>
         )}
         {loading ? (
           <View style={[s.row, { gap: 10, paddingVertical: 35, justifyContent: "center" }]}>
             <ActivityIndicator size="small" color={colors.blueDark} />
-            <Text style={s.muted}>查看日历中…</Text>
+            <Text style={s.muted}>{t("cal.loading")}</Text>
           </View>
         ) : events.length ? (
           events.map((e, i) => (
@@ -800,16 +791,12 @@ export function CalendarScreen() {
           !error && (
             <Empty
               icon={CalendarDays}
-              title="一点开放空间"
-              detail={
-                all
-                  ? "There’s nothing scheduled for the next 30 days."
-                  : "There’s nothing on the calendar for this day."
-              }
+              title={t("cal.openSpace")}
+              detail={all ? t("cal.nothing30") : t("cal.nothingDay")}
             >
               {writable && (
                 <Button icon={Plus} onPress={newEvent}>
-                  Add an event
+                  {t("cal.addEvent")}
                 </Button>
               )}
             </Empty>
@@ -844,13 +831,13 @@ export function BrowserScreen() {
         <View style={[s.row, { gap: 12, marginBottom: 15 }]}>
           <Globe2 size={22} color={colors.blueDark} />
           <View>
-            <Text style={s.heading}>打开标签页的位置</Text>
-            <Text style={s.muted}>在私密、持久的工作区会话中浏览。</Text>
+            <Text style={s.heading}>{t("browser.tabPlace")}</Text>
+            <Text style={s.muted}>{t("browser.privateBrowsing")}</Text>
           </View>
         </View>
         <View style={[s.row, { gap: 10 }]}>
           <TextInput
-            accessibilityLabel="Website address"
+            accessibilityLabel={t("browser.addressLabel")}
             value={url}
             onChangeText={setUrl}
             onSubmitEditing={() => void create()}
@@ -866,13 +853,13 @@ export function BrowserScreen() {
             disabled={!url.trim()}
             onPress={() => void create()}
           >
-            Open session
+            {t("browser.openSession")}
           </Button>
         </View>
         <ErrorNotice error={error} />
       </Card>
       <Card>
-        <SectionHeading title="浏览器会话" />
+        <SectionHeading title={t("browser.sessionsTitle")} />
         {w.browsers.length ? (
           w.browsers.map((b) => (
             <Pressable
@@ -890,7 +877,7 @@ export function BrowserScreen() {
                   <Globe2 size={20} color={colors.blueDark} />
                 </View>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={s.heading}>{b.title || "Browser session"}</Text>
+                  <Text style={s.heading}>{b.title || t("browser.untitled")}</Text>
                   <Text style={s.muted} numberOfLines={1}>
                     {b.url}
                   </Text>
@@ -915,8 +902,8 @@ export function BrowserScreen() {
         ) : (
           <Empty
             icon={Globe2}
-            title="Start with a website"
-            detail="Open a session above to keep your browsing together. Live previews appear when the browser worker is configured."
+            title={t("browser.startWithSite")}
+            detail={t("browser.startDetail")}
           />
         )}
       </Card>
@@ -940,8 +927,7 @@ export function FilesScreen() {
       let artifact: Artifact;
       if (Platform.OS === "web") {
         const form = new FormData();
-        if (!file.file)
-          throw new Error("The selected file could not be read. Please choose it again.");
+        if (!file.file) throw new Error(t("files.readError"));
         form.append("file", file.file, file.name);
         artifact = await api.request<Artifact>("/api/files", form);
       } else {
@@ -954,7 +940,7 @@ export function FilesScreen() {
         });
         const payload = JSON.parse(result.body);
         if (result.status < 200 || result.status >= 300)
-          throw new Error(payload.error || "Could not import this PDF.");
+          throw new Error(payload.error || t("files.importError"));
         artifact = payload;
       }
       await refresh();
@@ -968,11 +954,9 @@ export function FilesScreen() {
   return (
     <View style={{ gap: 20 }}>
       <View style={s.between}>
-        <Text style={[s.muted, { flex: 1, marginRight: 15 }]}>
-          文档，还有一点工作空间。
-        </Text>
+        <Text style={[s.muted, { flex: 1, marginRight: 15 }]}>{t("files.tagline")}</Text>
         <Button primary icon={Upload} busy={busy} onPress={() => void upload()}>
-          Import PDF
+          {t("files.importPdf")}
         </Button>
       </View>
       <ErrorNotice error={error} />
@@ -1030,7 +1014,7 @@ export function FilesScreen() {
                   {f.name}
                 </Text>
                 <Text style={s.small}>
-                  {f.pageCount} {f.pageCount === 1 ? "page" : "pages"} ·{" "}
+                  {t("files.pageCount", { count: f.pageCount })} ·{" "}
                   {Math.max(1, Math.round(f.size / 1024))} KB
                 </Text>
                 <View style={[s.between, { marginTop: 9 }]}>
@@ -1044,11 +1028,7 @@ export function FilesScreen() {
       </View>
       {!w.files.length && (
         <Card>
-          <Empty
-            icon={FileText}
-            title="Your documents live here"
-            detail="Import a PDF or open a mail attachment to read, fill supported form fields, and share a copy."
-          />
+          <Empty icon={FileText} title={t("files.emptyTitle")} detail={t("files.emptyDetail")} />
         </Card>
       )}
     </View>
@@ -1063,15 +1043,15 @@ export function ActivityScreen() {
     <View style={{ gap: 20 }}>
       <View style={[s.row, { gap: 10 }]}>
         <Button small primary={filter === "all"} onPress={() => setFilter("all")}>
-          All activity
+          {t("activity.all")}
         </Button>
         <Button small primary={filter === "review"} onPress={() => setFilter("review")}>
-          Needs review · {pending.length}
+          {t("activity.needsReview", { count: pending.length })}
         </Button>
       </View>
       {actions.length > 0 && (
         <Card>
-          <SectionHeading title="Your actions" />
+          <SectionHeading title={t("activity.yourActions")} />
           {actions.map((a) => (
             <Pressable
               key={a.id}
@@ -1118,7 +1098,7 @@ export function ActivityScreen() {
       )}
       {filter === "all" && (
         <Card>
-          <SectionHeading title="Workspace timeline" />
+          <SectionHeading title={t("activity.timeline")} />
           {w.activity.length ? (
             w.activity.map((a, i) => (
               <View
@@ -1152,8 +1132,8 @@ export function ActivityScreen() {
           ) : (
             <Empty
               icon={Clock3}
-              title="The beginning of something lighter"
-              detail="Your actions and their results will be recorded here."
+              title={t("activity.emptyTimeline")}
+              detail={t("activity.timelineNote")}
             />
           )}
         </Card>
@@ -1162,8 +1142,8 @@ export function ActivityScreen() {
         <Card>
           <Empty
             icon={ShieldCheck}
-            title="You’re all caught up"
-            detail="When an email or calendar change needs your approval, it will appear here."
+            title={t("activity.caughtUp")}
+            detail={t("activity.approvalNote")}
           />
         </Card>
       )}
@@ -1185,10 +1165,10 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
       );
       if (result.url) {
         await Linking.openURL(result.url);
-        notify("Finish connecting in your browser, then refresh your workspace.");
+        notify(t("conn.finishBrowser"));
       } else {
         await refresh();
-        notify("Local Google data is ready.");
+        notify(t("conn.localReady"));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -1202,7 +1182,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
     try {
       await api.request("/api/google/disconnect", {});
       await refresh();
-      notify("Google disconnected.");
+      notify(t("conn.disconnected"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1223,7 +1203,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
     },
     {
       id: "browser",
-      name: "Agent computer",
+      name: t("conn.agentComputer"),
       icon: Globe2,
       color: "#1987CF",
       connected: w.connections.some((c) => c.id === "browser" && c.status === "connected"),
@@ -1248,16 +1228,16 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
             <Text style={[s.small, { marginLeft: 12 }]}>
               {isConnected
                 ? w.mode === "sample"
-                  ? "Your connections"
-                  : "Connected"
-                : "Available integrations"}
+                  ? t("conn.yourConnections")
+                  : t("conn.connected")
+                : t("conn.available")}
             </Text>
             <View style={{ paddingHorizontal: 16, borderRadius: 23, backgroundColor: "#F3F4F5" }}>
               {group.map((row, index) => (
                 <Pressable
                   key={row.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Manage ${row.name}`}
+                  accessibilityLabel={t("a11y.manageConn", { name: row.name })}
                   onPress={() =>
                     row.group === "browser" ? open({ type: "computer" }) : setSelected(row.group)
                   }
@@ -1285,7 +1265,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   </View>
                   <Text style={[s.text, { flex: 1 }]}>{row.name}</Text>
                   {row.connected && row.group === "google" && w.mode === "sample" && (
-                    <Text style={s.small}>本地数据</Text>
+                    <Text style={s.small}>{t("conn.localData")}</Text>
                   )}
                   {row.connected ? (
                     <ChevronRight size={18} color="#A4A7AA" />
@@ -1296,7 +1276,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                         color: row.group === "google" ? colors.blueDark : colors.muted,
                       }}
                     >
-                      {row.group === "google" ? "Connect" : "Setup"}
+                      {row.group === "google" ? t("conn.connect") : t("conn.setup")}
                     </Text>
                   )}
                 </Pressable>
@@ -1305,19 +1285,16 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
           </View>
         );
       })}
-      {!rows.length && <Text style={s.muted}>没有匹配的连接器。</Text>}
+      {!rows.length && <Text style={s.muted}>{t("conn.noMatch")}</Text>}
       {selected && (
         <Sheet
-          title={selected === "google" ? "Google connections" : "OpenBot"}
-          subtitle={selected === "google" ? google?.account : "A computer for your agent"}
+          title={selected === "google" ? t("conn.googleTitle") : "OpenBot"}
+          subtitle={selected === "google" ? google?.account : t("conn.openbotSubtitle")}
           onClose={() => setSelected(undefined)}
         >
           {selected === "google" ? (
             <View style={{ gap: 18 }}>
-              <Text style={s.muted}>
-                把 Gmail 和 Google 日历带进对话。选择ose read access, then
-                enable sending and editing when you need it.
-              </Text>
+              <Text style={s.muted}>{t("conn.googleIntro")}</Text>
               <View style={[s.row, { gap: 7, flexWrap: "wrap" }]}>
                 {google?.capabilities.map((cap) => (
                   <Chip key={cap}>{capabilityLabel(cap)}</Chip>
@@ -1325,52 +1302,46 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
               </View>
               <ErrorNotice error={error} />
               <Button busy={busy} primary icon={Link2} onPress={() => void connect("read")}>
-                Connect Google
+                {t("conn.connectGoogle")}
               </Button>
               <Button busy={busy} onPress={() => void connect("write")}>
-                Enable sending & editing
+                {t("conn.enableWrite")}
               </Button>
               {connected && (
                 <Button busy={busy} danger onPress={() => void disconnect()}>
-                  Disconnect Google
+                  {t("conn.disconnectGoogle")}
                 </Button>
               )}
               <SettingsLine
-                label="Environment"
-                value={w.mode === "sample" ? "Local · example data" : "Live workspace"}
+                label={t("conn.environment")}
+                value={w.mode === "sample" ? t("conn.localExample") : t("conn.liveWorkspace")}
               />
               <SettingsLine
-                label="Assistant"
+                label={t("conn.assistant")}
                 value={
                   w.runtime.provider === "sample"
-                    ? "Guided workflows"
+                    ? t("conn.guided")
                     : w.runtime.configured
-                      ? "Model connected"
-                      : "Model not configured"
+                      ? t("conn.modelConnected")
+                      : t("conn.modelNotConfigured")
                 }
               />
               <SettingsLine
                 label="Rich Threads"
-                value={w.runtime.richThreads ? "CopilotKit Intelligence" : "Not connected"}
+                value={w.runtime.richThreads ? "CopilotKit Intelligence" : t("conn.notConnected")}
               />
               <Button
                 small
                 icon={ArrowDownToLine}
                 onPress={() => void refresh().catch((e) => setError(String(e)))}
               >
-                Refresh connections
+                {t("conn.refresh")}
               </Button>
             </View>
           ) : (
             <View style={{ gap: 14 }}>
-              <Text style={s.text}>
-                OpenBot 适配器在这个开源项目里有. A live OpenBot backend
-                has not been configured.
-              </Text>
-              <Text style={s.muted}>
-                你当前的电脑用的是 OpenMuse 的持久 Chromiumrker. OpenBot
-                integration will expand the execution backend while keeping this interface.
-              </Text>
+              <Text style={s.text}>{t("conn.openbotNote1")}</Text>
+              <Text style={s.muted}>{t("conn.openbotNote2")}</Text>
             </View>
           )}
         </Sheet>
