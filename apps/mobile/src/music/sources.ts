@@ -141,7 +141,10 @@ class LocalMusicSource implements MusicSource {
   }
 
   private raw(): { play(): void; pause(): void; seekTo(s: number): Promise<void> } | null {
-    return (this as { rawPlayer?: { play(): void; pause(): void; seekTo(s: number): Promise<void> } }).rawPlayer ?? null;
+    return (
+      (this as { rawPlayer?: { play(): void; pause(): void; seekTo(s: number): Promise<void> } })
+        .rawPlayer ?? null
+    );
   }
 
   async play(): Promise<void> {
@@ -323,7 +326,7 @@ class AppleMusicSource implements MusicSource {
     if (!bridge) return this.status;
     try {
       const st = await bridge.Player.getCurrentState();
-      const playing = st.playbackState === "playing";
+      const playing = st.playbackStatus === "playing";
       this.status = {
         playing,
         position: typeof st.playbackTime === "number" ? st.playbackTime : this.status.position,
@@ -357,7 +360,7 @@ class AppleMusicSource implements MusicSource {
     this.stopPolling();
     // MusicKit pushes coarse events; poll position for smooth lyrics/progress.
     this.pollTimer = setInterval(() => {
-      void this.getStatus().then((s) => this.emit());
+      void this.getStatus().then(() => this.emit());
     }, 1000);
     void bridge;
   }

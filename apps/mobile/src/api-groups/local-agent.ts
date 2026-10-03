@@ -420,7 +420,12 @@ export function createLocalAgent(opts: {
           onOursMarked: async (track) => {
             await memStore.addMemory(
               `我们的歌：「${track.title}」${track.artist ? ` — ${track.artist}` : ""}。这是我们俩的歌，要记得。`,
-              { category: "relationship", confidence: "confident", source: "music-room", actor: "ai" },
+              {
+                category: "relationship",
+                confidence: "confident",
+                source: "music-room",
+                actor: "ai",
+              },
             );
           },
           // Apple Music catalog search (RN layer owns the MusicKit bridge).

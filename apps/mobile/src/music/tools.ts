@@ -19,11 +19,10 @@
 
 import type { LocalTool } from "../api-groups/local-tools.js";
 import {
-  OURS_PLAYLIST_ID,
-  SHARED_PLAYLIST_ID,
-  type DjAction,
   type MusicAuthor,
   type MusicStore,
+  OURS_PLAYLIST_ID,
+  SHARED_PLAYLIST_ID,
   type Track,
 } from "./store.js";
 
@@ -77,20 +76,30 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "music_track_add",
       description:
-        "Add a song to the shared music library (听歌房). Use when she asks you to add/find a song (点歌）. title is required; artist/album/audioUri/lyricsLrc are optional. LOCAL tracks: if you don't have an audio URL, OMIT audioUri — the track becomes a placeholder she can attach audio to later in the music room; tell her honestly it has no audio yet. APPLE MUSIC tracks: first music_apple_search the catalog, then add with source=\"apple-music\", sourceRef=<catalog song id>, artworkUrl=<artwork> — these play through her Apple Music subscription. Optionally put it straight into a playlist via playlistId (default: the 共享歌单 shared playlist).",
+        'Add a song to the shared music library (听歌房). Use when she asks you to add/find a song (点歌）. title is required; artist/album/audioUri/lyricsLrc are optional. LOCAL tracks: if you don\'t have an audio URL, OMIT audioUri — the track becomes a placeholder she can attach audio to later in the music room; tell her honestly it has no audio yet. APPLE MUSIC tracks: first music_apple_search the catalog, then add with source="apple-music", sourceRef=<catalog song id>, artworkUrl=<artwork> — these play through her Apple Music subscription. Optionally put it straight into a playlist via playlistId (default: the 共享歌单 shared playlist).',
       parameters: {
         type: "object",
         properties: {
           title: { type: "string", description: "Song title (required)." },
           artist: { type: "string", description: "Artist name." },
           album: { type: "string", description: "Album name." },
-          audioUri: { type: "string", description: "Audio file URL or local URI (local tracks). Omit if unknown." },
+          audioUri: {
+            type: "string",
+            description: "Audio file URL or local URI (local tracks). Omit if unknown.",
+          },
           source: {
             type: "string",
-            description: 'Where it plays from: "local" (default) or "apple-music" (needs the Apple Music catalog song id as sourceRef).',
+            description:
+              'Where it plays from: "local" (default) or "apple-music" (needs the Apple Music catalog song id as sourceRef).',
           },
-          sourceRef: { type: "string", description: "Apple Music catalog song id (required when source is apple-music)." },
-          artworkUrl: { type: "string", description: "Remote artwork URL (e.g. from Apple Music catalog search)." },
+          sourceRef: {
+            type: "string",
+            description: "Apple Music catalog song id (required when source is apple-music).",
+          },
+          artworkUrl: {
+            type: "string",
+            description: "Remote artwork URL (e.g. from Apple Music catalog search).",
+          },
           lyricsLrc: { type: "string", description: "Lyrics in LRC format ([mm:ss.xx] line)." },
           playlistId: { type: "string", description: "Playlist to add into (default: shared)." },
         },
@@ -116,7 +125,9 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
         } catch {
           // playlist missing — track still exists in the library
         }
-        const audioNote = t.audioUri ? "Audio attached." : "No audio yet — she can attach it in the music room.";
+        const audioNote = t.audioUri
+          ? "Audio attached."
+          : "No audio yet — she can attach it in the music room.";
         return `Added: ${t.title} — ${t.artist || "unknown artist"} [${t.id}]. ${audioNote}`;
       },
     },
@@ -136,16 +147,13 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
       run: async (args) => {
         const hits = await store.searchTracks(strArg(args, "query"));
         if (hits.length === 0) return "No matching songs in the library.";
-        return hits
-          .slice(0, 10)
-          .map(fmtTrack)
-          .join("\n");
+        return hits.slice(0, 10).map(fmtTrack).join("\n");
       },
     },
     {
       name: "music_apple_search",
       description:
-        "Search the Apple Music catalog (needs her Apple Music authorization + subscription — if it fails, tell her honestly to authorize Apple Music in the music room instead of pretending). Returns catalog songs with ids; feed a chosen id into music_track_add with source=\"apple-music\" so it becomes playable in the room.",
+        'Search the Apple Music catalog (needs her Apple Music authorization + subscription — if it fails, tell her honestly to authorize Apple Music in the music room instead of pretending). Returns catalog songs with ids; feed a chosen id into music_track_add with source="apple-music" so it becomes playable in the room.',
       parameters: {
         type: "object",
         properties: {
@@ -230,7 +238,8 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     // ---- playlists ----
     {
       name: "music_playlist_create",
-      description: "Create a new playlist in the music room (e.g. a themed list for the two of you).",
+      description:
+        "Create a new playlist in the music room (e.g. a themed list for the two of you).",
       parameters: {
         type: "object",
         properties: { name: { type: "string", description: "Playlist name." } },
@@ -265,14 +274,19 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     },
     {
       name: "music_playlist_read",
-      description: "List all playlists (共享歌单 shared, 我们的歌 ours, and custom ones) with song counts.",
+      description:
+        "List all playlists (共享歌单 shared, 我们的歌 ours, and custom ones) with song counts.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "music-room",
       run: async () => {
         const lists = await store.listPlaylists();
-        const kindName = (k: string) => (k === "shared" ? "共享歌单" : k === "ours" ? "我们的歌" : "custom");
+        const kindName = (k: string) =>
+          k === "shared" ? "共享歌单" : k === "ours" ? "我们的歌" : "custom";
         return lists
-          .map((p) => `- ${p.kind === "custom" ? p.name : kindName(p.kind)} [${p.id}] — ${p.trackIds.length} songs`)
+          .map(
+            (p) =>
+              `- ${p.kind === "custom" ? p.name : kindName(p.kind)} [${p.id}] — ${p.trackIds.length} songs`,
+          )
           .join("\n");
       },
     },
@@ -284,7 +298,10 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
       parameters: {
         type: "object",
         properties: {
-          track: { type: "string", description: "Track id or title/artist to search. Omit to resume." },
+          track: {
+            type: "string",
+            description: "Track id or title/artist to search. Omit to resume.",
+          },
         },
         additionalProperties: false,
       },
@@ -298,11 +315,14 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           return `Resuming: ${now.title} — ${now.artist}.`;
         }
         const t = await resolveTrack(ref);
-        if (!t) return `I couldn't find "${ref}" in the library. Add it first with music_track_add.`;
+        if (!t)
+          return `I couldn't find "${ref}" in the library. Add it first with music_track_add.`;
         await store.setNowPlaying(t.id);
         await store.sendIntent("play", ai, t.id);
         await store.bumpPlayCount(t.id);
-        const audioNote = t.audioUri ? "" : " (Note: this song has no audio attached yet — the room will say so.)";
+        const audioNote = t.audioUri
+          ? ""
+          : " (Note: this song has no audio attached yet — the room will say so.)";
         return `Now playing: ${t.title} — ${t.artist}.${audioNote}`;
       },
     },
@@ -318,7 +338,8 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     },
     {
       name: "dj_skip",
-      description: "DJ: skip to the next song in the queue (or the next song in the current playlist context).",
+      description:
+        "DJ: skip to the next song in the queue (or the next song in the current playlist context).",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "music-room",
       run: async () => {
@@ -378,7 +399,7 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "dj_now_read",
       description:
-        "Read the full now-playing context: current song, queue, together-listening state, the lyric line she tapped (selectedLyric), and comments. Call this when she asks about lyrics (\"这句什么意思\") or what is playing — it carries the Duetto-style context: playback state + the exact lyric she is asking about.",
+        'Read the full now-playing context: current song, queue, together-listening state, the lyric line she tapped (selectedLyric), and comments. Call this when she asks about lyrics ("这句什么意思") or what is playing — it carries the Duetto-style context: playback state + the exact lyric she is asking about.',
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "music-room",
       run: async () => {
@@ -415,14 +436,20 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
             ? `She tapped this lyric line and may ask about it: "${selected}" — answer about THIS line.`
             : "She hasn't tapped any lyric line.",
         );
-        if (q.length > 0) lines.push(`Coming up next: ${q.slice(0, 5).map((t) => t.title).join(", ")}`);
+        if (q.length > 0)
+          lines.push(
+            `Coming up next: ${q
+              .slice(0, 5)
+              .map((t) => t.title)
+              .join(", ")}`,
+          );
         return lines.join("\n");
       },
     },
     {
       name: "dj_together_start",
       description:
-        "Start together-listening mode (拉她一起听 / 她拉你一起听）: the music room shows your couple avatar stuck together on the player — the visual signature that you two are listening as a pair. Call when she says \"一起听\" or you invite her.",
+        'Start together-listening mode (拉她一起听 / 她拉你一起听）: the music room shows your couple avatar stuck together on the player — the visual signature that you two are listening as a pair. Call when she says "一起听" or you invite her.',
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "music-room",
       run: async () => {
@@ -483,7 +510,7 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "music_ours_add",
       description:
-        "Mark a song as one of \"我们的歌\" (our songs) — it goes into the 我们的歌 playlist AND into your long-term memory, so you truly remember which songs are special to the two of you.",
+        'Mark a song as one of "我们的歌" (our songs) — it goes into the 我们的歌 playlist AND into your long-term memory, so you truly remember which songs are special to the two of you.',
       parameters: {
         type: "object",
         properties: { track: { type: "string", description: "Track id or title/artist." } },
@@ -508,7 +535,7 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "music_memory_add",
       description:
-        "Save a presence note about a song (e.g. \"we listened to this on her birthday, she cried at the second verse\"). Kept with the song in the music room.",
+        'Save a presence note about a song (e.g. "we listened to this on her birthday, she cried at the second verse"). Kept with the song in the music room.',
       parameters: {
         type: "object",
         properties: {

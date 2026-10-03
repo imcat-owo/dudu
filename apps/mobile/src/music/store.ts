@@ -453,7 +453,7 @@ export class MusicStore {
       if (!n) throw new Error("Playlist name must not be empty.");
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
       const p = all.find((x) => x.id === id);
-      if (!p || p.kind !== "custom") return null;
+      if (p?.kind !== "custom") return null;
       p.name = n;
       await writeJson(this.storage, KEYS.playlists, all);
       this.emit();
@@ -474,7 +474,7 @@ export class MusicStore {
   }
 
   async addToPlaylist(playlistId: string, trackId: string): Promise<boolean> {
-    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
       const track = await this.getTrack(trackId);
       if (!track) throw new Error("Track not found.");
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
@@ -490,7 +490,7 @@ export class MusicStore {
   }
 
   async removeFromPlaylist(playlistId: string, trackId: string): Promise<boolean> {
-    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
       const p = all.find((x) => x.id === playlistId);
       if (!p) return false;
@@ -504,7 +504,7 @@ export class MusicStore {
   }
 
   async moveInPlaylist(playlistId: string, trackId: string, dir: -1 | 1): Promise<boolean> {
-    return this.enqueueWrite(async () => {
+    await this.ensureDefaultPlaylists();    return this.enqueueWrite(async () => {
       const all = await readJson<Playlist[]>(this.storage, KEYS.playlists, []);
       const p = all.find((x) => x.id === playlistId);
       if (!p) return false;
