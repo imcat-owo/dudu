@@ -668,7 +668,7 @@ export function createLocalAgent(opts: {
                 "tools proven unsupported",
               )
               .catch(() => null);
-            noticeText = t("adapt.toolsOff") as string;
+            noticeText = noticeText ? `${noticeText}\n${t("adapt.toolsOff")}` : (t("adapt.toolsOff") as string);
             renderReply();
             return true;
           }
@@ -682,7 +682,7 @@ export function createLocalAgent(opts: {
                 "thinking proven unsupported",
               )
               .catch(() => null);
-            noticeText = t("adapt.thinkingOff") as string;
+            noticeText = noticeText ? `${noticeText}\n${t("adapt.thinkingOff")}` : (t("adapt.thinkingOff") as string);
             renderReply();
             return true;
           }
@@ -727,7 +727,7 @@ export function createLocalAgent(opts: {
               const tail = wire.filter((m) => m.role !== "system").slice(-6);
               wire.length = 0;
               wire.push(...sys, ...tail);
-              noticeText = t("adapt.contextCompacted") as string;
+              noticeText = noticeText ? `${noticeText}\n${t("adapt.contextCompacted")}` : (t("adapt.contextCompacted") as string);
               renderReply();
               continue;
             }
