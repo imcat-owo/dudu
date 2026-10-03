@@ -37,11 +37,13 @@ function endpointFor(group: ApiGroup): string {
 }
 
 function requestHeaders(group: ApiGroup): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${group.apiKey}`,
-    ...group.headers,
-  };
+  // Keyless local endpoints (Ollama-style) get no Authorization header —
+  // don't send `Bearer undefined`/empty. Custom headers keep their override
+  // precedence (spread last, as before).
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const key = group.apiKey?.trim();
+  if (key) headers.Authorization = `Bearer ${key}`;
+  return { ...headers, ...group.headers };
 }
 
 function requestBody(group: ApiGroup, messages: ChatMessage[], stream: boolean): string {
@@ -131,11 +133,16 @@ export function streamChat(
     let settled = false;
     let seen = 0;
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    // Set once the 8s fallback takes over: XHR events after this are stale.
+    let shelved = false;
+    // Mid-stream stall watchdog (P2-1 companion to xhr.timeout below).
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
 
     const succeed = () => {
       if (settled) return;
       settled = true;
       if (fallbackTimer) clearTimeout(fallbackTimer);
+      clearStallTimer();
       try {
         xhr.abort();
       } catch {
@@ -149,6 +156,7 @@ export function streamChat(
       if (settled) return;
       settled = true;
       if (fallbackTimer) clearTimeout(fallbackTimer);
+      clearStallTimer();
       try {
         xhr.abort();
       } catch {
@@ -158,12 +166,16 @@ export function streamChat(
       reject(e);
     };
 
-    // Settles the XHR path without resolving the outer promise (used when
-    // handing off to the non-streaming fallback below).
+    // Hands the request off to the non-streaming fallback below. Aborts the
+    // XHR and marks it shelved so late XHR events are ignored — but does NOT
+    // settle the outer promise: the fallback fetch chain settles it via
+    // succeed()/fail() below. (Marking settled here used to hang runTurn()
+    // forever: succeed()/fail() both early-return on settled.)
     const shelve = () => {
-      if (settled) return;
-      settled = true;
+      if (settled || shelved) return;
+      shelved = true;
       if (fallbackTimer) clearTimeout(fallbackTimer);
+      if (stallTimer) clearTimeout(stallTimer);
       try {
         xhr.abort();
       } catch {
@@ -171,17 +183,38 @@ export function streamChat(
       }
     };
 
+    // Mid-stream stall watchdog: no progress for 45s after the first byte
+    // means the server hung mid-stream — fail loudly so runTurn() can
+    // report it instead of spinning forever.
+    const pokeStallTimer = () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        if (!settled && !shelved)
+          fail(new GroupError(group.name, "stream stalled (no data for 45s)"));
+      }, 45000);
+    };
+    const clearStallTimer = () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = null;
+    };
+
     callbacks.signal?.addEventListener("abort", () => fail(new GroupError(group.name, "aborted")));
 
     xhr.open("POST", endpointFor(group));
     for (const [k, v] of Object.entries(requestHeaders(group))) xhr.setRequestHeader(k, v);
+    // Absolute cap for the whole request (the ontimeout handler below was
+    // previously dead code — timeout was never assigned). The 45s stall
+    // watchdog above handles mid-stream hangs; this is the backstop.
+    xhr.timeout = 120000;
 
     xhr.onprogress = () => {
+      if (shelved) return;
       try {
         const text: string = xhr.responseText ?? "";
         if (text.length > seen) {
           parser.push(text.slice(seen));
           seen = text.length;
+          pokeStallTimer();
         }
       } catch (e) {
         fail(e instanceof Error ? e : new Error(String(e)));
@@ -189,6 +222,8 @@ export function streamChat(
     };
 
     xhr.onload = () => {
+      if (shelved) return;
+      clearStallTimer();
       if (xhr.status < 200 || xhr.status >= 300) {
         fail(statusError(group, xhr.status, xhr.responseText ?? ""));
         return;
@@ -203,8 +238,14 @@ export function streamChat(
       succeed();
     };
 
-    xhr.onerror = () => fail(new GroupError(group.name, "network error"));
-    xhr.ontimeout = () => fail(new GroupError(group.name, "timed out"));
+    xhr.onerror = () => {
+      if (shelved) return;
+      fail(new GroupError(group.name, "network error"));
+    };
+    xhr.ontimeout = () => {
+      if (shelved) return;
+      fail(new GroupError(group.name, "timed out"));
+    };
 
     try {
       xhr.send(requestBody(group, messages, true));
