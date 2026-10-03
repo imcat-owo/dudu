@@ -46,6 +46,7 @@ import { FontProvider } from "./src/font";
 import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
 import { LocalApp } from "./src/local-app";
+import { Splash } from "./src/splash";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
@@ -95,6 +96,16 @@ export default function App() {
   // Dual-mode root: local (default) → pure client-side shell, no backend,
   // no login, no CopilotKit. Cloud → the original backend path.
   const mode = useChatMode();
+  // Launch splash: Sora avatar bloom, then cross-fade into the app.
+  const [splashed, setSplashed] = useState(false);
+  if (!splashed) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Splash onDone={() => setSplashed(true)} />
+      </SafeAreaProvider>
+    );
+  }
   if (mode === "local") {
     return (
       <SafeAreaProvider>
