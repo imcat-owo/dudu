@@ -27,7 +27,14 @@ import {
 } from "./api-groups/local-agent";
 import { useChatMode } from "./api-groups/mode";
 import { groupStore } from "./api-groups/store";
+import { requestAiAuthorization } from "./ai-authorization";
 import { runConversationTurn } from "./conversation-run";
+import {
+  readClipboard,
+  readLocation,
+  readRecentPhotos,
+  writeClipboard,
+} from "./device-permissions";
 import { useIncognito } from "./incognito";
 
 export interface AgentMessage {
@@ -150,6 +157,17 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
         groupStore.getSnapshot().groups.find((g) => g.id === groupStore.getSnapshot().activeId) ??
         null,
       isIncognito: () => incognitoRef.current,
+      // Real device-backed tools: in-app tools need no auth; capability
+      // tools go through her authorization gate (fail closed).
+      toolDeps: {
+        readPhotos: (limit) => readRecentPhotos(limit),
+        readLocation: () => readLocation(),
+        readClipboard: () => readClipboard(),
+        writeClipboard: (text) => writeClipboard(text),
+      },
+      toolContext: {
+        authorize: (req) => requestAiAuthorization(req),
+      },
     });
     // Bridge LocalAgent notifications into React renders
     // (cloud mode gets this from useAgent internally).
@@ -173,10 +191,26 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
         local.setMessages(
           messages.map((m) => ({
             id: m.id,
-            role: (m.role === "user" || m.role === "assistant" ? m.role : "user") as
-              | "user"
-              | "assistant",
+            role: (m.role === "user" ||
+            m.role === "assistant" ||
+            m.role === "tool" ||
+            m.role === "system"
+              ? m.role
+              : "user") as "user" | "assistant" | "system" | "tool",
             content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+            // Preserve tool-call data so the drawer shows past tool activity
+            // and the wire can re-emit tool_calls for multi-turn tool use.
+            ...(Array.isArray((m as { toolCalls?: unknown }).toolCalls)
+              ? {
+                  toolCalls: (m as { toolCalls: LocalChatMessage["toolCalls"] }).toolCalls,
+                }
+              : {}),
+            ...(typeof (m as { toolCallId?: unknown }).toolCallId === "string"
+              ? { toolCallId: (m as { toolCallId: string }).toolCallId }
+              : {}),
+            ...(typeof (m as unknown as { thinking?: unknown }).thinking === "string"
+              ? { thinking: (m as unknown as { thinking: string }).thinking }
+              : {}),
           })),
         ),
       addMessage: (m) =>
