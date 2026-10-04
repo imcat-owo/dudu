@@ -17,8 +17,8 @@ export type KbDocStatus = "ready" | "indexing" | "failed";
 export interface KbDoc {
   id: string;
   name: string;
-  /** "txt" | "md" — pdf/docx are honestly unsupported in Phase 1. */
-  kind: "txt" | "md";
+  /** "txt" | "md" | "pdf" — Phase 2 adds PDF. */
+  kind: "txt" | "md" | "pdf";
   size: number;
   chunkCount: number;
   status: KbDocStatus;
@@ -60,7 +60,7 @@ function isDoc(v: unknown): v is KbDoc {
   return (
     typeof d.id === "string" &&
     typeof d.name === "string" &&
-    (d.kind === "txt" || d.kind === "md") &&
+    (d.kind === "txt" || d.kind === "md" || d.kind === "pdf") &&
     typeof d.chunkCount === "number" &&
     (d.status === "ready" || d.status === "indexing" || d.status === "failed")
   );
@@ -105,7 +105,7 @@ export class KnowledgeStore {
     return docs.find((d) => d.id === id) ?? null;
   }
 
-  async addDoc(name: string, kind: "txt" | "md", size: number): Promise<KbDoc> {
+  async addDoc(name: string, kind: "txt" | "md" | "pdf", size: number): Promise<KbDoc> {
     const docs = await this.listDocs();
     const doc: KbDoc = {
       id: newId("kbdoc"),

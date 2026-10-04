@@ -35,6 +35,7 @@
     "expo-localization": "^17.0.9",
     "expo-location": "19.0.8",
     "expo-media-library": "18.2.1",
+    "expo-sqlite": "~15.2.14",
     "expo-notifications": "0.32.17",
     "expo-secure-store": "^15.0.8",
     "expo-sharing": "~14.0.8",

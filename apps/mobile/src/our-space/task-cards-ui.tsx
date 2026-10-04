@@ -27,8 +27,6 @@ import { type StringKey, t } from "../i18n";
 import { buildImageUrl } from "../image-generation";
 import { DUR, EASE, SPRING, STAGGER } from "../motion";
 import { useColors } from "../ui";
-import { taskBuddyVideoStore } from "./task-buddy-video-instance";
-import { TaskBuddyVideo } from "./task-buddy-view";
 import type { BackgroundTask, TaskStatus } from "./task-progress";
 import { taskProgressStore } from "./task-progress-instance";
 
@@ -157,74 +155,6 @@ function ProgressBar({ progress, active }: { progress: number; active: boolean }
 }
 
 /** 换动画：she uploads her own mp4 per task status ("醒醒定制的"). */
-function BuddyVideoSection({
-  onPick,
-  onClear,
-}: {
-  onPick: (state: TaskStatus) => void;
-  onClear: (state: TaskStatus) => void;
-}) {
-  const colors = useColors();
-  const [, setVersion] = useState(0);
-  useEffect(() => taskBuddyVideoStore.subscribe(() => setVersion((v) => v + 1)), []);
-  const overrides = taskBuddyVideoStore.all();
-  const states: TaskStatus[] = ["running", "stuck", "done"];
-
-  return (
-    <View style={{ gap: 8, marginTop: 4 }}>
-      <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
-        {t("space.tasks.buddyTitle")}
-      </TText>
-      <TText style={{ color: colors.muted, fontSize: 12.5, lineHeight: 18 }}>
-        {t("space.tasks.buddyHint")}
-      </TText>
-      {states.map((s) => (
-        <View key={s} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <TText style={{ color: colors.text, fontSize: 14, flex: 1 }}>
-            {t(statusLabel(s))} ·{" "}
-            {overrides[s] ? t("space.tasks.buddyCustom") : t("space.tasks.buddyDefault")}
-          </TText>
-          <Pressable
-            onPress={() => onPick(s)}
-            style={{
-              backgroundColor: colors.secondaryBg,
-              borderRadius: 10,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-            }}
-          >
-            <TText style={{ color: colors.text, fontSize: 13 }}>{t("space.tasks.buddyPick")}</TText>
-          </Pressable>
-          {overrides[s] && (
-            <Pressable onPress={() => onClear(s)} hitSlop={8}>
-              <TText style={{ color: colors.danger, fontSize: 13 }}>
-                {t("space.tasks.buddyReset")}
-              </TText>
-            </Pressable>
-          )}
-        </View>
-      ))}
-
-      {states.some((s) => overrides[s]) && (
-        <Pressable
-          onPress={() => {
-            void taskBuddyVideoStore.resetAll().then(() => setVersion((v) => v + 1));
-          }}
-          style={{
-            backgroundColor: colors.secondaryBg,
-            borderRadius: 10,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            alignSelf: "flex-start",
-            marginTop: 4,
-          }}
-        >
-          <TText style={{ color: colors.danger, fontSize: 13 }}>{t("space.tasks.buddyResetAll")}</TText>
-        </Pressable>
-      )}
-    </View>
-  );
-}
 
 function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
   const colors = useColors();
@@ -283,29 +213,6 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
     setMenuOpen(false);
   };
 
-  /** 换动画：she picks her own mp4 for a task status ("醒醒定制的"). */
-  const pickBuddyVideo = async (state: TaskStatus) => {
-    try {
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
-        allowsEditing: false,
-        quality: 0.8,
-      });
-      if (!res.canceled && res.assets[0]) {
-        await taskBuddyVideoStore.set(state, res.assets[0].uri);
-      }
-    } catch {
-      // Picker cancelled — stay as-is.
-    } finally {
-      setMenuOpen(false);
-    }
-  };
-
-  const clearBuddyVideo = async (state: TaskStatus) => {
-    await taskBuddyVideoStore.clear(state);
-    setMenuOpen(false);
-  };
-
   const dismissTask = () => {
     Alert.alert(t("space.tasks.dismissTitle") as string, t("space.tasks.dismissBody") as string, [
       { text: t("common.cancel") as string, style: "cancel" },
@@ -322,7 +229,6 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
   const cardContent = (
     <View style={{ padding: 16, gap: 10 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <TaskBuddyVideo status={task.status} size={52} />
         <View style={{ flex: 1, gap: 2 }}>
           <TText style={{ color: colors.text, fontSize: 15, fontWeight: "700" }} numberOfLines={1}>
             {task.name}
@@ -451,7 +357,6 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
                   </TText>
                 </Pressable>
               )}
-              <BuddyVideoSection onPick={pickBuddyVideo} onClear={clearBuddyVideo} />
             </Pressable>
           </Pressable>
         </Modal>

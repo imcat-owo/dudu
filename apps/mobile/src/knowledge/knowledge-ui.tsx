@@ -19,11 +19,13 @@ import { taskProgressStore } from "../our-space/task-progress-instance";
 import { SoraAmbient } from "../sora-ambient";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
 import { type IndexProgress, indexDocument } from "./indexer";
-import { knowledgeStore } from "./instance";
+import { getKnowledgeStore, knowledgeStore } from "./instance";
+import { PdfTextExtractor } from "./pdf-extract";
 import type { KbDoc } from "./store";
+import type { SqliteKnowledgeStore } from "./vec-store";
 
-const SUPPORTED_EXT = /\.(txt|md|markdown)$/i;
-const UNSUPPORTED_EXT = /\.(pdf|docx?|pptx?|xlsx?)$/i;
+const SUPPORTED_EXT = /\.(txt|md|markdown|pdf)$/i;
+const UNSUPPORTED_EXT = /\.(docx?|pptx?|xlsx?)$/i;
 
 function statusLabel(doc: KbDoc): string {
   switch (doc.status) {
@@ -44,22 +46,50 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [store, setStore] = useState<SqliteKnowledgeStore | null>(null);
+  // PDF extraction state: when set, renders a hidden PdfTextExtractor.
+  const [pdfJob, setPdfJob] = useState<{
+    uri: string;
+    name: string;
+    size: number;
+    taskId: string;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
-    setDocs(await knowledgeStore.listDocs());
+    const s = await getKnowledgeStore();
+    setStore(s);
+    setDocs(await s.listDocs());
   }, []);
 
   useEffect(() => {
-    void refresh();
-    return knowledgeStore.subscribe(() => {
-      void refresh();
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+    void getKnowledgeStore().then((s) => {
+      if (cancelled) return;
+      setStore(s);
+      unsub = s.subscribe(() => {
+        void s.listDocs().then(setDocs);
+      });
+      void s.listDocs().then(setDocs);
     });
-  }, [refresh]);
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, []);
 
   const pickAndIndex = useCallback(async () => {
     setError(null);
     const res = await DocumentPicker.getDocumentAsync({
-      type: ["text/plain", "text/markdown", "*.txt", "*.md", "*.markdown"],
+      type: [
+        "text/plain",
+        "text/markdown",
+        "application/pdf",
+        "*.txt",
+        "*.md",
+        "*.markdown",
+        "*.pdf",
+      ],
       copyToCacheDirectory: true,
     });
     if (res.canceled || !res.assets?.[0]) return;
@@ -77,14 +107,51 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
       setError(t("kb.noApiGroup"));
       return;
     }
-    setBusy(true);
+    const isPdf = /\.pdf$/i.test(name);
     const taskId = `kb-index-${Date.now()}`;
+    if (isPdf) {
+      // PDF text extraction happens in a hidden WebView (see pdfJob below).
+      setBusy(true);
+      setPdfJob({ uri: asset.uri, name, size: asset.size ?? 0, taskId });
+      return;
+    }
+    setBusy(true);
     try {
       const text = await FileSystem.readAsStringAsync(asset.uri, {
         encoding: FileSystem.EncodingType.UTF8,
       });
       const kind = /\.md$/i.test(name) ? "md" : "txt";
-      const doc = await knowledgeStore.addDoc(name, kind, asset.size ?? text.length);
+      await indexTextAsset(name, kind, asset.size ?? text.length, text, taskId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await taskProgressStore.upsert({
+        id: taskId,
+        name: t("kb.indexingTask"),
+        progress: 0,
+        stage: msg,
+        status: "stuck",
+        backgroundUri: null,
+      });
+      await taskProgressStore.saveIndex();
+      setError(t("kb.indexFailed", { reason: msg }));
+    } finally {
+      setBusy(false);
+      setProgress(null);
+      void refresh();
+    }
+  }, [active, refresh]);
+
+  /** Shared indexing pipeline for extracted text (txt/md/pdf). */
+  const indexTextAsset = useCallback(
+    async (
+      name: string,
+      kind: "txt" | "md" | "pdf",
+      size: number,
+      text: string,
+      taskId: string,
+    ) => {
+      const s = await getKnowledgeStore();
+      const doc = await s.addDoc(name, kind, size);
       await taskProgressStore.upsert({
         id: taskId,
         name: t("kb.indexingTask"),
@@ -94,7 +161,7 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
         backgroundUri: null,
       });
       await taskProgressStore.saveIndex();
-      await indexDocument(knowledgeStore, active, doc.id, text, kind === "md", {
+      await indexDocument(s, active, doc.id, text, kind === "md", {
         onProgress: (p) => {
           setProgress(p);
           const total = Math.max(1, p.total);
@@ -118,30 +185,50 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
         backgroundUri: null,
       });
       await taskProgressStore.saveIndex();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      await taskProgressStore.upsert({
-        id: taskId,
-        name: t("kb.indexingTask"),
-        progress: 0,
-        stage: msg,
-        status: "stuck",
-        backgroundUri: null,
-      });
-      await taskProgressStore.saveIndex();
-      setError(
-        msg === "noApiGroup"
-          ? t("kb.noApiGroup")
-          : msg === "emptyDocument"
-            ? t("kb.emptyDocument")
-            : t("kb.indexFailed", { reason: msg }),
-      );
-    } finally {
+    },
+    [active],
+  );
+
+  /** PDF extraction completed in the hidden WebView — now index the text. */
+  const handlePdfDone = useCallback(
+    async (text: string) => {
+      const job = pdfJob;
+      setPdfJob(null);
+      if (!job) return;
+      if (!text.trim()) {
+        setError(t("kb.emptyDocument"));
+        setBusy(false);
+        return;
+      }
+      try {
+        await indexTextAsset(job.name, "pdf", job.size || text.length, text, job.taskId);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(
+          msg === "noApiGroup"
+            ? t("kb.noApiGroup")
+            : msg === "emptyDocument"
+              ? t("kb.emptyDocument")
+              : t("kb.indexFailed", { reason: msg }),
+        );
+      } finally {
+        setBusy(false);
+        setProgress(null);
+        void refresh();
+      }
+    },
+    [pdfJob, indexTextAsset, refresh],
+  );
+
+  const handlePdfError = useCallback(
+    (message: string) => {
+      setPdfJob(null);
       setBusy(false);
-      setProgress(null);
+      setError(t("kb.pdfExtractFailed", { reason: message }));
       void refresh();
-    }
-  }, [active, refresh]);
+    },
+    [refresh],
+  );
 
   const removeDoc = useCallback(
     (doc: KbDoc) => {
@@ -151,7 +238,9 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
           text: t("common.delete"),
           style: "destructive",
           onPress: () => {
-            void knowledgeStore.deleteDoc(doc.id).then(refresh);
+            void getKnowledgeStore()
+              .then((s) => s.deleteDoc(doc.id))
+              .then(refresh);
           },
         },
       ]);
@@ -161,6 +250,15 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title={t("kb.title")} subtitle={t("kb.subtitle")} onClose={onClose}>
+      {pdfJob && (
+        <PdfTextExtractor
+          uri={pdfJob.uri}
+          onDone={(text) => {
+            void handlePdfDone(text);
+          }}
+          onError={handlePdfError}
+        />
+      )}
       {error && (
         <View style={[s.error, { marginBottom: 12 }]}>
           <TText style={{ color: colors.danger, fontSize: 13 }}>{error}</TText>

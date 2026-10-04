@@ -14,11 +14,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
+import { createContextTools } from "../chat/context-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
-import { createWallpaperTools } from "../theme/tools.js";
-import { createContextTools } from "../chat/context-tools.js";
 import { knowledgeStore } from "../knowledge/instance.js";
+import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
@@ -37,13 +37,12 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools.js";
 import { recentInteraction } from "../pet/interactions.js";
-import { petInteractionVideos } from "../pet/instance.js";
-import { createPetInteractionVideoTools } from "../pet/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
+import { createWallpaperTools } from "../theme/tools.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -513,7 +512,6 @@ export function createLocalAgent(opts: {
         ...createTaskProgressTools(taskProgressStore),
         ...createTaskBuddyVideoTools(taskBuddyVideoStore),
         ...createAmbientVideoTools(ambientVideoStore),
-        ...createPetInteractionVideoTools(petInteractionVideos),
         ...createPodcastTools(
           voiceStore,
           taskProgressStore,
@@ -534,14 +532,11 @@ export function createLocalAgent(opts: {
           getMessages: () =>
             messages.map((m) => ({
               role: m.role,
-              content:
-                typeof m.content === "string"
-                  ? m.content
-                  : JSON.stringify(m.content),
+              content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
             })),
         }),
         ...createMemoryTools(memStore),
-        ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
+        ...createKnowledgeTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {

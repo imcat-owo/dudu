@@ -13,8 +13,24 @@
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import type { ApiGroup } from "../api-groups/types.js";
 import { type EmbedResult, embedTexts } from "./embeddings.js";
-import type { KnowledgeStore } from "./store.js";
+import type { KbChunkRecord, KbDoc } from "./store.js";
 import { topKByCosine } from "./vectors.js";
+
+/** Fallback for Phase 1 stores without searchChunks (JS cosine). */
+function topKByCosineFallback(
+  queryVec: number[],
+  chunks: KbChunkRecord[],
+  topK: number,
+): Array<{ chunk: KbChunkRecord; score: number }> {
+  return topKByCosine(
+    queryVec,
+    chunks
+      .filter((c) => c.vector.length > 0 && c.vector.length === queryVec.length)
+      .map((c) => ({ item: c, vector: c.vector })),
+    topK,
+    SEARCH_MIN_SCORE,
+  ).map((h) => ({ chunk: h.item, score: h.score }));
+}
 
 export interface KnowledgeToolDeps {
   /** Active API group (for /v1/embeddings). Null = honestly report unconfigured. */
@@ -44,11 +60,28 @@ function formatHit(docName: string, headingPath: string, text: string, score: nu
   return `[${where} · 相关度 ${(score * 100).toFixed(0)}%]\n${excerpt}`;
 }
 
+/** Minimal store interface needed by knowledge_search (structural typing). */
+export interface KnowledgeSearchStore {
+  listDocs(): Promise<KbDoc[]>;
+  listChunks(docId?: string): Promise<KbChunkRecord[]>;
+  hasIndexedDocs(): Promise<boolean>;
+  searchChunks?(
+    queryVector: readonly number[],
+    k: number,
+    minScore?: number,
+  ): Promise<Array<{ chunk: KbChunkRecord; score: number }>>;
+}
+
 /**
  * Build the knowledge tool set bound to a store instance.
+ * Works with KnowledgeStore (Phase 1), SqliteKnowledgeStore (Phase 2),
+ * or the lazy wrapper — all expose the same search interface.
  * Every tool REALLY works — no placeholders.
  */
-export function createKnowledgeTools(store: KnowledgeStore, deps: KnowledgeToolDeps): LocalTool[] {
+export function createKnowledgeTools(
+  store: KnowledgeSearchStore,
+  deps: KnowledgeToolDeps,
+): LocalTool[] {
   const doEmbed = deps.embed ?? embedTexts;
   return [
     {
@@ -102,23 +135,20 @@ export function createKnowledgeTools(store: KnowledgeStore, deps: KnowledgeToolD
         const chunks = await store.listChunks();
         const docs = await store.listDocs();
         const docNames = new Map(docs.map((d) => [d.id, d.name]));
-        const hits = topKByCosine(
-          queryVec,
-          chunks
-            .filter((c) => c.vector.length > 0 && c.vector.length === queryVec.length)
-            .map((c) => ({ item: c, vector: c.vector })),
-          topK,
-          SEARCH_MIN_SCORE,
-        );
+        // Phase 2: SQLite store does KNN in searchChunks; Phase 1 store
+        // falls back to JS cosine via the same interface.
+        const hits = store.searchChunks
+          ? await store.searchChunks(queryVec, topK, SEARCH_MIN_SCORE)
+          : topKByCosineFallback(queryVec, chunks, topK);
         if (hits.length === 0) {
           return "No relevant passages found in her documents.";
         }
         return hits
           .map((h) =>
             formatHit(
-              docNames.get(h.item.docId) ?? h.item.docId,
-              h.item.headingPath,
-              h.item.text,
+              docNames.get(h.chunk.docId) ?? h.chunk.docId,
+              h.chunk.headingPath,
+              h.chunk.text,
               h.score,
             ),
           )

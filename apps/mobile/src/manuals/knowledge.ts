@@ -3,15 +3,15 @@ export const KNOWLEDGE_MANUAL = {
   id: "knowledge",
   title: "Knowledge base",
   file: "src/manuals/knowledge.ts",
-  when: "answering from her uploaded documents (txt/md), citing sources",
+  when: "answering from her uploaded documents (txt/md/pdf), citing sources",
   body: `# Knowledge base
 
-She can upload documents (txt/md — PDF/Word are NOT supported yet, say so
+She can upload documents (txt/md/pdf — Word is NOT supported yet, say so
 honestly) into the knowledge base. Documents are chunked (800 chars, markdown
 header-aware) and embedded via her own API group's /v1/embeddings endpoint.
-Everything stays on-device (AsyncStorage); vectors are recomputed from the
-original text, so nothing sensitive leaves the phone except the embedding
-API calls themselves.
+PDFs are text-extracted via pdf.js in a hidden WebView. Everything stays
+on-device (SQLite); vectors are recomputed from the original text, so nothing
+sensitive leaves the phone except the embedding API calls themselves.
 
 Your tool: knowledge_search(query, top_k?).
 

@@ -10,6 +10,7 @@ import type { ApiGroup } from "../api-groups/types.js";
 import { chunkDocument } from "./chunking.js";
 import { type EmbedResult, embedTexts } from "./embeddings.js";
 import type { KbChunkRecord, KnowledgeStore } from "./store.js";
+import type { SqliteKnowledgeStore } from "./vec-store.js";
 
 /** Max texts per /v1/embeddings call (proxy-friendly). */
 export const EMBED_BATCH_SIZE = 32;
@@ -36,7 +37,7 @@ export interface IndexOptions {
  * indexing -> ready | failed (with reason).
  */
 export async function indexDocument(
-  store: KnowledgeStore,
+  store: KnowledgeStore | SqliteKnowledgeStore,
   group: ApiGroup | null,
   docId: string,
   text: string,
