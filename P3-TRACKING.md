@@ -25,13 +25,13 @@ Builder: subagent df931e58. One commit per perspective group on `main`.
 | 19 | user P3 incognito media cleanup | fixed | voice msgs: durable persist skipped in incognito (temp URI, chat.tsx); podcasts -> cache dir via ephemeral flag (podcast.ts/tools.ts/local-agent.ts); TTS hash-cache documented as shared (manuals/incognito.ts) | 6e714da |
 | 20 | user P3 avatar-state making_something/milestone | fixed | mp4s ship (assets/avatar-anim/); wired honestly: agent tracks activeToolName (local-agent.ts tool loop) -> making_something during generate_image/generate_podcast; task card fresh-done -> 8s milestone_level_up (chat.tsx + MILESTONE_CELEBRATION_MS); 3 new tests | 6e714da |
 | 21 | user P3 voice message durable URI | already-fixed | P2-5 persistVoiceMessage copies to dudu-voice-messages/ before send (chat.tsx:622); playback uses durable URI | - |
-| 22 | reviewer theme tests createStore sig | fixed | 4 call sites -> { dataDir } form; theme-store 9/9, theme-ai-tools 6/6 pass | (tests group) |
-| 23 | reviewer conversation-jev RUN_ERROR | fixed (test was wrong) | rename c77f0ae changed prefix to [Dudu choice]; test used stale [OpenMuse choice] so input fell through to normal path. Now uses jevActionPrefix constant; 20/20 pass | (tests group) |
-| 24 | reviewer jev.test.ts:43 exception | fixed (test was wrong) | same rename root cause; parseJevAction returned null instead of throwing. Now uses jevActionPrefix constant; 16/16 pass | (tests group) |
+| 22 | reviewer theme tests createStore sig | fixed | 4 call sites -> { dataDir } form; theme-store 9/9, theme-ai-tools 6/6 pass | e63612d |
+| 23 | reviewer conversation-jev RUN_ERROR | fixed (test was wrong) | rename c77f0ae changed prefix to [Dudu choice]; test used stale [OpenMuse choice] so input fell through to normal path. Now uses jevActionPrefix constant; 20/20 pass | e63612d |
+| 24 | reviewer jev.test.ts:43 exception | fixed (test was wrong) | same rename root cause; parseJevAction returned null instead of throwing. Now uses jevActionPrefix constant; 16/16 pass | e63612d |
 
 ## Verification log
-- tsc: TODO
-- biome on touched files: TODO
+- tsc: clean (exit 0, 2026-10-04)
+- biome on touched files: clean (14 files + test files)
 - full mobile test suite: TODO (n tests)
-- zero emoji grep: TODO
-- i18n parity: TODO
+- zero emoji grep: none in touched files
+- i18n parity: voice.testOk/voice.testFail zh+en ok
