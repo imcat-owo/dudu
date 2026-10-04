@@ -459,13 +459,17 @@ export function createTaskProgressTools(
         if (!id || !name) throw new ToolError("id and name are required.");
         const statusRaw = strArg(args, "status");
         const status = statusRaw === "stuck" || statusRaw === "done" ? statusRaw : "running";
+        // Preserve the card's existing background (she may have set a custom
+        // image). Progress updates must never wipe it — only overwrite when a
+        // new background is explicitly provided.
+        const prev = taskStore.get(id);
         const task = await taskStore.upsert({
           id,
           name,
           progress: numArg(args, "progress", 0),
           stage: strArg(args, "stage"),
           status,
-          backgroundUri: null,
+          backgroundUri: prev?.backgroundUri ?? null,
         });
         await taskStore.saveIndex();
         return `Task card updated: "${task.name}" ${Math.round(task.progress * 100)}% (${task.status}).`;
