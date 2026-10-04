@@ -353,6 +353,7 @@ const zhHans = {
   "chat.welcomeBody.night": "我陪你。想聊什么，或者想让我做点什么，都行。",
   "chat.retryLoad": "重新加载对话",
   "chat.retrySave": "重新保存对话",
+  "chat.historySaveFailed": "对话保存到手机失败了。新消息暂时还在，但重启 App 可能会丢。",
   "chat.retryReply": "重试回复",
   "chat.suggest.hn": "在 Hacker News 上找点有意思的东西",
   "chat.suggest.summarize": "总结 copilotkit.ai",

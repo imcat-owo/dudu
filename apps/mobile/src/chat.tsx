@@ -353,16 +353,20 @@ export function ChatScreen({
   const runLock = useRef(false);
   const [saveError, setSaveError] = useState("");
   const [historyError, setHistoryError] = useState("");
+  const [historySaveFailed, setHistorySaveFailed] = useState(false);
   const [historyAttempt, setHistoryAttempt] = useState(0);
   const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
   useEffect(() => {
     if (!isReady) return;
     let active = true;
     setHistoryError("");
+    setHistorySaveFailed(false);
     setLoaded(false);
     const replay = agent.subscribe({
-      onMessagesChanged: ({ messages }) => {
+      onMessagesChanged: ({ messages, historySaveFailed }) => {
         if (active && richThreads && messages.length) setLoaded(true);
+        // P1-11: on-device history save failures surface here, not silently.
+        if (active) setHistorySaveFailed(historySaveFailed ?? false);
       },
     });
     async function hydrate() {
@@ -851,6 +855,23 @@ export function ChatScreen({
             <ErrorNotice error={historyError} />
             <Button onPress={() => setHistoryAttempt((attempt) => attempt + 1)}>
               {t("chat.retryLoad")}
+            </Button>
+          </>
+        )}
+        {historySaveFailed && (
+          <>
+            <ErrorNotice error={t("chat.historySaveFailed")} />
+            <Button
+              onPress={() =>
+                void agent.retryHistorySave?.().then((ok) => {
+                  // retryHistorySave re-emits, so the flag usually updates
+                  // via the subscription; belt-and-braces for cloud mode
+                  // (no retry method) and missed emissions.
+                  if (ok) setHistorySaveFailed(false);
+                })
+              }
+            >
+              {t("chat.retrySave")}
             </Button>
           </>
         )}

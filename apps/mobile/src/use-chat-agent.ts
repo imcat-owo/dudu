@@ -56,7 +56,9 @@ export interface ChatAgent {
    * avatar's "making something" state. Cloud mode: always null.
    */
   readonly activeToolName: string | null;
-  subscribe(listener: { onMessagesChanged?: (e: { messages: AgentMessage[] }) => void }): {
+  subscribe(listener: {
+    onMessagesChanged?: (e: { messages: AgentMessage[]; historySaveFailed?: boolean }) => void;
+  }): {
     unsubscribe(): void;
   };
   setMessages(messages: AgentMessage[]): void;
@@ -68,6 +70,11 @@ export interface ChatAgent {
    * Local: noop (no server thread to attach to).
    */
   connect(): Promise<void>;
+  /**
+   * Local-only: re-attempt the on-device history save after a failure
+   * (P1-11). Cloud mode: undefined (history lives on the server).
+   */
+  retryHistorySave?(): Promise<boolean>;
   /**
    * Transport-level error subscription (e.g. CopilotKit run failures).
    * Local: noop — errors surface via runTurn() rejection instead.
@@ -201,8 +208,11 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
       subscribe: (listener) =>
         local.subscribe({
           onMessagesChanged: listener.onMessagesChanged
-            ? ({ messages }) =>
-                listener.onMessagesChanged?.({ messages: messages as AgentMessage[] })
+            ? ({ messages, historySaveFailed }) =>
+                listener.onMessagesChanged?.({
+                  messages: messages as AgentMessage[],
+                  historySaveFailed,
+                })
             : undefined,
         }),
       setMessages: (messages) =>
@@ -239,6 +249,7 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
         }),
       runTurn: () => local.runTurn(),
       stop: () => local.stop(),
+      retryHistorySave: () => local.retryHistorySave(),
       connect: () => Promise.resolve(),
       onTransportError: () => ({ unsubscribe: () => {} }),
     };

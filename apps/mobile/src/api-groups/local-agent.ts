@@ -18,13 +18,13 @@ import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { createCrossDialogTools } from "../chat/cross-dialog.js";
-import { groupMeetingStore } from "../chat/group-meeting-instance.js";
-import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools.js";
 import {
   crossDialogTraceStore,
   crossDialogVisibilityStore,
 } from "../chat/cross-dialog-instance.js";
 import { createDialogTools } from "../chat/dialog-tools.js";
+import { groupMeetingStore } from "../chat/group-meeting-instance.js";
+import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools, type ImageOutputBackend } from "../image/tools.js";
 import { getKnowledgeStore } from "../knowledge/instance.js";
@@ -172,7 +172,9 @@ export interface ChatAgent {
    * visibility and always reports null.
    */
   readonly activeToolName: string | null;
-  subscribe(listener: { onMessagesChanged?: (e: { messages: LocalChatMessage[] }) => void }): {
+  subscribe(listener: {
+    onMessagesChanged?: (e: { messages: LocalChatMessage[]; historySaveFailed: boolean }) => void;
+  }): {
     unsubscribe(): void;
   };
   setMessages(messages: LocalChatMessage[]): void;
@@ -186,6 +188,12 @@ export interface ChatAgent {
   runTurn(): Promise<void>;
   /** Abort an in-flight turn. */
   stop(): Promise<void>;
+  /**
+   * Re-attempt the history save (P1-11). Resolves true when the current
+   * in-memory messages are safely stored; false keeps the UI warning up.
+   * Incognito: nothing is ever persisted, resolves true.
+   */
+  retryHistorySave(): Promise<boolean>;
 }
 
 function historyKey(threadId: string): string {
@@ -232,17 +240,33 @@ async function saveLocalHistory(
   threadId: string,
   messages: LocalChatMessage[],
   store: HistoryStore,
-): Promise<void> {
+): Promise<boolean> {
   try {
     // Cap history so one thread can't grow storage unbounded.
     const capped = messages.slice(-200);
     await store.setItem(historyKey(threadId), JSON.stringify(capped));
+    persistFailures.delete(threadId);
+    return true;
   } catch {
     // History persistence is best-effort; the session keeps working.
-    // Known gap: if storage is full/corrupt, history is lost silently here.
-    // No logger exists in this codebase yet — when one lands, log the error
-    // (with the threadId, never message content) so silent loss becomes visible.
+    // The failure is no longer silent (P1-11): the in-memory messages are
+    // the mirror, the thread is flagged, the UI shows a warning with a
+    // retry, and the next persist() retries automatically.
+    persistFailures.set(threadId, Date.now());
+    return false;
   }
+}
+
+/**
+ * Threads whose most recent history save failed (P1-11). The failure is
+ * surfaced instead of dropped: chat.tsx shows a warning banner with a
+ * retry button, and the next persist() retries and clears the flag.
+ */
+const persistFailures = new Map<string, number>();
+
+/** True when this thread's latest history save failed. Cleared on the next successful save. */
+export function historyPersistFailed(threadId: string): boolean {
+  return persistFailures.has(threadId);
 }
 
 /**
@@ -536,7 +560,12 @@ export function createLocalAgent(opts: {
   /** Persist unless incognito is on. Incognito never touches storage. */
   function persist(msgs: LocalChatMessage[]): void {
     if (incognito()) return;
-    void saveLocalHistory(opts.threadId, msgs, store);
+    // Fire-and-forget: the session never blocks on storage. But the emit
+    // above already went out with the pre-save flag state — if the save
+    // fails, emit again so listeners (chat.tsx banner) see the failure.
+    void saveLocalHistory(opts.threadId, msgs, store).then((ok) => {
+      if (!ok) emit();
+    });
   }
 
   let messages: LocalChatMessage[] = [];
@@ -545,14 +574,17 @@ export function createLocalAgent(opts: {
   // "making something" state — set around registry.execute, cleared after.
   let activeToolName: string | null = null;
   let aborter: AbortController | null = null;
-  const listeners = new Set<(e: { messages: LocalChatMessage[] }) => void>();
+  const listeners = new Set<
+    (e: { messages: LocalChatMessage[]; historySaveFailed: boolean }) => void
+  >();
   // Thread-scoped vision cache: one agent instance == one thread, so history
   // images are described / base64-encoded once, not once per turn.
   const visionCache = newVisionCache();
 
   function emit() {
     const snap = [...messages];
-    for (const l of listeners) l({ messages: snap });
+    for (const l of listeners)
+      l({ messages: snap, historySaveFailed: historyPersistFailed(opts.threadId) });
   }
 
   function newId(prefix: string): string {
@@ -1341,6 +1373,14 @@ export function createLocalAgent(opts: {
     },
     async stop(): Promise<void> {
       aborter?.abort();
+    },
+    async retryHistorySave(): Promise<boolean> {
+      // Incognito sessions never persist: nothing to retry.
+      if (incognito()) return true;
+      const ok = await saveLocalHistory(opts.threadId, messages, store);
+      // Re-emit so the UI picks up the cleared/set flag immediately.
+      emit();
+      return ok;
     },
   };
 }

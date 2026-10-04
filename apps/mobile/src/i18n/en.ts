@@ -361,6 +361,8 @@ export const enStrings: Record<StringKey, string> = {
   "chat.welcomeBody.night": "I'm here with you. Talk, or let me take care of something.",
   "chat.retryLoad": "Retry loading conversation",
   "chat.retrySave": "Retry saving conversation",
+  "chat.historySaveFailed":
+    "Couldn't save this conversation to the device. New messages are kept for now, but they may be lost if the app restarts.",
   "chat.retryReply": "Retry reply",
   "chat.suggest.hn": "Find cool things on Hacker News",
   "chat.suggest.summarize": "Summarize copilotkit.ai",
