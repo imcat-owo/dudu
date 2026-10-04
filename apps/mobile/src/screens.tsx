@@ -111,7 +111,7 @@ export function TodayScreen() {
           >
             {t("today.headline")}
           </TText>
-          <TText style={[s.muted, { maxWidth: 420, color: "#617680" }]}>
+          <TText style={[s.muted, { maxWidth: 420 }]}>
             {events.length
               ? t("today.thingsOnCalendar", { count: events.length })
               : t("today.calendarRoom")}
@@ -326,7 +326,7 @@ export function TodayScreen() {
         </Card>
       </View>
       <View style={{ flexDirection: wide ? "row" : "column", gap: 22 }}>
-        <Card style={{ flex: 1, backgroundColor: "#F0F0E7" }}>
+        <Card style={{ flex: 1, backgroundColor: colors.card }}>
           <SectionHeading title={t("today.smallThings")} />
           <TText style={[s.muted, { marginBottom: 15 }]}>{t("today.startWithIdea")}</TText>
           {[t("today.prompt.attention"), t("today.prompt.inbox"), t("today.prompt.docs")].map(
@@ -336,7 +336,7 @@ export function TodayScreen() {
                 onPress={() => ask(prompt)}
                 style={[
                   s.between,
-                  { borderTopWidth: 1, borderTopColor: "#E1E2D9", paddingVertical: 13 },
+                  { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 13 },
                 ]}
               >
                 <TText style={[s.text, { fontSize: 12 }]}>{prompt}</TText>
