@@ -17,6 +17,7 @@ import { buildCapabilityPromptSection } from "../capabilities";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
 import { createWallpaperTools } from "../theme/tools.js";
+import { createContextTools } from "../chat/context-tools.js";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -520,6 +521,25 @@ export function createLocalAgent(opts: {
         ),
         ...createImageTools(),
         ...createWallpaperTools(AsyncStorage),
+        ...createContextTools({
+          setMessages: (msgs) => {
+            messages = msgs.map((m, i) => ({
+              id: `ctx-${Date.now()}-${i}`,
+              role: m.role as "user" | "assistant" | "system",
+              content: m.content,
+            }));
+            emit();
+            persist(messages);
+          },
+          getMessages: () =>
+            messages.map((m) => ({
+              role: m.role,
+              content:
+                typeof m.content === "string"
+                  ? m.content
+                  : JSON.stringify(m.content),
+            })),
+        }),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
