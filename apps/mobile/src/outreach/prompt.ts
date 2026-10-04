@@ -28,7 +28,9 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
     case "anniversary":
       lines.push(
         `- 「${t.detail}」 is coming up in ${t.daysUntil === 0 ? "today" : `${t.daysUntil} days`}. ` +
-          `You may quietly prepare something; do not spoil the surprise.`,
+          `You may quietly prepare something; do not spoil the surprise. ` +
+          `If the moment fits, write her a love letter with love_letter_write — she finds it in Our Space herself; ` +
+          `in-session only, never a notification, and do not announce it.`,
       );
       break;
     case "love_letter":
@@ -38,7 +40,10 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
       );
       break;
     case "tell_later":
-      lines.push(`- Something you queued to tell her: "${t.detail}". If the moment feels right, tell her now.`);
+      lines.push(
+        `- Something you queued to tell her: "${t.detail}". If the moment feels right, tell her now. ` +
+          `After you tell her, call tell_later_done so it doesn't surface again.`,
+      );
       break;
     case "silence":
       lines.push(
