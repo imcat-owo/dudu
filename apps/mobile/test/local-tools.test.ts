@@ -57,6 +57,23 @@ describe("local tool registry", () => {
     assert.ok(out.includes("1.2.3"));
   });
 
+  it("get_app_info default reads the real app.json version, never 'dev' (AI-use P2-5)", async () => {
+    const tools = createLocalTools({});
+    const registry = createToolRegistry(tools);
+    const out = await registry.execute("get_app_info", {}, allowAll);
+    assert.ok(!out.includes("version: dev"), `AI must never say "dev": ${out}`);
+    assert.match(out, /version: \d+\.\d+\.\d+/);
+  });
+
+  it("get_current_time agrees with the device clock and includes the weekday (AI-use P2-1)", async () => {
+    const tools = createLocalTools({ now: () => new Date("2026-10-05T04:00:00Z") });
+    const registry = createToolRegistry(tools);
+    const out = await registry.execute("get_current_time", {}, allowAll);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    assert.ok(out.includes("星期"), `expected weekday, got: ${out}`);
+    assert.ok(out.includes(`(${tz})`), `expected device tz label, got: ${out}`);
+  });
+
   it("unknown tool throws ToolError", async () => {
     const registry = createToolRegistry(createLocalTools());
     await assert.rejects(() => registry.execute("nope", {}, allowAll), ToolError);

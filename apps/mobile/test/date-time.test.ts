@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isCompleteInstant, localDateTime, zonedInstant } from "../src/date-time.ts";
+import { deviceTimeLine, isCompleteInstant, localDateTime, zonedInstant } from "../src/date-time.ts";
+
+test("deviceTimeLine labels the device timezone and includes the weekday (AI-use P2-1/P2-2)", () => {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const line = deviceTimeLine(new Date("2026-10-05T04:00:00Z"));
+  // Same clock the get_current_time tool reports: device tz, labelled.
+  assert.ok(line.includes(`(${tz})`), `expected device tz label (${tz}), got: ${line}`);
+  assert.ok(line.includes("星期"), `expected weekday in line, got: ${line}`);
+  // Never a hardcoded foreign clock unless the device really is there.
+  assert.ok(!line.includes("Asia/Shanghai") || tz === "Asia/Shanghai", `hardcoded Shanghai leak: ${line}`);
+});
 
 test("calendar time is rendered and entered in the selected named zone", () => {
   assert.deepEqual(localDateTime("2026-09-15T17:30:00Z", "America/Los_Angeles"), {

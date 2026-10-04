@@ -48,3 +48,26 @@ export function isCompleteInstant(value: string): boolean {
     Number.isFinite(Date.parse(value))
   );
 }
+
+/**
+ * One-line "now" for the system prompt (audit round 2, AI-use P2-1).
+ * Uses the DEVICE timezone — the same clock get_current_time reports — so the
+ * AI never sees two contradictory "nows" when she travels. Includes the
+ * weekday (AI-use P2-2: relationship design §5 says he must know the day of
+ * the week). Her fixed Shanghai sleep schedule is a separate concern and
+ * lives in her-rhythm.ts.
+ */
+export function deviceTimeLine(now: Date = new Date()): string {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const stamp = now.toLocaleString("zh-CN", {
+    timeZone: tz,
+    weekday: "long",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  });
+  return `Current time: ${stamp} (${tz}).`;
+}

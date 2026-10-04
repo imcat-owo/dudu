@@ -20,7 +20,20 @@
 import type { AiAuthRequest } from "../ai-authorization";
 import type { CapabilityId } from "../capabilities";
 import { getManual, MANUALS } from "../manuals/index.js";
+import appJson from "../../app.json";
 import type { WireToolDef } from "./direct-transport";
+
+/**
+ * Real app version from app.json (audit round 2, AI-use P2-5): get_app_info
+ * must never tell her "dev". JSON import keeps this module PURE and
+ * node-testable. deps.appInfo can still override (tests, future native
+ * version wiring).
+ */
+function readAppVersion(): string {
+  const v = (appJson as { expo?: { version?: unknown } } | null)?.expo?.version;
+  return typeof v === "string" && v.length > 0 ? v : "dev";
+}
+const APP_VERSION = readAppVersion();
 
 /** JSON Schema (subset) for tool input parameters. */
 export interface ToolParametersSchema {
@@ -94,7 +107,9 @@ function numArg(args: Record<string, unknown>, name: string, fallback: number): 
  */
 export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
   const now = deps.now ?? (() => new Date());
-  const appInfo = deps.appInfo ?? (() => ({ name: "嘟嘟", version: "dev", platform: "ios" }));
+  // Default app info reads the REAL version from app.json (AI-use P2-5) —
+  // the old "dev" placeholder was a lie the AI repeated to her.
+  const appInfo = deps.appInfo ?? (() => ({ name: "嘟嘟", version: APP_VERSION, platform: "ios" }));
 
   const tools: LocalTool[] = [
     {
@@ -103,8 +118,22 @@ export function createLocalTools(deps: ToolDeps = {}): LocalTool[] {
         "Get the current date and time (device local timezone). Use when the user asks about time, dates, or scheduling.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       run: async () => {
+        // Same clock as the system-prompt injection (AI-use P2-1): device
+        // timezone + weekday, so prompt and tool never disagree.
         const d = now();
-        return d.toLocaleString();
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return (
+          d.toLocaleString("zh-CN", {
+            timeZone: tz,
+            weekday: "long",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+          }) + ` (${tz})`
+        );
       },
     },
     {

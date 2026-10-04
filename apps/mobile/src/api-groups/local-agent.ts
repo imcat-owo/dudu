@@ -896,6 +896,13 @@ export function createLocalAgent(opts: {
           listApiGroups: () => groupStore.getSnapshot().groups,
           generate: generateOneShot,
           isIncognito: incognito,
+          // P2-8: her_request is mechanically verified against her recent
+          // words — the closure reads the live message array.
+          recentUserTexts: () =>
+            messages
+              .filter((m) => m.role === "user")
+              .slice(-20)
+              .map((m) => (typeof m.content === "string" ? m.content : "")),
         }),
         ...createContextTools({
           setMessages: (msgs) => {
