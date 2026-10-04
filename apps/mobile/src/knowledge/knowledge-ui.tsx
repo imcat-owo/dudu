@@ -19,7 +19,7 @@ import { taskProgressStore } from "../our-space/task-progress-instance";
 import { SoraAmbient } from "../sora-ambient";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
 import { type IndexProgress, indexDocument } from "./indexer";
-import { getKnowledgeStore, knowledgeStore } from "./instance";
+import { getKnowledgeStore } from "./instance";
 import { PdfTextExtractor } from "./pdf-extract";
 import type { KbDoc } from "./store";
 import type { SqliteKnowledgeStore } from "./vec-store";
@@ -46,7 +46,7 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [store, setStore] = useState<SqliteKnowledgeStore | null>(null);
+  const [, setStore] = useState<SqliteKnowledgeStore | null>(null);
   // PDF extraction state: when set, renders a hidden PdfTextExtractor.
   const [pdfJob, setPdfJob] = useState<{
     uri: string;
@@ -224,7 +224,13 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
     (message: string) => {
       setPdfJob(null);
       setBusy(false);
-      setError(t("kb.pdfExtractFailed", { reason: message }));
+      const reason =
+        message === "timeout"
+          ? t("kb.pdfExtractTimeout")
+          : message === "pdfJsLoadTimeout"
+            ? t("kb.pdfJsLoadTimeout")
+            : message;
+      setError(t("kb.pdfExtractFailed", { reason }));
       void refresh();
     },
     [refresh],

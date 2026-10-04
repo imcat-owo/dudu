@@ -51,6 +51,8 @@ export interface KbDatabase {
   runAsync(sql: string, params?: unknown[]): Promise<unknown>;
   getAllAsync<T>(sql: string, params?: unknown[]): Promise<T[]>;
   getFirstAsync<T>(sql: string, params?: unknown[]): Promise<T | null>;
+  /** Run a task inside a single transaction (rollback on throw). */
+  withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 
 interface DocRow {
@@ -244,14 +246,17 @@ export class SqliteKnowledgeStore {
 
   async putChunks(records: KbChunkRecord[]): Promise<void> {
     await this.ensureReady();
-    for (const r of records) {
-      await this.db.runAsync(
-        `INSERT OR REPLACE INTO kb_chunks
-         (id, doc_id, idx, text, heading_path, vector, embed_model)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [r.id, r.docId, r.index, r.text, r.headingPath, JSON.stringify(r.vector), r.embedModel],
-      );
-    }
+    // One transaction: a killed batch never leaves half a document behind.
+    await this.db.withTransactionAsync(async () => {
+      for (const r of records) {
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO kb_chunks
+           (id, doc_id, idx, text, heading_path, vector, embed_model)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [r.id, r.docId, r.index, r.text, r.headingPath, JSON.stringify(r.vector), r.embedModel],
+        );
+      }
+    });
     this.emit();
   }
 

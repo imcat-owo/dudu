@@ -106,6 +106,9 @@ function makeFakeDb(): KbDatabase {
       }
       throw new Error(`unhandled SQL: ${sql}`);
     },
+    async withTransactionAsync(task: () => Promise<void>): Promise<void> {
+      await task();
+    },
   };
 }
 

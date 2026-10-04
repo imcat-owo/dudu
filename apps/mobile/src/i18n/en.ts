@@ -1312,13 +1312,15 @@ export const enStrings: Record<StringKey, string> = {
   "kb.status.failed": "Couldn't read it — try deleting and re-uploading",
   "kb.deleteTitle": "Delete this document?",
   "kb.deleteConfirm": 'Delete "{name}"? Its chunks will go too.',
-  "kb.unsupportedSoon":
-    "Word isn't readable yet — upload txt, md or pdf for now.",
+  "kb.unsupportedSoon": "Word isn't readable yet — upload txt, md or pdf for now.",
   "kb.unsupportedType": "I don't recognize this format yet — txt, md and pdf only.",
   "kb.noApiGroup": "No API group configured yet — I need one to read documents. Set one up first.",
   "kb.emptyDocument": "This document is empty — nothing to remember.",
   "kb.indexFailed": "Got stuck reading the document: {reason}",
   "kb.pdfExtractFailed": "PDF text extraction failed: {reason}",
+  "kb.pdfExtractTimeout":
+    "Extraction timed out — the PDF might be too large or stuck. Try a smaller one.",
+  "kb.pdfJsLoadTimeout": "Couldn't load the PDF parser — check your connection and try again.",
   "kb.progress.chunking": "Splitting…",
   "kb.progress.embedding": "Memorizing… {done}/{total}",
   "kb.formatsNote": "Supports txt / md / pdf. Word support is coming.",

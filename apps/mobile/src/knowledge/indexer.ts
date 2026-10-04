@@ -8,7 +8,8 @@
 
 import type { ApiGroup } from "../api-groups/types.js";
 import { chunkDocument } from "./chunking.js";
-import { type EmbedResult, embedTexts } from "./embeddings.js";
+import type { EmbedResult } from "./embeddings.js";
+import { selectEmbeddingProvider } from "./embeddings-local.js";
 import type { KbChunkRecord, KnowledgeStore } from "./store.js";
 import type { SqliteKnowledgeStore } from "./vec-store.js";
 
@@ -28,7 +29,10 @@ export interface IndexResult {
 
 export interface IndexOptions {
   onProgress?: (p: IndexProgress) => void;
-  /** Override the embedding call (tests). Defaults to embedTexts. */
+  /**
+   * Override the embedding call (tests). Defaults to the best available
+   * EmbeddingProvider (on-device when ready, else API).
+   */
   embed?: (group: ApiGroup, texts: string[]) => Promise<EmbedResult>;
 }
 
@@ -44,7 +48,13 @@ export async function indexDocument(
   isMarkdown: boolean,
   opts: IndexOptions = {},
 ): Promise<IndexResult> {
-  const doEmbed = opts.embed ?? embedTexts;
+  const doEmbed =
+    opts.embed ??
+    (async (group: ApiGroup, texts: string[]) => {
+      const provider = await selectEmbeddingProvider(() => group);
+      const vectors = await provider.embed(texts);
+      return { vectors, model: provider.name };
+    });
   const onProgress = opts.onProgress;
   if (!group) {
     await store.updateDoc(docId, { status: "failed", error: "noApiGroup" });

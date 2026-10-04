@@ -1274,6 +1274,8 @@ const zhHans = {
   "kb.emptyDocument": "这个文档是空的，没什么可记的。",
   "kb.indexFailed": "读文档的时候卡住了：{reason}",
   "kb.pdfExtractFailed": "PDF 文字提取失败了：{reason}",
+  "kb.pdfExtractTimeout": "提取超时了，PDF 可能太大或卡住了，换个小点的试试",
+  "kb.pdfJsLoadTimeout": "PDF 解析库没加载出来，检查下网络再试一次",
   "kb.progress.chunking": "正在切分…",
   "kb.progress.embedding": "正在记住… {done}/{total}",
   "kb.formatsNote": "支持 txt / md / pdf。Word 后面会支持。",

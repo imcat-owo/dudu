@@ -12,15 +12,34 @@
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import type { ApiGroup } from "../api-groups/types.js";
-import { type EmbedResult, embedTexts } from "./embeddings.js";
+import type { EmbedResult } from "./embeddings.js";
+import { selectEmbeddingProvider } from "./embeddings-local.js";
 import type { KnowledgeStore } from "./store.js";
 import { topKByCosine } from "./vectors.js";
 
 export interface KnowledgeToolDeps {
   /** Active API group (for /v1/embeddings). Null = honestly report unconfigured. */
   getGroup: () => ApiGroup | null;
-  /** Override the embedding call (tests). Defaults to embedTexts. */
+  /**
+   * Override the embedding call (tests). Defaults to the best available
+   * EmbeddingProvider (on-device when ready, else API).
+   */
   embed?: (group: ApiGroup, texts: string[]) => Promise<EmbedResult>;
+}
+
+/**
+ * Default embedding path: resolve the best provider and adapt it to the
+ * EmbedResult shape. In Phase 2 the on-device provider is never ready, so
+ * this behaves exactly like embedTexts — but the provider abstraction is
+ * now the real default, not dead code.
+ */
+export async function defaultEmbed(
+  getGroup: () => ApiGroup | null,
+  texts: string[],
+): Promise<EmbedResult> {
+  const provider = await selectEmbeddingProvider(getGroup);
+  const vectors = await provider.embed(texts);
+  return { vectors, model: provider.name };
 }
 
 /** Similarity floor: below this, a chunk is noise, not an answer. */
@@ -45,11 +64,24 @@ function formatHit(docName: string, headingPath: string, text: string, score: nu
 }
 
 /**
+ * Minimal store interface needed by knowledge_search (structural typing).
+ * Compatible with KnowledgeStore, SqliteKnowledgeStore, and the lazy wrapper.
+ */
+export interface KnowledgeSearchStore {
+  hasIndexedDocs(): Promise<boolean>;
+  listChunks(docId?: string): Promise<import("./store.js").KbChunkRecord[]>;
+  listDocs(): Promise<import("./store.js").KbDoc[]>;
+}
+
+/**
  * Build the knowledge tool set bound to a store instance.
  * Every tool REALLY works — no placeholders.
  */
-export function createKnowledgeTools(store: KnowledgeStore, deps: KnowledgeToolDeps): LocalTool[] {
-  const doEmbed = deps.embed ?? embedTexts;
+export function createKnowledgeTools(
+  store: KnowledgeSearchStore,
+  deps: KnowledgeToolDeps,
+): LocalTool[] {
+  const doEmbed = deps.embed ?? ((_group, texts) => defaultEmbed(deps.getGroup, texts));
   return [
     {
       name: "knowledge_search",

@@ -29,6 +29,7 @@ function wrapExpoDb(db: SQLite.SQLiteDatabase): KbDatabase {
       db.getAllAsync(sql, cast(params)) as Promise<T[]>,
     getFirstAsync: <T>(sql: string, params?: unknown[]) =>
       db.getFirstAsync(sql, cast(params)) as Promise<T | null>,
+    withTransactionAsync: (task: () => Promise<void>) => db.withTransactionAsync(task),
   };
 }
 
@@ -69,13 +70,17 @@ async function migrateIfNeeded(sqlite: SqliteKnowledgeStore): Promise<void> {
 
     for (const doc of docs) {
       const created = await sqlite.addDoc(doc.name, doc.kind, doc.size);
+      // A doc stuck in "indexing" means the app died mid-index in Phase 1 —
+      // mark it failed (with an honest reason) and drop any partial chunks
+      // instead of leaving it spinning forever. She can delete and re-upload.
+      const wasInterrupted = doc.status === "indexing";
       await sqlite.updateDoc(created.id, {
-        chunkCount: doc.chunkCount,
-        status: doc.status,
-        error: doc.error,
+        chunkCount: wasInterrupted ? 0 : doc.chunkCount,
+        status: wasInterrupted ? "failed" : doc.status,
+        error: wasInterrupted ? "interruptedMigration" : doc.error,
       });
       const chunks = await legacy.listChunks(doc.id);
-      if (chunks.length > 0) {
+      if (chunks.length > 0 && !wasInterrupted) {
         const remapped = chunks.map((c) => ({ ...c, docId: created.id }));
         await sqlite.putChunks(remapped);
       }

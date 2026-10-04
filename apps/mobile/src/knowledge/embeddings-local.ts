@@ -87,7 +87,10 @@ export function createOnDeviceEmbeddingProvider(): EmbeddingProvider {
 
 /**
  * Pick the best available provider: on-device if ready, else API.
- * This is the single entry point for embedding in Phase 2+.
+ * This is the single entry point for embedding — the indexer and the
+ * knowledge_search query path both resolve their default embed through here.
+ * In Phase 2 the on-device provider is never ready, so this behaves exactly
+ * like the API path; when Phase 3 lands, callers get on-device for free.
  */
 export async function selectEmbeddingProvider(
   getGroup: () => import("../api-groups/types.js").ApiGroup | null,
