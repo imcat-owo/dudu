@@ -19,6 +19,7 @@ import { t } from "../i18n";
 import { radii } from "../theme/radii";
 import { Button, Card, Chip, Field, useColors, useStyles } from "../ui";
 import { VoiceSettingsSection } from "../voice/voice-settings";
+import { CapabilitySettingsSection } from "./capability-settings";
 import { testConnection } from "./direct-transport";
 import { type ChatMode, useChatMode, useSetChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
@@ -514,6 +515,10 @@ export function ApiSettingsScreen() {
       <TText style={[s.small, { color: colors.muted }]}>{t("apigroup.subtitle")}</TText>
 
       <ModeSwitch />
+
+      {/* Capability-grouped model routing (orchestration feature 1):
+          one "分组" interface — input groups route, output groups back tools. */}
+      <CapabilitySettingsSection />
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <TText style={[s.small, { fontWeight: "700" }]}>

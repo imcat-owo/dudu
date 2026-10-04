@@ -1192,6 +1192,48 @@ export const enStrings: Record<StringKey, string> = {
   "dialogmodel.useDefault": "Back to default ({name})",
   "dialogmodel.close": "Close",
 
+  // ---- capability groups ----
+  "capgroup.title": "Capability groups",
+  "capgroup.subtitle":
+    "Route images, voice and generation tasks to the right models. Input groups = routing (a message with an image goes to the image group); output groups = tool backends (image/video generation calls the group's endpoint).",
+  "capgroup.routing": "Capability routing",
+  "capgroup.routingDesc":
+    "When on, messages with images or voice are routed to the matching group; the current model is always tried first.",
+  "capgroup.ranking": "Model ranking",
+  "capgroup.rankingDesc":
+    "How the AI weighs models when choosing: balanced, smart-first, or fast-first. Curated snapshot, for reference.",
+  "capgroup.ranking.balanced": "Balanced",
+  "capgroup.ranking.smart": "Smart first",
+  "capgroup.ranking.fast": "Fast first",
+  "capgroup.preset.image_input": "Image input",
+  "capgroup.preset.image_output": "Image output",
+  "capgroup.preset.video": "Video",
+  "capgroup.preset.voice_input": "Voice input",
+  "capgroup.kind.input": "Input routing",
+  "capgroup.kind.output": "Output backend",
+  "capgroup.kindDesc":
+    "Input = messages with this capability get routed to the group. Output = generation tools call the group's endpoint.",
+  "capgroup.members": "{n} models",
+  "capgroup.primary": "Primary",
+  "capgroup.fallback": "Fallback",
+  "capgroup.disabled": "Disabled",
+  "capgroup.groupName": "Group name",
+  "capgroup.delete": "Delete group",
+  "capgroup.empty": "No models yet — add one below.",
+  "capgroup.addMember": "Add model",
+  "capgroup.noCandidates": "All API groups are already members.",
+  "capgroup.cancel": "Cancel",
+  "capgroup.modelOverride": "Model override (optional)",
+  "capgroup.endpoint": "Endpoint URL (optional)",
+  "capgroup.pollEndpoint": "Poll URL — {id} becomes the task id",
+  "capgroup.moveUp": "Move up",
+  "capgroup.moveDown": "Move down",
+  "capgroup.remove": "Remove",
+  "capgroup.newGroup": "New capability group",
+  "capgroup.tag": "Capability tag",
+  "capgroup.create": "Create",
+  "capgroup.duplicateTag": 'A group with the tag "{tag}" already exists.',
+
   // ---- thinking drawer ----
   "thinking.thinking": "Thinking…",
   "thinking.dragHandle": "Drag to resize",
