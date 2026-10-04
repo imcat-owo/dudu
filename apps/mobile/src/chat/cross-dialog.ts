@@ -36,6 +36,7 @@
 
 import type { LocalTool } from "../api-groups/local-tools.js";
 import { ToolError } from "../api-groups/local-tools.js";
+import { planGateStore } from "../api-groups/plan-gate.js";
 import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
 
 /** Must match historyKey() in api-groups/local-agent.ts. */
@@ -397,6 +398,32 @@ function formatDialogList(dialogs: DialogInfo[], currentId: string): string {
  * tools know which dialog the AI is talking in (for the trace + the
  * "don't send to yourself" guard).
  */
+/** Plan ids look like plan_<base36 time>_<base36 rand> (see plan-gate.ts). */
+const PLAN_ID_RE = /\bplan_[0-9a-z]{4,12}_[0-9a-z]{4,8}\b/;
+
+/**
+ * Mechanical plan check (audit round 2, AI-use P1-3): when the reason cites a
+ * plan id, it must exist AND be approved — a fabricated id is refused instead
+ * of sailing through on the honor system. No plan id cited means her explicit
+ * request, which the trace log records. Trace auditability stays as backstop.
+ */
+function verifyCitedPlan(reason: string): void {
+  const m = reason.match(PLAN_ID_RE);
+  if (!m) return;
+  const planId = m[0];
+  const plan = planGateStore.getPlan(planId);
+  if (!plan) {
+    throw new ToolError(
+      `reason 里写了计划 ${planId}，但这个计划不存在——不要编造 plan_id。重新用 propose_coordination_plan 提一个计划，等她批准后再发；如果是她亲口让你发的，把她的原话写进 reason。`,
+    );
+  }
+  if (plan.status !== "approved") {
+    throw new ToolError(
+      `计划「${plan.title}」(${planId}) 还没被批准（${plan.status}）——等她点了批准再发，不要先斩后奏。`,
+    );
+  }
+}
+
 export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
   const personaId = opts.personaId ?? DEFAULT_PERSONA_ID;
   const storage = opts.storage;
@@ -479,6 +506,7 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
         "Deliver a message INTO another dialog (by name or id). The message appears there as your reply, tagged with which dialog it came from (tag visibility is her setting; the trace log always records the send either way). " +
         "RULES — follow them exactly: (1) Only send when SHE explicitly asked you to pass something along (e.g. '跟那个对话框说一声…'), OR when a coordination plan covering this send was proposed AND approved — never send on your own initiative without one of those. " +
         "(2) `reason` is required: say plainly why you're sending (her words, or the plan id). " +
+        "A cited plan id is mechanically verified — it must exist and be approved, or the send is refused; don't invent one. " +
         "(3) One message per call, keep it short, in your own voice. " +
         "(4) Refused in incognito sessions and when the target is the dialog you're already in.",
       parameters: {
@@ -513,6 +541,8 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
             "send_to_dialog needs a reason — whose request or which approved plan is this send for?",
           );
         }
+        // Mechanical plan gate: a cited plan id must be real and approved.
+        verifyCitedPlan(reason);
         if (!message.trim()) throw new ToolError("I can't send an empty message.");
         const dialog = await resolveDialog(storage, ref, personaId);
         if (dialog.id === opts.threadId) {
