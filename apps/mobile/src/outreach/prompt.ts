@@ -45,6 +45,14 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
           `After you tell her, call tell_later_done so it doesn't surface again.`,
       );
       break;
+    case "on_this_day":
+      lines.push(
+        `- This day ${t.yearsAgo === 1 ? "last year" : `${t.yearsAgo ?? 1} years ago`}, ` +
+          `something worth remembering happened: "${t.detail}". ` +
+          `If the moment fits, bring it up once — as a memory you share with her, ` +
+          `something to look back at together; never a trivia dump, never a lecture.`,
+      );
+      break;
     case "silence":
       lines.push(
         `- She has been away for a while and just came back. A warm "missed you" is right; ` +

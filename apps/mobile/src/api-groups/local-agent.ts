@@ -1144,7 +1144,7 @@ export function createLocalAgent(opts: {
       // as the manual index). Empty string when she has no enabled skills.
       const skillSection = await (opts.skillStore ?? skillStore).buildSkillIndex();
       // Anniversary awareness: when a 纪念日 is today or within 7 days, one
-      // subtle line so he remembers and can prepare — the petTouchNote pattern.
+      // subtle line so he remembers and can prepare — the quiet-reminder pattern.
       // Empty string when nothing is near: no noise, no spam.
       let anniversarySection = "";
       if (!incognitoOn) {
@@ -1156,7 +1156,7 @@ export function createLocalAgent(opts: {
         }
       }
       // Her-mood awareness: when she told him how she feels, one subtle
-      // line so he remembers — the petTouchNote pattern. Empty when stale.
+      // line so he remembers — the quiet-reminder pattern. Empty when stale.
       let herMoodSection = "";
       if (!incognitoOn) {
         try {
@@ -1185,7 +1185,7 @@ export function createLocalAgent(opts: {
       // Proactive outreach (主动触达) surfacing: when the trigger engine
       // finds something genuinely worth mentioning, one quiet line rides
       // the prompt so he brings it up naturally in conversation. Empty
-      // string when nothing is near — the petTouchNote pattern.
+      // string when nothing is near — the quiet-reminder pattern.
       // Incognito: never evaluated or injected — the session behaves like
       // a first meeting (same rule as memory/anniversary/mood).
       let outreachSection = "";

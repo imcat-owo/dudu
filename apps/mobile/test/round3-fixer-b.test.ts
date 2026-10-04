@@ -58,11 +58,25 @@ describe("write-chain: keyed runner serializes same-key writes", () => {
     assert.equal(ran, true);
   });
 
-  it("sharedKeyedChain is one instance for cross-module keys (code P2-6)", () => {
+  it("sharedKeyedChain is one instance for cross-module keys (code P2-6)", async () => {
     // Both chat/cross-dialog.ts and api-groups/local-agent.ts write
     // dudu.local-chat.<id>.v1 through this instance — same key, one queue.
+    // Prove it functionally: two simulated modules racing on the same key
+    // through the shared instance must serialize, never interleave.
     assert.equal(typeof sharedKeyedChain, "function");
-    assert.ok(createWriteChain() !== sharedKeyedChain);
+    const order: string[] = [];
+    await Promise.all([
+      // "module A" (cross-dialog.ts)
+      sharedKeyedChain("dudu.local-chat.demo.v1", async () => {
+        await sleep(20);
+        order.push("a");
+      }),
+      // "module B" (local-agent.ts)
+      sharedKeyedChain("dudu.local-chat.demo.v1", async () => {
+        order.push("b");
+      }),
+    ]);
+    assert.deepEqual(order, ["a", "b"], "same key must serialize on the one shared instance");
   });
 });
 
@@ -81,6 +95,15 @@ describe("outreach prompt lines (xiaomeng P1-2 / P2-2)", () => {
       { kind: "tell_later", priority: 3, detail: "提醒她喝水" },
     ]);
     assert.match(section, /tell_later_done/);
+  });
+
+  it("on_this_day brings up the shared memory once, never as trivia", () => {
+    const section = buildOutreachSection([
+      { kind: "on_this_day", priority: 3, detail: "去年的今天我们第一次去海边", yearsAgo: 1 },
+    ]);
+    assert.match(section, /This day last year/);
+    assert.match(section, /去年的今天我们第一次去海边/);
+    assert.match(section, /never a trivia dump/);
   });
 
   it("empty triggers stay silent", () => {
