@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFontSizeSetting } from "./app-settings";
 import { TText } from "./font";
+import { GlassView } from "./glass";
 import { t } from "./i18n";
 import { DEFAULT_MASCOT_INDEX } from "./mascot";
 import { mascotSource } from "./mascot-assets";
@@ -415,16 +416,20 @@ export function Sheet({
   return (
     <Modal transparent animationType={compact ? "slide" : "fade"} visible onRequestClose={onClose}>
       <View style={[s.modalShade, compact && { padding: 0, justifyContent: "flex-end" }]}>
-        <View
+        <GlassView
           accessibilityViewIsModal
+          intensity={64}
           style={[
-            s.sheet,
-            wide && { maxWidth: 1050 },
+            {
+              borderRadius: 20,
+              width: "100%",
+              maxWidth: wide ? 1050 : 790,
+              maxHeight: "94%",
+            },
             compact && {
               borderBottomLeftRadius: 0,
               borderBottomRightRadius: 0,
               paddingBottom: Math.max(insets.bottom, 12),
-              maxHeight: "94%",
             },
           ]}
         >
@@ -458,7 +463,7 @@ export function Sheet({
           >
             {children}
           </ScrollView>
-        </View>
+        </GlassView>
       </View>
     </Modal>
   );

@@ -42,6 +42,7 @@ import { ChatAvatar } from "./chat-avatar";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { TText } from "./font";
+import { GlassView } from "./glass";
 import { t } from "./i18n";
 import {
   buildImageUrl,
@@ -1143,12 +1144,11 @@ export function ChatScreen({
             </Button>
           </Card>
         )}
-        <View
+        <GlassView
+          intensity={56}
+          edgeColor={focused ? colors.blue : undefined}
           style={{
-            backgroundColor: colors.card,
             borderRadius: 32,
-            borderWidth: 1,
-            borderColor: focused ? colors.blue : colors.line,
             padding: 8,
             shadowColor: colors.scrim,
             shadowOpacity: focused ? 0.1 : 0.06,
@@ -1342,7 +1342,7 @@ export function ChatScreen({
               )}
             </Pressable>
           </View>
-        </View>
+        </GlassView>
       </KeyboardAvoidingView>
       <ThinkingDrawer
         visible={activityId !== null}

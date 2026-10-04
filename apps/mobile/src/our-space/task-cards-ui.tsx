@@ -23,6 +23,7 @@ import {
   View,
 } from "react-native";
 import { TText } from "../font";
+import { GlassView } from "../glass";
 import { type StringKey, t } from "../i18n";
 import { buildImageUrl } from "../image-generation";
 import { DUR, EASE, SPRING, STAGGER } from "../motion";
@@ -279,7 +280,9 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
             <View style={{ backgroundColor: colors.scrim }}>{cardContent}</View>
           </ImageBackground>
         ) : (
-          <View style={{ backgroundColor: colors.card }}>{cardContent}</View>
+          <GlassView intensity={40} style={{ borderRadius: 22 }}>
+            {cardContent}
+          </GlassView>
         )}
 
         <Modal
@@ -297,63 +300,62 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
             }}
             onPress={() => setMenuOpen(false)}
           >
-            <Pressable
-              style={{ backgroundColor: colors.card, borderRadius: 20, padding: 20, gap: 12 }}
-              onPress={(e) => e.stopPropagation()}
-            >
-              <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
-                {t("space.tasks.bgTitle")}
-              </TText>
-              <Pressable
-                onPress={pickBackground}
-                style={{ backgroundColor: colors.secondaryBg, borderRadius: 12, padding: 14 }}
-              >
-                <TText style={{ color: colors.text, fontSize: 14 }}>
-                  {t("space.tasks.bgUpload")}
+            <GlassView intensity={64} style={{ borderRadius: 20, padding: 20, gap: 12 }}>
+              <Pressable onPress={(e) => e.stopPropagation()}>
+                <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+                  {t("space.tasks.bgTitle")}
                 </TText>
-              </Pressable>
-              <View style={{ gap: 8 }}>
-                <TextInput
-                  value={genPrompt}
-                  onChangeText={setGenPrompt}
-                  placeholder={t("space.tasks.bgPromptHint") as string}
-                  placeholderTextColor={colors.muted}
-                  style={{
-                    backgroundColor: colors.inputBg,
-                    borderRadius: 12,
-                    padding: 12,
-                    color: colors.text,
-                    fontSize: 14,
-                  }}
-                />
                 <Pressable
-                  onPress={generateBackground}
-                  disabled={generating}
-                  style={{
-                    backgroundColor: colors.blue,
-                    borderRadius: 12,
-                    padding: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    opacity: generating ? 0.6 : 1,
-                  }}
+                  onPress={pickBackground}
+                  style={{ backgroundColor: colors.secondaryBg, borderRadius: 12, padding: 14 }}
                 >
-                  <Sparkles size={15} color={colors.onBlue} />
-                  <TText style={{ color: colors.onBlue, fontSize: 14, fontWeight: "600" }}>
-                    {generating ? t("space.tasks.bgGenerating") : t("space.tasks.bgGenerate")}
+                  <TText style={{ color: colors.text, fontSize: 14 }}>
+                    {t("space.tasks.bgUpload")}
                   </TText>
                 </Pressable>
-              </View>
-              {task.backgroundUri && (
-                <Pressable onPress={clearBackground}>
-                  <TText style={{ color: colors.danger, fontSize: 14, textAlign: "center" }}>
-                    {t("space.tasks.bgClear")}
-                  </TText>
-                </Pressable>
-              )}
-            </Pressable>
+                <View style={{ gap: 8 }}>
+                  <TextInput
+                    value={genPrompt}
+                    onChangeText={setGenPrompt}
+                    placeholder={t("space.tasks.bgPromptHint") as string}
+                    placeholderTextColor={colors.muted}
+                    style={{
+                      backgroundColor: colors.inputBg,
+                      borderRadius: 12,
+                      padding: 12,
+                      color: colors.text,
+                      fontSize: 14,
+                    }}
+                  />
+                  <Pressable
+                    onPress={generateBackground}
+                    disabled={generating}
+                    style={{
+                      backgroundColor: colors.blue,
+                      borderRadius: 12,
+                      padding: 14,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      opacity: generating ? 0.6 : 1,
+                    }}
+                  >
+                    <Sparkles size={15} color={colors.onBlue} />
+                    <TText style={{ color: colors.onBlue, fontSize: 14, fontWeight: "600" }}>
+                      {generating ? t("space.tasks.bgGenerating") : t("space.tasks.bgGenerate")}
+                    </TText>
+                  </Pressable>
+                </View>
+                {task.backgroundUri && (
+                  <Pressable onPress={clearBackground}>
+                    <TText style={{ color: colors.danger, fontSize: 14, textAlign: "center" }}>
+                      {t("space.tasks.bgClear")}
+                    </TText>
+                  </Pressable>
+                )}
+              </Pressable>
+            </GlassView>
           </Pressable>
         </Modal>
       </View>

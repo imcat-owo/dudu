@@ -34,6 +34,7 @@ import { AppearanceScreen } from "./appearance";
 import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
 import { FontProvider } from "./font";
+import { GlassView } from "./glass";
 import { t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
 import { OurSpaceScreen } from "./our-space-ui";
@@ -215,25 +216,33 @@ export function LocalApp() {
                         </View>
                       </View>
                     )}
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        paddingHorizontal: 16,
-                        paddingBottom: 24,
-                        paddingTop: 8,
-                        gap: 8,
-                      }}
-                    >
-                      {nav.map((item) => (
-                        <TabButton
-                          key={item.id}
-                          id={item.id}
-                          label={item.label}
-                          icon={item.icon}
-                          active={section === item.id}
-                          onPress={() => setSection(item.id)}
-                        />
-                      ))}
+                    <View style={{ paddingHorizontal: 20, paddingBottom: 24, paddingTop: 8 }}>
+                      <GlassView
+                        intensity={60}
+                        style={{
+                          borderRadius: 30,
+                          flexDirection: "row",
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          gap: 8,
+                          shadowColor: "#000",
+                          shadowOpacity: 0.12,
+                          shadowRadius: 24,
+                          shadowOffset: { width: 0, height: 8 },
+                          elevation: 8,
+                        }}
+                      >
+                        {nav.map((item) => (
+                          <TabButton
+                            key={item.id}
+                            id={item.id}
+                            label={item.label}
+                            icon={item.icon}
+                            active={section === item.id}
+                            onPress={() => setSection(item.id)}
+                          />
+                        ))}
+                      </GlassView>
                     </View>
                     <PetOverlay section={section} onNavigate={(next) => setSection(next)} />
                   </View>
