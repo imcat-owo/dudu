@@ -43,6 +43,34 @@ const CHAT_HISTORY_PREFIX = "dudu.local-chat.";
 const CHAT_HISTORY_SUFFIX = ".v1";
 /** threadId -> { name?, personaId }. */
 const DIALOG_REGISTRY_KEY = "dudu.dialog-registry.v1";
+
+/**
+ * Per-key write chain (P1-10). AsyncStorage has no transactions, so two
+ * concurrent read-modify-write cycles against the same key (e.g. two AI
+ * sends to one dialog) interleave and one write silently wins: a message is
+ * lost while the trace claims both were delivered. Writers queue behind the
+ * previous write for the same key, so each cycle sees the last committed
+ * state. Read-only paths (readDialog, listDialogs) bypass the chain.
+ */
+const writeChains = new Map<string, Promise<void>>();
+
+function exclusiveFor<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  // The stored tail never rejects (it swallows), so a failed write can't
+  // wedge every later write behind it.
+  const prev = writeChains.get(key) ?? Promise.resolve();
+  const cur = prev.then(fn);
+  const tail = cur.then(
+    () => {},
+    () => {},
+  );
+  writeChains.set(key, tail);
+  // Prune once nothing is queued behind this write: the map can't grow
+  // without bound across dialogs.
+  void tail.then(() => {
+    if (writeChains.get(key) === tail) writeChains.delete(key);
+  });
+  return cur;
+}
 /** History cap, mirroring saveLocalHistory in local-agent.ts. */
 const HISTORY_CAP = 200;
 /** Default persona until personas exist as a code concept. */
@@ -133,13 +161,17 @@ export async function setDialogName(
   name: string,
   personaId: string = DEFAULT_PERSONA_ID,
 ): Promise<void> {
-  const reg = await readRegistry(storage);
-  const prev = reg[threadId];
-  reg[threadId] = {
-    ...(name.trim() ? { name: name.trim() } : {}),
-    personaId: prev?.personaId ?? personaId,
-  };
-  await storage.setItem(DIALOG_REGISTRY_KEY, JSON.stringify(reg));
+  // Serialized with other registry writes: two concurrent renames must not
+  // lose each other's entries (read-modify-write race, P1-10).
+  await exclusiveFor(DIALOG_REGISTRY_KEY, async () => {
+    const reg = await readRegistry(storage);
+    const prev = reg[threadId];
+    reg[threadId] = {
+      ...(name.trim() ? { name: name.trim() } : {}),
+      personaId: prev?.personaId ?? personaId,
+    };
+    await storage.setItem(DIALOG_REGISTRY_KEY, JSON.stringify(reg));
+  });
 }
 
 function isMessage(m: unknown): m is CrossDialogMessage {
@@ -318,22 +350,25 @@ export async function sendToDialog(
 ): Promise<{ tagVisible: boolean }> {
   const clean = text.trim();
   if (!clean) throw new ToolError("I can't send an empty message.");
-  const messages = await loadMessages(storage, threadId);
-  const tagVisible = await isSendTagVisible(threadId);
-  messages.push({
-    id: `cdm_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
-    role: "assistant",
-    content: clean,
-    // The marker survives loadLocalHistory's filter (it only checks
-    // id/role) and the agent persists messages as-is — so the tag renders
-    // when she opens the dialog.
-    ...(tagVisible ? { crossDialog: marker } : {}),
+  const historyKey = `${CHAT_HISTORY_PREFIX}${threadId}${CHAT_HISTORY_SUFFIX}`;
+  // Serialized per dialog: two concurrent sends must both land, in order,
+  // matching what the trace reports (P1-10).
+  const tagVisible = await exclusiveFor(historyKey, async () => {
+    const messages = await loadMessages(storage, threadId);
+    const visible = await isSendTagVisible(threadId);
+    messages.push({
+      id: `cdm_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+      role: "assistant",
+      content: clean,
+      // The marker survives loadLocalHistory's filter (it only checks
+      // id/role) and the agent persists messages as-is — so the tag renders
+      // when she opens the dialog.
+      ...(visible ? { crossDialog: marker } : {}),
+    });
+    const capped = messages.slice(-HISTORY_CAP);
+    await storage.setItem(historyKey, JSON.stringify(capped));
+    return visible;
   });
-  const capped = messages.slice(-HISTORY_CAP);
-  await storage.setItem(
-    `${CHAT_HISTORY_PREFIX}${threadId}${CHAT_HISTORY_SUFFIX}`,
-    JSON.stringify(capped),
-  );
   return { tagVisible };
 }
 
