@@ -107,6 +107,14 @@ export interface SecretsExcluded {
   apiKeys: number;
   ttsKeys: number;
   sttKeys: number;
+  /** Custom request headers stripped from API groups (re-enter after restore). */
+  headersExcluded: number;
+  /**
+   * Config URLs (baseUrl/customUrl/url) that had secret-looking query
+   * params (?key=, ?token=, …) removed on export. The URLs in the backup
+   * differ from the originals — disclosed, never silent.
+   */
+  urlsSanitized: number;
 }
 
 export interface BackupChatThread {
@@ -160,12 +168,23 @@ export type ParseBackupResult =
   | { ok: true; backup: BackupFile }
   | { ok: false; code: BackupParseError; detail?: string };
 
-function stripApiGroup(g: unknown): { group: unknown; hadKey: boolean } {
-  if (typeof g !== "object" || g === null) return { group: g, hadKey: false };
+function stripApiGroup(g: unknown): {
+  group: unknown;
+  hadKey: boolean;
+  hadHeaders: boolean;
+  sanitized: boolean;
+} {
+  if (typeof g !== "object" || g === null)
+    return { group: g, hadKey: false, hadHeaders: false, sanitized: false };
   const o = g as Record<string, unknown>;
   const hadKey = typeof o.apiKey === "string" && o.apiKey.length > 0;
+  const hadHeaders =
+    typeof o.headers === "object" &&
+    o.headers !== null &&
+    Object.keys(o.headers as Record<string, unknown>).length > 0;
   const { apiKey: _ak, headers: _h, ...rest } = o;
-  return { group: sanitizeConfigUrls(rest), hadKey };
+  const { config, sanitized } = sanitizeConfigUrls(rest);
+  return { group: config, hadKey, hadHeaders, sanitized };
 }
 
 function stripVoiceConfig(
@@ -226,14 +245,21 @@ export function sanitizeUrl(url: unknown): unknown {
   return kept.length > 0 ? `${base}?${kept.join("&")}` : base;
 }
 
-/** Sanitize URL-ish fields on a config object (baseUrl/customUrl/url). */
-function sanitizeConfigUrls(cfg: unknown): unknown {
-  if (typeof cfg !== "object" || cfg === null) return cfg;
+/** Sanitize URL-ish fields on a config object (baseUrl/customUrl/url).
+ * Returns the sanitized copy plus whether any URL was actually changed
+ * (so the caller can disclose the rewrite instead of doing it silently). */
+function sanitizeConfigUrls(cfg: unknown): { config: unknown; sanitized: boolean } {
+  if (typeof cfg !== "object" || cfg === null) return { config: cfg, sanitized: false };
   const o = { ...(cfg as Record<string, unknown>) };
+  let sanitized = false;
   for (const f of ["baseUrl", "customUrl", "url"]) {
-    if (typeof o[f] === "string") o[f] = sanitizeUrl(o[f]);
+    if (typeof o[f] === "string") {
+      const cleaned = sanitizeUrl(o[f]);
+      if (cleaned !== o[f]) sanitized = true;
+      o[f] = cleaned;
+    }
   }
-  return o;
+  return { config: o, sanitized };
 }
 
 /**
@@ -263,13 +289,17 @@ export async function collectBackup(
   // API groups live in SecureStore — read, then strip secrets.
   let groups: unknown[] = [];
   let apiKeys = 0;
+  let headersExcluded = 0;
+  let urlsSanitized = 0;
   try {
     const raw = await secure.getItem(GROUPS_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed)) {
       groups = parsed.map((g) => {
-        const { group, hadKey } = stripApiGroup(g);
+        const { group, hadKey, hadHeaders, sanitized } = stripApiGroup(g);
         if (hadKey) apiKeys += 1;
+        if (hadHeaders) headersExcluded += 1;
+        if (sanitized) urlsSanitized += 1;
         return group;
       });
     }
@@ -292,7 +322,9 @@ export async function collectBackup(
     const raw = await readSecureJson(secure, key);
     if (raw === null) continue;
     const { config, hadKey } = stripVoiceConfig(raw, "customKey");
-    plain[key] = sanitizeConfigUrls(config);
+    const { config: sanitizedCfg, sanitized } = sanitizeConfigUrls(config);
+    if (sanitized) urlsSanitized += 1;
+    plain[key] = sanitizedCfg;
     if (hadKey) {
       if (key === TTS_KEY) ttsKeys += 1;
       else sttKeys += 1;
@@ -352,7 +384,7 @@ export async function collectBackup(
     kind: BACKUP_KIND,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    secretsExcluded: { apiKeys, ttsKeys, sttKeys },
+    secretsExcluded: { apiKeys, ttsKeys, sttKeys, headersExcluded, urlsSanitized },
     chat: { threads },
     apiGroups: groups,
     plain,

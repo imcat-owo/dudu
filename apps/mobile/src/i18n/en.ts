@@ -239,7 +239,9 @@ export const enStrings: Record<StringKey, string> = {
   "backup.never": "Never",
   "backup.includes":
     "Includes: chats, API groups, themes, voice settings, permission prefs, memories, skills, our space, knowledge base",
-  "backup.secretsNote": "Excludes: API keys, custom voice keys (re-enter after restore)",
+  "backup.secretsNote":
+    "Excludes: API keys, custom request headers, custom voice keys (re-enter after restore); secret query params are stripped from URLs",
+  "backup.themeRestartNote": "Theme applies on next launch.",
   "backup.confirmRestore": "Replace current data with this backup? This cannot be undone.",
   "backup.restoreDone": "Restored. Please re-enter your API keys.",
   "backup.backupDone": "Backup ready",

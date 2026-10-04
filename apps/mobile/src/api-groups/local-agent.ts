@@ -47,7 +47,7 @@ import { createFontSizeTools } from "../settings/tools.js";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
-import { createThemeTools, createWallpaperTools } from "../theme/tools.js";
+import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -569,6 +569,11 @@ export function createLocalAgent(opts: {
             memoryStore.refresh();
             skillStore.refresh();
             ourSpaceStore.refresh();
+            // Re-apply the restored theme bundle (written to storage
+            // behind ThemeContext's back). Returns false when no theme
+            // UI is mounted — storage already holds it, so worst case it
+            // applies on next launch.
+            return requestThemeReload().catch(() => false);
           },
         }),
         ...createTtsVoiceTools(voiceStore),

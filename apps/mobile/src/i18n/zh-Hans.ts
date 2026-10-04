@@ -235,7 +235,9 @@ const zhHans = {
   "backup.never": "从未备份",
   "backup.includes":
     "包含：聊天记录、API 分组设置、主题、语音设置、权限偏好、记忆、技能、我们的空间、知识库",
-  "backup.secretsNote": "不含：API 密钥、自定义语音密钥（需重新填写）",
+  "backup.secretsNote":
+    "不含：API 密钥、自定义请求头、自定义语音密钥（恢复后需重新填写）；网址里的密钥参数会被移除",
+  "backup.themeRestartNote": "主题将在下次启动时生效。",
   "backup.confirmRestore": "确定用备份覆盖当前数据吗？此操作不可撤销。",
   "backup.restoreDone": "恢复成功，API 密钥需重新填写。",
   "backup.backupDone": "备份已生成",

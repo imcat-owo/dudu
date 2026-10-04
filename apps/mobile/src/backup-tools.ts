@@ -38,25 +38,39 @@ export interface BackupToolDeps {
   listBackupFiles: () => Promise<Array<{ name: string; modifiedAt: number }>>;
   /** Read a previously saved backup file by name. */
   readBackupFile: (name: string) => Promise<string>;
-  /** Refresh in-memory store mirrors after a restore (theme, voice, memory, …). */
-  onRestored: () => Promise<void>;
+  /** Refresh in-memory store mirrors after a restore (theme, voice, memory, …).
+   * Returns true when the restored theme bundle was re-applied immediately
+   * (false = no theme UI mounted; the stored bundle applies on next launch). */
+  onRestored: () => Promise<boolean>;
 }
 
 function summarize(backup: {
   exportedAt: string;
   chat: { threads: Array<{ id: string }> };
   apiGroups: unknown[];
-  secretsExcluded: { apiKeys: number; ttsKeys: number; sttKeys: number };
+  secretsExcluded: {
+    apiKeys: number;
+    ttsKeys: number;
+    sttKeys: number;
+    headersExcluded: number;
+    urlsSanitized: number;
+  };
   knowledge?: { docs: unknown[]; chunks: unknown[] };
   memories?: Record<string, unknown>;
   skills?: Record<string, unknown>;
   ourSpace?: Record<string, unknown>;
 }): string {
+  const se = backup.secretsExcluded;
   const lines = [
     `Backup created at ${backup.exportedAt}.`,
     `Chat threads: ${backup.chat.threads.length}.`,
-    `API groups: ${backup.apiGroups.length} (keys excluded: ${backup.secretsExcluded.apiKeys}).`,
+    `API groups: ${backup.apiGroups.length} (keys excluded: ${se.apiKeys}, custom headers excluded: ${se.headersExcluded}).`,
   ];
+  if (se.urlsSanitized > 0) {
+    lines.push(
+      `${se.urlsSanitized} config URL(s) had secret-looking query params (?key=, ?token=, …) removed on export — the backed-up baseUrl differs from the original. Check them after a restore.`,
+    );
+  }
   if (backup.knowledge) {
     lines.push(
       `Knowledge base: ${backup.knowledge.docs.length} docs, ${backup.knowledge.chunks.length} chunks (vectors included).`,
@@ -69,7 +83,7 @@ function summarize(backup: {
     `Memories sections: ${memKeys}, skills sections: ${skillKeys}, our-space sections: ${spaceKeys}.`,
   );
   lines.push(
-    "Secrets (API keys, custom voice keys) were NOT backed up — she will need to re-enter them after a restore.",
+    "Secrets (API keys, custom request headers, custom voice keys) were NOT backed up — she will need to re-enter them after a restore.",
   );
   return lines.join("\n");
 }
@@ -82,7 +96,7 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
     {
       name: "backup_create",
       description:
-        "Create a full backup of her app data (chat threads, API group configs WITHOUT keys, theme, voice settings, app settings, memories, skills, our-space incl. diary/timeline/anniversaries/task cards, knowledge base docs+vectors). Use when she says '备份一下' / '帮我备份'. The backup is saved to a file; secrets (API keys, custom voice keys) are never included. Returns a summary of what was backed up.",
+        "Create a full backup of her app data (chat threads, API group configs WITHOUT keys, theme, voice settings, app settings, memories, skills, our-space incl. diary/timeline/anniversaries/task cards, knowledge base docs+vectors). Use when she says '备份一下' / '帮我备份'. The backup is saved to a file; secrets (API keys, custom request headers, custom voice keys) are never included. Returns a summary of what was backed up.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "backup",
       run: async () => {
@@ -142,13 +156,23 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
         }
         const knowledge = await deps.getKnowledgeStore().catch(() => null);
         await applyBackup(parsed.backup, deps.kv, deps.secure, knowledge);
-        await deps.onRestored();
+        const themeApplied = await deps.onRestored();
         const b = parsed.backup;
-        return [
+        const se = b.secretsExcluded;
+        const out = [
           `Restore complete from ${source} (exported at ${b.exportedAt}).`,
           `Restored: ${b.chat.threads.length} chat threads, ${b.apiGroups.length} API groups (without keys), knowledge ${b.knowledge ? `${b.knowledge.docs.length} docs` : "skipped"}.`,
-          "She needs to re-enter her API keys (they are never stored in backups).",
-        ].join("\n");
+          themeApplied
+            ? "Theme re-applied from the backup."
+            : "Theme settings restored — they apply on next app launch.",
+          "She needs to re-enter her API keys and any custom request headers (they are never stored in backups).",
+        ];
+        if (se.urlsSanitized > 0) {
+          out.push(
+            `Note: ${se.urlsSanitized} API group URL(s) had secret query params stripped on export — double-check those baseUrls in settings.`,
+          );
+        }
+        return out.join("\n");
       },
     },
     {

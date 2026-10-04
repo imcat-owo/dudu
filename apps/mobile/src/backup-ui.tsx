@@ -25,6 +25,7 @@ import { getKnowledgeStore } from "./knowledge/instance";
 import { memoryStore } from "./memory/instance";
 import { ourSpaceStore } from "./our-space/instance";
 import { skillStore } from "./skills/instance";
+import { requestThemeReload } from "./theme/tools";
 import { Button, SectionHeading, useColors } from "./ui";
 import { voiceStore } from "./voice/store";
 
@@ -122,7 +123,16 @@ export function BackupSection() {
                 memoryStore.refresh();
                 skillStore.refresh();
                 ourSpaceStore.refresh();
-                setNotice(t("backup.restoreDone"));
+                // The theme bundle was written to storage behind
+                // ThemeContext's back — ask it to re-read and apply it.
+                // If no theme UI is mounted, the stored bundle applies on
+                // next launch; say so honestly instead of claiming success.
+                const themeApplied = await requestThemeReload().catch(() => false);
+                setNotice(
+                  themeApplied
+                    ? t("backup.restoreDone")
+                    : `${t("backup.restoreDone")} ${t("backup.themeRestartNote")}`,
+                );
               } catch (e) {
                 setNotice(e instanceof Error ? e.message : String(e));
               }

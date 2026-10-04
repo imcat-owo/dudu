@@ -59,6 +59,7 @@ function makeDeps(overrides: Partial<BackupToolDeps> = {}): BackupToolDeps & {
     },
     onRestored: async () => {
       restored = true;
+      return true;
     },
     ...overrides,
   };

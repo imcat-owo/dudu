@@ -21,6 +21,11 @@ What is NEVER in a backup:
 - Secrets: API keys, custom TTS/STT keys, extra headers. They are stripped on
   export. After a restore she must re-enter them — TELL HER this, don't let
   her discover it when the AI stops working.
+- Secret-looking query params in config URLs (baseUrl/customUrl/url):
+  ?key=, ?token=, ?api_key= and friends are removed on export, so the
+  backed-up URL can differ from the original. The backup summary tells you
+  how many URLs were sanitized — if > 0, tell her to double-check those
+  baseUrls in settings after a restore.
 - Incognito content (never persisted, can't be backed up).
 
 Rules:

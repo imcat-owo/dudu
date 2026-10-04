@@ -30,7 +30,7 @@ import { API_URL } from "../api";
 import { applyCssOverrides } from "./css";
 import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { defaultPreset } from "./presets";
-import { registerThemeApplyHandler } from "./tools";
+import { registerThemeApplyHandler, registerThemeReloadHandler } from "./tools";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
 export const THEME_STORAGE_KEY = "dudu.theme.bundle.v1";
@@ -76,6 +76,12 @@ export type ThemeContextValue = {
   rollback: () => Promise<void>;
   /** Re-check /api/theme now and adopt the bundle if its version changed. */
   refreshFromServer: () => Promise<void>;
+  /**
+   * Re-read the theme bundle from local storage and apply it (e.g. after a
+   * backup restore replaced the stored bundle). Archives the outgoing
+   * bundle so she can roll back. No-op when storage has no valid bundle.
+   */
+  reloadFromStorage: () => Promise<void>;
   /** Last confirmed bundles, newest first (local, capped at 20). */
   history: ThemeHistoryEntry[];
   /**
@@ -102,6 +108,7 @@ function buildFallbackValue(bundle: ThemeBundle): ThemeContextValue {
     applyBundle: async () => "invalid",
     rollback: async () => {},
     refreshFromServer: async () => {},
+    reloadFromStorage: async () => {},
     history: [],
     transitionKey: 0,
   };
@@ -405,6 +412,35 @@ export function ThemeProvider({
     });
   }, [applyBundle]);
 
+  /**
+   * Re-read the theme bundle from local storage and apply it. Used after a
+   * backup restore, which writes the bundle to storage directly (bypassing
+   * this context). The outgoing bundle is archived so she can roll back;
+   * storage is NOT rewritten (it already holds the restored bundle).
+   */
+  const reloadFromStorage = useCallback(async (): Promise<void> => {
+    let next: ThemeBundle | null = null;
+    try {
+      const raw = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (isThemeBundle(parsed)) next = parsed;
+      }
+    } catch {
+      next = null;
+    }
+    if (!next) return; // nothing valid to adopt — keep current, stay honest
+    await archiveCurrent();
+    bumpTransition();
+    setStaged(null);
+    setConfirmed(next);
+  }, [archiveCurrent, bumpTransition]);
+
+  // Wire post-restore theme reload for the backup flows (UI + AI tools).
+  useEffect(() => {
+    registerThemeReloadHandler(() => reloadFromStorage());
+  }, [reloadFromStorage]);
+
   const rollback = useCallback(async (): Promise<void> => {
     const target = previousRef.current ?? defaultPreset;
     const stamped: ThemeBundle = {
@@ -465,6 +501,7 @@ export function ThemeProvider({
       applyBundle,
       rollback,
       refreshFromServer,
+      reloadFromStorage,
       history,
       transitionKey,
     }),
@@ -482,6 +519,7 @@ export function ThemeProvider({
       applyBundle,
       rollback,
       refreshFromServer,
+      reloadFromStorage,
       history,
       transitionKey,
     ],

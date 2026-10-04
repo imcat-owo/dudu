@@ -105,6 +105,9 @@ describe("collectBackup", () => {
       "secret ?key= must be stripped from URLs",
     );
     assert.equal(stt.customUrl, "https://stt.example.com/transcribe");
+    // Stripped headers and sanitized URLs are counted (disclosed, not silent).
+    assert.equal(b.secretsExcluded.headersExcluded, 1, "group headers must be counted");
+    assert.equal(b.secretsExcluded.urlsSanitized, 1, "sanitized TTS url must be counted");
     // No secret value anywhere in the serialized file
     const json = serializeBackup(b);
     assert.ok(!json.includes("SECRET-KEY"));
@@ -112,6 +115,30 @@ describe("collectBackup", () => {
     assert.ok(!json.includes("SECRET-STT"));
     assert.ok(!json.includes("SECRET-HDR"));
     assert.ok(!json.includes("SECRET-URL-KEY"));
+  });
+
+  it("counts and discloses sanitized group baseUrls", async () => {
+    const secure = fakeSecure({
+      "dudu.api-groups.v1": JSON.stringify([
+        {
+          id: "g2",
+          name: "proxy",
+          baseUrl: "https://proxy.example.com/v1?key=SECRET-IN-URL",
+          model: "m2",
+        },
+      ]),
+    });
+    const b = await collectBackup(fakeKV(SEED), secure);
+    const g = b.apiGroups[0] as Record<string, unknown>;
+    assert.equal(
+      g.baseUrl,
+      "https://proxy.example.com/v1",
+      "secret ?key= must be stripped from baseUrl",
+    );
+    assert.equal(b.secretsExcluded.urlsSanitized, 1);
+    assert.equal(b.secretsExcluded.headersExcluded, 0);
+    const json = serializeBackup(b);
+    assert.ok(!json.includes("SECRET-IN-URL"));
   });
 
   it("does not read TTS/STT from plain AsyncStorage (production writes SecureStore)", async () => {

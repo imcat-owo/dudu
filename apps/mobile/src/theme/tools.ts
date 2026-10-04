@@ -33,6 +33,27 @@ export function registerThemeApplyHandler(h: ThemeApplyHandler): void {
   applyHandler = h;
 }
 
+type ThemeReloadHandler = () => Promise<void>;
+
+let reloadHandler: ThemeReloadHandler | null = null;
+
+/** UI layer (ThemeContext provider) calls this once to wire post-restore reload. */
+export function registerThemeReloadHandler(h: ThemeReloadHandler): void {
+  reloadHandler = h;
+}
+
+/**
+ * Ask the UI layer to re-read the theme bundle from storage (e.g. after a
+ * backup restore wrote a new bundle behind the context's back).
+ * Returns true when the UI actually reloaded, false when no UI is mounted
+ * (the stored bundle applies on next launch).
+ */
+export async function requestThemeReload(): Promise<boolean> {
+  if (!reloadHandler) return false;
+  await reloadHandler();
+  return true;
+}
+
 /**
  * Build the wallpaper tool set.
  */
