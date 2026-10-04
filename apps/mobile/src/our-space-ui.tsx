@@ -30,6 +30,7 @@ import {
   MailOpen,
   MessageCircle,
   MessageCircleQuestion,
+  MessagesSquare,
   MoonStar,
   ScrollText,
   Send,
@@ -888,8 +889,10 @@ type SpacePage =
 function CoupleHeader() {
   const v = useOurSpaceVersion();
   const colors = useColors();
+  const { bundle, applyBundle } = useTheme();
   const [profile, setProfile] = useState<CoupleProfile | null>(null);
   const [togetherDays, setTogetherDays] = useState<number | null>(null);
+  const [chatApplied, setChatApplied] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -912,6 +915,7 @@ function CoupleHeader() {
       if (!res.canceled && res.assets[0]) {
         const updated = await ourSpaceStore.setAvatar(who, res.assets[0].uri);
         setProfile(updated);
+        setChatApplied(false);
       }
     } catch {
       // Picker cancelled or failed — stay as-is.
@@ -922,6 +926,28 @@ function CoupleHeader() {
   const aiSource: { uri: string } | number | null = profile?.aiAvatarUri
     ? { uri: profile.aiAvatarUri }
     : (soraSource() as { uri: string } | number);
+
+  // Couple-avatar play (P3): one tap applies the couple avatars as the chat
+  // avatars — her photo becomes the user avatar, his the AI avatar. Real
+  // apply via the theme bundle (same path as Appearance → avatar), so chat
+  // picks it up immediately. Only custom-picked avatars are applied; unset
+  // sides are left alone rather than filled with placeholders.
+  const hasCustomAvatar = !!(profile?.herAvatarUri || profile?.aiAvatarUri);
+  const useInChat = async () => {
+    const avatar = { ...(bundle.avatar ?? {}) };
+    let changed = false;
+    if (profile?.aiAvatarUri) {
+      avatar.assistant = profile.aiAvatarUri;
+      changed = true;
+    }
+    if (profile?.herAvatarUri) {
+      avatar.user = profile.herAvatarUri;
+      changed = true;
+    }
+    if (!changed) return;
+    const res = await applyBundle({ ...bundle, avatar });
+    if (res === "ok" || res === "local-only") setChatApplied(true);
+  };
 
   const avatar = (
     source: { uri: string } | number | null,
@@ -1006,6 +1032,44 @@ function CoupleHeader() {
           )}
         </View>
       </View>
+      {hasCustomAvatar && (
+        <PressableScale
+          onPress={() => void useInChat()}
+          accessibilityRole="button"
+          accessibilityLabel={t("space.couple.useInChat")}
+          style={{ marginTop: 10 }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderRadius: radii.lg,
+              backgroundColor: chatApplied ? colors.sky : colors.card,
+              borderWidth: 1,
+              borderColor: colors.line,
+            }}
+          >
+            {chatApplied ? (
+              <Check size={13} color={colors.text} strokeWidth={2} />
+            ) : (
+              <MessagesSquare size={13} color={colors.text} strokeWidth={1.8} />
+            )}
+            <TText
+              style={{
+                color: colors.text,
+                fontSize: 12.5,
+                fontWeight: "700",
+                marginLeft: 6,
+                letterSpacing: 0.3,
+              }}
+            >
+              {t(chatApplied ? "space.couple.usedInChat" : "space.couple.useInChat")}
+            </TText>
+          </View>
+        </PressableScale>
+      )}
       <TText
         style={{
           color: colors.text,
@@ -1095,13 +1159,22 @@ function TodayCard() {
       new Date().toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" }),
     );
     void (async () => {
-      const [anniversaries, diary, timeline, mood] = await Promise.all([
+      const [anniversaries, diary, timeline, mood, profile] = await Promise.all([
         ourSpaceStore.listAnniversaries(),
         ourSpaceStore.listDiary(),
         ourSpaceStore.listTimeline(),
         ourSpaceStore.getHerMood(),
+        ourSpaceStore.getCoupleProfile(),
       ]);
       const next: Array<{ key: string; icon: typeof Heart; text: string }> = [];
+      const togetherDays = daysTogether(resolveTogetherSince(profile, anniversaries));
+      if (togetherDays !== null) {
+        next.push({
+          key: "together-days",
+          icon: Heart,
+          text: t("space.today.togetherDays", { n: togetherDays }),
+        });
+      }
       for (const a of getUpcomingAnniversaries(anniversaries).slice(0, 2)) {
         next.push({
           key: `ann-${a.title}-${a.occurrence}`,
