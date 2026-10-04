@@ -9,7 +9,7 @@ import { ConversationAgent } from "../apps/server/src/engine/conversation.ts";
 import type { JevDecisionInput } from "../apps/server/src/jev/adapter.ts";
 import { JevService } from "../apps/server/src/jev/service.ts";
 import { presentChoicesParameters } from "../apps/server/src/jev/tools.ts";
-import { encodeJevAction } from "../packages/domain/src/jev.ts";
+import { encodeJevAction, jevActionPrefix } from "../packages/domain/src/jev.ts";
 import { browserFixture } from "./helpers/browser.ts";
 import { modelFixture } from "./helpers/model.ts";
 
@@ -129,7 +129,7 @@ test("present_choices emits a complete panel and selection uses trusted stored l
 test("invalid and cross-thread actions return a run error without model execution", async (t) => {
   const f = await fixture(t, []);
   const events = await lastValueFrom(
-    f.conversation.run(input("[OpenMuse choice] bad-json")).pipe(toArray()),
+    f.conversation.run(input(`${jevActionPrefix}bad-json`)).pipe(toArray()),
   );
   assert.equal(events.at(-1)?.type, EventType.RUN_ERROR);
   const cross = await lastValueFrom(

@@ -58,7 +58,7 @@ test("shiftSeed moves hue with emotion and stays a valid hex", () => {
 test("themeToolsForOwner filters by mode", async () => {
   const dir = await mkdtemp(join(tmpdir(), "theme-tools-"));
   try {
-    const db = await createStore(dir);
+    const db = await createStore({ dataDir: dir });
     const owner = "owner-1";
     const names = (tools: { name: string }[]) => tools.map((t) => t.name);
 

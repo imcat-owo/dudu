@@ -7,7 +7,7 @@ import {
   LiveJevAdapter,
   rankJevOptions,
 } from "../apps/server/src/jev/adapter.ts";
-import { encodeJevAction, jevPanelSchema, parseJevAction } from "../packages/domain/src/jev.ts";
+import { encodeJevAction, jevActionPrefix, jevPanelSchema, parseJevAction } from "../packages/domain/src/jev.ts";
 
 const option = (id: string) => ({
   id,
@@ -44,10 +44,10 @@ test("actions round trip and malformed prefixed actions reject", () => {
   const action = { panelId: "p", threadId: "t", candidateSetVersion: 1, optionId: "a" };
   assert.deepEqual(parseJevAction(encodeJevAction(action)), action);
   assert.equal(parseJevAction("ordinary message"), null);
-  assert.throws(() => parseJevAction("[OpenMuse choice] bad-json"));
+  assert.throws(() => parseJevAction(`${jevActionPrefix}bad-json`));
   assert.throws(() =>
     parseJevAction(
-      '[OpenMuse choice] {"panelId":"p","threadId":"t","candidateSetVersion":1,"optionId":"a","label":"untrusted"}',
+      `${jevActionPrefix}{"panelId":"p","threadId":"t","candidateSetVersion":1,"optionId":"a","label":"untrusted"}`,
     ),
   );
 });

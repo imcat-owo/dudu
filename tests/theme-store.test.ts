@@ -118,7 +118,7 @@ test("theme version starts at 0, bumps on each save, and is isolated per owner",
 test("staged try-on lifecycle: set, get, confirm, clear", async () => {
   const root = await mkdtemp(join(tmpdir(), "theme-staged-"));
   try {
-    const db = await createStore(join(root, "db"));
+    const db = await createStore({ dataDir: join(root, "db") });
     try {
       const store = new ThemeStore(db);
       const owner = "owner-staged";
@@ -155,7 +155,7 @@ test("staged try-on lifecycle: set, get, confirm, clear", async () => {
 test("rollbackHistory restores the previous confirmed version", async () => {
   const root = await mkdtemp(join(tmpdir(), "theme-rollback-"));
   try {
-    const db = await createStore(join(root, "db"));
+    const db = await createStore({ dataDir: join(root, "db") });
     try {
       const store = new ThemeStore(db);
       const owner = "owner-rollback";
@@ -176,7 +176,7 @@ test("rollbackHistory restores the previous confirmed version", async () => {
 test("theme tool mode defaults to stable and round-trips", async () => {
   const root = await mkdtemp(join(tmpdir(), "theme-mode-"));
   try {
-    const db = await createStore(join(root, "db"));
+    const db = await createStore({ dataDir: join(root, "db") });
     try {
       const store = new ThemeStore(db);
       const owner = "owner-mode";
