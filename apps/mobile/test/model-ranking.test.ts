@@ -15,19 +15,22 @@ import {
 test("curated list is well-formed", () => {
   assert.ok(RANKED_MODELS.length >= 8, "needs a useful list");
   for (const e of RANKED_MODELS) {
-    assert.ok(e.pattern, "pattern required");
+    assert.ok(e.match && e.match.length > 0, "match rules required");
     assert.ok(e.name, "name required");
     for (const k of ["smart", "useful", "fast"] as const) {
       assert.ok(e[k] >= 0 && e[k] <= 100, `${e.name}.${k} in range`);
     }
     // patterns must compile — a bad pattern must never break routing
-    new RegExp(e.pattern, "i");
+    for (const rule of e.match) {
+      if (rule.seg) new RegExp(`(?:^|[^a-z0-9])${rule.seg}(?:[^a-z0-9]|$)`, "i");
+      if (rule.exact) new RegExp(`^${rule.exact}$`, "i");
+    }
   }
 });
 
 test("weightedScore reweights per mode", () => {
-  const smart = RANKED_MODELS.find((e) => e.pattern === "opus");
-  const fast = RANKED_MODELS.find((e) => e.pattern.includes("flash"));
+  const smart = RANKED_MODELS.find((e) => e.match.some((r) => r.exact === "opus"));
+  const fast = RANKED_MODELS.find((e) => e.match.some((r) => r.exact === "flash"));
   assert.ok(smart && fast, "curated entries must exist");
   // smart-first favors the smart model, fast-first favors the fast one
   assert.ok(weightedScore(smart, "smart") > weightedScore(fast, "smart"));
@@ -43,6 +46,31 @@ test("scoreModelName matches case-insensitively, null when unknown", () => {
   assert.ok(s1 !== null && s2 !== null && Math.abs(s1 - s2) < 1e-9);
   assert.equal(scoreModelName("some-obscure-model-xyz", "balanced"), null);
   assert.equal(scoreModelName("", "balanced"), null);
+});
+
+test("P2-7 regression: unknown models are NOT misranked by substrings", () => {
+  // Audit cases: these used to score as "Claude Opus 系" / "GPT Mini 系" /
+  // "Gemini Flash 系" via unanchored substrings. They must stay unknown.
+  assert.equal(scoreModelName("octopus-v1", "balanced"), null);
+  assert.equal(scoreModelName("MiniMax-M2", "balanced"), null);
+  assert.equal(scoreModelName("my-flash-model", "balanced"), null);
+  assert.equal(scoreModelName("my-sonnet-fan-model", "balanced"), null);
+  // Real vendor names still match.
+  assert.notEqual(scoreModelName("claude-opus-4-6", "balanced"), null);
+  assert.notEqual(scoreModelName("Claude Opus", "balanced"), null);
+  assert.notEqual(scoreModelName("gemini-2.5-flash", "balanced"), null);
+  assert.notEqual(scoreModelName("gemini-flash", "balanced"), null);
+  assert.notEqual(scoreModelName("gpt-5", "balanced"), null);
+  assert.notEqual(scoreModelName("deepseek-chat", "balanced"), null);
+  assert.notEqual(scoreModelName("qwen-max", "balanced"), null);
+  assert.notEqual(scoreModelName("kimi-k2", "balanced"), null);
+  assert.notEqual(scoreModelName("llama-3.3-70b", "balanced"), null);
+  assert.notEqual(scoreModelName("grok-4", "balanced"), null);
+  // Short hand-typed names still match their family.
+  assert.notEqual(scoreModelName("opus", "balanced"), null);
+  assert.notEqual(scoreModelName("flash", "balanced"), null);
+  assert.notEqual(scoreModelName("sonnet", "balanced"), null);
+  assert.notEqual(scoreModelName("mini", "balanced"), null);
 });
 
 test("rankModelNames orders best-first, unknowns keep order at end", () => {
