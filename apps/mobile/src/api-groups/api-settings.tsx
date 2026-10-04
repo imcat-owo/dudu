@@ -30,6 +30,7 @@ import {
   VENDOR_PRESETS,
   validateGroup,
 } from "./types";
+import { radii } from "../theme/radii";
 
 function ModeSwitch() {
   const mode = useChatMode();
@@ -55,7 +56,7 @@ function ModeSwitch() {
               style={{
                 flex: 1,
                 padding: 10,
-                borderRadius: 10,
+                borderRadius: radii.sm,
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: active ? colors.sky : colors.card,
@@ -179,7 +180,7 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
               style={{
                 paddingHorizontal: 12,
                 paddingVertical: 8,
-                borderRadius: 16,
+                borderRadius: radii.lg,
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: active ? colors.sky : colors.card,
@@ -374,7 +375,7 @@ function TriSwitch({
               style={{
                 flex: 1,
                 paddingVertical: 8,
-                borderRadius: 12,
+                borderRadius: radii.md,
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: active ? colors.sky : colors.card,
@@ -536,7 +537,7 @@ export function ApiSettingsScreen() {
               onPress={() => void groupStore.setActive(g.id)}
               style={{
                 padding: 12,
-                borderRadius: 10,
+                borderRadius: radii.sm,
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: colors.card,

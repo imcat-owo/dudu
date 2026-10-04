@@ -13,6 +13,7 @@ import { Pressable, View } from "react-native";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 export type VoiceMessage = {
   uri: string;
@@ -169,7 +170,7 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
           style={{
             width: 38,
             height: 38,
-            borderRadius: 19,
+            borderRadius: radii.lg,
             backgroundColor: bubble.fg,
             alignItems: "center",
             justifyContent: "center",
@@ -189,7 +190,7 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
                 style={{
                   flex: 1,
                   height: 6 + bar.height * 16,
-                  borderRadius: 2,
+                  borderRadius: radii.xs,
                   backgroundColor: bubble.fg,
                   opacity: bar.index < playedBars ? 1 : 0.25,
                 }}
@@ -323,7 +324,7 @@ export function VoiceRecorderButton({
             position: "absolute",
             bottom: 52,
             backgroundColor: "rgba(0,0,0,0.75)",
-            borderRadius: 12,
+            borderRadius: radii.md,
             paddingHorizontal: 16,
             paddingVertical: 10,
             alignItems: "center",
@@ -335,7 +336,7 @@ export function VoiceRecorderButton({
               style={{
                 width: 10,
                 height: 10,
-                borderRadius: 5,
+                borderRadius: radii.xs,
                 backgroundColor: "#FF3B30",
               }}
             />
@@ -355,7 +356,7 @@ export function VoiceRecorderButton({
         style={({ pressed }) => ({
           width: 44,
           height: 44,
-          borderRadius: 24,
+          borderRadius: radii.xl,
           backgroundColor: recording ? "#FF3B30" : pressed ? colors.sky : "transparent",
           alignItems: "center",
           justifyContent: "center",

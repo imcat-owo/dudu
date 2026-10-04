@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Image, View } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { DUR, EASE, SPRING, STAGGER } from "./motion";
+import { radii } from "./theme/radii";
 
 const CANVAS = "#FAF9F6";
 const INK = "#3D3A33";
@@ -189,7 +190,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
           opacity: subFade,
           width: 6,
           height: 6,
-          borderRadius: 3,
+          borderRadius: radii.xs,
           backgroundColor: ACCENT,
           marginTop: 26,
         }}

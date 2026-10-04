@@ -24,6 +24,8 @@ import { mascotSource } from "./mascot-assets";
 import { clampFg, type ResolvedMode } from "./theme/derive";
 import { useTheme } from "./theme/ThemeContext";
 import type { SurfaceId, SurfaceTokens } from "./theme/types";
+import { radii } from "./theme/radii";
+import { shadows } from "./theme/shadows";
 
 /**
  * Legacy palette shape, now derived live from theme tokens.
@@ -149,7 +151,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     heading: { color: p.text, fontSize: fs(15), fontWeight: "600", letterSpacing: -0.25 },
     card: {
       backgroundColor: p.card,
-      borderRadius: 18,
+      borderRadius: radii.lg,
       borderWidth: 0,
       borderColor: p.line,
       padding: 16,
@@ -158,7 +160,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     input: {
       borderWidth: 1,
       borderColor: p.line,
-      borderRadius: 14,
+      borderRadius: radii.md,
       paddingHorizontal: 14,
       paddingVertical: 10,
       color: p.text,
@@ -175,7 +177,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
       paddingHorizontal: 14,
       minHeight: 38,
       paddingVertical: 8,
-      borderRadius: 19,
+      borderRadius: radii.lg,
     },
     primary: { backgroundColor: p.blue },
     secondary: { backgroundColor: p.secondaryBg },
@@ -183,7 +185,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     chip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
-      borderRadius: 12,
+      borderRadius: radii.md,
       alignSelf: "flex-start",
       backgroundColor: p.canvas,
     },
@@ -191,14 +193,14 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     iconBox: {
       width: 38,
       height: 38,
-      borderRadius: 12,
+      borderRadius: radii.md,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: p.sky,
     },
     error: {
       padding: 12,
-      borderRadius: 12,
+      borderRadius: radii.md,
       backgroundColor: p.errorBg,
       marginVertical: 8,
       gap: 4,
@@ -212,13 +214,14 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     },
     sheet: {
       backgroundColor: p.canvas,
-      borderRadius: 20,
+      borderRadius: radii.lg,
       width: "100%",
       maxWidth: 790,
       maxHeight: "94%",
       overflow: "hidden",
       borderWidth: 1,
       borderColor: p.line,
+      ...shadows.modal,
     },
   });
 }
@@ -317,7 +320,7 @@ export function IconButton({
           height: 40,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 20,
+          borderRadius: radii.lg,
           backgroundColor: pressed ? colors.line : colors.card,
         },
       ]}
@@ -376,7 +379,7 @@ export function Empty({
   return (
     <View style={{ alignItems: "center", padding: 40, gap: 13 }}>
       {ambientVideo ?? (
-        <View style={[s.iconBox, { width: 55, height: 55, borderRadius: 18 }]}>
+        <View style={[s.iconBox, { width: 55, height: 55, borderRadius: radii.lg }]}>
           <Icon size={24} color={colors.blueDark} />
         </View>
       )}
@@ -421,14 +424,14 @@ export function Sheet({
           intensity={64}
           style={[
             {
-              borderRadius: 20,
+              borderRadius: radii.lg,
               width: "100%",
               maxWidth: wide ? 1050 : 790,
               maxHeight: "94%",
             },
             compact && {
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
+              borderBottomLeftRadius: radii.xs,
+              borderBottomRightRadius: radii.xs,
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
@@ -439,7 +442,7 @@ export function Sheet({
                 alignSelf: "center",
                 width: 34,
                 height: 4,
-                borderRadius: 3,
+                borderRadius: radii.xs,
                 backgroundColor: colors.line,
                 marginTop: 10,
               }}
@@ -490,7 +493,7 @@ export function CheckRow({
         style={{
           width: 19,
           height: 19,
-          borderRadius: 5,
+          borderRadius: radii.xs,
           borderWidth: 1,
           borderColor: checked ? colors.text : colors.line,
           backgroundColor: checked ? colors.text : colors.card,
@@ -548,7 +551,7 @@ export function LinkRow({
       onPress={onPress}
       style={({ pressed }) => [
         s.row,
-        { paddingVertical: 13, gap: 14, borderRadius: 10 },
+        { paddingVertical: 13, gap: 14, borderRadius: radii.sm },
         pressed && { backgroundColor: colors.canvas },
       ]}
     >

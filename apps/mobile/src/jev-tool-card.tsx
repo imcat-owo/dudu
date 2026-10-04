@@ -11,6 +11,7 @@ import {
 } from "./jev-actions";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 type JevInteraction = {
   threadId: string | null;
@@ -227,7 +228,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
           {panel.options.map((option, index) => (
             <View
               key={option.id}
-              style={{ borderRadius: 16, padding: 14, gap: 9, backgroundColor: colors.line }}
+              style={{ borderRadius: radii.lg, padding: 14, gap: 9, backgroundColor: colors.line }}
             >
               <TText style={[s.text, { fontWeight: "600" }]}>{option.label}</TText>
               {!!option.details.length && (

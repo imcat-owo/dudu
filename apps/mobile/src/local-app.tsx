@@ -47,6 +47,7 @@ import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
 import { useColors } from "./ui";
 import { WorkspaceContext } from "./workspace";
+import { radii } from "./theme/radii";
 
 type LocalSection = "chat" | "connections" | "appearance" | "space";
 
@@ -79,7 +80,7 @@ function TabButton({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: active ? colors.sky : "transparent",
-        borderRadius: 28,
+        borderRadius: radii.xl,
       }}
     >
       <Icon size={23} strokeWidth={1.8} color={colors.text} />
@@ -211,7 +212,7 @@ export function LocalApp() {
                           style={{
                             padding: 14,
                             backgroundColor: colors.text,
-                            borderRadius: 20,
+                            borderRadius: radii.lg,
                             maxWidth: 560,
                           }}
                         >
@@ -223,7 +224,7 @@ export function LocalApp() {
                       <GlassView
                         intensity={60}
                         style={{
-                          borderRadius: 30,
+                          borderRadius: radii.xl,
                           flexDirection: "row",
                           paddingHorizontal: 10,
                           paddingVertical: 8,

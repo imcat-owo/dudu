@@ -64,6 +64,7 @@ import {
 } from "./theme/types";
 import { ShareSection } from "./theme-share-ui";
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
+import { radii } from "./theme/radii";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -348,7 +349,7 @@ export function AppearanceScreen() {
         <View
           style={{
             backgroundColor: tokens.accent.bg,
-            borderRadius: 14,
+            borderRadius: radii.md,
             padding: 14,
             gap: 10,
           }}
@@ -413,7 +414,7 @@ export function AppearanceScreen() {
                   alignItems: "center",
                   gap: 6,
                   paddingVertical: 12,
-                  borderRadius: 12,
+                  borderRadius: radii.md,
                   backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
                 }}
               >
@@ -457,7 +458,7 @@ export function AppearanceScreen() {
                   alignItems: "center",
                   gap: 4,
                   paddingVertical: 10,
-                  borderRadius: 12,
+                  borderRadius: radii.md,
                   backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
                 }}
               >
@@ -524,7 +525,7 @@ export function AppearanceScreen() {
                     alignItems: "center",
                     gap: 8,
                     padding: 12,
-                    borderRadius: 14,
+                    borderRadius: radii.md,
                     minWidth: 92,
                     backgroundColor: tokens.card.bg,
                     borderWidth: selected ? 2 : 1,
@@ -537,7 +538,7 @@ export function AppearanceScreen() {
                     style={{
                       width: 44,
                       height: 44,
-                      borderRadius: 22,
+                      borderRadius: radii.lg,
                       backgroundColor: preset.seed.primary,
                     }}
                   />
@@ -579,7 +580,7 @@ export function AppearanceScreen() {
                       style={{
                         width: 36,
                         height: 36,
-                        borderRadius: 18,
+                        borderRadius: radii.lg,
                         backgroundColor: hex,
                         borderWidth: selected ? 3 : 1,
                         borderColor: selected
@@ -605,7 +606,7 @@ export function AppearanceScreen() {
                     fontSize: 14,
                     paddingVertical: 9,
                     paddingHorizontal: 12,
-                    borderRadius: 10,
+                    borderRadius: radii.sm,
                     borderWidth: 1,
                     borderColor: tokens.input.border ?? tokens.card.border ?? tokens.card.bg,
                     backgroundColor: tokens.input.bg,
@@ -615,7 +616,7 @@ export function AppearanceScreen() {
                   style={{
                     width: 40,
                     height: 40,
-                    borderRadius: 20,
+                    borderRadius: radii.lg,
                     backgroundColor: validHex(draft[row.key]) ?? tokens.card.bg,
                     borderWidth: 1,
                     borderColor: tokens.card.border ?? tokens.card.bg,
@@ -648,7 +649,7 @@ export function AppearanceScreen() {
                     style={{
                       paddingVertical: 8,
                       paddingHorizontal: 14,
-                      borderRadius: 20,
+                      borderRadius: radii.lg,
                       backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
                       borderWidth: 1,
                       borderColor: selected
@@ -729,7 +730,7 @@ export function AppearanceScreen() {
         <SectionHeading title={t("appearance.wallpaperLabel")} />
         <Card style={{ gap: 14 }}>
           {bundle.wallpaper ? (
-            <View style={{ borderRadius: 12, overflow: "hidden" }}>
+            <View style={{ borderRadius: radii.md, overflow: "hidden" }}>
               <Image
                 source={{ uri: bundle.wallpaper.uri }}
                 style={{ width: "100%", height: 140 }}
@@ -782,7 +783,7 @@ export function AppearanceScreen() {
                 style={{
                   width: 48,
                   height: 48,
-                  borderRadius: 24,
+                  borderRadius: radii.xl,
                   backgroundColor: tokens.card.bg,
                   alignItems: "center",
                   justifyContent: "center",
@@ -810,7 +811,7 @@ export function AppearanceScreen() {
               <Image
                 source={soraSource()}
                 resizeMode="cover"
-                style={{ width: 48, height: 48, borderRadius: 24 }}
+                style={{ width: 48, height: 48, borderRadius: radii.xl }}
               />
             }
             onPick={() => void pickAvatar("assistant")}
@@ -985,7 +986,7 @@ function AiThemeModeSection() {
                 style={{
                   width: 20,
                   height: 20,
-                  borderRadius: 10,
+                  borderRadius: radii.sm,
                   borderWidth: 2,
                   borderColor: selected ? accent : colors.muted,
                   alignItems: "center",
@@ -994,7 +995,7 @@ function AiThemeModeSection() {
               >
                 {selected ? (
                   <View
-                    style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: accent }}
+                    style={{ width: 10, height: 10, borderRadius: radii.xs, backgroundColor: accent }}
                   />
                 ) : null}
               </View>
@@ -1039,7 +1040,7 @@ function HistorySection() {
                   style={{
                     width: 28,
                     height: 28,
-                    borderRadius: 14,
+                    borderRadius: radii.md,
                     backgroundColor: entry.bundle.seed.primary,
                   }}
                 />
@@ -1120,7 +1121,7 @@ function DimSlider({
       <View
         style={{
           height: 8,
-          borderRadius: 4,
+          borderRadius: radii.xs,
           backgroundColor: tokens.card.bg,
           borderWidth: 1,
           borderColor: tokens.card.border ?? tokens.card.bg,
@@ -1142,7 +1143,7 @@ function DimSlider({
           marginLeft: -9,
           width: 18,
           height: 18,
-          borderRadius: 9,
+          borderRadius: radii.sm,
           backgroundColor: tokens.accent.accent,
         }}
       />
@@ -1182,7 +1183,7 @@ function StickerPicker({
                 accessibilityState={{ checked: selected }}
                 onPress={() => onSelect(i)}
                 style={{
-                  borderRadius: 24,
+                  borderRadius: radii.xl,
                   borderWidth: selected ? 2 : 0,
                   borderColor: selected ? tokens.accent.fg : "transparent",
                   padding: selected ? 1 : 3,
@@ -1190,7 +1191,7 @@ function StickerPicker({
               >
                 <Image
                   source={mascotSource(i)}
-                  style={{ width: 42, height: 42, borderRadius: 21 }}
+                  style={{ width: 42, height: 42, borderRadius: radii.lg }}
                 />
               </Pressable>
             );
@@ -1228,7 +1229,7 @@ function PetSkinSection() {
       accessibilityState={{ checked: selected }}
       onPress={onPress}
       style={{
-        borderRadius: 26,
+        borderRadius: radii.xl,
         borderWidth: selected ? 2 : 0,
         borderColor: selected ? tokens.accent.fg : "transparent",
         padding: selected ? 1 : 3,
@@ -1248,7 +1249,7 @@ function PetSkinSection() {
               "sora",
               skin.kind === "sora",
               t("pet.skin.sora"),
-              <Image source={soraSource()} style={{ width: 46, height: 46, borderRadius: 23 }} />,
+              <Image source={soraSource()} style={{ width: 46, height: 46, borderRadius: radii.xl }} />,
               () => pick({ kind: "sora" }),
             )}
             {Array.from({ length: MASCOT_COUNT }, (_, i) =>
@@ -1258,7 +1259,7 @@ function PetSkinSection() {
                 t("pet.skin.devil", { n: i + 1 }),
                 <Image
                   source={mascotSource(i)}
-                  style={{ width: 46, height: 46, borderRadius: 23 }}
+                  style={{ width: 46, height: 46, borderRadius: radii.xl }}
                 />,
                 () => pick({ kind: "devil", index: i }),
               ),
@@ -1291,7 +1292,7 @@ function AvatarRow({
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
       {uri ? (
-        <Image source={{ uri }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+        <Image source={{ uri }} style={{ width: 48, height: 48, borderRadius: radii.xl }} />
       ) : (
         fallback
       )}

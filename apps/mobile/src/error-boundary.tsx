@@ -2,6 +2,7 @@ import { HeartCrack, RotateCcw } from "lucide-react-native";
 import { Component, type ReactNode } from "react";
 import { Pressable, Text, useColorScheme, View } from "react-native";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -79,7 +80,7 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
         style={{
           width: 72,
           height: 72,
-          borderRadius: 36,
+          borderRadius: radii.xl,
           backgroundColor: iconBg,
           alignItems: "center",
           justifyContent: "center",
@@ -114,7 +115,7 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
           backgroundColor: buttonBg,
           paddingHorizontal: 22,
           paddingVertical: 12,
-          borderRadius: 24,
+          borderRadius: radii.xl,
           opacity: pressed ? 0.75 : 1,
         })}
       >

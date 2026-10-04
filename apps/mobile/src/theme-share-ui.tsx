@@ -27,6 +27,7 @@ import {
 import { useTheme } from "./theme/ThemeContext";
 import type { ThemeBundle } from "./theme/types";
 import { Button, Card, SectionHeading, Sheet, useColors } from "./ui";
+import { radii } from "./theme/radii";
 
 function importErrorText(code: ImportErrorCode): string {
   switch (code) {
@@ -141,7 +142,7 @@ function QrSheet({ bundle, onClose }: { bundle: ThemeBundle; onClose: () => void
           <View
             style={{
               padding: 16,
-              borderRadius: 16,
+              borderRadius: radii.lg,
               backgroundColor: "#ffffff",
             }}
           >
@@ -190,7 +191,7 @@ function PasteSheet({
             color: colors.text,
             fontSize: 13,
             padding: 12,
-            borderRadius: 12,
+            borderRadius: radii.md,
             borderWidth: 1,
             borderColor: colors.line,
             backgroundColor: colors.card,
@@ -245,7 +246,7 @@ function ScanSheet({
   return (
     <Sheet title={t("appearance.shareScanQr")} onClose={onClose}>
       <View style={{ gap: 12, paddingVertical: 4 }}>
-        <View style={{ borderRadius: 16, overflow: "hidden" }}>
+        <View style={{ borderRadius: radii.lg, overflow: "hidden" }}>
           <CameraView
             style={{ height: 320 }}
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}

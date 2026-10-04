@@ -9,6 +9,7 @@ import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 export function FileThreadCard({ file }: { file: Artifact }) {
   const colors = useColors();
@@ -22,7 +23,7 @@ export function FileThreadCard({ file }: { file: Artifact }) {
       style={{ width: "100%", maxWidth: 440 }}
     >
       <Card style={{ padding: 18, backgroundColor: colors.line, gap: 18 }}>
-        <View style={{ borderRadius: 12, padding: 22, backgroundColor: colors.card, gap: 14 }}>
+        <View style={{ borderRadius: radii.md, padding: 22, backgroundColor: colors.card, gap: 14 }}>
           <TText style={[s.heading, { fontSize: 18 }]}>{file.name.replace(/\.pdf$/i, "")}</TText>
           {file.fields?.length ? (
             file.fields.slice(0, 4).map((field) => (
@@ -48,7 +49,7 @@ export function FileThreadCard({ file }: { file: Artifact }) {
           )}
         </View>
         <View style={[s.row, { gap: 13 }]}>
-          <View style={{ backgroundColor: "#FC2359", padding: 9, borderRadius: 9 }}>
+          <View style={{ backgroundColor: "#FC2359", padding: 9, borderRadius: radii.sm }}>
             <FileText size={23} color="#FFF" />
           </View>
           <View style={{ flex: 1, gap: 3 }}>

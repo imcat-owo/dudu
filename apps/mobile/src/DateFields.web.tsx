@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { t } from "./i18n";
 import { useColors, useStyles } from "./ui";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 interface DateFieldsProps {
   label: string;
@@ -15,7 +16,7 @@ export default function DateFields({ label, date, time, allDay, onChange }: Date
   const s = useStyles();
   const style = {
     border: `1px solid ${colors.line}`,
-    borderRadius: 12,
+    borderRadius: radii.md,
     padding: 13,
     fontSize: 14,
     color: colors.text,

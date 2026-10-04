@@ -34,6 +34,7 @@ import {
 } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -196,7 +197,7 @@ export function LinuxWorkspace({ tab }: { tab: "Terminal" | "Files" }) {
         <>
           <View style={{ display: tab === "Terminal" ? "flex" : "none", gap: 16 }}>
             {editingCommand || command.length > 0 || snapshot.commands.length === 0 ? (
-              <View style={{ borderRadius: 22, backgroundColor: colors.line, padding: 18, gap: 8 }}>
+              <View style={{ borderRadius: radii.lg, backgroundColor: colors.line, padding: 18, gap: 8 }}>
                 <TText style={{ color: colors.muted, fontSize: 12, fontFamily: mono }}>
                   {t("term.paneLabel")}
                 </TText>

@@ -59,6 +59,7 @@ import {
 } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 const STATUS_KEYS: Record<string, StringKey> = {
   queued: "agent.status.queued",
@@ -153,7 +154,7 @@ export function TaskCard({
         style={{
           padding: compact ? 15 : 20,
           gap: 11,
-          borderRadius: 22,
+          borderRadius: radii.lg,
           backgroundColor: "#F0F1F2",
         }}
       >
@@ -176,13 +177,13 @@ export function TaskCard({
           <ChevronRight size={17} color={colors.muted} />
         </View>
         {!!task.plan.length && (
-          <View style={{ height: 4, backgroundColor: colors.line, borderRadius: 4 }}>
+          <View style={{ height: 4, backgroundColor: colors.line, borderRadius: radii.xs }}>
             <View
               style={{
                 height: 4,
                 width: `${Math.round((done / task.plan.length) * 100)}%`,
                 backgroundColor: "#6AAEE0",
-                borderRadius: 4,
+                borderRadius: radii.xs,
               }}
             />
           </View>
@@ -576,7 +577,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                 <Image
                   accessibilityLabel={t("a11y.agentBrowserPreview")}
                   source={{ uri: api.url(browser.previewUrl) }}
-                  style={{ width: "100%", aspectRatio: 1.6, borderRadius: 12 }}
+                  style={{ width: "100%", aspectRatio: 1.6, borderRadius: radii.md }}
                 />
               )}
               <Button
@@ -771,7 +772,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
         <View
           style={{
             minHeight: 200,
-            borderRadius: 16,
+            borderRadius: radii.lg,
             overflow: "hidden",
             backgroundColor: "#080B10",
             padding: 20,
@@ -806,7 +807,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             ).map(([label, key]) => (
               <View
                 key={key}
-                style={{ flex: 1, padding: 11, borderRadius: 12, backgroundColor: "#1D2025" }}
+                style={{ flex: 1, padding: 11, borderRadius: radii.md, backgroundColor: "#1D2025" }}
               >
                 <TText style={{ color: "#A4A7AD", fontSize: 9 }}>{label}</TText>
                 <TText
@@ -849,13 +850,13 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                   <TText style={s.text}>{String(row.name)}</TText>
                   <TText style={s.text}>{amount(row.amount)}</TText>
                 </View>
-                <View style={{ height: 7, backgroundColor: "#DFE8EB", borderRadius: 8 }}>
+                <View style={{ height: 7, backgroundColor: "#DFE8EB", borderRadius: radii.sm }}>
                   <View
                     style={{
                       width: `${Math.min(100, (Number(row.amount) / spending) * 100)}%`,
                       height: 7,
                       backgroundColor: colors.blueDark,
-                      borderRadius: 8,
+                      borderRadius: radii.sm,
                     }}
                   />
                 </View>
@@ -1182,7 +1183,7 @@ export function GoalsScreen() {
               style={{
                 width: 16,
                 height: 16,
-                borderRadius: 8,
+                borderRadius: radii.sm,
                 borderWidth: 5,
                 borderColor: "#D9F1E2",
                 backgroundColor: "#24A46B",
@@ -1230,7 +1231,7 @@ export function GoalsScreen() {
             style={{
               width: 16,
               height: 16,
-              borderRadius: 8,
+              borderRadius: radii.sm,
               borderWidth: 5,
               borderColor: "#D7E9FA",
               backgroundColor: "#3D9BDE",
@@ -1809,7 +1810,7 @@ export function AppsScreen() {
                   onPress={() => setAvatar(item)}
                   style={{
                     padding: 7,
-                    borderRadius: 24,
+                    borderRadius: radii.xl,
                     backgroundColor: avatar === item ? colors.sky : colors.canvas,
                   }}
                 >

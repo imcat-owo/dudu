@@ -2,6 +2,7 @@ import { BlurView } from "expo-blur";
 import type { ReactNode } from "react";
 import { type StyleProp, StyleSheet, View, type ViewProps, type ViewStyle } from "react-native";
 import { useTheme } from "./theme/ThemeContext";
+import { radii } from "./theme/radii";
 
 /**
  * GlassView — Liquid Glass surface for iOS 26.
@@ -33,7 +34,7 @@ export function GlassView({
   const dark = resolvedMode === "dark";
   const rim = edgeColor ?? (dark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.55)");
   const flat = StyleSheet.flatten(style) ?? {};
-  const radius = borderRadius ?? (typeof flat.borderRadius === "number" ? flat.borderRadius : 0);
+  const radius = borderRadius ?? (typeof flat.borderRadius === "number" ? flat.borderRadius : radii.xs);
   return (
     <View style={[{ overflow: "hidden" }, style]} {...rest}>
       <BlurView

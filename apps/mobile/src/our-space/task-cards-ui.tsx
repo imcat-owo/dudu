@@ -30,6 +30,8 @@ import { DUR, EASE, SPRING, STAGGER } from "../motion";
 import { useColors } from "../ui";
 import type { BackgroundTask, TaskStatus } from "./task-progress";
 import { taskProgressStore } from "./task-progress-instance";
+import { radii } from "../theme/radii";
+import { shadows } from "../theme/shadows";
 
 function useTaskVersion(): number {
   const [v, setV] = useState(0);
@@ -94,14 +96,14 @@ function ProgressBar({ progress, active }: { progress: number; active: boolean }
     <View
       style={{
         height: 10,
-        borderRadius: 5,
+        borderRadius: radii.xs,
         backgroundColor: colors.line,
       }}
     >
       <Animated.View
         style={{
           height: "100%",
-          borderRadius: 5,
+          borderRadius: radii.xs,
           backgroundColor: colors.blue,
           width: width.interpolate({ inputRange: [0, 1], outputRange: ["2%", "100%"] }),
           overflow: "visible",
@@ -115,7 +117,7 @@ function ProgressBar({ progress, active }: { progress: number; active: boolean }
               bottom: 0,
               left: 0,
               right: 0,
-              borderRadius: 5,
+              borderRadius: radii.xs,
               overflow: "hidden",
             }}
           >
@@ -140,7 +142,7 @@ function ProgressBar({ progress, active }: { progress: number; active: boolean }
             top: -2,
             width: 14,
             height: 14,
-            borderRadius: 7,
+            borderRadius: radii.xs,
             backgroundColor: colors.blue,
             borderWidth: 2.5,
             borderColor: colors.onBlue,
@@ -264,7 +266,7 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
     >
       <View
         style={{
-          borderRadius: 22,
+          borderRadius: radii.lg,
           overflow: "hidden",
           borderWidth: 1,
           borderColor: colors.line,
@@ -280,7 +282,7 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
             <View style={{ backgroundColor: colors.scrim }}>{cardContent}</View>
           </ImageBackground>
         ) : (
-          <GlassView intensity={40} style={{ borderRadius: 22 }}>
+          <GlassView intensity={40} style={{ borderRadius: radii.lg, ...shadows.card }}>
             {cardContent}
           </GlassView>
         )}
@@ -300,14 +302,14 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
             }}
             onPress={() => setMenuOpen(false)}
           >
-            <GlassView intensity={64} style={{ borderRadius: 20, padding: 20, gap: 12 }}>
+            <GlassView intensity={64} style={{ borderRadius: radii.lg, padding: 20, gap: 12, ...shadows.modal }}>
               <Pressable onPress={(e) => e.stopPropagation()}>
                 <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
                   {t("space.tasks.bgTitle")}
                 </TText>
                 <Pressable
                   onPress={pickBackground}
-                  style={{ backgroundColor: colors.secondaryBg, borderRadius: 12, padding: 14 }}
+                  style={{ backgroundColor: colors.secondaryBg, borderRadius: radii.md, padding: 14 }}
                 >
                   <TText style={{ color: colors.text, fontSize: 14 }}>
                     {t("space.tasks.bgUpload")}
@@ -321,7 +323,7 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
                     placeholderTextColor={colors.muted}
                     style={{
                       backgroundColor: colors.inputBg,
-                      borderRadius: 12,
+                      borderRadius: radii.md,
                       padding: 12,
                       color: colors.text,
                       fontSize: 14,
@@ -332,7 +334,7 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
                     disabled={generating}
                     style={{
                       backgroundColor: colors.blue,
-                      borderRadius: 12,
+                      borderRadius: radii.md,
                       padding: 14,
                       flexDirection: "row",
                       alignItems: "center",

@@ -26,6 +26,7 @@ import {
   validateSttConfig,
   validateTtsConfig,
 } from "./types";
+import { radii } from "../theme/radii";
 
 function ProviderTabs<T extends string>({
   options,
@@ -50,7 +51,7 @@ function ProviderTabs<T extends string>({
             style={{
               flex: 1,
               padding: 10,
-              borderRadius: 10,
+              borderRadius: radii.sm,
               borderWidth: 1,
               borderColor: active ? colors.blueDark : colors.line,
               backgroundColor: active ? colors.sky : colors.card,
@@ -141,7 +142,7 @@ function TtsSection() {
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 8,
-                    borderRadius: 16,
+                    borderRadius: radii.lg,
                     borderWidth: 1,
                     borderColor: active ? colors.blueDark : colors.line,
                     backgroundColor: active ? colors.sky : colors.card,
@@ -320,7 +321,7 @@ function MicModeSection() {
               onPress={() => setMode(m.id)}
               style={{
                 padding: 10,
-                borderRadius: 10,
+                borderRadius: radii.sm,
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: active ? colors.sky : colors.card,

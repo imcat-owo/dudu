@@ -83,6 +83,7 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
+import { radii } from "./theme/radii";
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -647,7 +648,7 @@ export function ChatScreen({
             gap: 6,
             paddingHorizontal: 12,
             paddingVertical: 6,
-            borderRadius: 16,
+            borderRadius: radii.lg,
             backgroundColor: incognitoOn ? colors.text : colors.line,
           }}
         >
@@ -829,7 +830,7 @@ export function ChatScreen({
                             paddingHorizontal: 12,
                             paddingVertical: 9,
                             borderRadius: radius,
-                            borderBottomRightRadius: 6,
+                            borderBottomRightRadius: radii.xs,
                             backgroundColor: bubble.bg,
                             gap: 8,
                           }}
@@ -838,7 +839,7 @@ export function ChatScreen({
                             <Image
                               key={img.uri}
                               source={{ uri: img.uri }}
-                              style={{ width: 180, height: 180, borderRadius: 10 }}
+                              style={{ width: 180, height: 180, borderRadius: radii.sm }}
                               resizeMode="cover"
                             />
                           ))}
@@ -1015,7 +1016,7 @@ export function ChatScreen({
                   style={{
                     width: 6,
                     height: 6,
-                    borderRadius: 3,
+                    borderRadius: radii.xs,
                     backgroundColor: tokens.aiBubble.fg,
                     opacity,
                   }}
@@ -1148,7 +1149,7 @@ export function ChatScreen({
           intensity={56}
           edgeColor={focused ? colors.blue : undefined}
           style={{
-            borderRadius: 32,
+            borderRadius: radii.xl,
             padding: 8,
             shadowColor: colors.scrim,
             shadowOpacity: focused ? 0.1 : 0.06,
@@ -1173,7 +1174,7 @@ export function ChatScreen({
                         gap: 7,
                         maxWidth: "100%",
                         backgroundColor: colors.sky,
-                        borderRadius: 16,
+                        borderRadius: radii.lg,
                         paddingHorizontal: 11,
                         paddingVertical: 8,
                       },
@@ -1207,7 +1208,7 @@ export function ChatScreen({
                       gap: 7,
                       maxWidth: "100%",
                       backgroundColor: colors.sky,
-                      borderRadius: 16,
+                      borderRadius: radii.lg,
                       paddingHorizontal: 11,
                       paddingVertical: 8,
                     },
@@ -1236,7 +1237,7 @@ export function ChatScreen({
                   height: 44,
                   alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: 24,
+                  borderRadius: radii.xl,
                   backgroundColor: pressed ? colors.sky : "transparent",
                 })}
               >
@@ -1253,7 +1254,7 @@ export function ChatScreen({
                   height: 44,
                   alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: 24,
+                  borderRadius: radii.xl,
                   backgroundColor: picking || pressed ? colors.sky : "transparent",
                 })}
               >
@@ -1324,7 +1325,7 @@ export function ChatScreen({
               style={({ pressed }) => ({
                 width: 44,
                 height: 44,
-                borderRadius: 24,
+                borderRadius: radii.xl,
                 backgroundColor: replying || draft.trim() ? colors.blue : colors.line,
                 alignItems: "center",
                 justifyContent: "center",

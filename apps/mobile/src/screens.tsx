@@ -62,6 +62,7 @@ import {
 } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 function todayDate() {
   return localDateTime(new Date().toISOString(), Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -87,7 +88,7 @@ export function TodayScreen() {
         style={[
           {
             backgroundColor: "#E8F2F8",
-            borderRadius: 24,
+            borderRadius: radii.xl,
             padding: 32,
             minHeight: 228,
             overflow: "hidden",
@@ -159,7 +160,7 @@ export function TodayScreen() {
                   padding: 11,
                   gap: 7,
                   backgroundColor: colors.card,
-                  borderRadius: 13,
+                  borderRadius: radii.md,
                   transform: [{ rotate: "-7deg" }],
                 },
               ]}
@@ -177,7 +178,7 @@ export function TodayScreen() {
                   padding: 12,
                   gap: 8,
                   backgroundColor: colors.card,
-                  borderRadius: 13,
+                  borderRadius: radii.md,
                   transform: [{ rotate: "5deg" }],
                 },
               ]}
@@ -227,7 +228,7 @@ export function TodayScreen() {
                 <View
                   style={[
                     s.iconBox,
-                    { width: 31, height: 31, borderRadius: 10, backgroundColor: item.tint },
+                    { width: 31, height: 31, borderRadius: radii.sm, backgroundColor: item.tint },
                   ]}
                 >
                   <item.icon size={15} color={colors.text} />
@@ -310,7 +311,7 @@ export function TodayScreen() {
                 </View>
                 {m.unread && (
                   <View
-                    style={{ width: 5, height: 5, borderRadius: 4, backgroundColor: "#78ABD0" }}
+                    style={{ width: 5, height: 5, borderRadius: radii.xs, backgroundColor: "#78ABD0" }}
                   />
                 )}
               </Pressable>
@@ -387,7 +388,7 @@ function Avatar({ name, index = 0 }: { name: string; index?: number }) {
       style={{
         width: 35,
         height: 35,
-        borderRadius: 12,
+        borderRadius: radii.md,
         backgroundColor: [colors.orange, colors.lavender, colors.green, colors.sky][index % 4],
         justifyContent: "center",
         alignItems: "center",
@@ -432,7 +433,7 @@ export function AgendaRow({
         style={{
           width: 3,
           height: 42,
-          borderRadius: 4,
+          borderRadius: radii.xs,
           backgroundColor: ["#BCDAEB", "#C7D6AB", "#D9CDEA"][index % 3],
         }}
       />
@@ -484,7 +485,7 @@ export function MailScreen() {
               backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.line,
-              borderRadius: 12,
+              borderRadius: radii.md,
               paddingHorizontal: 14,
             },
           ]}
@@ -564,7 +565,7 @@ export function MailScreen() {
               </View>
               {m.unread && (
                 <View
-                  style={{ width: 6, height: 6, borderRadius: 4, backgroundColor: "#83B5D3" }}
+                  style={{ width: 6, height: 6, borderRadius: radii.xs, backgroundColor: "#83B5D3" }}
                 />
               )}
             </Pressable>
@@ -735,7 +736,7 @@ export function CalendarScreen() {
                   alignItems: "center",
                   paddingVertical: 17,
                   gap: 9,
-                  borderRadius: 14,
+                  borderRadius: radii.md,
                   backgroundColor: key === date ? colors.sky : "transparent",
                 }}
               >
@@ -752,7 +753,7 @@ export function CalendarScreen() {
                   style={{
                     height: 4,
                     width: 4,
-                    borderRadius: 4,
+                    borderRadius: radii.xs,
                     backgroundColor: [...events, ...w.events].some(
                       (e) => e.calendarId === calendarId && eventDate(e) === key,
                     )
@@ -905,7 +906,7 @@ export function BrowserScreen() {
                   style={{
                     height: 180,
                     width: "100%",
-                    borderRadius: 12,
+                    borderRadius: radii.md,
                     backgroundColor: colors.canvas,
                   }}
                 />
@@ -1002,7 +1003,7 @@ export function FilesScreen() {
                   style={{
                     width: 93,
                     height: 121,
-                    borderRadius: 5,
+                    borderRadius: radii.xs,
                     backgroundColor: colors.card,
                     padding: 14,
                     transform: [{ rotate: "-4deg" }],
@@ -1022,7 +1023,7 @@ export function FilesScreen() {
                         backgroundColor: i === 0 ? colors.blue : colors.line,
                         width: `${width}%`,
                         marginBottom: 7,
-                        borderRadius: 3,
+                        borderRadius: radii.xs,
                       }}
                     />
                   ))}
@@ -1258,7 +1259,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   : t("conn.connected")
                 : t("conn.available")}
             </TText>
-            <View style={{ paddingHorizontal: 16, borderRadius: 23, backgroundColor: colors.line }}>
+            <View style={{ paddingHorizontal: 16, borderRadius: radii.xl, backgroundColor: colors.line }}>
               {group.map((row, index) => (
                 <Pressable
                   key={row.id}
@@ -1281,7 +1282,7 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                     style={{
                       width: 29,
                       height: 29,
-                      borderRadius: 7,
+                      borderRadius: radii.xs,
                       backgroundColor: colors.card,
                       alignItems: "center",
                       justifyContent: "center",

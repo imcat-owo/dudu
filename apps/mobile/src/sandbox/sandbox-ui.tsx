@@ -40,6 +40,7 @@ import type {
   SandboxEnvironment,
   SshConfig,
 } from "./types";
+import { radii } from "../theme/radii";
 
 function StatusDot({ state }: { state: SandboxConnectionState }) {
   const colors = useColors();
@@ -51,7 +52,7 @@ function StatusDot({ state }: { state: SandboxConnectionState }) {
         : state === "error"
           ? "#C15F3C"
           : colors.muted;
-  return <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />;
+  return <View style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: color }} />;
 }
 
 function statusKey(state: SandboxConnectionState): string {
@@ -106,7 +107,7 @@ function BackendCard({
         })()}
       </View>
       {active ? (
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.blueDark }} />
+        <View style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: colors.blueDark }} />
       ) : null}
     </Pressable>
   );
@@ -180,7 +181,7 @@ function SshConfigForm({ onSaved }: { onSaved: () => void }) {
             style={{
               flex: 1,
               paddingVertical: 10,
-              borderRadius: 10,
+              borderRadius: radii.sm,
               borderWidth: 1,
               borderColor: authType === k ? colors.blueDark : colors.line,
               alignItems: "center",
@@ -330,7 +331,7 @@ function Terminal({ backend }: { backend: SandboxBackend }) {
         style={{
           maxHeight: 220,
           backgroundColor: colors.canvas,
-          borderRadius: 10,
+          borderRadius: radii.sm,
           padding: 10,
           borderWidth: 1,
           borderColor: colors.line,

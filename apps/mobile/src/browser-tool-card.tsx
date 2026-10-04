@@ -7,6 +7,7 @@ import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 export const BrowserRunContext = createContext({ running: false, active: false });
 
@@ -100,7 +101,7 @@ export function BrowserToolCard({
       style={{ padding: 13, backgroundColor: colors.line, gap: 12, width: "100%", maxWidth: 440 }}
     >
       <View style={[s.row, { gap: 10 }]}>
-        <View style={[s.iconBox, { width: 36, height: 36, borderRadius: 10 }]}>
+        <View style={[s.iconBox, { width: 36, height: 36, borderRadius: radii.sm }]}>
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1, gap: 1 }}>
@@ -128,14 +129,14 @@ export function BrowserToolCard({
           style={{
             width: "100%",
             aspectRatio: 1.7,
-            borderRadius: 12,
+            borderRadius: radii.md,
             backgroundColor: colors.card,
           }}
           resizeMode="contain"
           onError={() => setPreviewFailed(true)}
         />
       ) : (
-        <View style={{ backgroundColor: colors.card, borderRadius: 12, padding: 21, gap: 12 }}>
+        <View style={{ backgroundColor: colors.card, borderRadius: radii.md, padding: 21, gap: 12 }}>
           <TText numberOfLines={2} style={[s.text, { fontSize: 14 }]}>
             {visited?.title || siteLabel(url)}
           </TText>
@@ -144,7 +145,7 @@ export function BrowserToolCard({
               {(["90%", "74%", "84%"] as const).map((width) => (
                 <View
                   key={width}
-                  style={{ height: 7, width, borderRadius: 4, backgroundColor: colors.line }}
+                  style={{ height: 7, width, borderRadius: radii.xs, backgroundColor: colors.line }}
                 />
               ))}
             </View>

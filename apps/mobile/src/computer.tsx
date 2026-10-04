@@ -17,6 +17,7 @@ import { t } from "./i18n";
 import { Button, Card, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 
 export function ComputerEntry() {
   const colors = useColors();
@@ -38,7 +39,7 @@ export function ComputerEntry() {
           gap: 6,
           paddingHorizontal: 12,
           paddingVertical: 7,
-          borderRadius: 20,
+          borderRadius: radii.lg,
           backgroundColor: colors.line,
         },
       ]}
@@ -56,7 +57,7 @@ export function ComputerEntry() {
         style={{
           width: 5,
           height: 5,
-          borderRadius: 3,
+          borderRadius: radii.xs,
           backgroundColor: available ? "#57AD85" : "#ACB0B5",
         }}
       />
@@ -76,7 +77,7 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
       style={{ padding: 13, backgroundColor: colors.line, gap: 12, maxWidth: 440, width: "100%" }}
     >
       <View style={[s.row, { gap: 10 }]}>
-        <View style={[s.iconBox, { width: 36, height: 36, borderRadius: 9 }]}>
+        <View style={[s.iconBox, { width: 36, height: 36, borderRadius: radii.sm }]}>
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1 }}>
@@ -97,7 +98,7 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
           style={{
             width: "100%",
             aspectRatio: 1.6,
-            borderRadius: 11,
+            borderRadius: radii.sm,
             backgroundColor: colors.card,
           }}
           resizeMode="contain"
@@ -107,7 +108,7 @@ export function BrowserThreadCard({ browser }: { browser: BrowserSession }) {
         <View
           style={{
             padding: 24,
-            borderRadius: 12,
+            borderRadius: radii.md,
             backgroundColor: colors.card,
             alignItems: "center",
             gap: 10,
@@ -174,7 +175,7 @@ export function ComputerSheet() {
       <View style={{ gap: 20 }}>
         {tab === "Browser" && (
           <View
-            style={[s.row, { gap: 12, padding: 18, borderRadius: 20, backgroundColor: colors.sky }]}
+            style={[s.row, { gap: 12, padding: 18, borderRadius: radii.lg, backgroundColor: colors.sky }]}
           >
             <Monitor size={28} color={colors.blueDark} />
             <View style={{ flex: 1 }}>

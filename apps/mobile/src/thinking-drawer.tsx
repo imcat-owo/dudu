@@ -46,6 +46,7 @@ import { TText } from "./font";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
+import { radii } from "./theme/radii";
 
 const SCREEN = Dimensions.get("window");
 /** Default half height — a "small drawer", not a takeover. */
@@ -64,7 +65,7 @@ export function ThinkingButton({ onPress }: { onPress: () => void }) {
       style={{
         width: 26,
         height: 26,
-        borderRadius: 13,
+        borderRadius: radii.md,
         backgroundColor: tokens.accent.bg,
         alignItems: "center",
         justifyContent: "center",
@@ -159,7 +160,7 @@ export function ToolActionsStatus({ count, onOpen }: { count: number; onOpen: ()
         style={{
           width: 26,
           height: 26,
-          borderRadius: 13,
+          borderRadius: radii.md,
           backgroundColor: tokens.accent.bg,
           alignItems: "center",
           justifyContent: "center",
@@ -341,8 +342,8 @@ export function ThinkingDrawer({
     transform: [{ translateY }] as const,
     height: SHEET_H,
     backgroundColor: tokens.overlay.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
     paddingTop: 8,
     paddingBottom: 24,
     paddingHorizontal: 18,
@@ -357,7 +358,7 @@ export function ThinkingDrawer({
       style={{
         width: 28,
         height: 28,
-        borderRadius: 14,
+        borderRadius: radii.md,
         backgroundColor: tokens.aiBubble.bg,
         alignItems: "center",
         justifyContent: "center",
@@ -373,7 +374,7 @@ export function ThinkingDrawer({
         style={{
           width: 38,
           height: 4,
-          borderRadius: 2,
+          borderRadius: radii.xs,
           backgroundColor: tokens.text.fg,
           opacity: 0.25,
         }}
@@ -427,7 +428,7 @@ export function ThinkingDrawer({
                         alignItems: "center",
                         gap: 10,
                         backgroundColor: tokens.aiBubble.bg,
-                        borderRadius: 12,
+                        borderRadius: radii.md,
                         paddingHorizontal: 12,
                         paddingVertical: 10,
                       }}
@@ -500,8 +501,8 @@ export function ThinkingDrawer({
                 right: 0,
                 bottom: 0,
                 backgroundColor: tokens.overlay.bg,
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
+                borderTopLeftRadius: radii.lg,
+                borderTopRightRadius: radii.lg,
                 paddingTop: 8,
                 paddingBottom: 24,
                 paddingHorizontal: 18,
@@ -560,7 +561,7 @@ export function ThinkingDrawer({
                 <View
                   style={{
                     backgroundColor: tokens.aiBubble.bg,
-                    borderRadius: 10,
+                    borderRadius: radii.sm,
                     paddingHorizontal: 12,
                     paddingVertical: 9,
                   }}
@@ -586,7 +587,7 @@ export function ThinkingDrawer({
                 <View
                   style={{
                     backgroundColor: tokens.aiBubble.bg,
-                    borderRadius: 10,
+                    borderRadius: radii.sm,
                     paddingHorizontal: 12,
                     paddingVertical: 9,
                   }}

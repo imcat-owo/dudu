@@ -11,6 +11,7 @@ import { useMemo, useRef, useState } from "react";
 import { PanResponder, View } from "react-native";
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from "react-native-svg";
 import { hexToHsv, hsvToHex } from "./color";
+import { radii } from "./theme/radii";
 
 const WHEEL_SIZE = 208;
 const RADIUS = WHEEL_SIZE / 2;
@@ -124,7 +125,7 @@ export function ColorWheel({
         style={{
           width: 208,
           height: 28,
-          borderRadius: 14,
+          borderRadius: radii.md,
           backgroundColor: "#000000",
           overflow: "hidden",
           justifyContent: "center",
@@ -149,7 +150,7 @@ export function ColorWheel({
             left: value * 208 - 9,
             width: 18,
             height: 18,
-            borderRadius: 9,
+            borderRadius: radii.sm,
             backgroundColor: "#ffffff",
             borderWidth: 1,
             borderColor: "#00000033",

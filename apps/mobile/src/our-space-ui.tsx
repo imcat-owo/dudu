@@ -77,6 +77,8 @@ import { SoraAmbient } from "./sora-ambient";
 import { ambientVideoStore } from "./sora-ambient-video-instance";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
+import { radii } from "./theme/radii";
+import { shadows } from "./theme/shadows";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
 
@@ -238,19 +240,20 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-/** Hand-drawn card: soft asymmetric radii, hairline border, no hard shadow. */
+/** Hand-drawn card: soft asymmetric radii, hairline border, soft shadow. */
 export function SoftCard({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   return (
     <View
       style={{
         backgroundColor: colors.card,
-        borderRadius: 20,
-        borderTopLeftRadius: 22,
-        borderBottomRightRadius: 24,
+        borderRadius: radii.lg,
+        borderTopLeftRadius: radii.lg,
+        borderBottomRightRadius: radii.xl,
         borderWidth: 1,
         borderColor: colors.line,
         padding: 18,
+        ...shadows.card,
       }}
     >
       {children}
@@ -352,7 +355,7 @@ function StatusView() {
             style={{
               width: 12,
               height: 12,
-              borderRadius: 6,
+              borderRadius: radii.xs,
               backgroundColor: tokens.accent.fg,
               opacity: pulse,
             }}
@@ -500,7 +503,7 @@ function TimelineView() {
                             style={{
                               width: 8,
                               height: 8,
-                              borderRadius: 4,
+                              borderRadius: radii.xs,
                               backgroundColor: colors.muted,
                               marginTop: 7,
                               opacity: 0.7,
@@ -603,7 +606,7 @@ function GardenView() {
                   style={{
                     width: 30,
                     height: 30,
-                    borderRadius: 15,
+                    borderRadius: radii.lg,
                     backgroundColor: isBloom ? tokens.accent.fg : colors.sky,
                     alignItems: "center",
                     justifyContent: "center",
@@ -639,8 +642,8 @@ function GardenView() {
                         flexDirection: "row",
                         gap: 12,
                         backgroundColor: colors.card,
-                        borderRadius: 16,
-                        borderTopRightRadius: 20,
+                        borderRadius: radii.lg,
+                        borderTopRightRadius: radii.lg,
                         borderWidth: 1,
                         borderColor: colors.line,
                         padding: 15,
@@ -705,7 +708,7 @@ function TellLaterView() {
           style={{
             width: 24,
             height: 24,
-            borderRadius: 12,
+            borderRadius: radii.md,
             borderWidth: 1.5,
             borderColor: item.done ? colors.muted : colors.text,
             backgroundColor: item.done ? colors.text : "transparent",
@@ -840,7 +843,7 @@ function CoupleHeader() {
         style={{
           width: 76,
           height: 76,
-          borderRadius: 38,
+          borderRadius: radii.xl,
           backgroundColor: colors.sky,
           borderWidth: 3,
           borderColor: colors.card,
@@ -854,7 +857,7 @@ function CoupleHeader() {
         }}
       >
         {source ? (
-          <Image source={source} style={{ width: 70, height: 70, borderRadius: 35 }} />
+          <Image source={source} style={{ width: 70, height: 70, borderRadius: radii.xl }} />
         ) : (
           fallback
         )}
@@ -883,7 +886,7 @@ function CoupleHeader() {
             style={{
               width: 34,
               height: 34,
-              borderRadius: 17,
+              borderRadius: radii.lg,
               backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.line,
@@ -961,9 +964,9 @@ function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
               <View
                 style={{
                   backgroundColor: colors.card,
-                  borderRadius: 20,
-                  borderTopLeftRadius: 22,
-                  borderBottomRightRadius: 24,
+                  borderRadius: radii.lg,
+                  borderTopLeftRadius: radii.lg,
+                  borderBottomRightRadius: radii.xl,
                   borderWidth: 1,
                   borderColor: colors.line,
                   padding: 16,
@@ -1014,7 +1017,7 @@ function PageShell({
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: radii.lg,
               backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.line,
@@ -1078,7 +1081,7 @@ function FeedComposer({ onPosted }: { onPosted: () => void }) {
     <View
       style={{
         backgroundColor: colors.card,
-        borderRadius: 18,
+        borderRadius: radii.lg,
         borderWidth: 1,
         borderColor: colors.line,
         padding: 14,
@@ -1096,7 +1099,7 @@ function FeedComposer({ onPosted }: { onPosted: () => void }) {
       {imageUri ? (
         <Image
           source={{ uri: imageUri }}
-          style={{ width: "100%", height: 160, borderRadius: 12, marginTop: 8 }}
+          style={{ width: "100%", height: 160, borderRadius: radii.md, marginTop: 8 }}
           resizeMode="cover"
         />
       ) : null}
@@ -1106,7 +1109,7 @@ function FeedComposer({ onPosted }: { onPosted: () => void }) {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: radii.lg,
               backgroundColor: colors.sky,
               alignItems: "center",
               justifyContent: "center",
@@ -1176,7 +1179,7 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
             style={{
               width: 34,
               height: 34,
-              borderRadius: 17,
+              borderRadius: radii.lg,
               backgroundColor: post.author === "ai" ? tokens.accent.bg : colors.sky,
               alignItems: "center",
               justifyContent: "center",
@@ -1202,7 +1205,7 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
         {post.imageUri ? (
           <Image
             source={{ uri: post.imageUri }}
-            style={{ width: "100%", height: 220, borderRadius: 14 }}
+            style={{ width: "100%", height: 220, borderRadius: radii.md }}
             resizeMode="cover"
           />
         ) : null}
@@ -1211,7 +1214,7 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
           <View
             style={{
               backgroundColor: colors.sky,
-              borderRadius: 12,
+              borderRadius: radii.md,
               padding: 10,
               gap: 6,
             }}
@@ -1273,7 +1276,7 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 17,
+                  borderRadius: radii.lg,
                   backgroundColor: tokens.accent.fg,
                   alignItems: "center",
                   justifyContent: "center",
@@ -1359,7 +1362,7 @@ function WorksPage() {
                 <View
                   style={{
                     aspectRatio: 1,
-                    borderRadius: 6,
+                    borderRadius: radii.xs,
                     backgroundColor: colors.sky,
                     overflow: "hidden",
                     alignItems: "center",
@@ -1402,14 +1405,14 @@ function WorksPage() {
               {viewer.type === "image" && viewer.uri ? (
                 <Image
                   source={{ uri: viewer.uri }}
-                  style={{ width: "100%", aspectRatio: 1, borderRadius: 12 }}
+                  style={{ width: "100%", aspectRatio: 1, borderRadius: radii.md }}
                   resizeMode="contain"
                 />
               ) : (
                 <View
                   style={{
                     backgroundColor: colors.card,
-                    borderRadius: 16,
+                    borderRadius: radii.lg,
                     padding: 22,
                     alignItems: "center",
                     gap: 10,
@@ -1506,7 +1509,7 @@ function OnThisDayView() {
                 style={{
                   width: 52,
                   height: 52,
-                  borderRadius: 26,
+                  borderRadius: radii.xl,
                   backgroundColor: tokens.accent.bg,
                   alignItems: "center",
                   justifyContent: "center",
@@ -1572,7 +1575,7 @@ function AnniversaryPage() {
                     style={{
                       width: 52,
                       height: 52,
-                      borderRadius: 26,
+                      borderRadius: radii.xl,
                       backgroundColor: tokens.accent.bg,
                       alignItems: "center",
                       justifyContent: "center",
@@ -1650,7 +1653,7 @@ function LeftNoteView() {
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 24,
+                borderRadius: radii.xl,
                 backgroundColor: tokens.accent.bg,
                 alignItems: "center",
                 justifyContent: "center",
@@ -1680,7 +1683,7 @@ function LeftNoteView() {
             style={{
               marginTop: 14,
               paddingVertical: 10,
-              borderRadius: 12,
+              borderRadius: radii.md,
               backgroundColor: tokens.accent.bg,
               alignItems: "center",
             }}

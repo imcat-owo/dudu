@@ -4,6 +4,7 @@ import { View } from "react-native";
 import Pdf from "react-native-pdf";
 import { Button, ErrorNotice, useColors, useStyles } from "./ui";
 import { TText } from "./font";
+import { radii } from "./theme/radii";
 export interface PdfReaderProps {
   url: string;
   token: string;
@@ -69,7 +70,7 @@ export default function PdfReader({ url, token, pageCount }: PdfReaderProps) {
         onLoadComplete={(n) => setPages(n)}
         onPageChanged={(p) => setPage(p)}
         onError={(e) => setError(String(e))}
-        style={{ height: 530, width: "100%", backgroundColor: colors.line, borderRadius: 12 }}
+        style={{ height: 530, width: "100%", backgroundColor: colors.line, borderRadius: radii.md }}
       />
     </View>
   );

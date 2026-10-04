@@ -70,6 +70,7 @@ import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from 
 import { petActivity } from "./pet/store";
 import { SoraAmbient } from "./sora-ambient";
 import { useColors } from "./ui";
+import { radii } from "./theme/radii";
 
 /** Re-render whenever the music store changes (AI writes from dialog). */
 function useMusicVersion(): number {
@@ -452,7 +453,7 @@ function CoverArt({
           top: size / 2 - 14,
           width: 28,
           height: 28,
-          borderRadius: 14,
+          borderRadius: radii.md,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.line,
@@ -487,12 +488,12 @@ function ProgressBar({
         }}
         style={{ flex: 1, height: 22, justifyContent: "center" }}
       >
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.line }}>
+        <View style={{ height: 4, borderRadius: radii.xs, backgroundColor: colors.line }}>
           <View
             style={{
               width: `${ratio * 100}%`,
               height: 4,
-              borderRadius: 2,
+              borderRadius: radii.xs,
               backgroundColor: colors.text,
             }}
           />
@@ -504,7 +505,7 @@ function ProgressBar({
             marginLeft: -6,
             width: 12,
             height: 12,
-            borderRadius: 6,
+            borderRadius: radii.xs,
             backgroundColor: colors.card,
             borderWidth: 2,
             borderColor: colors.text,
@@ -699,7 +700,7 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
       <View
         style={{
           backgroundColor: colors.card,
-          borderRadius: 16,
+          borderRadius: radii.lg,
           borderWidth: 1,
           borderColor: colors.line,
           padding: 14,
@@ -714,7 +715,7 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
               alignSelf: "flex-start",
               paddingHorizontal: 8,
               paddingVertical: 3,
-              borderRadius: 20,
+              borderRadius: radii.lg,
               backgroundColor: badgeOk ? colors.sky : "transparent",
               borderWidth: 1,
               borderColor: colors.line,
@@ -782,7 +783,7 @@ function TogetherBar({
           alignItems: "center",
           gap: 12,
           backgroundColor: colors.card,
-          borderRadius: 20,
+          borderRadius: radii.lg,
           borderWidth: 1,
           borderColor: together.active ? colors.text : colors.line,
           padding: 14,
@@ -795,7 +796,7 @@ function TogetherBar({
             style={{
               width: 46,
               height: 46,
-              borderRadius: 23,
+              borderRadius: radii.xl,
               backgroundColor: colors.sky,
               alignItems: "center",
               justifyContent: "center",
@@ -818,14 +819,14 @@ function TogetherBar({
           style={{
             width: 46,
             height: 26,
-            borderRadius: 13,
+            borderRadius: radii.md,
             backgroundColor: together.active ? colors.text : colors.line,
             justifyContent: "center",
             paddingHorizontal: 3,
             alignItems: together.active ? "flex-end" : "flex-start",
           }}
         >
-          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.card }} />
+          <View style={{ width: 20, height: 20, borderRadius: radii.sm, backgroundColor: colors.card }} />
         </View>
       </View>
     </PressableScale>
@@ -913,7 +914,7 @@ function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngi
         </View>
       )}
       {!!error && (
-        <View style={{ marginTop: 12, padding: 10, borderRadius: 12, backgroundColor: colors.sky }}>
+        <View style={{ marginTop: 12, padding: 10, borderRadius: radii.md, backgroundColor: colors.sky }}>
           <TText style={{ color: colors.text, fontSize: 12.5 }}>{error}</TText>
         </View>
       )}
@@ -1025,13 +1026,13 @@ function SongRow({
             style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
           >
             {art ? (
-              <Image source={{ uri: art }} style={{ width: 44, height: 44, borderRadius: 10 }} />
+              <Image source={{ uri: art }} style={{ width: 44, height: 44, borderRadius: radii.sm }} />
             ) : (
               <View
                 style={{
                   width: 44,
                   height: 44,
-                  borderRadius: 10,
+                  borderRadius: radii.sm,
                   backgroundColor: colors.sky,
                   alignItems: "center",
                   justifyContent: "center",
@@ -1082,8 +1083,8 @@ function SongRow({
               onPress={() => {}}
               style={{
                 backgroundColor: colors.card,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
+                borderTopLeftRadius: radii.xl,
+                borderTopRightRadius: radii.xl,
                 padding: 20,
                 gap: 4,
               }}
@@ -1212,7 +1213,7 @@ function PlaylistSection({
               gap: 4,
               paddingHorizontal: 10,
               paddingVertical: 6,
-              borderRadius: 16,
+              borderRadius: radii.lg,
               backgroundColor: colors.sky,
             }}
           >
@@ -1238,7 +1239,7 @@ function PlaylistSection({
                   style={{
                     paddingHorizontal: 14,
                     paddingVertical: 8,
-                    borderRadius: 20,
+                    borderRadius: radii.lg,
                     backgroundColor: sel ? colors.text : "transparent",
                     borderWidth: 1,
                     borderColor: sel ? colors.text : colors.line,
@@ -1266,7 +1267,7 @@ function PlaylistSection({
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 8,
-                borderRadius: 20,
+                borderRadius: radii.lg,
                 borderWidth: 1,
                 borderStyle: "dashed",
                 borderColor: colors.line,
@@ -1290,7 +1291,7 @@ function PlaylistSection({
               flex: 1,
               borderWidth: 1,
               borderColor: colors.line,
-              borderRadius: 12,
+              borderRadius: radii.md,
               paddingHorizontal: 12,
               paddingVertical: 8,
               color: colors.text,
@@ -1306,7 +1307,7 @@ function PlaylistSection({
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 8,
-                borderRadius: 12,
+                borderRadius: radii.md,
                 backgroundColor: colors.text,
               }}
             >
@@ -1386,7 +1387,7 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
               style={{
                 width: 30,
                 height: 30,
-                borderRadius: 15,
+                borderRadius: radii.lg,
                 backgroundColor: colors.sky,
                 alignItems: "center",
                 justifyContent: "center",
@@ -1415,7 +1416,7 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
             flex: 1,
             borderWidth: 1,
             borderColor: colors.line,
-            borderRadius: 14,
+            borderRadius: radii.md,
             paddingHorizontal: 12,
             paddingVertical: 9,
             color: colors.text,
@@ -1431,7 +1432,7 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
             style={{
               width: 40,
               height: 40,
-              borderRadius: 20,
+              borderRadius: radii.lg,
               backgroundColor: colors.text,
               alignItems: "center",
               justifyContent: "center",
@@ -1605,7 +1606,7 @@ function AddSongModal({
       style={{
         borderWidth: 1,
         borderColor: colors.line,
-        borderRadius: 12,
+        borderRadius: radii.md,
         paddingHorizontal: 12,
         paddingVertical: 10,
         color: colors.text,
@@ -1625,8 +1626,8 @@ function AddSongModal({
           onPress={() => {}}
           style={{
             backgroundColor: colors.canvas,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
+            borderTopLeftRadius: radii.xl,
+            borderTopRightRadius: radii.xl,
             maxHeight: "88%",
           }}
         >
@@ -1655,7 +1656,7 @@ function AddSongModal({
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 8,
-                    borderRadius: 18,
+                    borderRadius: radii.lg,
                     backgroundColor: tab === id ? colors.text : "transparent",
                     borderWidth: 1,
                     borderColor: tab === id ? colors.text : colors.line,
@@ -1696,7 +1697,7 @@ function AddSongModal({
                       style={{
                         paddingHorizontal: 12,
                         paddingVertical: 10,
-                        borderRadius: 12,
+                        borderRadius: radii.md,
                         borderWidth: 1,
                         borderColor: colors.line,
                       }}
@@ -1718,7 +1719,7 @@ function AddSongModal({
                       alignItems: "center",
                       gap: 10,
                       padding: 10,
-                      borderRadius: 12,
+                      borderRadius: radii.md,
                       borderWidth: 1,
                       borderColor: colors.line,
                     }}
@@ -1726,14 +1727,14 @@ function AddSongModal({
                     {coverUri ? (
                       <Image
                         source={{ uri: coverUri }}
-                        style={{ width: 40, height: 40, borderRadius: 8 }}
+                        style={{ width: 40, height: 40, borderRadius: radii.sm }}
                       />
                     ) : (
                       <View
                         style={{
                           width: 40,
                           height: 40,
-                          borderRadius: 8,
+                          borderRadius: radii.sm,
                           backgroundColor: colors.sky,
                           alignItems: "center",
                           justifyContent: "center",
@@ -1762,7 +1763,7 @@ function AddSongModal({
                           style={{
                             paddingHorizontal: 12,
                             paddingVertical: 7,
-                            borderRadius: 16,
+                            borderRadius: radii.lg,
                             backgroundColor: playlistId === p.id ? colors.text : "transparent",
                             borderWidth: 1,
                             borderColor: playlistId === p.id ? colors.text : colors.line,
@@ -1789,7 +1790,7 @@ function AddSongModal({
                   <View
                     style={{
                       paddingVertical: 13,
-                      borderRadius: 14,
+                      borderRadius: radii.md,
                       backgroundColor: colors.text,
                       alignItems: "center",
                       opacity: title.trim() ? 1 : 0.5,
@@ -1825,7 +1826,7 @@ function AddSongModal({
                       style={{
                         paddingHorizontal: 14,
                         paddingVertical: 10,
-                        borderRadius: 12,
+                        borderRadius: radii.md,
                         backgroundColor: colors.text,
                       }}
                     >
@@ -1850,14 +1851,14 @@ function AddSongModal({
                     {hit.artworkUrl ? (
                       <Image
                         source={{ uri: hit.artworkUrl }}
-                        style={{ width: 44, height: 44, borderRadius: 10 }}
+                        style={{ width: 44, height: 44, borderRadius: radii.sm }}
                       />
                     ) : (
                       <View
                         style={{
                           width: 44,
                           height: 44,
-                          borderRadius: 10,
+                          borderRadius: radii.sm,
                           backgroundColor: colors.sky,
                           alignItems: "center",
                           justifyContent: "center",
@@ -1886,7 +1887,7 @@ function AddSongModal({
                         style={{
                           paddingHorizontal: 12,
                           paddingVertical: 7,
-                          borderRadius: 14,
+                          borderRadius: radii.md,
                           backgroundColor: colors.text,
                         }}
                       >

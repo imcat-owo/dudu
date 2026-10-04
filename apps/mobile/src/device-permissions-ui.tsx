@@ -26,6 +26,7 @@ import { checkers, type PermissionStatus, requesters } from "./device-permission
 import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, Sheet, useColors, useStyles } from "./ui";
+import { radii } from "./theme/radii";
 
 const ICONS: Record<DeviceCapabilityId, typeof Camera> = {
   bluetooth: Bluetooth,
@@ -126,7 +127,7 @@ function CapabilityRow({
         <View
           style={{
             flexDirection: "row",
-            borderRadius: 8,
+            borderRadius: radii.sm,
             overflow: "hidden",
             borderWidth: 1,
             borderColor: colors.line,
