@@ -46,7 +46,7 @@
 
 ## AI 编排 · AI 自建群 (feature 3, 2026-10-04)
 - [x] 群会议 core：GroupMeeting 数据模型（成员/轮次/记录/结论）+ SillyTavern 式发言调度（NATURAL 点名→talkativeness 骰子→兜底 / POOLED 每轮全员 / LIST 固定顺序，防连发，每人每轮至多一次）- 代码完整，测试覆盖
-- [x] AI 工具：list_models + start_group_meeting + run_meeting_round + meeting_status + end_meeting；AI 当主持人（ai-debate 模式），成员走各自模型真实调用（one-shot）- 代码完整，测试 35/35
+- [x] AI 工具：list_models + start_group_meeting + run_meeting_round + meeting_status + end_meeting；AI 当主持人（ai-debate 模式），成员走各自模型真实调用（one-shot）- 代码完整，测试 38/38
 - [x] 开启原则：默认不开；开会需已批准计划（plan_id）或她明确要求（her_request 原话）；每轮重查计划状态；隐身会话拒绝 - 代码完整，测试覆盖
 - [x] 留痕：创建/每轮/结束全部进跨对话框 trace（meeting_create/round/end），无静默开会 - 代码完整，测试覆盖
 - [x] 人设记忆隔离：成员 prompt 只含会议主题+共享记录，结构上无法带入其他记忆（函数签名级保证，测试钉死）- 代码完整，测试覆盖
