@@ -38,6 +38,7 @@ import type { LocalTool } from "../api-groups/local-tools.js";
 import { ToolError } from "../api-groups/local-tools.js";
 import { planGateStore } from "../api-groups/plan-gate.js";
 import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
+import { sharedKeyedChain as exclusiveFor } from "../util/write-chain.js";
 
 /** Must match historyKey() in api-groups/local-agent.ts. */
 const CHAT_HISTORY_PREFIX = "dudu.local-chat.";
@@ -46,32 +47,18 @@ const CHAT_HISTORY_SUFFIX = ".v1";
 const DIALOG_REGISTRY_KEY = "dudu.dialog-registry.v1";
 
 /**
- * Per-key write chain (P1-10). AsyncStorage has no transactions, so two
- * concurrent read-modify-write cycles against the same key (e.g. two AI
- * sends to one dialog) interleave and one write silently wins: a message is
- * lost while the trace claims both were delivered. Writers queue behind the
- * previous write for the same key, so each cycle sees the last committed
- * state. Read-only paths (readDialog, listDialogs) bypass the chain.
+ * Per-key write chain (P1-10, consolidated into util/write-chain.ts by
+ * audit round 3). AsyncStorage has no transactions, so two concurrent
+ * read-modify-write cycles against the same key (e.g. two AI sends to one
+ * dialog) interleave and one write silently wins: a message is lost while
+ * the trace claims both were delivered. Writers queue behind the previous
+ * write for the same key, so each cycle sees the last committed state.
+ * Read-only paths (readDialog, listDialogs) bypass the chain.
+ *
+ * The SHARED instance matters: api-groups/local-agent.ts writes the same
+ * dudu.local-chat.<id>.v1 keys through it (audit round 3, code P2-6), so
+ * both modules' writes to one key serialize through one queue.
  */
-const writeChains = new Map<string, Promise<void>>();
-
-function exclusiveFor<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  // The stored tail never rejects (it swallows), so a failed write can't
-  // wedge every later write behind it.
-  const prev = writeChains.get(key) ?? Promise.resolve();
-  const cur = prev.then(fn);
-  const tail = cur.then(
-    () => {},
-    () => {},
-  );
-  writeChains.set(key, tail);
-  // Prune once nothing is queued behind this write: the map can't grow
-  // without bound across dialogs.
-  void tail.then(() => {
-    if (writeChains.get(key) === tail) writeChains.delete(key);
-  });
-  return cur;
-}
 /** History cap, mirroring saveLocalHistory in local-agent.ts. */
 const HISTORY_CAP = 200;
 /** Default persona until personas exist as a code concept. */

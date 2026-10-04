@@ -20,6 +20,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "memory_update",
       "memory_delete",
       "memory_confirm",
+      "memory_reinforce",
       "diary_write",
       "diary_delete",
       "my_status_update",
@@ -51,7 +52,6 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "set_wallpaper",
       "set_ai_avatar",
       "set_font_size",
-      "set_pet_skin",
       "backup_create",
       "backup_restore",
       "set_tts_voice",
@@ -59,6 +59,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "generate_video",
       "new_dialog",
       "rename_dialog",
+      "propose_coordination_plan",
       "knowledge_add_doc",
       "knowledge_add_file",
       "knowledge_reindex",
@@ -71,6 +72,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "music_playlist_create",
       "music_playlist_add",
       "music_comment_add",
+      "music_comment_delete",
       "music_ours_add",
       "music_memory_add",
       "dj_queue_add",
@@ -127,5 +129,17 @@ describe("incognito guard (P1-3: zero trace)", () => {
     assert.ok(section.includes("zero trace"));
     assert.ok(section.includes("NOT saved"));
     assert.ok(section.includes("Never promise"));
+  });
+
+  it("warns before an out-of-app approval breaks the promise (ai-use P2-2)", () => {
+    const section = buildIncognitoPromptSection();
+    assert.ok(
+      section.includes("leave a record"),
+      "must name the one honest exception",
+    );
+    assert.ok(
+      section.includes("BEFORE she approves"),
+      "the AI must warn before she approves, never silently",
+    );
   });
 });

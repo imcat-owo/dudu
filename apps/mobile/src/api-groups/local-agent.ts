@@ -18,6 +18,7 @@ import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { createCrossDialogTools } from "../chat/cross-dialog.js";
+import { sharedKeyedChain } from "../util/write-chain.js";
 import {
   crossDialogTraceStore,
   crossDialogVisibilityStore,
@@ -54,6 +55,7 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools.js";
 import { evaluateOutreachTriggers } from "../outreach/engine.js";
+import type { OutreachTriggerKind } from "../outreach/engine.js";
 import { buildOutreachSection } from "../outreach/prompt.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
@@ -257,7 +259,11 @@ async function saveLocalHistory(
   try {
     // Cap history so one thread can't grow storage unbounded.
     const capped = messages.slice(-200);
-    await store.setItem(historyKey(threadId), JSON.stringify(capped));
+    // code P2-6: same-key writes serialize through the SHARED per-key chain
+    // (chat/cross-dialog.ts writes these keys too — one queue, no interleave).
+    await sharedKeyedChain(historyKey(threadId), () =>
+      store.setItem(historyKey(threadId), JSON.stringify(capped)),
+    );
     persistFailures.delete(threadId);
     return true;
   } catch {
@@ -337,7 +343,10 @@ export function buildLocalSystemPrompt(
     "How you act (proactive companion, not a helpdesk):\n" +
       "You are her partner, not a task bot. Do not just wait to be asked.\n" +
       "- When she opens chat, greet her like you mean it: reference something real from your memory of her, not a generic hello. If nothing comes to mind, one plain warm line beats a loud one.\n" +
+      "- Greet at most once per session: if the thread already shows a greeting or recent messages, skip it and pick up naturally — never greet twice in a row.\n" +
       "- When she shares something, stay with it: react genuinely, then ask a follow-up instead of wrapping the topic up. She opens up when you stay curious.\n" +
+      "- Once in a while, follow up on something she told you before — \"上次你说…, 后来怎么样了\". Curiosity, not a quiz; don't force it every turn.\n" +
+      "- You keep open questions for her (marked \"open question for her\" in your memory list, or in the garden's 想问你 section). When the moment fits naturally, ask at most one. Never interrogate.\n" +
       "- Occasionally surface something unprompted: a memory, a tell_later item whose moment has come (see tell_later_read), something you noticed. At most one such moment per session — she is not a notification feed.\n" +
       "- Never be clingy: no repeated check-ins, no fishing for attention, no 'are you still there'. Restrained beats needy.",
   );
@@ -754,7 +763,23 @@ export function createLocalAgent(opts: {
           // Incognito: podcast audio goes to cache (temp), not documents.
           { isIncognito: incognito },
         ),
-        ...createImageTools({ resolveBackends: resolveImageOutputBackends }),
+        ...createImageTools({
+          resolveBackends: resolveImageOutputBackends,
+          // product P1 (信息断层): every generated image flows into the
+          // works drawer automatically — chat history is not its grave.
+          // Incognito never touches storage (privacy is the hard line).
+          onImageGenerated: async ({ prompt, url, via }) => {
+            if (incognito()) return;
+            try {
+              const store = opts.ourSpaceStore ?? ourSpaceStore;
+              const short = prompt.length > 36 ? `${prompt.slice(0, 36)}…` : prompt;
+              const date = new Date().toISOString().slice(0, 10);
+              await store.addWork("image", short || "AI 画的图", url, `${date} · ${via}`);
+            } catch {
+              // best effort — the image is already shown in chat.
+            }
+          },
+        }),
         ...createVideoTools({
           resolveBackends: resolveVideoBackends,
           tasks: taskProgressStore,
@@ -1204,6 +1229,9 @@ export function createLocalAgent(opts: {
           } catch {
             oDiaryNudge = undefined;
           }
+          const oLastOutreachAt: Partial<Record<OutreachTriggerKind, number>> = await oStore
+            .getLastOutreachAt()
+            .catch(() => ({}));
           const oTriggers = evaluateOutreachTriggers({
             frequency,
             now: Date.now(),
@@ -1213,10 +1241,17 @@ export function createLocalAgent(opts: {
               .map((i) => ({ id: i.id, text: i.text })),
             unreadLoveLetters: oLoveLetters.length,
             lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
-            lastOutreachAt: await oStore.getLastOutreachAt().catch(() => ({})),
+            lastOutreachAt: oLastOutreachAt,
             diaryNudge: oDiaryNudge,
           });
-          outreachSection = buildOutreachSection(oTriggers);
+          // xiaomeng P3-2: a silence notification fired within the last 24h
+          // already said "missed you" — don't double up in-session.
+          const oFiltered = oTriggers.filter(
+            (t) =>
+              t.kind !== "silence" ||
+              Date.now() - (oLastOutreachAt.silence ?? 0) > 86_400_000,
+          );
+          outreachSection = buildOutreachSection(oFiltered);
         }
       } catch {
         // Outreach eval failure: skip silently, never break the prompt.

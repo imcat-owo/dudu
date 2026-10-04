@@ -8,6 +8,7 @@
  *   memory_update   — correct ("不是 X，是 Y" -> supersede, history kept)
  *   memory_delete   — forget ("忘了 X" -> really deletes)
  *   memory_confirm  — promote unsure/question -> confident (she confirmed)
+ *   memory_reinforce — boost recall rank of a memory that landed in conversation
  *
  * All tools are in-app (no authorization gate — nothing crosses the app
  * boundary). Memory NEVER presents an unsure item as confident: search and

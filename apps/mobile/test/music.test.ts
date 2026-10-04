@@ -253,6 +253,7 @@ describe("music tools", () => {
       "dj_together_stop",
       "music_comment_add",
       "music_comment_read",
+      "music_comment_delete",
       "music_ours_add",
       "music_memory_add",
     ]) {
@@ -277,6 +278,24 @@ describe("music tools", () => {
     assert.equal(intent?.action, "play");
     assert.equal(intent?.trackId, id);
     assert.equal((await store.getNowPlaying())?.id, id);
+  });
+
+  it("music_comment_delete flow: add -> read (id) -> delete -> gone (ai-use P2-4)", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const t = await store.addTrack({ title: "DT", audioUri: "file:///d", addedBy: "her" });
+    assert.match(await reg.execute("music_comment_add", { track: t.id, text: "泪目" }, ctx), /Commented/);
+    const read = await reg.execute("music_comment_read", { track: t.id }, ctx);
+    assert.match(read, /泪目/);
+    assert.match(read, /id: /);
+    const id = (await store.listComments(t.id))[0].id;
+    assert.match(await reg.execute("music_comment_delete", { track: t.id, commentId: id }, ctx), /deleted/);
+    assert.equal((await store.listComments(t.id)).length, 0);
+    // deleting a missing id is honest, not silent
+    assert.match(
+      await reg.execute("music_comment_delete", { track: t.id, commentId: "nope" }, ctx),
+      /not found/,
+    );
   });
 
   it("dj_play on unknown song is honest", async () => {

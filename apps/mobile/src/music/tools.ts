@@ -528,9 +528,34 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
         if (!t) return "Song not found.";
         const list = await store.listComments(t.id);
         if (list.length === 0) return `No comments on ${t.title} yet.`;
-        return list.map((c) => `- ${c.author === "ai" ? "you" : "her"}: ${c.text}`).join("\n");
+        return list
+          .map((c) => `- ${c.author === "ai" ? "you" : "her"}: ${c.text} (id: ${c.id})`)
+          .join("\n");
       },
     },
+    {
+      name: "music_comment_delete",
+      description:
+        "Delete a comment on a song (your own, or hers when she asks). Use the id shown by music_comment_read. " +
+        "Confirm with her before deleting HER comments.",
+      parameters: {
+        type: "object",
+        properties: {
+          track: { type: "string", description: "Track id or title/artist." },
+          commentId: { type: "string", description: "Comment id from music_comment_read." },
+        },
+        required: ["track", "commentId"],
+        additionalProperties: false,
+      },
+      manualId: "music-room",
+      run: async (args) => {
+        const t = await resolveTrack(strArg(args, "track"));
+        if (!t) return "Song not found.";
+        const ok = await store.deleteComment(strArg(args, "commentId"));
+        return ok ? `Comment deleted from ${t.title}.` : "Comment not found.";
+      },
+    },
+
     {
       name: "music_ours_add",
       description:

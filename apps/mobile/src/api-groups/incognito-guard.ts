@@ -22,6 +22,7 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "memory_update",
   "memory_delete",
   "memory_confirm",
+  "memory_reinforce", // ai-use P1-1: reinforce writes reinforcedCount/updatedAt/event log — real persistence
   // Our Space (status, mood, diary, timeline, tell-later, notes, feed,
   // anniversaries, works, love letters, task cards, ambient video)
   "my_status_update",
@@ -56,7 +57,6 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "set_theme",
   "set_ai_avatar",
   "set_font_size",
-  "set_pet_skin",
   // Backup (create writes a file; restore rewrites everything)
   "backup_create",
   "backup_restore",
@@ -65,9 +65,10 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "generate_podcast",
   // Video generation (task-progress entries + files)
   "generate_video",
-  // Dialog management (creates/renames persistent dialogs)
+  // Dialog management (creates/renames persistent dialogs; plans persist too)
   "new_dialog",
   "rename_dialog",
+  "propose_coordination_plan", // ai-use P1-2: persists to dudu.plan-gate.v1 + pops a plan card
   // Knowledge base
   "knowledge_add_doc",
   "knowledge_reindex",
@@ -83,6 +84,7 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "music_playlist_create",
   "music_playlist_add",
   "music_comment_add",
+  "music_comment_delete", // ai-use P2-4: the new tool persists too
   "music_ours_add",
   "music_memory_add",
   "dj_queue_add",
@@ -121,6 +123,10 @@ export function buildIncognitoPromptSection(): string {
     "no skill changes, no playlist/track changes. The write tools are hidden from you " +
     "this session — if she asks for one, explain incognito means nothing is kept and " +
     "ask her to turn incognito off first.\n" +
-    "- Never promise \"I'll remember this\" — you won't. Be honest about it."
+    "- Never promise \"I'll remember this\" — you won't. Be honest about it." +
+    "- One honest exception: out-of-app actions she approves herself (calendar, reminders) " +
+    "still ask her for permission. If she approves one, it leaves a real record — so tell her " +
+    "plainly BEFORE she approves: \"this will leave a record, breaking the incognito promise; " +
+    "still want it?\" Never let it happen silently."
   );
 }
