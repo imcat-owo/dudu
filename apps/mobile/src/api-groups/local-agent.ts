@@ -1067,7 +1067,12 @@ export function createLocalAgent(opts: {
       const lastUserText = contentToText(
         [...messages].reverse().find((m) => m.role === "user")?.content ?? "",
       );
-      const memorySection = await buildMemorySection(memStore, lastUserText);
+      // P2-2: incognito clears the AI's view. No old memories, anniversaries,
+      // mood, nicknames, or her rhythm ride the prompt — the session behaves
+      // like a first meeting. (Reads stay available if it asks; nothing is
+      // pushed.) The interface copy (chat.incognitoNote) says exactly this.
+      const incognitoOn = incognito();
+      const memorySection = incognitoOn ? "" : await buildMemorySection(memStore, lastUserText);
       // Skills index: one line per enabled skill (token-minimal, same pattern
       // as the manual index). Empty string when she has no enabled skills.
       const skillSection = await (opts.skillStore ?? skillStore).buildSkillIndex();
@@ -1075,34 +1080,40 @@ export function createLocalAgent(opts: {
       // subtle line so he remembers and can prepare — the petTouchNote pattern.
       // Empty string when nothing is near: no noise, no spam.
       let anniversarySection = "";
-      try {
-        const anniversaries = await (opts.ourSpaceStore ?? ourSpaceStore).listAnniversaries();
-        anniversarySection = buildAnniversarySection(anniversaries);
-      } catch {
-        // Anniversary read failure: skip silently, never break the prompt.
+      if (!incognitoOn) {
+        try {
+          const anniversaries = await (opts.ourSpaceStore ?? ourSpaceStore).listAnniversaries();
+          anniversarySection = buildAnniversarySection(anniversaries);
+        } catch {
+          // Anniversary read failure: skip silently, never break the prompt.
+        }
       }
       // Her-mood awareness: when she told him how she feels, one subtle
       // line so he remembers — the petTouchNote pattern. Empty when stale.
       let herMoodSection = "";
-      try {
-        const herMood = await (opts.ourSpaceStore ?? ourSpaceStore).getHerMood();
-        herMoodSection = buildHerMoodSection(herMood);
-      } catch {
-        // Mood read failure: skip silently, never break the prompt.
+      if (!incognitoOn) {
+        try {
+          const herMood = await (opts.ourSpaceStore ?? ourSpaceStore).getHerMood();
+          herMoodSection = buildHerMoodSection(herMood);
+        } catch {
+          // Mood read failure: skip silently, never break the prompt.
+        }
       }
       // Her rhythm (作息感知, xiaomeng P2-3): she sleeps days and lives
       // nights. One line so he reads "now" on HER clock — the time
       // injection alone lies about what 4am means to her. PURE builder,
       // never throws; no store reads needed (fixed schedule, V1).
-      const herRhythmSection = buildHerRhythmSection(Date.now());
+      const herRhythmSection = incognitoOn ? "" : buildHerRhythmSection(Date.now());
       // Nickname awareness: what he calls her / what she calls him.
       // Empty when unset: no noise, no spam.
       let nicknameSection = "";
-      try {
-        const couple = await (opts.ourSpaceStore ?? ourSpaceStore).getCoupleProfile();
-        nicknameSection = buildNicknameSection(couple);
-      } catch {
-        // Couple read failure: skip silently, never break the prompt.
+      if (!incognitoOn) {
+        try {
+          const couple = await (opts.ourSpaceStore ?? ourSpaceStore).getCoupleProfile();
+          nicknameSection = buildNicknameSection(couple);
+        } catch {
+          // Couple read failure: skip silently, never break the prompt.
+        }
       }
       // Proactive outreach (主动触达) surfacing: when the trigger engine
       // finds something genuinely worth mentioning, one quiet line rides

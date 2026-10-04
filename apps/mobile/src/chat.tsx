@@ -811,8 +811,9 @@ export function ChatScreen({
       {mode === "local" && !activeGroup && loaded && (
         <Card style={{ margin: 16 }}>
           <TText style={{ fontWeight: "700", marginBottom: 4 }}>{t("apigroup.noActive")}</TText>
+          {/* P2-1: first-run mini-onboarding — plain words, not a bare form. */}
           <TText style={[s.small, { color: colors.muted, marginBottom: 12 }]}>
-            {t("apigroup.subtitle")}
+            {t("apigroup.onboardBody")}
           </TText>
           <Button primary onPress={() => navigate("connections")}>
             {t("apigroup.add")}

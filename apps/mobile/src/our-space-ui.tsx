@@ -666,6 +666,18 @@ function GardenView() {
     void memoryStore.setAutoExtract(v).catch(() => setAutoExtract(!v));
   };
 
+  // P3-4: wilted memories (replaced by newer ones) stay queryable — a
+  // collapsed history section, read-only. Empty when nothing was replaced.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [wilted, setWilted] = useState<MemoryRecord[]>([]);
+  useEffect(() => {
+    if (!historyOpen) return;
+    void memoryStore
+      .listMemories()
+      .then((all) => setWilted(all.filter((m) => m.validTo !== null)))
+      .catch(() => {});
+  }, [historyOpen, mv]);
+
   if (items.length === 0) return <EmptyState text={t("space.garden.empty")} />;
 
   return (
@@ -762,6 +774,22 @@ function GardenView() {
                       >
                         {m.content}
                       </TText>
+                      {/* P2-4: sprouting memories can be confirmed right here —
+                          "记对了" keeps the memory without her having to chat. */}
+                      {sec.confidence === "sprouting" && (
+                        <PressableScale
+                          onPress={() =>
+                            void (async () => {
+                              await memoryStore.confirmMemory(m.id, "user");
+                              setMv((x) => x + 1);
+                            })()
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={t("space.garden.confirmRight") as string}
+                        >
+                          <Check size={16} color={colors.text} strokeWidth={2} />
+                        </PressableScale>
+                      )}
                       <DeleteEntryButton onDelete={() => memoryStore.deleteMemory(m.id)} />
                     </View>
                   </StaggerIn>
@@ -770,6 +798,60 @@ function GardenView() {
             </View>
           );
         })}
+        {/* History: replaced memories, collapsed by default. */}
+        <PressableScale
+          onPress={() => setHistoryOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={t("space.garden.history") as string}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+            <View
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: radii.lg,
+                backgroundColor: colors.sky,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <History size={16} color={colors.muted} strokeWidth={1.8} />
+            </View>
+            <TText style={{ color: colors.text, fontSize: 14, fontWeight: "700", letterSpacing: 0.5 }}>
+              {t("space.garden.history")}
+            </TText>
+            <TText style={{ color: colors.muted, fontSize: 12 }}>
+              {historyOpen ? t("agent.collapse") : t("common.expand")}
+            </TText>
+          </View>
+        </PressableScale>
+        {historyOpen && (
+          <View style={{ gap: 10, marginTop: 6 }}>
+            {wilted.length === 0 ? (
+              <TText style={{ color: colors.muted, fontSize: 12.5, marginLeft: 39 }}>
+                {t("space.garden.historyEmpty")}
+              </TText>
+            ) : (
+              wilted.map((m) => (
+                <View
+                  key={m.id}
+                  style={{
+                    backgroundColor: colors.card,
+                    borderRadius: radii.lg,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                    padding: 15,
+                    opacity: 0.75,
+                  }}
+                >
+                  <TText style={{ color: colors.text, fontSize: 13.5, lineHeight: 22 }}>
+                    {m.content}
+                  </TText>
+                </View>
+              ))
+            )}
+          </View>
+        )}
       </View>
     </FadeIn>
   );
