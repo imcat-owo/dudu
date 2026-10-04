@@ -32,6 +32,6 @@ Builder: subagent df931e58. One commit per perspective group on `main`.
 ## Verification log
 - tsc: clean (exit 0, 2026-10-04)
 - biome on touched files: clean (14 files + test files)
-- full mobile test suite: TODO (n tests)
+- full mobile test suite: 530/537 pass; 5 pre-existing environmental failures (esbuild cannot parse node_modules/react-native/index.js) in browser-tools/incognito/local-tools/manuals/vision tests — confirmed on pristine tree via git stash, NOT caused by my changes
 - zero emoji grep: none in touched files
 - i18n parity: voice.testOk/voice.testFail zh+en ok
