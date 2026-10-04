@@ -135,6 +135,9 @@ function toolDeps(over: Record<string, unknown> = {}) {
       meetings,
       trace,
       listApiGroups: () => testGroups(),
+      // P2-8: her_request is mechanically verified against her recent words —
+      // the fixture quotes her real line so the honest path is exercised.
+      recentUserTexts: () => ["你们讨论一下今晚吃什么"],
       generate: async (group: ApiGroup, system: string, user: string) => {
         generated.push({ groupId: group.id, system, user });
         if (failGroups.has(group.id)) throw new Error("model is down");
@@ -689,6 +692,38 @@ describe("group meeting tools", () => {
     assert.ok(id);
     const round = await toolByName(f.tools, "run_meeting_round").run({ meeting_id: id }, ctx);
     assert.ok(round.includes("end_meeting"));
+  });
+
+  it("P2-9: consumed plan serves its own meeting's rounds, not a second meeting", async () => {
+    const { tools } = toolsFor();
+    const plan = planGateStore.propose("thread-1", {
+      title: "开会",
+      reason: "单模型搞不定",
+      steps: [{ title: "讨论" }],
+    });
+    planGateStore.decide(plan.id, true);
+    const out = await startMeeting(tools, { her_request: "", plan_id: plan.id });
+    const id = out.match(/id: (gm_\w+)/)?.[1];
+    assert.ok(id);
+    assert.equal(planGateStore.getPlan(plan.id)?.status, "consumed");
+
+    // Its own rounds keep working (the plan was spent on THIS meeting).
+    const r1 = await toolByName(tools, "run_meeting_round").run({ meeting_id: id }, ctx);
+    assert.ok(r1.includes("第 1 轮结束"));
+
+    // A second meeting may not ride on the same approval.
+    await assert.rejects(
+      toolByName(tools, "start_group_meeting").run(
+        {
+          topic: "再开一个",
+          reason: "她说再讨论一下",
+          members: [{ api_group: "主力" }],
+          plan_id: plan.id,
+        },
+        ctx,
+      ),
+      /consumed/,
+    );
   });
 });
 

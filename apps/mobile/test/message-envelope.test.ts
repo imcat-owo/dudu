@@ -4,8 +4,12 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { extractImageMessage } from "../src/image/protocol.js";
-import { extractEnvelope, extractVoiceMessage } from "../src/message-envelope.js";
+import { extractImageMessage, extractImageMessageStrict } from "../src/image/protocol.js";
+import {
+  extractEnvelope,
+  extractVoiceMessage,
+  extractVoiceMessageStrict,
+} from "../src/message-envelope.js";
 
 const VOICE = JSON.stringify({ type: "voice_message", uri: "file:///a.mp3", duration: 12 });
 
@@ -95,5 +99,37 @@ describe("extractImageMessage (P2-27)", () => {
     assert.ok(hit);
     assert.equal(hit.image.uri, "file:///b.png");
     assert.ok(hit.rest.includes("画好了") && hit.rest.includes("看看"));
+  });
+});
+
+describe("strict envelope variants (P3-14, user path)", () => {
+  const IMG = JSON.stringify({ type: "image_message", uri: "file:///b.png", prompt: "a cat" });
+
+  it("accepts a real whole-message voice envelope", () => {
+    const hit = extractVoiceMessageStrict(VOICE);
+    assert.ok(hit);
+    assert.equal(hit.voice.uri, "file:///a.mp3");
+  });
+
+  it("accepts a real whole-message image envelope", () => {
+    const hit = extractImageMessageStrict(IMG);
+    assert.ok(hit);
+    assert.equal(hit.image.uri, "file:///b.png");
+  });
+
+  it("rejects envelope-shaped JSON pasted inside her prose", () => {
+    const pasted = `看这个例子 ${VOICE} 是不是很好玩`;
+    assert.equal(extractVoiceMessageStrict(pasted), null);
+    // ...while the tolerant AI-side scan still finds it (unchanged behavior).
+    assert.ok(extractVoiceMessage(pasted));
+  });
+
+  it("rejects fenced envelopes on the user path", () => {
+    assert.equal(extractVoiceMessageStrict(`\`\`\`json\n${VOICE}\n\`\`\``), null);
+    assert.equal(extractImageMessageStrict(`\`\`\`json\n${IMG}\n\`\`\``), null);
+  });
+
+  it("tolerates surrounding whitespace only", () => {
+    assert.ok(extractVoiceMessageStrict(`  \n${VOICE}\n `));
   });
 });

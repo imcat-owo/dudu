@@ -83,3 +83,40 @@ test("corrupt storage starts clean, never throws", async () => {
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(store.getOverrideGroupId("t1"), null);
 });
+
+test("P3-4: map is capped — oldest overrides evicted first", async () => {
+  const store = createDialogModelOverrideStore(memBackend());
+  await store.__resetForTests();
+  for (let i = 0; i < 120; i++) await store.setOverride(`t${i}`, "g1");
+  const snap = store.getSnapshot();
+  assert.equal(Object.keys(snap.overrides).length, 100);
+  // Oldest evicted, newest kept.
+  assert.equal(store.getOverrideGroupId("t0"), null);
+  assert.equal(store.getOverrideGroupId("t19"), null);
+  assert.equal(store.getOverrideGroupId("t20"), "g1");
+  assert.equal(store.getOverrideGroupId("t119"), "g1");
+});
+
+test("P3-4: re-setting refreshes recency (not evicted as stale)", async () => {
+  const store = createDialogModelOverrideStore(memBackend());
+  await store.__resetForTests();
+  for (let i = 0; i < 100; i++) await store.setOverride(`t${i}`, "g1");
+  await store.setOverride("t0", "g2"); // touch t0 -> moves to the end
+  await store.setOverride("t100", "g1"); // pushes past the cap
+  assert.equal(store.getOverrideGroupId("t0"), "g2");
+  assert.equal(store.getOverrideGroupId("t1"), null); // t1 was oldest untouched
+});
+
+test("P3-4: pruneOverrides drops dead thread ids", async () => {
+  const store = createDialogModelOverrideStore(memBackend());
+  await store.__resetForTests();
+  await store.setOverride("alive1", "g1");
+  await store.setOverride("dead1", "g1");
+  await store.setOverride("alive2", "g2");
+  const dropped = await store.pruneOverrides(["alive1", "alive2"]);
+  assert.equal(dropped, 1);
+  assert.equal(store.getOverrideGroupId("dead1"), null);
+  assert.equal(store.getOverrideGroupId("alive1"), "g1");
+  // No-op when nothing is stale.
+  assert.equal(await store.pruneOverrides(["alive1", "alive2"]), 0);
+});
