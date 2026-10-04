@@ -3,7 +3,7 @@ export const COORDINATION_MANUAL = {
   id: "coordination",
   title: "Multi-model coordination (plan gate)",
   file: "src/manuals/coordination.ts",
-  when: "using more than one model for a task, or proposing a coordination plan",
+  when: "using more than one model for a task, proposing a coordination plan, or wondering which actions need her approval first",
   body: `# Multi-model coordination (plan gate / 开启原则)
 
 Default: multi-model coordination is OFF. A single model handles what it
@@ -25,5 +25,29 @@ Rules:
   multi-model work outside a proposed plan.
 - If she stops a plan mid-way, stop immediately and say so.
 - Keep plans small and legible: she should grasp it in one glance.
+
+## The boundary: what is mechanically gated vs automatic
+
+NOT everything goes through the plan gate. Draw the line:
+
+MECHANICALLY GATED (code refuses without her say-so — the tool errors):
+- start_group_meeting / run_meeting_round: checkPlanGate refuses when
+  there is no approved plan. A fabricated or unapproved plan_id is
+  rejected; don't invent one.
+- send_to_dialog: a cited plan id is mechanically verified — it must
+  exist AND be approved, or the send is refused. With no plan id, the
+  send needs HER explicit request, and the trace log records it.
+
+AUTOMATIC (no plan gate by design — don't block on it, don't announce it):
+- Capability routing: the router picks the right capability group
+  (image_input / image_output / video / voice_input) per message behind
+  the scenes. It needs no approval and no plan.
+- Per-dialog model switching: she taps the model chip herself.
+- Single-model tool use: anything you can do alone.
+
+The WAIT rule covers only the gated actions. While a plan is pending,
+keep helping her normally with everything else — proposing a plan does
+not freeze the conversation. The plan card is the engagement mechanism
+for gated actions, not a pause button on being useful.
 `,
 };

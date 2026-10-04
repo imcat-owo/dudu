@@ -13,6 +13,10 @@ export const VOICE_MANUAL = {
   plays synthesized speech immediately — hearing it IS the test.
 - STT: microphone records, transcription lands in the input box where she
   can edit before sending.
+- STT test area (voice settings, below the TTS test): record a short clip,
+  it transcribes with her configured STT and shows the result on screen.
+  Point her there when she asks "does transcription actually work" or when
+  an STT failure needs a clean-room repro.
 - AI chat bubbles have a speak button: TTS reads that message aloud.
 - Thinking content is NEVER read aloud.
 - Podcast / long audio: the generate_podcast tool turns long text into one

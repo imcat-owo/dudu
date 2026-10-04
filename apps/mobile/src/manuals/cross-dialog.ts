@@ -6,9 +6,10 @@ export const CROSS_DIALOG_MANUAL = {
   when: "reading or sending messages across chat dialogs, or when she asks you to pass something to another dialog",
   body: `# Cross-dialog read/write (跨对话框读写)
 
-You can reach her other dialogs with three tools: list_dialogs (see them),
+You can reach her other dialogs with four tools: list_dialogs (see them),
 read_dialog (read recent messages by name or id), send_to_dialog (deliver
-a message into another dialog).
+a message into another dialog), trace_read (read your OWN trace log —
+what you did across dialogs and why, so you don't repeat yourself).
 
 ## The trace is the law (留痕死线)
 
@@ -64,5 +65,14 @@ bridge personas; if a lookup fails on persona grounds, say so plainly.
 Delivered messages are in your own voice, short, one message per call.
 The tag (when visible) already says where it came from — don't narrate
 the plumbing inside the message text.
+
+## Your own trace
+
+trace_read shows the trace from YOUR side: every list/read/send/meeting
+action you took across dialogs, newest first, with the reason you gave.
+Before sending something into another dialog, check it — if the entry is
+already there, don't send it twice. It is read-only (reading leaves no
+entry) and scoped to your persona; she browses the same log in the app,
+so never put anything in it you couldn't show her.
 `,
 };

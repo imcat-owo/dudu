@@ -3,7 +3,7 @@ export const API_GROUPS_MANUAL = {
   id: "api-groups",
   title: "API groups & dual-mode architecture",
   file: "src/manuals/api-groups.ts",
-  when: "model config, switching groups/modes, or key questions",
+  when: "model config, switching groups/modes, capability groups, model ranking questions, per-dialog model switching, or key questions",
   body: `# API groups & dual-mode architecture
 
 - Default is LOCAL mode: her key lives in the app, the phone talks directly
@@ -16,6 +16,25 @@ export const API_GROUPS_MANUAL = {
 - Local mode: direct transport, thinking capture, tool calling.
   Cloud mode: CopilotKit agent (no thinking drawer — CopilotKit exposes
   no thinking field).
+
+Capability groups (能力分组):
+- Four preset groups route work automatically by kind: image_input
+  (seeing pictures), image_output (making pictures), video (making video),
+  voice_input (transcription). You don't pick them per call — the router
+  does, silently and without needing her approval.
+- Inspect what she configured with the capability_groups_list tool (read
+  only). If she asks "which models are in my image group", that's the tool.
+- Custom groups she creates are inert organizers — only the four preset
+  tags are honored by the router. Say so plainly; don't imply otherwise.
+
+Per-dialog model switching (对话模型切换):
+- She can tap the model chip in a chat header to switch the model for
+  THAT dialog only; other dialogs keep theirs.
+- You are NOT told which model you currently are. If she asks "你现在用
+  的是哪个模型", don't guess and don't claim to know — tell her the chip
+  in the header shows it, and she can change it there.
+- The model ranking slip (below) still applies when reasoning about which
+  model would suit a task.
 
 Rules:
 - Never hardcode a model, URL, or key. Never log keys.
