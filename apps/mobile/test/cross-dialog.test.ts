@@ -238,12 +238,13 @@ describe("cross-dialog tools", () => {
     return tool.run(args, { authorize: async () => true });
   }
 
-  it("exposes exactly the three tools with manual ids", () => {
+  it("exposes exactly the four tools with manual ids", () => {
     const { tools } = toolsFor(fakeStorage());
     assert.deepEqual(tools.map((t) => t.name).sort(), [
       "list_dialogs",
       "read_dialog",
       "send_to_dialog",
+      "trace_read",
     ]);
     for (const t of tools) assert.equal(t.manualId, "cross-dialog");
   });
@@ -443,5 +444,69 @@ describe("CrossDialogVisibilityStore", () => {
     };
     const v = new CrossDialogVisibilityStore(bad);
     assert.equal(await v.isSendTagVisible("aaa"), true);
+  });
+});
+
+describe("trace_read (AI-use P3-2)", () => {
+  function toolsFor(s: CrossDialogStorage, threadId = "current") {
+    const o = toolOpts(s, threadId);
+    return { tools: createCrossDialogTools(o), ...o };
+  }
+  async function run(
+    tools: ReturnType<typeof createCrossDialogTools>,
+    name: string,
+    args: Record<string, unknown>,
+  ) {
+    const tool = tools.find((t) => t.name === name);
+    assert.ok(tool, `tool ${name} exists`);
+    return tool.run(args, { authorize: async () => true });
+  }
+
+  it("reports empty when nothing happened yet", async () => {
+    const { tools } = toolsFor(fakeStorage());
+    const out = (await run(tools, "trace_read", {})) as string;
+    assert.ok(out.includes("empty"), out);
+  });
+
+  it("shows the AI's own sends newest-first", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "other", [{ role: "user", content: "hi" }]);
+    const { tools } = toolsFor(s);
+    await run(tools, "send_to_dialog", {
+      dialog: "other",
+      message: "hello there",
+      reason: "她亲口让我转告",
+    });
+    const out = (await run(tools, "trace_read", { limit: 5 })) as string;
+    assert.ok(out.includes("send"), out);
+    assert.ok(out.includes("hello there"), out);
+    assert.ok(out.includes("她亲口让我转告"), out);
+  });
+
+  it("reading the trace leaves no trace entry (read-only)", async () => {
+    const s = fakeStorage();
+    const { tools, trace } = toolsFor(s);
+    await run(tools, "trace_read", {});
+    await run(tools, "trace_read", { limit: 1 });
+    assert.equal((await trace.list()).length, 0);
+  });
+
+  it("hides entries from other personas", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "other", [{ role: "user", content: "hi" }]);
+    const { tools, trace } = toolsFor(s);
+    // Simulate an entry recorded under a different persona.
+    await trace.append({
+      action: "send",
+      fromThreadId: "current",
+      fromName: "我",
+      toThreadId: "other",
+      toName: "other",
+      summary: "other persona's business",
+      reason: "other",
+      personaId: "someone-else",
+    });
+    const out = (await run(tools, "trace_read", {})) as string;
+    assert.ok(!out.includes("other persona's business"), out);
   });
 });

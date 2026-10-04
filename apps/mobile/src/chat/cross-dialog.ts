@@ -394,7 +394,7 @@ function formatDialogList(dialogs: DialogInfo[], currentId: string): string {
 }
 
 /**
- * Build the three cross-dialog tools. Pass the current thread id so the
+ * Build the four cross-dialog tools. Pass the current thread id so the
  * tools know which dialog the AI is talking in (for the trace + the
  * "don't send to yourself" guard).
  */
@@ -498,6 +498,34 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
         if (messages.length === 0) return `Dialog "${dialog.name}" has no messages yet.`;
         const lines = messages.map((m) => `${m.role === "user" ? "她" : "嘟嘟"}：${m.text}`);
         return `Latest ${messages.length} messages in "${dialog.name}":\n${lines.join("\n")}`;
+      },
+    },
+    {
+      name: "trace_read",
+      description:
+        "Read YOUR OWN cross-dialog trace log (newest first): what you listed, read, or sent across dialogs and why. Use before acting again to avoid duplicates ('did I already tell that dialog?'). Read-only — reading leaves no trace entry, and it only shows entries from your persona.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: {
+            type: "number",
+            description: "How many recent entries to read (default 20, max 100).",
+          },
+        },
+        additionalProperties: false,
+      },
+      manualId: "cross-dialog",
+      run: async (args) => {
+        const limit = Math.min(Math.max(Math.floor(numArg(args, "limit", 20)), 1), 100);
+        const entries = await opts.trace.list(limit);
+        const mine = entries.filter((e) => e.personaId === personaId);
+        if (mine.length === 0) return "Your trace log is empty — you haven't touched other dialogs yet.";
+        const lines = mine.map((e) => {
+          const when = new Date(e.at).toLocaleString("zh-CN");
+          const where = e.toName ? ` → "${e.toName}"` : "";
+          return `- [${when}] ${e.action}${where}: ${e.summary} (why: ${e.reason})`;
+        });
+        return `Your cross-dialog trace (newest first, ${mine.length}):\n${lines.join("\n")}`;
       },
     },
     {
