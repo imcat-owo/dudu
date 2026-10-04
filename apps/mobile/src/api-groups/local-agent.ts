@@ -25,6 +25,7 @@ import {
 import { createDialogTools } from "../chat/dialog-tools.js";
 import { groupMeetingStore } from "../chat/group-meeting-instance.js";
 import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools.js";
+import { deviceTimeLine } from "../date-time.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools, type ImageOutputBackend } from "../image/tools.js";
 import { getKnowledgeStore } from "../knowledge/instance.js";
@@ -361,11 +362,10 @@ export function buildLocalSystemPrompt(
     }
   }
   // Current time — the AI sees "now" like a person does, no permission needed.
-  // Includes the weekday (design doc §5: he must know what day of the week it is).
-  const now = new Date();
-  parts.push(
-    `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", weekday: "long" })} (Asia/Shanghai).`,
-  );
+  // Device timezone (audit round 2, AI-use P2-1): the prompt and the
+  // get_current_time tool must report the SAME clock, or she travels and
+  // the AI holds two contradictory "nows".
+  parts.push(deviceTimeLine());
   return parts.join("\n");
 }
 
@@ -598,7 +598,13 @@ export function createLocalAgent(opts: {
   }
 
   let messages: LocalChatMessage[] = [];
+  let lastReply: { id: string; content: string } | null = null;
   let running = false;
+  // P2-5: lastReply holds the most recent assistant reply, re-anchored if a
+  // context tool wipes the message array mid-turn. Without this,
+  // compress_context replaces the array and the reply renderReply keyed by
+  // replyId silently vanishes — streamed tokens are lost from UI/storage
+  // while the turn "succeeds".
   // Tool currently executing (null when idle). Powers the avatar's
   // "making something" state — set around registry.execute, cleared after.
   let activeToolName: string | null = null;
@@ -663,6 +669,10 @@ export function createLocalAgent(opts: {
         },
       ];
       emit();
+      // P2-6: persist on every add, not only at the end of runTurn. If
+      // runTurn throws early (!group) the finally persist is skipped and a
+      // killed app loses the user's message. Incognito-gated inside persist.
+      persist(messages);
     },
     async runTurn(): Promise<void> {
       const group = opts.getGroup();
@@ -894,6 +904,17 @@ export function createLocalAgent(opts: {
               role: m.role as "user" | "assistant" | "system",
               content: m.content,
             }));
+            // P2-5: a compaction (non-empty replacement) must not silently
+            // drop the reply this turn produced — re-anchor it with its
+            // current content so the turn result survives in UI/storage.
+            // An explicit full clear ([]) is honored as-is: she asked for a
+            // fresh start, and the next reply will be a new message.
+            if (msgs.length > 0 && lastReply && !messages.some((m) => m.id === lastReply!.id)) {
+              messages = [
+                ...messages,
+                { id: lastReply.id, role: "assistant", content: lastReply.content },
+              ];
+            }
             emit();
             persist(messages);
           },
@@ -1277,6 +1298,7 @@ export function createLocalAgent(opts: {
         const renderReply = () => {
           const content = noticeText ? `${noticeText}\n\n${replyText}` : replyText;
           messages = messages.map((m) => (m.id === replyId ? { ...m, content } : m));
+          lastReply = { id: replyId, content }; // P2-5: re-anchor target
           emit();
         };
 
