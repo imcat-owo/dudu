@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ConversationQueue } from "../src/conversation-queue.ts";
+import { ConversationQueue, canFlushQueue } from "../src/conversation-queue.ts";
 
 test("follow-ups sent during a reply run once, in order, after persistence finishes", async () => {
   const queue = new ConversationQueue();
@@ -72,3 +72,26 @@ function deferred() {
   });
   return { promise, resolve };
 }
+
+test("P1-7: canFlushQueue blocks when run() would throw before addMessage", () => {
+  const ok = {
+    loaded: true,
+    isReady: true,
+    runLocked: false,
+    agentRunning: false,
+    mode: "local",
+    hasActiveGroup: true,
+  };
+  assert.equal(canFlushQueue(ok), true);
+  // Pre-existing notReady conditions.
+  assert.equal(canFlushQueue({ ...ok, loaded: false }), false);
+  assert.equal(canFlushQueue({ ...ok, isReady: false }), false);
+  assert.equal(canFlushQueue({ ...ok, runLocked: true }), false);
+  assert.equal(canFlushQueue({ ...ok, agentRunning: true }), false);
+  // P1-7 regression: local mode with no active group — run() throws
+  // apigroup.noActive before agent.addMessage, and flush() pops first,
+  // so the message must stay queued instead of being silently lost.
+  assert.equal(canFlushQueue({ ...ok, hasActiveGroup: false }), false);
+  // Cloud mode has no active-group requirement.
+  assert.equal(canFlushQueue({ ...ok, mode: "cloud", hasActiveGroup: false }), true);
+});

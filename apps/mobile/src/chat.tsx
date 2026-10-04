@@ -54,7 +54,7 @@ import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
 import { computeCanSend } from "./chat-send-gate";
 import { BrowserThreadCard } from "./computer";
-import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
+import { ConversationQueue, canFlushQueue, type QueuedMessage } from "./conversation-queue";
 import { TText } from "./font";
 import { GlassView } from "./glass";
 import { t } from "./i18n";
@@ -466,9 +466,20 @@ export function ChatScreen({
     [run],
   );
   const flush = useCallback(() => {
-    if (!loaded || !isReady || runLock.current || agent.isRunning) return;
+    // P1-7: never pop a message the run is guaranteed to drop pre-addMessage.
+    if (
+      !canFlushQueue({
+        loaded,
+        isReady,
+        runLocked: runLock.current,
+        agentRunning: agent.isRunning,
+        mode,
+        hasActiveGroup: !!activeGroup,
+      })
+    )
+      return;
     void queue.flush(runQueued).catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [agent, isReady, loaded, queue, runQueued]);
+  }, [agent, isReady, loaded, mode, activeGroup, queue, runQueued]);
   const enqueue = useCallback(
     (text: string) => {
       queue.enqueue({ id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text });
