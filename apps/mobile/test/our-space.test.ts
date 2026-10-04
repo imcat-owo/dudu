@@ -7,6 +7,7 @@ import { buildHerMoodSection } from "../src/our-space/her-mood-section.js";
 import { buildNicknameSection } from "../src/our-space/nickname-section.js";
 import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
 import { createOurSpaceTools } from "../src/our-space/tools.js";
+import { getOnThisDay } from "../src/our-space/on-this-day.js";
 
 function fakeStorage(): OurSpaceStorage {
   const map = new Map<string, string>();
@@ -111,9 +112,9 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 21 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 24 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 21);
+    assert.equal(tools.length, 24);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
@@ -126,9 +127,12 @@ describe("our-space tools", () => {
       "diary_read",
       "timeline_add",
       "timeline_read",
+      "on_this_day_read",
       "tell_later_add",
       "tell_later_read",
       "tell_later_done",
+      "leave_note",
+      "left_note_read",
       "feed_post",
       "feed_read",
       "feed_reply",
@@ -494,5 +498,106 @@ describe("anniversary-section: buildAnniversarySection", () => {
     );
     // eslint-disable-next-line no-control-regex
     assert.doesNotMatch(s, /[\u{1F000}-\u{1FAFF}\u2600-\u{27BF}]/u);
+  });
+});
+
+describe("on-this-day", () => {
+  // Fixed "now": 2026-10-04, to make date math deterministic.
+  const NOW = new Date(2026, 9, 4, 12, 0, 0);
+
+  it("finds diary entries from the same month-day in past years", () => {
+    const diary = [
+      { id: "1", date: "2025-10-04", title: "去年的今天", content: "我们去吃了火锅", createdAt: 0 },
+      { id: "2", date: "2025-10-05", title: "不是今天", content: "x", createdAt: 0 },
+      { id: "3", date: "2026-10-04", title: "今年的今天", content: "x", createdAt: 0 },
+    ];
+    const items = getOnThisDay(diary, [], [], NOW);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].yearsAgo, 1);
+    assert.equal(items[0].kind, "diary");
+    assert.equal(items[0].title, "去年的今天");
+  });
+
+  it("finds timeline events from past years", () => {
+    const timeline = [
+      {
+        id: "1",
+        timestamp: new Date(2024, 9, 4, 20, 0, 0).getTime(),
+        title: "两年前",
+        description: "第一次看电影",
+        kind: "moment" as const,
+      },
+    ];
+    const items = getOnThisDay([], timeline, [], NOW);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].yearsAgo, 2);
+    assert.equal(items[0].kind, "timeline");
+  });
+
+  it("finds anniversaries from past years", () => {
+    const anniversaries = [
+      { id: "1", title: "相识纪念日", date: "2025-10-04", description: "", createdAt: 0 },
+    ];
+    const items = getOnThisDay([], [], anniversaries, NOW);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].yearsAgo, 1);
+    assert.equal(items[0].kind, "anniversary");
+  });
+
+  it("sorts by yearsAgo ascending", () => {
+    const diary = [
+      { id: "1", date: "2024-10-04", title: "两年前", content: "x", createdAt: 0 },
+      { id: "2", date: "2025-10-04", title: "一年前", content: "x", createdAt: 0 },
+    ];
+    const items = getOnThisDay(diary, [], [], NOW);
+    assert.equal(items.length, 2);
+    assert.equal(items[0].yearsAgo, 1);
+    assert.equal(items[1].yearsAgo, 2);
+  });
+
+  it("returns empty when nothing matches", () => {
+    const items = getOnThisDay([], [], [], NOW);
+    assert.equal(items.length, 0);
+  });
+});
+
+describe("left notes", () => {
+  it("leave, list unseen, mark seen", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    assert.deepEqual(await s.getUnseenNotes(), []);
+    const n1 = await s.leaveNote("晚安，想你了");
+    assert.equal(n1.seen, false);
+    assert.equal(n1.text, "晚安，想你了");
+    const unseen = await s.getUnseenNotes();
+    assert.equal(unseen.length, 1);
+    await s.markNoteSeen(n1.id);
+    assert.deepEqual(await s.getUnseenNotes(), []);
+  });
+
+  it("rejects empty note text", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    await assert.rejects(() => s.leaveNote("   "), /required/);
+  });
+
+  it("leave_note and left_note_read tools work", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const tools = createOurSpaceTools(s);
+    const leave = tools.find((t) => t.name === "leave_note")!;
+    const read = tools.find((t) => t.name === "left_note_read")!;
+    assert.equal(await read.run({}, ctx), "No notes left for her yet.");
+    await leave.run({ text: "早安" }, ctx);
+    const out = await read.run({}, ctx);
+    assert.match(out, /早安/);
+    assert.match(out, /unseen/);
+  });
+
+  it("on_this_day_read tool works", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    await s.addDiary("去年的今天", "我们去吃了火锅", "2025-10-04");
+    const tools = createOurSpaceTools(s);
+    const tool = tools.find((t) => t.name === "on_this_day_read")!;
+    // Note: tool uses real current date, so we just check it runs without error
+    const out = await tool.run({}, ctx);
+    assert.equal(typeof out, "string");
   });
 });

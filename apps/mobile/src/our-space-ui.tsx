@@ -27,6 +27,7 @@ import {
   Heart,
   History,
   Images,
+  MailOpen,
   MessageCircle,
   MessageCircleQuestion,
   MoonStar,
@@ -62,12 +63,14 @@ import type {
   FeedPost,
   FeedReply,
   HerMood,
+  LeftNote,
   MemoryConfidence,
   TellLaterItem,
   TimelineEvent,
   WorkItem,
   WorkType,
 } from "./our-space/store";
+import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
 import { SoraAmbient } from "./sora-ambient";
@@ -1457,6 +1460,81 @@ function WorksPage() {
 
 // ---- v2: anniversaries ----
 
+// ---- On this day: what happened on today's month-day in past years ----
+function OnThisDayView() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [items, setItems] = useState<OnThisDayItem[]>([]);
+
+  useEffect(() => {
+    void Promise.all([
+      ourSpaceStore.listDiary(200),
+      ourSpaceStore.listTimeline(200),
+      ourSpaceStore.listAnniversaries(),
+    ]).then(([diary, timeline, anniversaries]) => {
+      setItems(getOnThisDay(diary, timeline, anniversaries));
+    });
+  }, [v]);
+
+  if (items.length === 0) return null;
+
+  const kindLabel: Record<OnThisDayItem["kind"], string> = {
+    diary: t("space.diary.title"),
+    timeline: t("space.timeline.title"),
+    anniversary: t("space.anniversary.title"),
+  };
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <TText
+        style={{
+          color: colors.muted,
+          fontSize: 13,
+          fontWeight: "700",
+          marginBottom: 12,
+          letterSpacing: 0.4,
+        }}
+      >
+        {t("space.onThisDay.title")}
+      </TText>
+      {items.map((item, i) => (
+        <StaggerIn key={`${item.kind}-${item.originalDate}-${i}`} index={i}>
+          <SoftCard>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: tokens.accent.bg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <History size={24} color={tokens.accent.fg} strokeWidth={1.6} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TText style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+                  {item.title}
+                </TText>
+                {item.subtitle ? (
+                  <TText style={{ color: colors.muted, fontSize: 12.5, marginTop: 2 }}>
+                    {item.subtitle}
+                  </TText>
+                ) : null}
+                <TText style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>
+                  {t("space.onThisDay.yearsAgo", { n: item.yearsAgo })} · {kindLabel[item.kind]}
+                </TText>
+              </View>
+            </View>
+          </SoftCard>
+        </StaggerIn>
+      ))}
+    </View>
+  );
+}
+
 function AnniversaryPage() {
   const v = useOurSpaceVersion();
   const colors = useColors();
@@ -1526,6 +1604,7 @@ function AnniversaryPage() {
           );
         })
       )}
+      <OnThisDayView />
       <TText
         style={{
           color: colors.muted,
@@ -1543,6 +1622,83 @@ function AnniversaryPage() {
 }
 
 // ---- v2 main screen ----
+
+// ---- Notes he left for her: shown first when she opens Our Space ----
+function LeftNoteView() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [notes, setNotes] = useState<LeftNote[]>([]);
+
+  useEffect(() => {
+    void ourSpaceStore.getUnseenNotes().then(setNotes);
+  }, [v]);
+
+  if (notes.length === 0) return null;
+
+  const note = notes[0];
+  const dismiss = () => {
+    void ourSpaceStore.markNoteSeen(note.id);
+  };
+
+  return (
+    <FadeIn>
+      <View style={{ marginBottom: 18 }}>
+        <SoftCard>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: tokens.accent.bg,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MailOpen size={22} color={tokens.accent.fg} strokeWidth={1.6} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <TText
+                style={{
+                  color: colors.muted,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.5,
+                  marginBottom: 4,
+                }}
+              >
+                {t("space.leftNote.title")}
+              </TText>
+              <TText style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+                {note.text}
+              </TText>
+            </View>
+          </View>
+          <Pressable
+            onPress={dismiss}
+            style={{
+              marginTop: 14,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: tokens.accent.bg,
+              alignItems: "center",
+            }}
+          >
+            <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "700" }}>
+              {t("space.leftNote.dismiss")}
+            </TText>
+          </Pressable>
+        </SoftCard>
+        {notes.length > 1 && (
+          <TText style={{ color: colors.muted, fontSize: 11, marginTop: 8, textAlign: "center" }}>
+            +{notes.length - 1}
+          </TText>
+        )}
+      </View>
+    </FadeIn>
+  );
+}
 
 export function OurSpaceScreen() {
   const [page, setPage] = useState<SpacePage>({ type: "home" });
@@ -1587,6 +1743,7 @@ export function OurSpaceScreen() {
         contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
+        <LeftNoteView />
         <FadeIn>
           <CoupleHeader />
         </FadeIn>

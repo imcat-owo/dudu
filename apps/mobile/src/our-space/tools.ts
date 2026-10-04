@@ -10,6 +10,7 @@
  */
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
+import { getOnThisDay } from "./on-this-day.js";
 import type { OurSpaceStore, TimelineKind } from "./store.js";
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -249,6 +250,29 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
           .join("\n");
       },
     },
+    {
+      name: "on_this_day_read",
+      description:
+        "What happened on this date in previous years (去年的今天): diary entries, timeline moments, and anniversaries from the same month-day in past years. Use to surprise her — 'Do you remember what we did on this day last year?' Bring it up naturally when there is something worth remembering.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const [diary, timeline, anniversaries] = await Promise.all([
+          store.listDiary(200),
+          store.listTimeline(200),
+          store.listAnniversaries(),
+        ]);
+        const items = getOnThisDay(diary, timeline, anniversaries);
+        if (items.length === 0)
+          return "Nothing recorded on this date in previous years yet. Moments you record now will resurface here next year.";
+        return items
+          .map(
+            (i) =>
+              `— ${i.yearsAgo} year${i.yearsAgo > 1 ? "s" : ""} ago today [${i.kind}] ${i.title}${i.subtitle ? `\n  ${i.subtitle}` : ""}`,
+          )
+          .join("\n");
+      },
+    },
 
     // ---- Tell-her-later ----
     {
@@ -313,6 +337,45 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const item = await store.completeTellLater(id, true);
         if (!item) throw new ToolError(`No tell-later item with id "${id}".`);
         return "Checked off.";
+      },
+    },
+
+    // ---- Notes he left for her ----
+    {
+      name: "leave_note",
+      description:
+        "Leave a note for her (给他留东西). She will see it the next time she opens Our Space — the first thing she sees. Use for sweet surprises, things you want her to wake up to, or a trace that says 'I was here'. Keep it short and warm. Different from tell_later (a queue she checks off): this is a greeting she discovers.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "The note text. Short, warm, human." },
+        },
+        required: ["text"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const text = strArg(args, "text");
+        if (!text) throw new ToolError("Missing required argument: text.");
+        await store.leaveNote(text);
+        return "Note left for her. She will see it when she opens Our Space.";
+      },
+    },
+    {
+      name: "left_note_read",
+      description:
+        "Read the notes you left for her, including whether she has seen them. Use to check if she saw your note.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const notes = await store.listLeftNotes();
+        if (notes.length === 0) return "No notes left for her yet.";
+        return notes
+          .map(
+            (n) =>
+              `— [${n.seen ? "seen" : "unseen"}] ${n.text}\n  Left: ${fmtDate(n.createdAt)}${n.seenAt ? ` · Seen: ${fmtDate(n.seenAt)}` : ""} (id: ${n.id})`,
+          )
+          .join("\n");
       },
     },
 

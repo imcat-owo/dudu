@@ -41,6 +41,21 @@ export interface TellLaterItem {
   doneAt?: number;
 }
 
+/**
+ * A note HE left for her. Shown the next time she opens Our Space —
+ * the trigger is "she arrived", not a timer. Distinct from tellLater
+ * (a queue she checks off): this is a greeting, a surprise, a trace
+ * that says "he was here".
+ */
+export interface LeftNote {
+  id: string;
+  text: string;
+  createdAt: number;
+  /** She has seen it. */
+  seen: boolean;
+  seenAt?: number;
+}
+
 export interface AiStatus {
   text: string;
   detail: string;
@@ -123,6 +138,8 @@ const KEYS = {
   status: "dudu.ourspace.v1.status",
   /** v1: her mood, as she told him (null = never recorded). */
   herMood: "dudu.ourspace.v1.herMood",
+  /** v1: notes he left for her (she sees them when she opens Our Space). */
+  leftNotes: "dudu.ourspace.v1.leftNotes",
   // v2 additions (new keys — v1 data untouched)
   couple: "dudu.ourspace.v2.couple",
   feed: "dudu.ourspace.v2.feed",
@@ -379,6 +396,60 @@ export class OurSpaceStore {
       const next = all.filter((i) => i.id !== id);
       if (next.length === all.length) return false;
       await writeJson(this.storage, KEYS.tellLater, next);
+      this.emit();
+      return true;
+    });
+  }
+
+  // ---- Notes he left for her ----
+
+  async listLeftNotes(): Promise<LeftNote[]> {
+    const all = await readJson<LeftNote[]>(this.storage, KEYS.leftNotes, []);
+    return newestFirst(all, (n) => n.createdAt);
+  }
+
+  /** Notes she hasn't seen yet, oldest first (he left them in order). */
+  async getUnseenNotes(): Promise<LeftNote[]> {
+    const all = await this.listLeftNotes();
+    return all.filter((n) => !n.seen).reverse();
+  }
+
+  /**
+   * Leave a note for her. She'll see it the next time she opens Our Space.
+   * Keep it short, warm, human — a trace that says "he was here".
+   */
+  async leaveNote(text: string): Promise<LeftNote> {
+    return this.exclusive(async () => {
+      const t = text.trim();
+      if (!t) throw new Error("Note text is required.");
+      const note: LeftNote = { id: newId(), text: t, createdAt: Date.now(), seen: false };
+      const all = await readJson<LeftNote[]>(this.storage, KEYS.leftNotes, []);
+      all.push(note);
+      await writeJson(this.storage, KEYS.leftNotes, all);
+      this.emit();
+      return note;
+    });
+  }
+
+  async markNoteSeen(id: string): Promise<LeftNote | null> {
+    return this.exclusive(async () => {
+      const all = await readJson<LeftNote[]>(this.storage, KEYS.leftNotes, []);
+      const note = all.find((n) => n.id === id);
+      if (!note) return null;
+      note.seen = true;
+      note.seenAt = Date.now();
+      await writeJson(this.storage, KEYS.leftNotes, all);
+      this.emit();
+      return note;
+    });
+  }
+
+  async deleteLeftNote(id: string): Promise<boolean> {
+    return this.exclusive(async () => {
+      const all = await readJson<LeftNote[]>(this.storage, KEYS.leftNotes, []);
+      const next = all.filter((n) => n.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.leftNotes, next);
       this.emit();
       return true;
     });
