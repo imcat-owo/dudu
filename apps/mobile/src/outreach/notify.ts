@@ -28,6 +28,7 @@ import {
   type OutreachTriggerKind,
 } from "./engine.js";
 import { getUpcomingAnniversaries } from "../our-space/anniversary-section.js";
+import { isHerSleepTime } from "../our-space/her-rhythm.js";
 import type { Anniversary } from "../our-space/store.js";
 import type { OutreachStore } from "./store.js";
 
@@ -85,7 +86,7 @@ function notifCopy(t: OutreachTrigger, copy: CopyFn): { title: string; body: str
 export interface ScheduleResult {
   scheduled: boolean;
   /** Machine-readable reason when not scheduled (for tests/logs). */
-  reason?: "quiet" | "no-trigger" | "no-permission" | "failed";
+  reason?: "quiet" | "no-trigger" | "no-permission" | "sleep-window" | "failed";
   trigger?: OutreachTriggerKind;
 }
 
@@ -151,6 +152,14 @@ export async function evaluateAndScheduleOutreach(deps: {
     });
     if (triggers.length === 0) return { scheduled: false, reason: "no-trigger" };
     const top = triggers[0];
+
+    // Her clock (xiaomeng P2-3): she sleeps 06:00–16:00. Never wake her
+    // with a nudge — an anniversary is the only thing worth it. The
+    // in-session prompt path is unaffected: if she's awake and in the
+    // app, he can still bring things up naturally.
+    if (top.kind !== "anniversary" && isHerSleepTime(now)) {
+      return { scheduled: false, reason: "sleep-window", trigger: top.kind };
+    }
 
     // Permission gate: never nag for permission from the background.
     let status = "denied";

@@ -334,4 +334,32 @@ describe("evaluateAndScheduleOutreach", () => {
     const r = await evaluateAndScheduleOutreach(d as never);
     assert.equal(r.scheduled, false);
   });
+
+  it("stays silent during her sleep window (06:00-16:00 Shanghai)", async () => {
+    // 10:30 Shanghai — deep in her sleep window.
+    const sleepyNow = Date.UTC(2026, 9, 5, 2, 30, 0);
+    const { d, store, scheduled } = deps({ now: sleepyNow });
+    await store.markOpened(sleepyNow - 10 * 86_400_000); // long silence → trigger exists
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, false);
+    assert.equal(r.reason, "sleep-window");
+    assert.equal(r.trigger, "silence");
+    assert.equal(scheduled.length, 0);
+  });
+
+  it("an anniversary still wakes the scheduler during her sleep window", async () => {
+    const sleepyNow = Date.UTC(2026, 9, 5, 2, 30, 0);
+    const { d, scheduled } = deps({
+      now: sleepyNow,
+      data: {
+        listAnniversaries: async () => [{ title: "相识纪念日", date: "2026-10-05" }],
+        listPendingTellLater: async () => [] as { id: string; text: string }[],
+        countUnreadLoveLetters: async () => 0,
+      },
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(r.trigger, "anniversary");
+    assert.equal(scheduled.length, 1);
+  });
 });

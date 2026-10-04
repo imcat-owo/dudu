@@ -42,6 +42,7 @@ import type { Anniversary } from "../our-space/store.js";
 import { evaluateOutreachTriggers } from "../outreach/engine.js";
 import { buildOutreachSection } from "../outreach/prompt.js";
 import { buildHerMoodSection } from "../our-space/her-mood-section.js";
+import { buildHerRhythmSection } from "../our-space/her-rhythm.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { buildNicknameSection } from "../our-space/nickname-section.js";
 import { taskProgressStore } from "../our-space/task-progress-instance.js";
@@ -1089,6 +1090,11 @@ export function createLocalAgent(opts: {
       } catch {
         // Mood read failure: skip silently, never break the prompt.
       }
+      // Her rhythm (作息感知, xiaomeng P2-3): she sleeps days and lives
+      // nights. One line so he reads "now" on HER clock — the time
+      // injection alone lies about what 4am means to her. PURE builder,
+      // never throws; no store reads needed (fixed schedule, V1).
+      const herRhythmSection = buildHerRhythmSection(Date.now());
       // Nickname awareness: what he calls her / what she calls him.
       // Empty when unset: no noise, no spam.
       let nicknameSection = "";
@@ -1164,6 +1170,7 @@ export function createLocalAgent(opts: {
           skillSection,
           anniversarySection,
           herMoodSection,
+          herRhythmSection,
           nicknameSection,
           outreachSection,
           // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
