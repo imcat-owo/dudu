@@ -130,23 +130,29 @@ export async function extractMemories(
     if (candidates.length === 0) return 0;
 
     // Dedup: skip candidates that closely match an existing current memory.
-    const existing = await store.listCurrent();
+    // The read+dedup+write happens inside the store's serialized write
+    // (addMemoryIfNew) so two overlapping extraction passes can't both
+    // read the same list and both write the same candidate (TOCTOU).
     let added = 0;
     for (const c of candidates) {
       if (looksSensitive(c.content)) continue;
-      // Exact (whitespace-normalized) match is always a dupe.
       const normContent = c.content.replace(/\s+/g, "");
-      if (existing.some((m) => m.content.replace(/\s+/g, "") === normContent)) continue;
-      const similar = searchMemories(existing, c.content, { limit: 3 });
-      const dupe = similar.some((s) => s.score > 2);
-      if (dupe) continue;
-      await store.addMemory(c.content, {
-        category: c.category,
-        confidence: "unsure",
-        source: c.reason || "auto-extracted",
-        actor: "ai",
-      });
-      added++;
+      const rec = await store.addMemoryIfNew(
+        c.content,
+        {
+          category: c.category,
+          confidence: "unsure",
+          source: c.reason || "auto-extracted",
+          actor: "ai",
+        },
+        (existing) => {
+          // Exact (whitespace-normalized) match is always a dupe.
+          if (existing.some((m) => m.content.replace(/\s+/g, "") === normContent)) return true;
+          const similar = searchMemories(existing, c.content, { limit: 3 });
+          return similar.some((s) => s.score > 2);
+        },
+      );
+      if (rec) added++;
     }
     return added;
   } catch {
