@@ -32,6 +32,9 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "tell_later_done",
       "tell_later_delete",
       "leave_note",
+      "left_note_delete",
+      "feed_post",
+      "feed_post_delete",
       "feed_reply",
       "feed_reply_delete",
       "feed_like",
@@ -70,6 +73,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "music_comment_add",
       "music_ours_add",
       "music_memory_add",
+      "dj_queue_add",
       "write_clipboard",
     ];
     for (const name of writes) {

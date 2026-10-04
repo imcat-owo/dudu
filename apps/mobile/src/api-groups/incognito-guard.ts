@@ -36,6 +36,9 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "tell_later_done",
   "tell_later_delete",
   "leave_note",
+  "left_note_delete",
+  "feed_post",
+  "feed_post_delete",
   "feed_reply",
   "feed_reply_delete",
   "feed_like",
@@ -82,6 +85,7 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "music_comment_add",
   "music_ours_add",
   "music_memory_add",
+  "dj_queue_add",
   // Device writes
   "write_clipboard",
 ]);
