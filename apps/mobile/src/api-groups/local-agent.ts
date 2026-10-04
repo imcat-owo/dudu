@@ -37,7 +37,10 @@ import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
-import { buildAnniversarySection } from "../our-space/anniversary-section.js";
+import { buildAnniversarySection, getUpcomingAnniversaries } from "../our-space/anniversary-section.js";
+import type { Anniversary } from "../our-space/store.js";
+import { evaluateOutreachTriggers } from "../outreach/engine.js";
+import { buildOutreachSection } from "../outreach/prompt.js";
 import { buildHerMoodSection } from "../our-space/her-mood-section.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { buildNicknameSection } from "../our-space/nickname-section.js";
@@ -558,6 +561,11 @@ export function createLocalAgent(opts: {
    * (so UI and AI tools see the same data); injectable for tests.
    */
   ourSpaceStore?: import("../our-space/store.js").OurSpaceStore;
+  /**
+   * Proactive outreach store. Defaults to the shared AsyncStorage-backed
+   * singleton; injectable for tests.
+   */
+  outreachStore?: import("../outreach/store.js").OutreachStore;
   /**
    * Music room store. Defaults to the shared AsyncStorage-backed singleton
    * (so UI and AI tools see the same data); injectable for tests.
@@ -1090,6 +1098,48 @@ export function createLocalAgent(opts: {
       } catch {
         // Couple read failure: skip silently, never break the prompt.
       }
+      // Proactive outreach (主动触达) surfacing: when the trigger engine
+      // finds something genuinely worth mentioning, one quiet line rides
+      // the prompt so he brings it up naturally in conversation. Empty
+      // string when nothing is near — the petTouchNote pattern.
+      let outreachSection = "";
+      try {
+        // Dynamic import: the singleton is AsyncStorage-backed (RN), and
+        // local-agent must stay importable in node tests. Tests inject
+        // opts.outreachStore and never touch this branch.
+        const oStore =
+          opts.outreachStore ?? (await import("../outreach/instances.js")).outreachStore;
+        const frequency = await oStore.getFrequency();
+        if (frequency !== "quiet") {
+          const oAnniversaries = await (opts.ourSpaceStore ?? ourSpaceStore)
+            .listAnniversaries()
+            .catch(() => [] as Anniversary[]);
+          const oTellLater = await (opts.ourSpaceStore ?? ourSpaceStore)
+            .listTellLater(false)
+            .catch(() => [] as { id: string; text: string; done: boolean }[]);
+          const oLoveLetters = await (opts.ourSpaceStore ?? ourSpaceStore)
+            .getUnseenLoveLetters()
+            .catch(() => [] as unknown[]);
+          const oUpcoming = getUpcomingAnniversaries(oAnniversaries, new Date(), 30).map((a) => ({
+            title: a.title,
+            daysUntil: a.daysUntil,
+          }));
+          const oTriggers = evaluateOutreachTriggers({
+            frequency,
+            now: Date.now(),
+            anniversaries: oUpcoming,
+            pendingTellLater: oTellLater
+              .filter((i) => !i.done)
+              .map((i) => ({ id: i.id, text: i.text })),
+            unreadLoveLetters: oLoveLetters.length,
+            lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
+            lastOutreachAt: await oStore.getLastOutreachAt().catch(() => ({})),
+          });
+          outreachSection = buildOutreachSection(oTriggers);
+        }
+      } catch {
+        // Outreach eval failure: skip silently, never break the prompt.
+      }
       // Intelligent API adaptation: resolve effective tools/thinking state.
       // Precedence: her manual override (group) → learned profile → auto
       // (optimistic ON — her rule: everything ON unless proven impossible).
@@ -1115,6 +1165,7 @@ export function createLocalAgent(opts: {
           anniversarySection,
           herMoodSection,
           nicknameSection,
+          outreachSection,
           // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
           // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
           buildRankingSlip(capSnap.rankingMode),
