@@ -22,11 +22,16 @@ export class EdgeTtsError extends Error {
   }
 }
 
-const WS_URL =
-  "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491F74";
+/**
+ * Microsoft's public trusted client token for the Edge ReadAloud service.
+ * This is NOT a private secret — it is a well-known constant shipped by
+ * every edge-tts client (browsers, open-source libraries). No key needed.
+ */
+const EDGE_TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491F74";
 
-const VOICE_LIST_URL =
-  "https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491F74";
+const WS_URL = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${EDGE_TRUSTED_CLIENT_TOKEN}`;
+
+const VOICE_LIST_URL = `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=${EDGE_TRUSTED_CLIENT_TOKEN}`;
 
 function uuid(): string {
   return "xxxxxxxxxxxx4xxxyxxxxxxxxxxxx".replace(/[xy]/g, (c) => {

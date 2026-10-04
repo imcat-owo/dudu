@@ -35,7 +35,7 @@ export function createContextTools(ctx: ContextManager): LocalTool[] {
     {
       name: "compress_context",
       description:
-        "Compress the chat context: summarize the conversation so far into key points, then replace the full history with the summary. Use when she says '压缩上下文'. The summary preserves: decisions made, preferences stated, ongoing tasks, and important facts. After calling, output the summary as your next message so it's saved in the fresh context.",
+        "Compress the chat context: summarize the conversation so far into key points, then replace the full history with the summary. Use when she says '压缩上下文'. The summary preserves: decisions made, preferences stated, ongoing tasks, and important facts. The summary is saved as your own note (assistant role) — never as her message. After calling, output a brief confirmation to her.",
       parameters: {
         type: "object",
         properties: {
@@ -54,13 +54,17 @@ export function createContextTools(ctx: ContextManager): LocalTool[] {
         if (!summary) throw new ToolError("summary is required.");
         ctx.setMessages([
           {
-            role: "user",
+            // Assistant role, NOT user: this is the AI's own compression
+            // note. A "user" role here would fabricate a message in her
+            // bubble; a "system" role would be dropped from the wire and
+            // the summary would be lost.
+            role: "assistant",
             content: `[Context compressed. Summary of previous conversation:]\n${summary}`,
           },
         ]);
         return (
-          "Context compressed. The full history was replaced with your summary. " +
-          "Output a brief confirmation to her."
+          "Context compressed. The full history was replaced with your summary, " +
+          "saved as your own note. Output a brief confirmation to her."
         );
       },
     },

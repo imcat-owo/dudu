@@ -197,7 +197,9 @@ export function createThemeTools(storage: ThemeStorage): LocalTool[] {
         }
         bundle.avatar = avatar;
         await storage.setItem(THEME_STORAGE_KEY, JSON.stringify(bundle));
-        return uri ? "AI avatar updated." : "AI avatar reset to the default.";
+        return uri
+          ? "AI avatar updated. It applies on the next theme refresh."
+          : "AI avatar reset to the default. It applies on the next theme refresh.";
       },
     },
   ];

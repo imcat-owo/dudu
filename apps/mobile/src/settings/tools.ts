@@ -43,7 +43,7 @@ export function createFontSizeTools(storage: SettingsStorage): LocalTool[] {
     {
       name: "set_font_size",
       description:
-        "Change the app font size. Use when she says '字调大一点' / '字太小了' / '字调小一点'. option is system (follow OS) | small (compact, default) | standard | large. Applies immediately.",
+        "Change the app font size. Use when she says '字调大一点' / '字太小了' / '字调小一点'. option is system (follow OS) | small (compact, default) | standard | large. Applies immediately when the app UI is running.",
       parameters: {
         type: "object",
         properties: {
