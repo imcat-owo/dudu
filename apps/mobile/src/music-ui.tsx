@@ -1093,7 +1093,7 @@ function QueueSection() {
 // Playlists + song rows + per-song action menu
 // ---------------------------------------------------------------------------
 
-type SongAction = "play" | "queue" | "ours" | "delete";
+type SongAction = "play" | "queue" | "ours" | "edit" | "delete";
 
 function SongRow({
   track,
@@ -1209,6 +1209,7 @@ function SongRow({
                   ["play", t("music.play")],
                   ["queue", t("music.addToQueue")],
                   ["ours", isOurs ? t("music.unmarkOurs") : t("music.markOurs")],
+                  ["edit", t("music.edit")],
                   ["delete", t("music.delete")],
                 ] as [SongAction, string][]
               ).map(([a, label]) => (
@@ -1275,6 +1276,8 @@ function PlaylistSection({
   const [oursIds, setOursIds] = useState<Set<string>>(new Set());
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  // Song being edited (P1-5): null = edit sheet closed.
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -1290,6 +1293,8 @@ function PlaylistSection({
     else if (a === "ours") {
       if (oursIds.has(tr.id)) await musicStore.removeFromPlaylist(OURS_PLAYLIST_ID, tr.id);
       else await musicStore.addToPlaylist(OURS_PLAYLIST_ID, tr.id);
+    } else if (a === "edit") {
+      setEditingTrack(tr);
     } else if (a === "delete") {
       await musicStore.deleteTrack(tr.id);
     }
@@ -1445,6 +1450,7 @@ function PlaylistSection({
           />
         ))
       )}
+      {editingTrack && <EditSongModal track={editingTrack} onClose={() => setEditingTrack(null)} />}
     </SoftCard>
   );
 }
@@ -1574,6 +1580,138 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
 // ---------------------------------------------------------------------------
 // Add song: local form + Apple Music catalog search
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Edit song (P1-5): the "no audio" error used to point at a "song info"
+// feature that didn't exist. Now it does — title/artist/audio, wired to
+// musicStore.updateTrack.
+// ---------------------------------------------------------------------------
+
+function EditSongModal({ track, onClose }: { track: Track; onClose: () => void }) {
+  const colors = useColors();
+  const [title, setTitle] = useState(track.title);
+  const [artist, setArtist] = useState(track.artist);
+  const [audioUri, setAudioUri] = useState(track.audioUri);
+  const [busy, setBusy] = useState(false);
+
+  const pickAudio = async () => {
+    try {
+      const DocPicker = await import("expo-document-picker");
+      const res = await DocPicker.getDocumentAsync({ type: "audio/*", copyToCacheDirectory: true });
+      if (!res.canceled && res.assets[0]) setAudioUri(res.assets[0].uri);
+    } catch {
+      // picker unavailable — she can paste a URI instead
+    }
+  };
+
+  const save = async () => {
+    if (!title.trim() || busy) return;
+    setBusy(true);
+    try {
+      await musicStore.updateTrack(track.id, {
+        title: title.trim(),
+        artist: artist.trim(),
+        audioUri: audioUri.trim(),
+      });
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const input = (value: string, onChange: (s: string) => void, hint: string) => (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={hint}
+      placeholderTextColor={colors.muted}
+      style={{
+        borderWidth: 1,
+        borderColor: colors.line,
+        borderRadius: radii.md,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        color: colors.text,
+        fontSize: 14,
+      }}
+    />
+  );
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.25)", justifyContent: "flex-end" }}
+        onPress={onClose}
+      >
+        <Pressable
+          onPress={() => {}}
+          style={{
+            backgroundColor: colors.canvas,
+            borderTopLeftRadius: radii.xl,
+            borderTopRightRadius: radii.xl,
+            maxHeight: "88%",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", padding: 18, gap: 10 }}>
+            <TText style={{ color: colors.text, fontSize: 16, fontWeight: "800", flex: 1 }}>
+              {t("music.editSong")}
+            </TText>
+            <PressableScale onPress={onClose} accessibilityRole="button" accessibilityLabel="close">
+              <X size={20} color={colors.muted} />
+            </PressableScale>
+          </View>
+          <View style={{ paddingHorizontal: 18, paddingBottom: 24, gap: 10 }}>
+            {input(title, setTitle, t("music.song.titleHint"))}
+            {input(artist, setArtist, t("music.song.artistHint"))}
+            {track.source === "local" && (
+              <>
+                {input(audioUri, setAudioUri, t("music.song.audioHint"))}
+                <PressableScale
+                  onPress={() => void pickAudio()}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("music.song.audioHint")}
+                >
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.line,
+                      borderRadius: radii.md,
+                      paddingVertical: 10,
+                      alignItems: "center",
+                    }}
+                  >
+                    <TText style={{ color: colors.muted, fontSize: 13 }}>
+                      {t("music.song.pickAudio")}
+                    </TText>
+                  </View>
+                </PressableScale>
+              </>
+            )}
+            <PressableScale
+              onPress={() => void save()}
+              accessibilityRole="button"
+              accessibilityLabel={t("music.save")}
+            >
+              <View
+                style={{
+                  backgroundColor: colors.text,
+                  borderRadius: radii.lg,
+                  paddingVertical: 12,
+                  alignItems: "center",
+                  opacity: !title.trim() || busy ? 0.5 : 1,
+                }}
+              >
+                <TText style={{ color: colors.canvas, fontSize: 14, fontWeight: "700" }}>
+                  {t("music.save")}
+                </TText>
+              </View>
+            </PressableScale>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
 function AddSongModal({
   visible,
