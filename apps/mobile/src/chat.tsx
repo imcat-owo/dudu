@@ -10,6 +10,7 @@ import {
   ArrowUp,
   EyeOff,
   FileText,
+  MessagesSquare,
   Plus,
   RotateCcw,
   Square,
@@ -297,7 +298,7 @@ export function ChatScreen({
   const { scale: fontScale } = useFontSizeSetting();
   const fs = (base: number): number => Math.round(base * fontScale * 10) / 10;
   const { tokens, bundle } = useTheme();
-  const { api, workspace: w, refresh, navigate, supportedSections } = useWorkspace();
+  const { api, workspace: w, refresh, navigate, supportedSections, open } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
   const { enabled: threadsEnabled, mainId, claimPrompt } = useMuseThread();
   // Dual-mode: cloud → CopilotKit agent via backend; local → direct SSE agent.
@@ -783,32 +784,55 @@ export function ChatScreen({
             One tap switches the model for THIS dialog only (per-dialog
             override); the dot means an override is active. */}
         <DialogModelChip threadId={threadId} />
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityLabel={t("a11y.incognito")}
-          accessibilityState={{ checked: incognitoOn }}
-          onPress={toggleIncognito}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: radii.lg,
-            backgroundColor: incognitoOn ? colors.text : colors.line,
-          }}
-        >
-          <EyeOff size={13} color={incognitoOn ? colors.canvas : colors.muted} />
-          <TText
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {/* Cross-dialog audit log (P1-2): the promised trace, openable
+              anytime — not only when a "from dialog" tag is visible. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("crossDialog.traceTitle")}
+            onPress={() => open({ type: "crossDialogTrace" })}
             style={{
-              fontSize: 12,
-              fontWeight: "600",
-              color: incognitoOn ? colors.canvas : colors.muted,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radii.lg,
+              backgroundColor: colors.line,
             }}
           >
-            {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
-          </TText>
-        </Pressable>
+            <MessagesSquare size={13} color={colors.muted} />
+            <TText style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+              {t("crossDialog.traceShort")}
+            </TText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel={t("a11y.incognito")}
+            accessibilityState={{ checked: incognitoOn }}
+            onPress={toggleIncognito}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radii.lg,
+              backgroundColor: incognitoOn ? colors.text : colors.line,
+            }}
+          >
+            <EyeOff size={13} color={incognitoOn ? colors.canvas : colors.muted} />
+            <TText
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: incognitoOn ? colors.canvas : colors.muted,
+              }}
+            >
+              {incognitoOn ? t("chat.incognitoOn") : t("chat.incognitoOff")}
+            </TText>
+          </Pressable>
+        </View>
       </View>
       {incognitoOn && (
         <View
@@ -1029,19 +1053,29 @@ export function ChatScreen({
                       {/* Cross-dialog delivery marker (vision feature 2):
                           the AI sent this from another dialog. The tag is
                           her visibility setting; the trace log records the
-                          send either way. */}
+                          send either way. Tapping it opens the audit log
+                          (P1-2: the promised trace must be openable). */}
                       {!user &&
                         typeof message.crossDialog === "object" &&
                         message.crossDialog !== null &&
                         typeof (message.crossDialog as { fromName?: unknown }).fromName ===
                           "string" && (
-                          <TText
-                            style={[s.small, { color: bubble.fg, opacity: 0.75, marginBottom: 2 }]}
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t("crossDialog.traceTitle")}
+                            onPress={() => open({ type: "crossDialogTrace" })}
                           >
-                            {t("crossDialog.fromDialogTag", {
-                              name: (message.crossDialog as { fromName: string }).fromName,
-                            })}
-                          </TText>
+                            <TText
+                              style={[
+                                s.small,
+                                { color: bubble.fg, opacity: 0.75, marginBottom: 2 },
+                              ]}
+                            >
+                              {t("crossDialog.fromDialogTag", {
+                                name: (message.crossDialog as { fromName: string }).fromName,
+                              })}
+                            </TText>
+                          </Pressable>
                         )}
                       {!!thinking && (
                         <ThinkingStatus

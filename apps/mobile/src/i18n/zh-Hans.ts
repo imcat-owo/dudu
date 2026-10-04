@@ -1417,6 +1417,7 @@ const zhHans = {
   "space.tasks.bgPromptHint": "描述一下想要的画面，不写就按任务名来",
   "space.tasks.bgClear": "恢复默认背景",
   "crossDialog.traceTitle": "跨对话框留痕",
+  "crossDialog.traceShort": "留痕",
   "crossDialog.traceSubtitle": "他在别的对话框干了什么，这里都有记录",
   "crossDialog.traceEmpty": "还没有跨对话框的操作记录。",
   "crossDialog.actionList": "查看了对话框列表",

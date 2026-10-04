@@ -34,12 +34,14 @@ import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
 import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
+import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
 import { ErrorBoundary } from "./error-boundary";
 import { FontProvider } from "./font";
 import { GlassView } from "./glass";
 import { t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
+import { canOpenDetail } from "./local-detail-routing";
 import { OurSpaceScreen } from "./our-space-ui";
 import { useDropZone } from "./pet/registry";
 import { PetOverlay } from "./pet-ui";
@@ -49,6 +51,7 @@ import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
 import { useColors } from "./ui";
+import type { Detail } from "./workspace";
 import { WorkspaceContext } from "./workspace";
 
 type LocalSection = "chat" | "connections" | "appearance" | "space";
@@ -125,6 +128,10 @@ export function LocalApp() {
   // chat mode flips (hook sets differ between cloud and local agent).
   const mode = useChatMode();
   const [prompt, setPrompt] = useState<{ id: number; text: string }>();
+  // Detail sheets in local mode. Only crossDialogTrace is wired today —
+  // the promised cross-dialog audit log must be openable in the mode she
+  // actually uses (P1-2). Other detail types stay unhandled (no-op).
+  const [detail, setDetail] = useState<Detail | null>(null);
   const api = useMemo(() => new NullMuseApi(), []);
 
   // Wire the AI "set_font_size" tool to immediate apply.
@@ -159,8 +166,10 @@ export function LocalApp() {
       // suggestions out of the chat welcome card (P1-1).
       supportedSections: ["chat", "space", "connections", "appearance"] as Section[],
       refresh: () => Promise.resolve(),
-      open: () => {},
-      close: () => {},
+      open: (d: Detail) => {
+        if (canOpenDetail(d)) setDetail(d);
+      },
+      close: () => setDetail(null),
       notify: (message: string) => {
         setToast(message);
         setTimeout(() => setToast(""), 4000);
@@ -269,6 +278,7 @@ export function LocalApp() {
                       </GlassView>
                     </View>
                     <PetOverlay section={section} onNavigate={(next) => setSection(next)} />
+                    {detail?.type === "crossDialogTrace" && <CrossDialogTraceSheet />}
                   </View>
                 </ThemeTransition>
               </FontProvider>

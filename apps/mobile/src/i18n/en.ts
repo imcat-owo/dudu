@@ -1467,6 +1467,7 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.bgPromptHint": "Describe the picture; blank uses the task name",
   "space.tasks.bgClear": "Reset to default",
   "crossDialog.traceTitle": "Cross-dialog trace",
+  "crossDialog.traceShort": "Trace",
   "crossDialog.traceSubtitle": "Everything he did in your other dialogs, recorded here",
   "crossDialog.traceEmpty": "No cross-dialog activity yet.",
   "crossDialog.actionList": "Viewed dialog list",
