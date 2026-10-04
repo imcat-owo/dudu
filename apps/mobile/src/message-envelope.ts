@@ -155,6 +155,22 @@ export function parseVoiceMessage(content: string): VoiceMessage | null {
   return extractVoiceMessage(content)?.voice ?? null;
 }
 
+/**
+ * Strict variant for user-sent messages (P3-14): the WHOLE message must be
+ * the envelope. Her recorded voice notes are encoded exactly this way; if
+ * she pastes envelope-shaped JSON inside her own prose, `rest` is non-empty
+ * and it renders as text — never as a playable voice bubble.
+ */
+export function extractVoiceMessageStrict(content: string): VoiceMessageHit | null {
+  const hit = extractVoiceMessage(content);
+  if (!hit || hit.rest !== "") return null;
+  // Whole-message match only: a whole-message ```json fence also leaves
+  // rest === "", but her real envelopes are bare JSON (encodeVoiceMessage).
+  // A fenced paste is still a paste — render it as text.
+  if (!content.trim().startsWith("{")) return null;
+  return hit;
+}
+
 /** Encode a voice message envelope (the AI echoes this back into chat). */
 export function encodeVoiceMessage(uri: string, duration: number): string {
   return JSON.stringify({ type: "voice_message", uri, duration });

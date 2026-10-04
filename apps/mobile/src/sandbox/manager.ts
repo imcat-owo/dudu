@@ -119,8 +119,23 @@ export class SandboxManager {
     return m;
   }
 
+  /** P3-3: init promise — concurrent init() calls share one run instead
+   * of each executing the body. */
+  private initPromise: Promise<void> | null = null;
+
   async init(): Promise<void> {
     if (this.initialized) return;
+    if (!this.initPromise) {
+      this.initPromise = this.doInit().finally(() => {
+        // Allow a retry after failure: a failed init must not permanently
+        // wedge the manager.
+        if (!this.initialized) this.initPromise = null;
+      });
+    }
+    return this.initPromise;
+  }
+
+  private async doInit(): Promise<void> {
     if (!this.secure) this.secure = await loadSecureStore();
     if (!this.prefs) this.prefs = await loadPrefs();
     try {

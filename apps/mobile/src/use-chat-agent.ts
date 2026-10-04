@@ -38,6 +38,31 @@ import {
 } from "./device-permissions";
 import { useIncognito } from "./incognito";
 
+/**
+ * P3-13: convert possibly-structured message content into bubble text.
+ * Plain strings pass through; content-block arrays render their text parts
+ * and label media parts (never raw JSON).
+ */
+function blocksToText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((b) => {
+        if (b && typeof b === "object") {
+          const rec = b as { type?: unknown; text?: unknown };
+          if (rec.type === "text" && typeof rec.text === "string") return rec.text;
+          if (rec.type === "image_url" || rec.type === "image") return "[图片]";
+          if (rec.type === "voice_message") return "[语音消息]";
+          if (typeof rec.type === "string") return `[${rec.type}]`;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
+}
+
 export interface AgentMessage {
   id: string;
   role: string;
@@ -225,7 +250,10 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
             m.role === "system"
               ? m.role
               : "user") as "user" | "assistant" | "system" | "tool",
-            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+            // P3-13: cloud history can carry structured content blocks
+            // (text/image parts). Stringifying them raw would render as
+            // literal JSON in the bubble — convert to readable text.
+            content: blocksToText(m.content),
             // Preserve tool-call data so the drawer shows past tool activity
             // and the wire can re-emit tool_calls for multi-turn tool use.
             ...(Array.isArray((m as { toolCalls?: unknown }).toolCalls)

@@ -65,6 +65,7 @@ import {
   buildImageUrl,
   encodeImageMessage,
   extractImageMessage,
+  extractImageMessageStrict,
   ImageBubble,
   parseImageCommand,
 } from "./image-generation";
@@ -94,6 +95,7 @@ import { transcribeAudioWithCandidates } from "./voice/stt";
 import {
   encodeVoiceMessage,
   extractVoiceMessage,
+  extractVoiceMessageStrict,
   VoiceBubble,
   VoiceRecorderButton,
 } from "./voice-message";
@@ -259,6 +261,18 @@ function ServerToolCard({
  */
 function useSafeRenderToolCall(): (args: { toolCall: unknown; toolMessage: unknown }) => ReactNode {
   const mode = useChatMode();
+  // P3-12: dev-only guard for the conditional hook below. Skipping the hook
+  // in local mode is only legal because the caller remounts on mode change
+  // (key={mode} in local-app.tsx) — hook order must never shift within one
+  // mount. If someone drops that key, this screams in dev instead of
+  // corrupting hook state silently.
+  const mountModeRef = useRef(mode);
+  if (__DEV__ && mountModeRef.current !== mode) {
+    console.error(
+      "[chat] useSafeRenderToolCall: chat mode changed without a remount — " +
+        "hook order is unstable. The ChatScreen caller must keep key={mode}.",
+    );
+  }
   if (mode === "local") return () => null;
   // biome-ignore lint/correctness/useHookAtTopLevel: local mode has no CopilotKitProvider; remount-on-mode-change (key={mode}) keeps hook order stable.
   return useRenderToolCall() as unknown as (args: {
@@ -662,14 +676,13 @@ export function ChatScreen({
         // Voice-input capability routing: dialog group first, then the
         // voice_input capability group members in order, then her
         // dedicated STT endpoint. First success wins. The dialog group
-        // honors her per-dialog model override (chip in the header) —
-        // local mode only, mirroring the chip.
+        // honors her per-dialog model override (chip in the header) in
+        // both modes — P3-5: chat's cloud path honors the override too,
+        // so STT must not be local-only.
         const capSnap = capabilityStore.getSnapshot();
         const dialogGroup =
-          mode === "local"
-            ? (dialogModelOverrideStore.resolveGroup(threadId, groupStore.getSnapshot().groups) ??
-              activeGroup)
-            : activeGroup;
+          dialogModelOverrideStore.resolveGroup(threadId, groupStore.getSnapshot().groups) ??
+          activeGroup;
         const candidates = planVoiceInput(
           dialogGroup,
           capSnap.groups,
@@ -945,13 +958,22 @@ export function ChatScreen({
             // A pure JSON envelope (no prose) renders no text bubble at all —
             // it must never fall back to showing the raw JSON (P1 regression).
             // (User messages can also carry envelopes: recorded voice notes
-            // and /img generations are encoded the same way.)
+            // and /img generations are encoded the same way. But the user
+            // path requires a whole-message match (P3-14) — the tolerant
+            // AI-side scan would turn her pasted envelope-shaped JSON into
+            // a playable bubble.)
             const voiceHit =
-              typeof message.content === "string" ? extractVoiceMessage(message.content) : null;
+              typeof message.content === "string"
+                ? user
+                  ? extractVoiceMessageStrict(message.content)
+                  : extractVoiceMessage(message.content)
+                : null;
             const voice = voiceHit?.voice ?? null;
             const imageHit =
               !voiceHit && typeof message.content === "string"
-                ? extractImageMessage(message.content)
+                ? user
+                  ? extractImageMessageStrict(message.content)
+                  : extractImageMessage(message.content)
                 : null;
             const generatedImage = imageHit?.image ?? null;
             const text =

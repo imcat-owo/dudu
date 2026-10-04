@@ -14,6 +14,7 @@ import { TText } from "./font";
 import {
   encodeVoiceMessage,
   extractVoiceMessage,
+  extractVoiceMessageStrict,
   parseVoiceMessage,
   type VoiceMessage,
   type VoiceMessageHit,
@@ -24,7 +25,12 @@ import { useColors, useStyles } from "./ui";
 import { StartSequence } from "./voice/start-sequence";
 
 export type { VoiceMessage, VoiceMessageHit };
-export { encodeVoiceMessage, extractVoiceMessage, parseVoiceMessage };
+export {
+  encodeVoiceMessage,
+  extractVoiceMessage,
+  extractVoiceMessageStrict,
+  parseVoiceMessage,
+};
 
 function formatDuration(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);

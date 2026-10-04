@@ -134,15 +134,14 @@ export async function checkNotificationPermission(): Promise<PermissionStatus> {
 }
 
 /** Bluetooth — not yet implemented (requires native BLE module). */
-export type BleDevice = { id: string; name: string | null; rssi: number | null };
+
+/** P3-2: scanBluetoothDevices + BleDevice removed — dead exports, zero
+ * callers repo-wide. BLE isn't bundled; checkBluetoothAvailable() is the
+ * honest surface. */
 
 export async function checkBluetoothAvailable(): Promise<boolean> {
   // BLE native module not bundled yet. Return false so UI shows "Unavailable".
   return false;
-}
-
-export async function scanBluetoothDevices(): Promise<BleDevice[]> {
-  throw new Error(t("perm.bluetoothUnavailable"));
 }
 
 export const requesters: Record<PermissionKind, () => Promise<PermissionStatus>> = {

@@ -12,7 +12,7 @@
  * URI strings; this module translates states into VideoSources.
  */
 import type { VideoSource } from "expo-video";
-import { Image, type ImageSourcePropType } from "react-native";
+import { type ImageSourcePropType } from "react-native";
 import { AVATAR_STATE_VIDEO, type AvatarState } from "./avatar-state";
 
 /** <Image> source for the static Sora avatar (still contexts). */
@@ -23,19 +23,9 @@ export function soraSource(): ImageSourcePropType {
 }
 
 /**
- * Resolved URI string for the Sora avatar, suitable for storing in the
- * theme token (bundle.avatar.assistant). Returns "" when the asset
- * can't be resolved (callers fall back to soraSource()).
+ * P3-2: soraUri() removed — dead export, zero callers repo-wide.
+ * Callers use soraSource() and fall back when the asset can't resolve.
  */
-export function soraUri(): string {
-  try {
-    const resolved = Image.resolveAssetSource(soraSource());
-    return resolved?.uri ?? "";
-  } catch {
-    return "";
-  }
-}
-
 function videoSources(): Record<
   "idle" | "working" | "making_something" | "milestone_level_up",
   VideoSource

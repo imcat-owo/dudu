@@ -53,6 +53,9 @@ export function createDialogModelOverrideStore(backend?: DialogOverrideBackend) 
   let map: Record<string, string> | null = null;
   let loadDone = false;
   const listeners = new Set<() => void>();
+  // P3-4: hard bound on stored overrides — entries are keyed by threadId
+  // and threads are never deleted, so an unbounded map grows forever.
+  const MAX_OVERRIDES = 100;
 
   // getSnapshot() MUST return a stable reference: useSyncExternalStore
   // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
@@ -130,7 +133,16 @@ export function createDialogModelOverrideStore(backend?: DialogOverrideBackend) 
 
     async setOverride(threadId: string, groupId: string): Promise<void> {
       await ensureLoaded();
-      map = { ...(map ?? {}), [threadId]: groupId };
+      const next = { ...(map ?? {}) };
+      // Refresh insertion order: re-setting moves the entry to the end so
+      // the cap below evicts the stalest entries first.
+      delete next[threadId];
+      next[threadId] = groupId;
+      // P3-4: bound the map — threadIds are never deleted elsewhere, so
+      // without a cap this grows forever. Evict oldest-first.
+      const keys = Object.keys(next);
+      for (let i = 0; i < keys.length - MAX_OVERRIDES; i++) delete next[keys[i]];
+      map = next;
       await persist();
     },
 
@@ -141,6 +153,29 @@ export function createDialogModelOverrideStore(backend?: DialogOverrideBackend) 
       delete next[threadId];
       map = next;
       await persist();
+    },
+
+    /**
+     * P3-4: drop overrides for threads that no longer exist. The caller
+     * passes the live thread ids (e.g. from listDialogs). No-op when
+     * nothing is stale.
+     */
+    async pruneOverrides(validThreadIds: Iterable<string>): Promise<number> {
+      await ensureLoaded();
+      const keep = new Set(validThreadIds);
+      const next = { ...(map ?? {}) };
+      let dropped = 0;
+      for (const id of Object.keys(next)) {
+        if (!keep.has(id)) {
+          delete next[id];
+          dropped++;
+        }
+      }
+      if (dropped > 0) {
+        map = next;
+        await persist();
+      }
+      return dropped;
     },
 
     /** Test hook. */

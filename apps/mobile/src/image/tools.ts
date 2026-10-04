@@ -91,8 +91,17 @@ async function verifyPollinationsUrl(url: string): Promise<void> {
   }
 }
 
-async function tryBackendImage(backend: ImageOutputBackend, prompt: string): Promise<string> {
-  const base = backend.baseUrl.trim().replace(/\/+$/, "");
+/** P3-16: sniff the image format from the base64 magic prefix so the cache
+ * file gets the right extension (b64 from a backend isn't always PNG). */
+function sniffImageExt(b64: string): string {
+  if (b64.startsWith("iVBORw0KGgo")) return "png";
+  if (b64.startsWith("/9j/")) return "jpg";
+  if (b64.startsWith("UklGR")) return "webp";
+  if (b64.startsWith("R0lGOD") || b64.startsWith("R0lGOT")) return "gif";
+  return "png";
+}
+
+async function tryBackendImage(backend: ImageOutputBackend, prompt: string): Promise<string> {  const base = backend.baseUrl.trim().replace(/\/+$/, "");
   // A member endpoint may already be the full generations URL.
   const url = base.endsWith("/images/generations") ? base : `${base}/images/generations`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -126,7 +135,10 @@ async function tryBackendImage(backend: ImageOutputBackend, prompt: string): Pro
     if (first?.b64_json) {
       // Save b64 to a cache file so chat can render it like any image.
       const FileSystem = await import("expo-file-system/legacy");
-      const path = `${FileSystem.cacheDirectory}dudu-gen-${Date.now()}.png`;
+      // P3-16: random suffix against same-millisecond collisions; sniff the
+      // real extension from the base64 magic prefix instead of hardcoding .png.
+      const nonce = Math.random().toString(36).slice(2, 10);
+      const path = `${FileSystem.cacheDirectory}dudu-gen-${Date.now()}-${nonce}.${sniffImageExt(first.b64_json)}`;
       await FileSystem.writeAsStringAsync(path, first.b64_json, { encoding: "base64" });
       return path;
     }

@@ -18,6 +18,7 @@ export {
   buildImageUrl,
   encodeImageMessage,
   extractImageMessage,
+  extractImageMessageStrict,
   type ImageMessage,
   parseImageCommand,
   parseImageMessage,

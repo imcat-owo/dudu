@@ -40,6 +40,20 @@ export function parseImageMessage(content: string): ImageMessage | null {
   return extractImageMessage(content)?.image ?? null;
 }
 
+/**
+ * Strict variant for user-sent messages (P3-14): the WHOLE message must be
+ * the envelope — pasted envelope-shaped JSON inside her prose renders as
+ * text, never as a rendered image bubble.
+ */
+export function extractImageMessageStrict(content: string): ImageMessageHit | null {
+  const hit = extractImageMessage(content);
+  if (!hit || hit.rest !== "") return null;
+  // Same whole-message rule as the voice strict variant: bare JSON only,
+  // fenced pastes render as text.
+  if (!content.trim().startsWith("{")) return null;
+  return hit;
+}
+
 export function encodeImageMessage(uri: string, prompt: string): string {
   return JSON.stringify({ type: "image_message", uri, prompt });
 }
