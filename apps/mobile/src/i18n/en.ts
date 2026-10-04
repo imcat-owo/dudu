@@ -142,6 +142,7 @@ export const enStrings: Record<StringKey, string> = {
   "music.nothingPlaying": "Quiet in here. Pick a song, or tell me to play one.",
   "music.noAudio":
     'This song has no audio attached yet. Open the song menu, tap "Edit", and add audio to play it.',
+  "music.noAudioShort": "No audio, can't play",
   "music.queue": "Coming up",
   "music.queue.empty": "The queue is empty. Pick one and let's listen together.",
   "music.playlists": "Playlists",
@@ -185,6 +186,7 @@ export const enStrings: Record<StringKey, string> = {
   "music.pickAudio": "Pick audio file",
   "music.source.title": "Music source",
   "music.source.local": "Local",
+  "music.source.localDefault": "Default source, songs on this phone",
   "music.source.appleMusic": "Apple Music",
   "music.source.authorize": "Authorize",
   "music.source.authorizing": "Authorizing…",
@@ -200,8 +202,8 @@ export const enStrings: Record<StringKey, string> = {
   "music.auth.noSubscription":
     "An Apple Music subscription is needed for playback. Local songs are unaffected.",
   "music.auth.deniedHint": "Re-allow Apple Music access in system settings.",
-  "music.auth.setupHint":
-    "Two steps left: enable the MusicKit service on the App ID, then rebuild and reinstall the app.",
+  "music.auth.setupHintUser":
+    "Apple Music isn't connected yet. Just tell him and he'll sort it out.",
   "music.added": "Added to playlist",
   "music.source.searchFailed": "Search failed. Try again.",
   "music.source.noResults": "No songs found. Try different words.",
@@ -223,6 +225,7 @@ export const enStrings: Record<StringKey, string> = {
   "space.feed.post": "Post",
   "space.feed.replyHint": "Reply…",
   "space.feed.like": "Like",
+  "space.feed.authorHer": "Her",
   "space.works.title": "Works",
   "space.works.empty": "The drawer is empty. Everything I make for you will live here.",
   "space.anniversary.title": "Anniversaries",
@@ -1017,6 +1020,7 @@ export const enStrings: Record<StringKey, string> = {
   "appearance.shareStripped": "Local images (wallpaper/avatar) aren't shared",
   "appearance.shareScanQr": "Scan QR",
   "appearance.shareCameraDenied": "Camera permission is needed to scan",
+  "appearance.shareRequestingCamera": "Requesting camera permission…",
   "appearance.shareClose": "Close",
   "appearance.fontLabel": "Font",
   "appearance.fontSystem": "System default",
@@ -1174,7 +1178,6 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.validation.nameRequired": "Name is required",
   "apigroup.validation.baseUrlRequired": "Base URL is required",
   "apigroup.validation.baseUrlInvalid": "Base URL must start with http(s)",
-  "apigroup.validation.apiKeyRequired": "API key is required",
   "apigroup.validation.modelRequired": "Model name is required",
   "apigroup.vendor.openai": "OpenAI-compatible",
   "apigroup.vendor.custom": "Custom",
