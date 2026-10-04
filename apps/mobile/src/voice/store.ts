@@ -59,7 +59,28 @@ export function createVoiceStore(secure?: SecureBackend) {
   let settings: VoiceSettings | null = null;
   const listeners = new Set<() => void>();
 
+  // getSnapshot() MUST return a stable reference: useSyncExternalStore
+  // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
+  // fresh object literal here spins an infinite render loop.
+  let snapshot: {
+    tts: TtsConfig;
+    stt: SttConfig;
+    settings: VoiceSettings;
+    loaded: boolean;
+  } = {
+    tts: blankTtsConfig(),
+    stt: blankSttConfig(),
+    settings: defaultVoiceSettings(),
+    loaded: false,
+  };
+
   function emit() {
+    snapshot = {
+      tts: tts ?? blankTtsConfig(),
+      stt: stt ?? blankSttConfig(),
+      settings: settings ?? defaultVoiceSettings(),
+      loaded: loadDone,
+    };
     for (const l of listeners) l();
   }
 
@@ -110,12 +131,7 @@ export function createVoiceStore(secure?: SecureBackend) {
       settings: VoiceSettings;
       loaded: boolean;
     } {
-      return {
-        tts: tts ?? blankTtsConfig(),
-        stt: stt ?? blankSttConfig(),
-        settings: settings ?? defaultVoiceSettings(),
-        loaded: loadDone,
-      };
+      return snapshot;
     },
 
     async setTts(next: TtsConfig): Promise<void> {

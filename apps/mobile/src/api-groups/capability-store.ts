@@ -84,7 +84,31 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
   let loadDone = false;
   const listeners = new Set<() => void>();
 
+  // getSnapshot() MUST return a stable reference: useSyncExternalStore
+  // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
+  // fresh object literal here spins an infinite render loop.
+  let snapshot: {
+    groups: CapabilityGroup[];
+    routingEnabled: boolean;
+    coordinationEnabled: boolean;
+    rankingMode: RankingMode;
+    loaded: boolean;
+  } = {
+    groups: [],
+    routingEnabled: true,
+    coordinationEnabled: false,
+    rankingMode: "balanced",
+    loaded: false,
+  };
+
   function emit() {
+    snapshot = {
+      groups: groups ?? [],
+      routingEnabled,
+      coordinationEnabled,
+      rankingMode,
+      loaded: loadDone,
+    };
     for (const l of listeners) l();
   }
 
@@ -154,13 +178,7 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
       rankingMode: RankingMode;
       loaded: boolean;
     } {
-      return {
-        groups: groups ?? [],
-        routingEnabled,
-        coordinationEnabled,
-        rankingMode,
-        loaded: loadDone,
-      };
+      return snapshot;
     },
 
     async upsert(group: CapabilityGroup): Promise<void> {

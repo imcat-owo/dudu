@@ -54,7 +54,16 @@ export function createDialogModelOverrideStore(backend?: DialogOverrideBackend) 
   let loadDone = false;
   const listeners = new Set<() => void>();
 
+  // getSnapshot() MUST return a stable reference: useSyncExternalStore
+  // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
+  // fresh object literal here spins an infinite render loop.
+  let snapshot: { overrides: Record<string, string>; loaded: boolean } = {
+    overrides: {},
+    loaded: false,
+  };
+
   function emit() {
+    snapshot = { overrides: map ?? {}, loaded: loadDone };
     for (const l of listeners) l();
   }
 
@@ -102,7 +111,7 @@ export function createDialogModelOverrideStore(backend?: DialogOverrideBackend) 
       };
     },
     getSnapshot(): { overrides: Record<string, string>; loaded: boolean } {
-      return { overrides: map ?? {}, loaded: loadDone };
+      return snapshot;
     },
 
     /** Sync read — safe before load (returns null until loaded). */

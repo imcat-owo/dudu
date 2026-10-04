@@ -57,7 +57,17 @@ export function createGroupStore(secure?: SecureBackend) {
   let activeId: string | null = null;
   const listeners = new Set<() => void>();
 
+  // getSnapshot() MUST return a stable reference: useSyncExternalStore
+  // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
+  // fresh object literal here spins an infinite render loop.
+  let snapshot: { groups: ApiGroup[]; activeId: string | null; loaded: boolean } = {
+    groups: [],
+    activeId: null,
+    loaded: false,
+  };
+
   function emit() {
+    snapshot = { groups: groups ?? [], activeId, loaded: loadDone };
     for (const l of listeners) l();
   }
 
@@ -125,7 +135,7 @@ export function createGroupStore(secure?: SecureBackend) {
       };
     },
     getSnapshot(): { groups: ApiGroup[]; activeId: string | null; loaded: boolean } {
-      return { groups: groups ?? [], activeId, loaded: loadDone };
+      return snapshot;
     },
 
     async upsert(group: ApiGroup): Promise<void> {

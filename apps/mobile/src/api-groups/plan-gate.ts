@@ -73,7 +73,13 @@ export function createPlanGateStore() {
   const plans = new Map<string, CoordinationPlan>();
   const listeners = new Set<() => void>();
 
+  // getSnapshot() MUST return a stable reference: useSyncExternalStore
+  // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
+  // fresh object literal here spins an infinite render loop.
+  let snapshot: { plans: CoordinationPlan[] } = { plans: [] };
+
   function emit() {
+    snapshot = { plans: [...plans.values()] };
     for (const l of listeners) l();
   }
 
@@ -95,7 +101,7 @@ export function createPlanGateStore() {
       };
     },
     getSnapshot(): { plans: CoordinationPlan[] } {
-      return { plans: [...plans.values()] };
+      return snapshot;
     },
 
     /** The currently-proposed (awaiting her decision) plan for a thread. */
