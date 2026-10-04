@@ -31,6 +31,7 @@ import { MuseApi } from "./api";
 import { ApiSettingsScreen } from "./api-groups/api-settings";
 import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
+import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
 import { FontProvider } from "./font";
 import { t } from "./i18n";
@@ -165,6 +166,21 @@ export function LocalApp() {
               <FontProvider>
                 <ThemeTransition>
                   <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+                    {/* AI browser WebView — always mounted (hidden) so the AI
+                        browser tools work from any screen. The controller
+                        requires a mounted WebView; without this the tools
+                        throw "Browser is not ready". */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        width: 1,
+                        height: 1,
+                        opacity: 0,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <AIBrowserView visible />
+                    </View>
                     <View style={{ flex: 1 }}>
                       {section === "chat" ? (
                         <ChatScreen prompt={prompt} active={true} />
