@@ -499,50 +499,6 @@ export function createTaskProgressTools(
 }
 
 /**
- * Task buddy video tools — let the AI swap the task card companion
- * animations on request ("把 running 的动画换成 milestone 那个").
- * Bound to a TaskBuddyVideoStore instance.
- */
-export function createTaskBuddyVideoTools(
-  videoStore: import("./task-buddy-video.js").TaskBuddyVideoStore,
-): LocalTool[] {
-  return [
-    {
-      name: "task_buddy_set_video",
-      description:
-        "Set a custom video animation for the task card companion (the little Sora face on progress cards in Our Space). state is running | stuck | done. uri is a video URI she gave you (e.g. from her uploads); empty string resets to the bundled Sora default.",
-      parameters: {
-        type: "object",
-        properties: {
-          state: {
-            type: "string",
-            description: "running | stuck | done — which task status this video plays for.",
-          },
-          uri: {
-            type: "string",
-            description: "Video URI (mp4). Empty string resets to the bundled default Sora clip.",
-          },
-        },
-        required: ["state"],
-        additionalProperties: false,
-      },
-      manualId: "our-space",
-      run: async (args) => {
-        const raw = strArg(args, "state").toLowerCase();
-        if (raw !== "running" && raw !== "stuck" && raw !== "done") {
-          throw new ToolError('state must be "running", "stuck", or "done".');
-        }
-        const uri = strArg(args, "uri");
-        await videoStore.set(raw, uri || null);
-        return uri
-          ? `Task buddy video for "${raw}" set to her custom video.`
-          : `Task buddy video for "${raw}" reset to the bundled Sora default.`;
-      },
-    },
-  ];
-}
-
-/**
  * Build the ambient video tool set bound to an AmbientVideoStore instance.
  *
  * SoraAmbient videos live in Our Space empty states, the music room DJ

@@ -1338,12 +1338,4 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.bgGenerating": "Generating…",
   "space.tasks.bgPromptHint": "Describe the picture; blank uses the task name",
   "space.tasks.bgClear": "Reset to default",
-  "space.tasks.buddyTitle": "Change animation",
-  "space.tasks.buddyHint":
-    "The buddy defaults to Sora. Upload your own videos to customize each state.",
-  "space.tasks.buddyCustom": "Custom",
-  "space.tasks.buddyDefault": "Sora default",
-  "space.tasks.buddyPick": "Pick video",
-  "space.tasks.buddyReset": "Reset",
-  "space.tasks.buddyResetAll": "Reset all",
 };

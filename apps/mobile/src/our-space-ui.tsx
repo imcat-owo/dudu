@@ -67,7 +67,6 @@ import type {
   WorkItem,
   WorkType,
 } from "./our-space/store";
-import { taskBuddyVideoStore } from "./our-space/task-buddy-video-instance";
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
 import { SoraAmbient } from "./sora-ambient";
@@ -289,7 +288,6 @@ function StatusView() {
 
   useEffect(() => {
     void taskProgressStore.load().catch(() => null);
-    void taskBuddyVideoStore.load().catch(() => null);
     void ambientVideoStore.load().catch(() => null);
   }, []);
 

@@ -154,8 +154,6 @@ function ProgressBar({ progress, active }: { progress: number; active: boolean }
   );
 }
 
-/** 换动画：she uploads her own mp4 per task status ("醒醒定制的"). */
-
 function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
   const colors = useColors();
   const [menuOpen, setMenuOpen] = useState(false);
