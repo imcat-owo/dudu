@@ -71,6 +71,7 @@ import { MailToolCard } from "./mail-tool-card";
 import { resolveAssistantText } from "./message-text";
 import { supportsSection } from "./section-support";
 import { radii } from "./theme/radii";
+import { shadows } from "./theme/shadows";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
@@ -1348,11 +1349,11 @@ export function ChatScreen({
           style={{
             borderRadius: radii.xl,
             padding: 8,
+            // Tiered shadow (float) with the scrim color and the focus-state
+            // opacity kept as the deliberate interaction.
+            ...shadows.float,
             shadowColor: colors.scrim,
             shadowOpacity: focused ? 0.1 : 0.06,
-            shadowRadius: 20,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 4,
           }}
         >
           {attachments.length > 0 && (

@@ -13,6 +13,7 @@ import { useMemo, useRef } from "react";
 import { StyleSheet, type TextProps, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
 import { TText } from "./font";
+import { shadows } from "./theme/shadows";
 import { useColors } from "./ui";
 
 let grainCounter = 0;
@@ -81,11 +82,8 @@ export function WashiTape({
       borderTopColor: "rgba(255,255,255,0.65)",
       borderBottomColor: "rgba(255,255,255,0.65)",
       borderStyle: "dashed",
-      // Soft shadow so it sits "on" the paper.
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 1 },
+      // Soft shadow so it sits "on" the paper (tiered card shadow).
+      ...shadows.card,
     }),
     [color, rotate, width],
   );

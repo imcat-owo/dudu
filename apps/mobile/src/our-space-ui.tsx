@@ -27,6 +27,7 @@ import {
   Heart,
   History,
   Images,
+  Mail,
   MailOpen,
   MessageCircle,
   MessageCircleQuestion,
@@ -1003,10 +1004,8 @@ function CoupleHeader() {
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
+          // Tiered shadow (card).
+          ...shadows.card,
         }}
       >
         {source ? (
@@ -2088,9 +2087,13 @@ function LoveLetterView() {
   const colors = useColors();
   const { tokens } = useTheme();
   const [letters, setLetters] = useState<LoveLetter[]>([]);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
-    void ourSpaceStore.getUnseenLoveLetters().then(setLetters);
+    void ourSpaceStore.getUnseenLoveLetters().then((ls) => {
+      setLetters(ls);
+      setOpened(false);
+    });
   }, [v]);
 
   if (letters.length === 0) return null;
@@ -2104,50 +2107,88 @@ function LoveLetterView() {
     <FadeIn>
       <View style={{ marginBottom: 18 }}>
         <SoftCard>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: radii.xl,
-                backgroundColor: tokens.accent.bg,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+          {!opened ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("space.loveLetter.tapToRead")}
+              onPress={() => setOpened(true)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
-              <ScrollText size={22} color={tokens.accent.fg} strokeWidth={1.6} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <TText
+              <View
                 style={{
-                  color: colors.muted,
-                  fontSize: 11,
-                  fontWeight: "700",
-                  letterSpacing: 1.5,
-                  marginBottom: 4,
+                  width: 48,
+                  height: 48,
+                  borderRadius: radii.xl,
+                  backgroundColor: tokens.accent.bg,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {t("space.loveLetter.title")}
-              </TText>
-              <TText style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
-                {letter.text}
-              </TText>
-            </View>
-          </View>
-          <Pressable
-            onPress={dismiss}
-            style={{
-              marginTop: 14,
-              paddingVertical: 10,
-              borderRadius: radii.md,
-              backgroundColor: tokens.accent.bg,
-              alignItems: "center",
-            }}
-          >
-            <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "700" }}>
-              {t("space.loveLetter.dismiss")}
-            </TText>
-          </Pressable>
+                <Mail size={22} color={tokens.accent.fg} strokeWidth={1.6} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TText
+                  style={{
+                    color: colors.text,
+                    fontSize: 15,
+                    fontWeight: "700",
+                  }}
+                >
+                  {t("space.loveLetter.unreadBanner")}
+                </TText>
+                <TText style={{ color: colors.muted, fontSize: 12.5, marginTop: 3 }}>
+                  {t("space.loveLetter.tapToRead")}
+                </TText>
+              </View>
+            </Pressable>
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: radii.xl,
+                    backgroundColor: tokens.accent.bg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MailOpen size={22} color={tokens.accent.fg} strokeWidth={1.6} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TText
+                    style={{
+                      color: colors.muted,
+                      fontSize: 11,
+                      fontWeight: "700",
+                      letterSpacing: 1.5,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t("space.loveLetter.title")}
+                  </TText>
+                  <TText style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+                    {letter.text}
+                  </TText>
+                </View>
+              </View>
+              <Pressable
+                onPress={dismiss}
+                style={{
+                  marginTop: 14,
+                  paddingVertical: 10,
+                  borderRadius: radii.md,
+                  backgroundColor: tokens.accent.bg,
+                  alignItems: "center",
+                }}
+              >
+                <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "700" }}>
+                  {t("space.loveLetter.dismiss")}
+                </TText>
+              </Pressable>
+            </>
+          )}
         </SoftCard>
         {letters.length > 1 && (
           <TText style={{ color: colors.muted, fontSize: 11, marginTop: 8, textAlign: "center" }}>

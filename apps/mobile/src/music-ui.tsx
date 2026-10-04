@@ -70,6 +70,7 @@ import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
 import { SoraAmbient } from "./sora-ambient";
 import { radii } from "./theme/radii";
+import { shadows } from "./theme/shadows";
 import { BRAND_OCHRE } from "./theme/brand";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
@@ -452,10 +453,8 @@ function CoverArt({
           height: size,
           borderRadius: size / 2,
           transform: [{ rotate }, { scale: breatheScale }],
-          shadowColor: "#000",
-          shadowOpacity: 0.18,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 10 },
+          // Tiered shadow (modal): the spinning disc is a hero element.
+          ...shadows.modal,
         }}
       >
         {uri ? (

@@ -46,6 +46,7 @@ import { canOpenDetail } from "./local-detail-routing";
 import { OurSpaceScreen } from "./our-space-ui";
 import { registerFontSizeHandler } from "./settings/tools";
 import { radii } from "./theme/radii";
+import { shadows } from "./theme/shadows";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
@@ -340,11 +341,8 @@ export function LocalApp() {
                           paddingHorizontal: 10,
                           paddingVertical: 8,
                           gap: 8,
-                          shadowColor: "#000",
-                          shadowOpacity: 0.12,
-                          shadowRadius: 24,
-                          shadowOffset: { width: 0, height: 8 },
-                          elevation: 8,
+                          // Tiered shadow (float): bottom nav bar.
+                          ...shadows.float,
                         }}
                       >
                         {nav.map((item) => (
