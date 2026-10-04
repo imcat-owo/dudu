@@ -1,7 +1,7 @@
 /**
  * Proactive outreach — in-session surfacing. When she IS in the app, the
  * trigger engine's findings ride into the system prompt as one quiet
- * section (the petTouchNote pattern: empty string when nothing is near —
+ * section (the quiet-reminder pattern: empty string when nothing is near —
  * no noise, no spam). This is the "AI 代办咬合" half: he brings up what
  * matters naturally in conversation instead of only via notification.
  *

@@ -22,7 +22,7 @@ import { VoiceSettingsSection } from "../voice/voice-settings";
 import { CapabilitySettingsSection } from "./capability-settings";
 import { testConnection } from "./direct-transport";
 import { classifyError } from "./error-classifier";
-import { type ChatMode, useChatMode, useSetChatMode } from "./mode";
+import { type ChatMode, CLOUD_MODE_AVAILABLE, useChatMode, useSetChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
 import { groupStore, useApiGroups } from "./store";
 import {
@@ -49,11 +49,15 @@ function ModeSwitch() {
       <View style={{ flexDirection: "row", gap: 8 }}>
         {options.map((o) => {
           const active = mode === o.id;
+          // user P2-5 / product P2: cloud backend isn't deployed — a live
+          // switch to a dead end is forbidden. Disabled + honest note.
+          const disabled = o.id === "cloud" && !CLOUD_MODE_AVAILABLE;
           return (
             <Pressable
               key={o.id}
               accessibilityRole="radio"
-              accessibilityState={{ selected: active }}
+              accessibilityState={{ selected: active, disabled }}
+              disabled={disabled}
               onPress={() => void setMode(o.id)}
               style={{
                 flex: 1,
@@ -62,6 +66,7 @@ function ModeSwitch() {
                 borderWidth: 1,
                 borderColor: active ? colors.blueDark : colors.line,
                 backgroundColor: active ? colors.sky : colors.card,
+                opacity: disabled ? 0.45 : 1,
               }}
             >
               <TText style={{ fontWeight: "700", color: active ? colors.blueDark : colors.text }}>

@@ -96,3 +96,45 @@ test("generate_image verifies the exact Pollinations URL it will show (P1-3)", a
   const parsed = extractImageJson(result);
   assert.equal(verifiedUrl, parsed.uri, "the verified URL must be the one shown to her");
 });
+
+test("generate_image calls onImageGenerated after success (product P1, image→works)", async () => {
+  const seen: { prompt: string; url: string; via: string }[] = [];
+  const tools = createImageTools({
+    verifyImageUrl: async () => {},
+    onImageGenerated: async (info) => {
+      seen.push(info);
+    },
+  });
+  const result = await tools[0].run({ prompt: "a cute cat logo" }, ctx);
+  const parsed = extractImageJson(result);
+  assert.equal(seen.length, 1, "hook must fire exactly once per generation");
+  assert.equal(seen[0].prompt, "a cute cat logo");
+  assert.equal(seen[0].url, parsed.uri, "hook URL must be the shown URL");
+  assert.ok(seen[0].via.includes("free backend"), `unexpected via: ${seen[0].via}`);
+});
+
+test("a throwing onImageGenerated hook never breaks the image result", async () => {
+  const tools = createImageTools({
+    verifyImageUrl: async () => {},
+    onImageGenerated: async () => {
+      throw new Error("storage exploded");
+    },
+  });
+  const result = await tools[0].run({ prompt: "a cat" }, ctx);
+  // Still a showable image — persistence failure is swallowed.
+  extractImageJson(result);
+});
+
+test("onImageGenerated is not called when generation fails", async () => {
+  let called = 0;
+  const tools = createImageTools({
+    verifyImageUrl: async () => {
+      throw new Error("backend dead");
+    },
+    onImageGenerated: async () => {
+      called += 1;
+    },
+  });
+  await assert.rejects(() => tools[0].run({ prompt: "a cat" }, ctx), /didn't return a usable image/);
+  assert.equal(called, 0, "hook must not fire on failure");
+});

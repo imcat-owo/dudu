@@ -162,17 +162,33 @@ export interface ImageToolOptions {
    * range-GET check.
    */
   verifyImageUrl?: (url: string) => Promise<void>;
+  /**
+   * product P1 (信息断层): called after EVERY successful generation with
+   * the final prompt + URL. The app wires this to the works drawer so
+   * generated images don't die in chat history. Never throws — the tool
+   * catches hook failures internally.
+   */
+  onImageGenerated?: (info: { prompt: string; url: string; via: string }) => Promise<void>;
 }
 
 /**
  * Build the AI image tool set. No store needed — generation is stateless.
  */
 export function createImageTools(opts?: ImageToolOptions): LocalTool[] {
+  // product P1: the works drawer is where generated images live on.
+  // Persistence failures must never break the image result itself.
+  const notifyGenerated = async (prompt: string, url: string, via: string): Promise<void> => {
+    try {
+      await opts?.onImageGenerated?.({ prompt, url, via });
+    } catch {
+      // best effort
+    }
+  };
   return [
     {
       name: "generate_image",
       description:
-        "Generate an image from a text prompt. Tries her configured image models first, falls back to a free backend. Use when she asks you to draw, make, or create an image — or when a picture would genuinely delight her in the moment. Write the prompt in English and be specific: subject, style, colors, composition, mood. The optional style hint is appended to the prompt (e.g. 'cute chibi style, soft pastel colors'). IMPORTANT — showing it to her: after calling, output EXACTLY the image_message JSON from the result as your entire next message (no other text, no code fences). It renders as an image bubble in chat. To iterate on a picture (\"把刚才那张改成蓝色的\"), call generate_image again with the FULL refined prompt — describe the whole image again with the change applied, never just the delta.",
+        "Generate an image from a text prompt. Tries her configured image models first, falls back to a free backend. Use when she asks you to draw, make, or create an image — or when a picture would genuinely delight her in the moment. Write the prompt in English and be specific: subject, style, colors, composition, mood. The optional style hint is appended to the prompt (e.g. 'cute chibi style, soft pastel colors'). IMPORTANT — showing it to her: after calling, output EXACTLY the image_message JSON from the result as your entire next message (no other text, no code fences). It renders as an image bubble in chat. The image is ALSO automatically saved to the works drawer in Our Space (作品小抽屉) — mention it so she knows where to find it later. To iterate on a picture (\"把刚才那张改成蓝色的\"), call generate_image again with the FULL refined prompt — describe the whole image again with the change applied, never just the delta.",
       parameters: {
         type: "object",
         properties: {
@@ -203,6 +219,7 @@ export function createImageTools(opts?: ImageToolOptions): LocalTool[] {
         for (const b of backends) {
           try {
             const url = await tryBackendImage(b, fullPrompt);
+            await notifyGenerated(prompt, url, `her image model ${b.name}`);
             return showImageResult(prompt, url, `her image model ${b.name}`);
           } catch (e) {
             backendErrors.push(`${b.name}: ${e instanceof Error ? e.message : String(e)}`);
@@ -229,6 +246,7 @@ export function createImageTools(opts?: ImageToolOptions): LocalTool[] {
               ` — tell her honestly it didn't work, don't pretend.`,
           );
         }
+        await notifyGenerated(prompt, url, `free backend${note}`);
         return showImageResult(prompt, url, `free backend${note}`);
       },
     },

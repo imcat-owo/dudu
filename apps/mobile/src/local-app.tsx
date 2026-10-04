@@ -39,11 +39,12 @@ import { ErrorBoundary } from "./error-boundary";
 import { FontProvider } from "./font";
 import { GlassView } from "./glass";
 import { t, type StringKey } from "./i18n";
-import type { NotificationPort } from "./outreach/notify";
+import type { NotificationPort, OutreachTriggerKind } from "./outreach/notify";
+import { notificationDeepLink } from "./outreach/notify";
 import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
-import { OurSpaceScreen } from "./our-space-ui";
+import { OurSpaceScreen, type OurSpaceStartPage } from "./our-space-ui";
 import { registerFontSizeHandler } from "./settings/tools";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
@@ -134,12 +135,66 @@ export function LocalApp() {
   // actually uses (P1-2). Other detail types stay unhandled (no-op).
   const [detail, setDetail] = useState<Detail | null>(null);
   const api = useMemo(() => new NullMuseApi(), []);
+  // user P2-1: proactive notification taps deep-link into the right screen.
+  const [spaceLink, setSpaceLink] = useState<{
+    id: number;
+    page: OurSpaceStartPage;
+    compose?: boolean;
+  }>();
 
   // Wire the AI "set_font_size" tool to immediate apply.
   useEffect(() => {
     registerFontSizeHandler(async (option) => {
       await setFontSizeOption(option as FontSizeOption);
     });
+  }, []);
+
+  // user P2-1: tapping a proactive notification lands on the screen it is
+  // about — the letter, the diary (composer open), the anniversary, the
+  // tell-later queue — instead of whatever was open last. Never throws.
+  useEffect(() => {
+    let alive = true;
+    let sub: { remove(): void } | null = null;
+    const route = (data: unknown) => {
+      try {
+        const kind = (data as Record<string, unknown> | null | undefined)?.kind;
+        const known =
+          kind === "anniversary" ||
+          kind === "tell_later" ||
+          kind === "love_letter" ||
+          kind === "silence" ||
+          kind === "diary_nudge" ||
+          kind === "on_this_day";
+        const link = known
+          ? notificationDeepLink(kind as OutreachTriggerKind)
+          : { section: "chat" as const };
+        if (link.section === "space" && link.page) {
+          setSpaceLink({ id: Date.now(), page: link.page, compose: link.compose });
+          setSection("space");
+        } else {
+          setSection("chat");
+        }
+      } catch {
+        setSection("chat");
+      }
+    };
+    void import("expo-notifications").then((m) => {
+      if (!alive) return;
+      sub = m.addNotificationResponseReceivedListener((response) => {
+        route(response?.notification?.request?.content?.data);
+      });
+      // Cold start: the app was launched from the notification itself.
+      void m
+        .getLastNotificationResponseAsync()
+        .then((response) => {
+          if (alive && response) route(response.notification.request.content.data);
+        })
+        .catch(() => {});
+    });
+    return () => {
+      alive = false;
+      sub?.remove();
+    };
   }, []);
 
   // Quietly sweep stale synthesized-speech caches (P2-24). Never blocks startup.
@@ -215,6 +270,24 @@ export function LocalApp() {
                   );
                   return { lastEntryAt, anchor: fresh ? fresh.title.trim() : "" };
                 },
+                // on_this_day trigger (Fixer D, xiaomeng P1-1): "去年今日"
+                // items — real memories from this date in past years.
+                listOnThisDay: async () => {
+                  const { getOnThisDay } = await import("./our-space/on-this-day");
+                  const [diary, timeline, anniversaries] = await Promise.all([
+                    ourSpaceStore.listDiary(200).catch(() => []),
+                    ourSpaceStore.listTimeline(200).catch(() => []),
+                    ourSpaceStore.listAnniversaries().catch(() => []),
+                  ]);
+                  return getOnThisDay(diary, timeline, anniversaries, new Date()).map((i) => ({
+                    title: i.title,
+                    subtitle: i.subtitle,
+                    yearsAgo: i.yearsAgo,
+                  }));
+                },
+                // Mood suppression (Fixer D, xiaomeng P2-4): no diary nudge
+                // on top of a fresh "难过".
+                getHerMood: () => ourSpaceStore.getHerMood().catch(() => null),
               },
               copy: (key, params) => t(key as StringKey, params),
             });
@@ -306,7 +379,11 @@ export function LocalApp() {
                         {section === "chat" ? (
                           <ChatScreen key={mode} prompt={prompt} active={true} />
                         ) : section === "space" ? (
-                          <OurSpaceScreen />
+                          <OurSpaceScreen
+                            startPage={spaceLink?.page}
+                            startCompose={spaceLink?.compose}
+                            deepLinkId={spaceLink?.id}
+                          />
                         ) : section === "connections" ? (
                           <ApiSettingsScreen />
                         ) : (

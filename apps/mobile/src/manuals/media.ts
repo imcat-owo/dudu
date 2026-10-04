@@ -20,6 +20,9 @@ Showing it to her:
 - The tool result contains an image_message JSON block. Output it EXACTLY
   as your entire next message (no other text, no code fences) — chat
   renders it as an image bubble with the prompt as caption.
+- The image is ALSO saved automatically to the works drawer in Our Space
+  (作品小抽屉, the Instagram-style grid). Tell her it's there so she can
+  find it later — don't make her dig through chat history.
 
 Iterating ("把刚才那张改成蓝色的", "再可爱一点"):
 - Call generate_image AGAIN with the FULL refined prompt — describe the

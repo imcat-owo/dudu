@@ -2,7 +2,7 @@
  * Her-mood awareness for the system prompt — PURE module.
  *
  * When she has told him how she is feeling, one subtle line so he remembers
- * and doesn't ask the same question twice — the petTouchNote pattern.
+ * and doesn't ask the same question twice — the quiet-reminder pattern.
  * Empty string when nothing recorded: no noise, no spam.
  */
 

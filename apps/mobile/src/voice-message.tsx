@@ -22,6 +22,7 @@ import {
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
+import { t } from "./i18n";
 import { StartSequence } from "./voice/start-sequence";
 
 export type { VoiceMessage, VoiceMessageHit };
@@ -123,7 +124,7 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
         setPlaying(true);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "无法播放音频。");
+      setError(e instanceof Error ? e.message : t("voice.msgPlayFailed"));
       setPlaying(false);
     }
   }
@@ -148,7 +149,7 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
       <View style={[s.row, { gap: 10 }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={playing ? "暂停语音" : "播放语音"}
+          accessibilityLabel={playing ? t("voice.msgPause") : t("voice.msgPlay")}
           onPress={() => void toggle()}
           style={{
             width: 38,
@@ -194,7 +195,7 @@ export function VoiceBubble({ voice, user }: { voice: VoiceMessage; user: boolea
  * WeChat-style hold-to-record voice message button.
  * Press and hold to record, release to send.
  * Calls onRecorded(uri, durationSeconds) when a valid recording finishes.
- * All user-facing strings are in Simplified Chinese.
+ * All user-facing strings go through i18n (voice.msg*).
  */
 export function VoiceRecorderButton({
   onRecorded,
@@ -242,7 +243,7 @@ export function VoiceRecorderButton({
       const { status } = await requestRecordingPermissionsAsync();
       if (aborted()) return;
       if (status !== "granted") {
-        setHint("需要麦克风权限才能录音");
+        setHint(t("voice.msgNeedMic"));
         return;
       }
       await setAudioModeAsync({
@@ -268,7 +269,7 @@ export function VoiceRecorderButton({
         setSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 500);
     } catch (e) {
-      setHint(e instanceof Error ? e.message : "录音启动失败");
+      setHint(e instanceof Error ? e.message : t("voice.msgStartFailed"));
       setRecording(false);
     }
   }
@@ -296,13 +297,13 @@ export function VoiceRecorderButton({
       setSeconds(0);
       if (cancelled || !uri) return;
       if (duration < 1) {
-        setHint("录音太短");
+        setHint(t("voice.msgTooShort"));
         return;
       }
       setHint("");
       onRecorded(uri, duration);
     } catch (e) {
-      setHint(e instanceof Error ? e.message : "录音保存失败");
+      setHint(e instanceof Error ? e.message : t("voice.msgSaveFailed"));
       setSeconds(0);
     }
   }
@@ -373,13 +374,19 @@ export function VoiceRecorderButton({
             </TText>
           </View>
           <TText style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>
-            {cancelArmed ? "松开取消" : "松开发送 · 上滑取消"}
+            {cancelArmed ? t("voice.msgReleaseCancel") : t("voice.msgReleaseSend")}
           </TText>
         </View>
       )}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={recording ? (cancelArmed ? "松开取消语音" : "松开发送语音") : "按住说话"}
+        accessibilityLabel={
+          recording
+            ? cancelArmed
+              ? t("voice.msgA11yReleaseCancel")
+              : t("voice.msgA11yReleaseSend")
+            : t("voice.msgA11yHoldToTalk")
+        }
         disabled={disabled}
         onPressIn={() => void startRecording()}
         onPressOut={() => void stopRecording(cancelArmed)}

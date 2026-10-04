@@ -2,7 +2,7 @@
  * Nickname awareness for the system prompt — PURE module.
  *
  * What he calls her and what she calls him. One subtle line so he uses
- * the right names naturally — the petTouchNote pattern.
+ * the right names naturally — the quiet-reminder pattern.
  * Empty string when neither is set: no noise, no spam.
  */
 

@@ -2,8 +2,8 @@
  * Anniversary awareness for the system prompt — PURE module.
  *
  * When a 纪念日 is today or coming up within 7 days, returns a subtle note
- * so the AI knows and can prepare or mention it naturally — the same pattern
- * the old petTouchNote() used. Empty string otherwise: no noise, no spam.
+ * so the AI knows and can prepare or mention it naturally — the
+ * quiet-reminder pattern. Empty string otherwise: no noise, no spam.
  *
  * Anniversaries are treated as recurring by month-day (birthdays, yearly
  * milestones): a date stored as "2020-10-09" still triggers every October 9th.
