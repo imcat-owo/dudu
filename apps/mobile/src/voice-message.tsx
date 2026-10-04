@@ -21,6 +21,7 @@ import {
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
+import { StartSequence } from "./voice/start-sequence";
 
 export type { VoiceMessage, VoiceMessageHit };
 export { encodeVoiceMessage, extractVoiceMessage, parseVoiceMessage };
@@ -204,6 +205,11 @@ export function VoiceRecorderButton({
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
+  // P1-8: quick-tap race guard — a stop landing mid-start must abort the
+  // start instead of leaving the mic hot with no stop coming.
+  const startSeqRef = useRef<StartSequence | null>(null);
+  if (!startSeqRef.current) startSeqRef.current = new StartSequence();
+  const startSeq = startSeqRef.current;
 
   function clearTimer() {
     if (timerRef.current) {
@@ -213,9 +219,18 @@ export function VoiceRecorderButton({
   }
 
   async function startRecording() {
+    const token = startSeq.begin();
+    // True when a stop landed while this start was awaiting something.
+    const aborted = () => startSeq.isCancelled(token);
+    // Never leave the mic armed after an aborted start.
+    const releaseAudioMode = () =>
+      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {
+        // best effort
+      });
     setHint("");
     try {
       const { status } = await requestRecordingPermissionsAsync();
+      if (aborted()) return;
       if (status !== "granted") {
         setHint("需要麦克风权限才能录音");
         return;
@@ -224,7 +239,15 @@ export function VoiceRecorderButton({
         allowsRecording: true,
         playsInSilentMode: true,
       });
+      if (aborted()) {
+        await releaseAudioMode();
+        return;
+      }
       await recorder.prepareToRecordAsync();
+      if (aborted()) {
+        await releaseAudioMode();
+        return;
+      }
       recorder.record();
       startTimeRef.current = Date.now();
       setSeconds(0);
@@ -239,6 +262,10 @@ export function VoiceRecorderButton({
   }
 
   async function stopRecording(cancelled: boolean) {
+    // P1-8: invalidate any in-flight startRecording FIRST, so a quick tap
+    // (press-out landing mid-start) aborts the start instead of the start
+    // continuing into record() after this early return.
+    startSeq.cancel();
     clearTimer();
     setRecording(false);
     if (!recorder.isRecording) {
@@ -272,6 +299,8 @@ export function VoiceRecorderButton({
   // The useAudioRecorder hook disposes the recorder itself.
   useEffect(() => {
     return () => {
+      // P1-8: a start that outlives unmount must not call record() afterwards.
+      startSeqRef.current?.cancel();
       clearTimer();
       try {
         if (recorder.isRecording) void recorder.stop().catch(() => {});
