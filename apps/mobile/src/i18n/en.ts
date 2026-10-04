@@ -1191,6 +1191,12 @@ export const enStrings: Record<StringKey, string> = {
   "dialogmodel.subtitle": "Only affects this conversation — no need to open Settings.",
   "dialogmodel.useDefault": "Back to default ({name})",
   "dialogmodel.close": "Close",
+  // ---- plan gate (multi-model coordination) ----
+  "plangate.title": "Multi-model plan",
+  "plangate.reason": "Why multiple models are needed",
+  "plangate.steps": "{n} steps",
+  "plangate.approve": "Approve",
+  "plangate.reject": "No thanks",
 
   // ---- capability groups ----
   "capgroup.title": "Capability groups",

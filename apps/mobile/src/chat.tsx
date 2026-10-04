@@ -44,6 +44,7 @@ import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
 import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
+import { PlanGateCard } from "./api-groups/plan-gate-card";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
@@ -1196,6 +1197,9 @@ export function ChatScreen({
         </Button>
       )}
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {/* Plan gate (开启原则): a proposed multi-model plan waits for her
+            approve/stop here — the AI must not act before she decides. */}
+        <PlanGateCard threadId={threadId} />
         <ErrorNotice error={saveError} />
         {!!saveError && (
           <Button

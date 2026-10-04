@@ -1154,6 +1154,12 @@ const zhHans = {
   "dialogmodel.subtitle": "只对当前对话生效，不用进设置。",
   "dialogmodel.useDefault": "恢复默认（{name}）",
   "dialogmodel.close": "关闭",
+  // ---- 计划门禁（多模型协作） ----
+  "plangate.title": "多模型协作计划",
+  "plangate.reason": "为什么需要多个模型",
+  "plangate.steps": "共 {n} 步",
+  "plangate.approve": "批准执行",
+  "plangate.reject": "不用了",
 
   // ---- capability groups ----
   "capgroup.title": "能力分组",

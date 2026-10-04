@@ -50,6 +50,7 @@ import { ambientVideoStore } from "../sora-ambient-video-instance.js";
 import { getAiThemeMode } from "../theme/ai-mode.js";
 import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
 import { createVideoTools, type VideoBackend } from "../video/tools.js";
+import { createPlanTools } from "./plan-tools";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -663,6 +664,9 @@ export function createLocalAgent(opts: {
           resolveBackends: resolveVideoBackends,
           tasks: taskProgressStore,
         }),
+        // Plan gate (开启原则): the only on-ramp to multi-model
+        // coordination — plan-only before engaging, her call.
+        ...createPlanTools(opts.threadId),
         ...themeTools,
         ...createFontSizeTools(AsyncStorage),
         ...createPetSkinTools(AsyncStorage),
