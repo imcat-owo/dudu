@@ -61,6 +61,7 @@ import type {
   FeedAuthor,
   FeedPost,
   FeedReply,
+  HerMood,
   MemoryConfidence,
   TellLaterItem,
   TimelineEvent,
@@ -251,6 +252,54 @@ export function SoftCard({ children }: { children: React.ReactNode }) {
     >
       {children}
     </View>
+  );
+}
+
+// ---- Her mood: how SHE is feeling, as she told him ----
+
+function HerMoodView() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const [mood, setMood] = useState<HerMood | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    void ourSpaceStore.getHerMood().then(setMood);
+  }, [v]);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!mood) return <EmptyState text={t("space.herMood.empty")} />;
+  return (
+    <FadeIn>
+      <SoftCard>
+        <TText style={{ color: colors.muted, fontSize: 12, letterSpacing: 1.5, marginBottom: 10 }}>
+          {t("space.herMood.title")}
+        </TText>
+        <TText
+          style={{
+            color: colors.text,
+            fontSize: 19,
+            fontWeight: "700",
+            lineHeight: 28,
+            letterSpacing: 0.3,
+            marginBottom: 8,
+          }}
+        >
+          {mood.mood}
+        </TText>
+        {!!mood.note && (
+          <TText style={{ color: colors.muted, fontSize: 13.5, lineHeight: 22, marginBottom: 12 }}>
+            {mood.note}
+          </TText>
+        )}
+        <TText style={{ color: colors.muted, fontSize: 12 }}>
+          {t("space.status.updatedAgo")} · {timeAgo(mood.updatedAt, now)}
+        </TText>
+      </SoftCard>
+    </FadeIn>
   );
 }
 
@@ -812,14 +861,21 @@ function CoupleHeader() {
 
   return (
     <View style={{ alignItems: "center", paddingTop: 26, paddingBottom: 6 }}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        {avatar(
-          herSource,
-          <Camera size={26} color={colors.muted} strokeWidth={1.5} />,
-          "her",
-          t("space.couple.herAvatar"),
-        )}
-        <View style={{ marginLeft: -18, marginRight: -18, zIndex: 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        <View style={{ alignItems: "center" }}>
+          {avatar(
+            herSource,
+            <Camera size={26} color={colors.muted} strokeWidth={1.5} />,
+            "her",
+            t("space.couple.herAvatar"),
+          )}
+          {!!profile?.herNickname && (
+            <TText style={{ color: colors.text, fontSize: 13, fontWeight: "700", marginTop: 6 }}>
+              {profile.herNickname}
+            </TText>
+          )}
+        </View>
+        <View style={{ marginLeft: -18, marginRight: -18, zIndex: 2, marginTop: 21 }}>
           <View
             style={{
               width: 34,
@@ -835,12 +891,19 @@ function CoupleHeader() {
             <Heart size={16} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
           </View>
         </View>
-        {avatar(
-          aiSource,
-          <Heart size={26} color={colors.muted} strokeWidth={1.5} />,
-          "ai",
-          t("space.couple.aiAvatar"),
-        )}
+        <View style={{ alignItems: "center" }}>
+          {avatar(
+            aiSource,
+            <Heart size={26} color={colors.muted} strokeWidth={1.5} />,
+            "ai",
+            t("space.couple.aiAvatar"),
+          )}
+          {!!profile?.aiNickname && (
+            <TText style={{ color: colors.text, fontSize: 13, fontWeight: "700", marginTop: 6 }}>
+              {profile.aiNickname}
+            </TText>
+          )}
+        </View>
       </View>
       <TText
         style={{
@@ -1504,7 +1567,12 @@ export function OurSpaceScreen() {
           {page.type === "anniversary" && <AnniversaryPage />}
           {page.type === "diary" && <DiaryView />}
           {page.type === "garden" && <GardenView />}
-          {page.type === "status" && <StatusView />}
+          {page.type === "status" && (
+            <>
+              <StatusView />
+              <HerMoodView />
+            </>
+          )}
           {page.type === "tellLater" && <TellLaterView />}
           {page.type === "music" && <MusicRoomPage />}
         </PageShell>

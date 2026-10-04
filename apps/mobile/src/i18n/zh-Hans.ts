@@ -94,6 +94,8 @@ const zhHans = {
   "space.status.title": "我的状态",
   "space.status.empty": "还没更新状态。跟我聊聊天，我在忙什么都会写在这儿。",
   "space.status.updatedAgo": "更新于",
+  "space.herMood.title": "她的心情",
+  "space.herMood.empty": "她还没跟我说过心情。聊聊天，她说起时我会记下来。",
   "space.diary.title": "我的日记",
   "space.diary.empty": "日记本还是空的。跟我说「记一下今天的事」，我来写。",
   "space.diary.hint": "说一声，我来写",

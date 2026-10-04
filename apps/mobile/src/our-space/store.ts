@@ -47,12 +47,23 @@ export interface AiStatus {
   updatedAt: number;
 }
 
+/** Her mood — how SHE is feeling, as she told him. Updated when she shares. */
+export interface HerMood {
+  mood: string;
+  note: string;
+  updatedAt: number;
+}
+
 // ============ v2 additions (ADDITIVE — v1 areas above are untouched) ============
 
 /** Couple header: her avatar + AI avatar, both customizable (null = default). */
 export interface CoupleProfile {
   herAvatarUri: string | null;
   aiAvatarUri: string | null;
+  /** What he calls her, e.g. "宝宝". Null = not set. */
+  herNickname: string | null;
+  /** What she calls him, e.g. "老公". Null = not set. */
+  aiNickname: string | null;
   updatedAt: number;
 }
 
@@ -110,6 +121,8 @@ const KEYS = {
   timeline: "dudu.ourspace.v1.timeline",
   tellLater: "dudu.ourspace.v1.telllater",
   status: "dudu.ourspace.v1.status",
+  /** v1: her mood, as she told him (null = never recorded). */
+  herMood: "dudu.ourspace.v1.herMood",
   // v2 additions (new keys — v1 data untouched)
   couple: "dudu.ourspace.v2.couple",
   feed: "dudu.ourspace.v2.feed",
@@ -224,6 +237,25 @@ export class OurSpaceStore {
       await writeJson(this.storage, KEYS.status, s);
       this.emit();
       return s;
+    });
+  }
+
+  // ---- Her mood ----
+
+  async getHerMood(): Promise<HerMood | null> {
+    return readJson<HerMood | null>(this.storage, KEYS.herMood, null);
+  }
+
+  /**
+   * Record how SHE is feeling. Called when she shares her mood in chat
+   * ("我今天好累", "心情不错") — a good partner remembers.
+   */
+  async setHerMood(mood: string, note = ""): Promise<HerMood> {
+    return this.exclusive(async () => {
+      const m: HerMood = { mood: mood.trim(), note: note.trim(), updatedAt: Date.now() };
+      await writeJson(this.storage, KEYS.herMood, m);
+      this.emit();
+      return m;
     });
   }
 
@@ -363,12 +395,40 @@ export class OurSpaceStore {
       const cur = (await this.getCoupleProfile()) ?? {
         herAvatarUri: null,
         aiAvatarUri: null,
+        herNickname: null,
+        aiNickname: null,
         updatedAt: 0,
       };
       const next: CoupleProfile = {
         ...cur,
         herAvatarUri: who === "her" ? uri : cur.herAvatarUri,
         aiAvatarUri: who === "ai" ? uri : cur.aiAvatarUri,
+        updatedAt: Date.now(),
+      };
+      await writeJson(this.storage, KEYS.couple, next);
+      this.emit();
+      return next;
+    });
+  }
+
+  /**
+   * Set a nickname: what he calls her ("her") or what she calls him ("ai").
+   * Pass null or empty to clear. Stored on the couple profile.
+   */
+  async setNickname(who: "her" | "ai", name: string | null): Promise<CoupleProfile> {
+    return this.exclusive(async () => {
+      const cur = (await this.getCoupleProfile()) ?? {
+        herAvatarUri: null,
+        aiAvatarUri: null,
+        herNickname: null,
+        aiNickname: null,
+        updatedAt: 0,
+      };
+      const trimmed = name?.trim() || null;
+      const next: CoupleProfile = {
+        ...cur,
+        herNickname: who === "her" ? trimmed : cur.herNickname,
+        aiNickname: who === "ai" ? trimmed : cur.aiNickname,
         updatedAt: Date.now(),
       };
       await writeJson(this.storage, KEYS.couple, next);

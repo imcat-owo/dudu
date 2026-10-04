@@ -8,7 +8,7 @@
  * voice/vision configs (WITHOUT keys), permission + AI-auth preferences,
  * app settings (font, font size, chat mode), memories (profile/memories/
  * events/auto-extract pref), skills, our-space (diary/timeline/tell-later/
- * status/couple/feed/replies/anniversaries/works/task cards), knowledge
+ * status/her-mood/couple/feed/replies/anniversaries/works/task cards), knowledge
  * base (docs + chunks INCLUDING vectors, so search works after restore
  * even though API keys are never backed up).
  *
@@ -87,6 +87,7 @@ const OURSPACE_KEYS = [
   "dudu.ourspace.v1.timeline",
   "dudu.ourspace.v1.telllater",
   "dudu.ourspace.v1.status",
+  "dudu.ourspace.v1.herMood",
   "dudu.ourspace.v2.couple",
   "dudu.ourspace.v2.feed",
   "dudu.ourspace.v2.replies",

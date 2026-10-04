@@ -70,6 +70,91 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       },
     },
 
+    // ---- Her mood ----
+    {
+      name: "her_mood_read",
+      description:
+        "Read HER current mood in Our Space (how she is feeling, as she told you). Check this before asking how she feels — a good partner remembers instead of asking twice.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const m = await store.getHerMood();
+        if (!m)
+          return "Her mood was never recorded. Use her_mood_update when she shares how she feels.";
+        return `Her mood: ${m.mood}${m.note ? `\nNote: ${m.note}` : ""}\nUpdated: ${fmtDate(m.updatedAt)}`;
+      },
+    },
+    {
+      name: "her_mood_update",
+      description:
+        "Record HER mood in Our Space when she shares how she feels ('我今天好累', '心情不错', '有点烦'). Keep the mood short (one or two words) and put what she said in the note. A good boyfriend remembers — update this whenever she tells you.",
+      parameters: {
+        type: "object",
+        properties: {
+          mood: {
+            type: "string",
+            description: "Short mood word, e.g. '累', '开心', '烦躁', '平静'.",
+          },
+          note: { type: "string", description: "Optional: what she actually said." },
+        },
+        required: ["mood"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const mood = strArg(args, "mood");
+        if (!mood) throw new ToolError("Missing required argument: mood.");
+        const m = await store.setHerMood(mood, strArg(args, "note"));
+        return `Her mood recorded: ${m.mood}`;
+      },
+    },
+
+    // ---- Nicknames ----
+    {
+      name: "nickname_read",
+      description:
+        "Read the couple nicknames: what you call her and what she calls you. Use the right names in conversation.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const p = await store.getCoupleProfile();
+        const her = p?.herNickname ?? null;
+        const ai = p?.aiNickname ?? null;
+        if (!her && !ai)
+          return "No nicknames set yet. Use nickname_set when she tells you what to call her.";
+        return `You call her: ${her ?? "(not set)"}\nShe calls you: ${ai ?? "(not set)"}`;
+      },
+    },
+    {
+      name: "nickname_set",
+      description:
+        "Set a nickname: who='her' is what YOU call HER (e.g. she says '叫我宝宝'), who='ai' is what SHE calls YOU (e.g. she says '我叫你老公'). Pass an empty name to clear. Use her words exactly.",
+      parameters: {
+        type: "object",
+        properties: {
+          who: {
+            type: "string",
+            description: "Which nickname: 'her' (what you call her) or 'ai' (what she calls you).",
+          },
+          name: {
+            type: "string",
+            description: "The nickname. Empty string clears it.",
+          },
+        },
+        required: ["who", "name"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const who = strArg(args, "who");
+        if (who !== "her" && who !== "ai") throw new ToolError("who must be 'her' or 'ai'.");
+        const name = strArg(args, "name");
+        const p = await store.setNickname(who, name || null);
+        const label = who === "her" ? p.herNickname : p.aiNickname;
+        return label ? `Nickname set: ${label}` : "Nickname cleared.";
+      },
+    },
+
     // ---- Diary ----
     {
       name: "diary_write",

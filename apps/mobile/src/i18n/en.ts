@@ -91,6 +91,9 @@ export const enStrings: Record<StringKey, string> = {
   "space.status.empty":
     "No status yet. Chat with me — I will keep this posted with what I am up to.",
   "space.status.updatedAgo": "Updated",
+  "space.herMood.title": "Her mood",
+  "space.herMood.empty":
+    "She hasn't shared her mood yet. Chat with her — I will remember when she tells me.",
   "space.diary.title": "My diary",
   "space.diary.empty": "The diary is empty. Tell me to remember today and I will write it.",
   "space.diary.hint": "Say the word, I will write it",

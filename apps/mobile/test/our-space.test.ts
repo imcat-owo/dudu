@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
 import { getManual } from "../src/manuals/index.js";
 import { buildAnniversarySection } from "../src/our-space/anniversary-section.js";
+import { buildHerMoodSection } from "../src/our-space/her-mood-section.js";
+import { buildNicknameSection } from "../src/our-space/nickname-section.js";
 import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
 import { createOurSpaceTools } from "../src/our-space/tools.js";
 
@@ -109,13 +111,17 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 17 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 21 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 17);
+    assert.equal(tools.length, 21);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
       "my_status_update",
+      "her_mood_read",
+      "her_mood_update",
+      "nickname_read",
+      "nickname_set",
       "diary_write",
       "diary_read",
       "timeline_add",
@@ -206,6 +212,127 @@ describe("our-space v2: couple profile", () => {
     // Clearing works too.
     const p3 = await s.setAvatar("her", null);
     assert.equal(p3.herAvatarUri, null);
+  });
+
+  it("nicknames: set per side, independent of avatars", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const p1 = await s.setNickname("her", "宝宝");
+    assert.equal(p1.herNickname, "宝宝");
+    assert.equal(p1.aiNickname, null);
+    const p2 = await s.setNickname("ai", "老公");
+    assert.equal(p2.herNickname, "宝宝");
+    assert.equal(p2.aiNickname, "老公");
+    // Avatars survive nickname writes.
+    await s.setAvatar("her", "file:///her.jpg");
+    const p3 = await s.getCoupleProfile();
+    assert.equal(p3?.herNickname, "宝宝");
+    assert.equal(p3?.herAvatarUri, "file:///her.jpg");
+    // Clearing works.
+    const p4 = await s.setNickname("her", "");
+    assert.equal(p4.herNickname, null);
+    assert.equal(p4.aiNickname, "老公");
+  });
+});
+
+describe("our-space: her mood", () => {
+  it("set and get her mood", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    assert.equal(await s.getHerMood(), null);
+    const m = await s.setHerMood("累", "加班到很晚");
+    assert.equal(m.mood, "累");
+    assert.equal(m.note, "加班到很晚");
+    const got = await s.getHerMood();
+    assert.equal(got?.mood, "累");
+  });
+
+  it("her_mood tools round-trip via registry", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    const before = await reg.execute("her_mood_read", {}, ctx);
+    assert.match(before, /never recorded/i);
+    await reg.execute("her_mood_update", { mood: "开心", note: "剧追完了" }, ctx);
+    const after = await reg.execute("her_mood_read", {}, ctx);
+    assert.match(after, /开心/);
+    assert.match(after, /剧追完了/);
+    await assert.rejects(() => reg.execute("her_mood_update", { mood: "" }, ctx));
+  });
+
+  it("nickname tools round-trip via registry", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    const before = await reg.execute("nickname_read", {}, ctx);
+    assert.match(before, /No nicknames/i);
+    await reg.execute("nickname_set", { who: "her", name: "宝宝" }, ctx);
+    await reg.execute("nickname_set", { who: "ai", name: "老公" }, ctx);
+    const after = await reg.execute("nickname_read", {}, ctx);
+    assert.match(after, /宝宝/);
+    assert.match(after, /老公/);
+    await assert.rejects(() => reg.execute("nickname_set", { who: "them", name: "x" }, ctx));
+  });
+});
+
+describe("her-mood-section: buildHerMoodSection", () => {
+  const NOW = new Date(2026, 9, 4, 12, 0, 0);
+
+  it("returns empty when never recorded", () => {
+    assert.equal(buildHerMoodSection(null, NOW), "");
+  });
+
+  it("injects a subtle line for a fresh mood", () => {
+    const line = buildHerMoodSection(
+      { mood: "累", note: "加班到很晚", updatedAt: NOW.getTime() - 3600_000 },
+      NOW,
+    );
+    assert.ok(line.includes("累"));
+    assert.ok(line.includes("加班到很晚"));
+  });
+
+  it("stays silent when the mood is stale", () => {
+    const line = buildHerMoodSection(
+      { mood: "累", note: "", updatedAt: NOW.getTime() - 4 * 86400000 },
+      NOW,
+    );
+    assert.equal(line, "");
+  });
+});
+
+describe("nickname-section: buildNicknameSection", () => {
+  it("returns empty when nothing set", () => {
+    assert.equal(buildNicknameSection(null), "");
+    assert.equal(
+      buildNicknameSection({
+        herAvatarUri: null,
+        aiAvatarUri: null,
+        herNickname: null,
+        aiNickname: null,
+        updatedAt: 0,
+      }),
+      "",
+    );
+  });
+
+  it("mentions both nicknames when set", () => {
+    const line = buildNicknameSection({
+      herAvatarUri: null,
+      aiAvatarUri: null,
+      herNickname: "宝宝",
+      aiNickname: "老公",
+      updatedAt: 0,
+    });
+    assert.ok(line.includes("宝宝"));
+    assert.ok(line.includes("老公"));
+  });
+
+  it("mentions only the set side", () => {
+    const line = buildNicknameSection({
+      herAvatarUri: null,
+      aiAvatarUri: null,
+      herNickname: "宝宝",
+      aiNickname: null,
+      updatedAt: 0,
+    });
+    assert.ok(line.includes("宝宝"));
+    assert.ok(!line.includes("老公"));
   });
 });
 

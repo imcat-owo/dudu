@@ -31,7 +31,9 @@ import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
 import { buildAnniversarySection } from "../our-space/anniversary-section.js";
+import { buildHerMoodSection } from "../our-space/her-mood-section.js";
 import { ourSpaceStore } from "../our-space/instance.js";
+import { buildNicknameSection } from "../our-space/nickname-section.js";
 import { taskProgressStore } from "../our-space/task-progress-instance.js";
 import {
   createAmbientVideoTools,
@@ -753,6 +755,24 @@ export function createLocalAgent(opts: {
       } catch {
         // Anniversary read failure: skip silently, never break the prompt.
       }
+      // Her-mood awareness: when she told him how she feels, one subtle
+      // line so he remembers — the petTouchNote pattern. Empty when stale.
+      let herMoodSection = "";
+      try {
+        const herMood = await (opts.ourSpaceStore ?? ourSpaceStore).getHerMood();
+        herMoodSection = buildHerMoodSection(herMood);
+      } catch {
+        // Mood read failure: skip silently, never break the prompt.
+      }
+      // Nickname awareness: what he calls her / what she calls him.
+      // Empty when unset: no noise, no spam.
+      let nicknameSection = "";
+      try {
+        const couple = await (opts.ourSpaceStore ?? ourSpaceStore).getCoupleProfile();
+        nicknameSection = buildNicknameSection(couple);
+      } catch {
+        // Couple read failure: skip silently, never break the prompt.
+      }
       // Intelligent API adaptation: resolve effective tools/thinking state.
       // Precedence: her manual override (group) → learned profile → auto
       // (optimistic ON — her rule: everything ON unless proven impossible).
@@ -772,6 +792,8 @@ export function createLocalAgent(opts: {
         memorySection,
         skillSection,
         anniversarySection,
+        herMoodSection,
+        nicknameSection,
       ]);
       const allWireTools = registry.definitions();
       // wireTools is mutable: auto-fallback may clear it on retry.
