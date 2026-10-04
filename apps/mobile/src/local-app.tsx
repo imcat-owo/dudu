@@ -24,7 +24,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
 import { MuseApi } from "./api";
@@ -173,12 +173,16 @@ export function LocalApp() {
                     {/* AI browser WebView — always mounted (hidden) so the AI
                         browser tools work from any screen. The controller
                         requires a mounted WebView; without this the tools
-                        throw "Browser is not ready". */}
+                        throw "Browser is not ready". Kept off-screen at full
+                        screen size (not 1x1) so browser_screenshot captures
+                        a real page image instead of a 1px waste. */}
                     <View
                       style={{
                         position: "absolute",
-                        width: 1,
-                        height: 1,
+                        left: -10000,
+                        top: 0,
+                        width: Dimensions.get("window").width,
+                        height: Dimensions.get("window").height,
                         opacity: 0,
                         pointerEvents: "none",
                       }}

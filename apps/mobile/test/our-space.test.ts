@@ -518,6 +518,33 @@ describe("anniversary-section: buildAnniversarySection", () => {
     // eslint-disable-next-line no-control-regex
     assert.doesNotMatch(s, /[\u{1F000}-\u{1FAFF}\u2600-\u{27BF}]/u);
   });
+
+  it("treats anniversaries as recurring: past-year birthday triggers countdown", () => {
+    // Her birthday stored as 2020-10-09 — should still warn every October.
+    const s = buildAnniversarySection([ann("她的生日", "2020-10-09")], NOW);
+    assert.match(s, /「她的生日」还有 5 天/);
+    assert.match(s, /2026-10-09/);
+  });
+
+  it("treats month-day as today even when the stored year differs", () => {
+    const s = buildAnniversarySection([ann("她的生日", "1995-10-04")], NOW);
+    assert.match(s, /今天是「她的生日」/);
+  });
+
+  it("wraps to next year when this year's occurrence has passed", () => {
+    const newYearEve = new Date(2026, 11, 30, 12, 0, 0);
+    const s = buildAnniversarySection(
+      [ann("元旦", "2020-01-02")],
+      newYearEve,
+    );
+    assert.match(s, /「元旦」还有 3 天/);
+    assert.match(s, /2027-01-02/);
+  });
+
+  it("ignores malformed dates instead of crashing", () => {
+    const s = buildAnniversarySection([ann("坏的", "not-a-date")], NOW);
+    assert.equal(s, "");
+  });
 });
 
 describe("on-this-day", () => {

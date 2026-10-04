@@ -1365,7 +1365,7 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.status.stuck": "Stuck",
   "space.tasks.status.done": "Done",
   "space.tasks.dismissTitle": "Dismiss this card?",
-  "space.tasks.dismissBody": "Done task cards can be dismissed. Records stay. Sure?",
+  "space.tasks.dismissBody": "Dismiss this card? Records stay.",
   "space.tasks.bgTitle": "Card background",
   "space.tasks.bgUpload": "Pick from photos",
   "space.tasks.bgGenerate": "Generate with AI",

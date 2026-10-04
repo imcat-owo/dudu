@@ -1320,7 +1320,7 @@ const zhHans = {
   "space.tasks.status.stuck": "卡住了",
   "space.tasks.status.done": "做完了",
   "space.tasks.dismissTitle": "撤掉这张卡片？",
-  "space.tasks.dismissBody": "做完的任务卡可以撤掉，记录还在。确定撤掉吗？",
+  "space.tasks.dismissBody": "撤掉这张卡片？记录还在。",
   "space.tasks.bgTitle": "换卡片背景",
   "space.tasks.bgUpload": "从相册选一张",
   "space.tasks.bgGenerate": "让 AI 生一张",
