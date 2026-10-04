@@ -133,7 +133,7 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
 
 /**
  * Synthesize text with the given config. Returns a local file URI.
- * Results are cached by (provider, voice, model, text hash) — playing the
+ * Results are cached by (provider, voice, model, rate, text hash) — playing the
  * same bubble twice doesn't hit the network twice.
  */
 export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<string> {
@@ -151,7 +151,9 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
 
   const fs = await loadFs();
   const dir = await cacheDir();
-  const cacheKey = hashText(`${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${clean}`);
+  const cacheKey = hashText(
+    `${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${cfg.rate ?? 1.0}|${clean}`,
+  );
   // Cache slot lookup: the stored extension follows the actual audio format
   // (sniffed from Content-Type), so scan for any `${cacheKey}.*` — the .mp3
   // fast path covers edge-tts and OpenAI-compatible defaults.

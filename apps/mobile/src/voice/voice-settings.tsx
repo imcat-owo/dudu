@@ -193,6 +193,38 @@ function TtsSection() {
             />
           </>
         )}
+        <View style={{ gap: 6 }}>
+          <TText style={{ fontWeight: "600", color: colors.muted }}>
+            {t("voice.ttsSpeed")}
+          </TText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((r) => {
+              const active = (cfg.rate ?? 1.0) === r;
+              return (
+                <Pressable
+                  key={r}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => set("rate", r === 1.0 ? undefined : r)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: radii.lg,
+                    borderWidth: 1,
+                    borderColor: active ? colors.blueDark : colors.line,
+                    backgroundColor: active ? colors.sky : colors.card,
+                  }}
+                >
+                  <TText
+                    style={{ color: active ? colors.blueDark : colors.text, fontWeight: "600" }}
+                  >
+                    {r}x
+                  </TText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
         {!!error && <TText style={{ color: colors.danger }}>{error}</TText>}
         {!!testMsg && <TText style={{ color: colors.muted }}>{testMsg}</TText>}
         <View style={{ flexDirection: "row", gap: 8 }}>

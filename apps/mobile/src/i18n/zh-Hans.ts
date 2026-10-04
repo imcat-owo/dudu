@@ -1144,6 +1144,7 @@ const zhHans = {
   "voice.ttsEdge": "edge-tts（免费，无需 Key）",
   "voice.ttsCustom": "自定义",
   "voice.ttsVoice": "音色",
+  "voice.ttsSpeed": "语速",
   "voice.ttsUrl": "接口地址",
   "voice.ttsKey": "Key",
   "voice.ttsModel": "模型",

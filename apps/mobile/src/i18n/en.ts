@@ -1180,6 +1180,7 @@ export const enStrings: Record<StringKey, string> = {
   "voice.ttsEdge": "edge-tts (free, no key needed)",
   "voice.ttsCustom": "Custom",
   "voice.ttsVoice": "Voice",
+  "voice.ttsSpeed": "Speed",
   "voice.ttsUrl": "Endpoint URL",
   "voice.ttsKey": "Key",
   "voice.ttsModel": "Model",
