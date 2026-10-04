@@ -1148,6 +1148,7 @@ const zhHans = {
 
   // ---- thinking drawer ----
   "thinking.thinking": "想想…",
+  "thinking.dragHandle": "拖动调整大小",
   "thinking.title": "我在想什么",
   "thinking.open": "看看我在想什么",
   "thinking.actionsTitle": "行动",

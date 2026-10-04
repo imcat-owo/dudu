@@ -1185,6 +1185,7 @@ export const enStrings: Record<StringKey, string> = {
 
   // ---- thinking drawer ----
   "thinking.thinking": "Thinking…",
+  "thinking.dragHandle": "Drag to resize",
   "thinking.title": "What I am thinking",
   "thinking.open": "View thinking process",
   "thinking.actionsTitle": "Actions",

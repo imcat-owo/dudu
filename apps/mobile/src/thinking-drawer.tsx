@@ -35,6 +35,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Easing,
   Modal,
   PanResponder,
   Pressable,
@@ -91,22 +92,35 @@ export function ThinkingStatus({
   onOpen: () => void;
 }) {
   const { tokens } = useTheme();
-  const pulse = useRef(new Animated.Value(1)).current;
+  // 0 → 1 → 0 "breath". Drives the brand-color halo ping + a gentle button
+  // scale — livelier than a plain opacity blink, still subtle (motion.ts:
+  // purposeful motion only; the halo answers "the AI is working right now").
+  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!streaming || !thinking) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.45, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
       ]),
     );
     loop.start();
     return () => {
       loop.stop();
-      pulse.setValue(1);
+      pulse.setValue(0);
     };
-  }, [streaming, pulse]);
+  }, [streaming, pulse, thinking]);
 
   if (!thinking) return null;
   return (
@@ -118,9 +132,56 @@ export function ThinkingStatus({
         paddingVertical: 4,
       }}
     >
-      <Animated.View style={{ opacity: pulse }}>
-        <ThinkingButton onPress={onOpen} />
-      </Animated.View>
+      <View
+        style={{
+          width: 26,
+          height: 26,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {streaming ? (
+          <Animated.View
+            style={{
+              position: "absolute",
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              backgroundColor: tokens.accent.bg,
+              opacity: pulse.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.5, 0],
+              }),
+              transform: [
+                {
+                  scale: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.7, 1.7],
+                  }),
+                },
+              ],
+            }}
+          />
+        ) : null}
+        <Animated.View
+          style={
+            streaming
+              ? {
+                  transform: [
+                    {
+                      scale: pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.1],
+                      }),
+                    },
+                  ],
+                }
+              : undefined
+          }
+        >
+          <ThinkingButton onPress={onOpen} />
+        </Animated.View>
+      </View>
       <Pressable onPress={onOpen} hitSlop={8}>
         <TText
           style={{
@@ -252,6 +313,29 @@ export function ThinkingDrawer({
   const [closing, setClosing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const scrollY = useRef(0);
+  // Drag-handle "breathing": a slow, calm paw-print pulse. Subtle on purpose —
+  // the handle is chrome, not content (motion.ts: purposeful motion only).
+  const breathe = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathe, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breathe]);
 
   const hasActions = actions.length > 0;
   // Live lookup: the selected action re-reads from `actions` every render,
@@ -368,19 +452,74 @@ export function ThinkingDrawer({
     </Pressable>
   );
 
-  const dragHandle = (
-    <View style={{ alignItems: "center", paddingBottom: 10 }}>
-      <View
+  // Paw-print drag handle: keeps the iOS 38pt hit width, but the visual is a
+  // little paw (main pad + three toe beans) instead of a plain bar. Zero
+  // emoji — pure Views/SVG shapes. Breathes gently while the drawer is open.
+  const dragHandle = (() => {
+    const pad = tokens.text.fg;
+    const bean = (size: number, left: number, top: number, key: string) => (
+      <Animated.View
+        key={key}
         style={{
-          width: 38,
-          height: 4,
-          borderRadius: radii.xs,
-          backgroundColor: tokens.text.fg,
-          opacity: 0.25,
+          position: "absolute",
+          left,
+          top,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: pad,
+          opacity: breathe.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.22, 0.4],
+          }),
+          transform: [
+            {
+              scale: breathe.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.08],
+              }),
+            },
+          ],
         }}
       />
-    </View>
-  );
+    );
+    return (
+      <View style={{ alignItems: "center", paddingVertical: 8 }}>
+        <View
+          style={{ width: 38, height: 26, alignItems: "center", justifyContent: "center" }}
+          accessibilityRole="adjustable"
+          accessibilityLabel={t("thinking.dragHandle")}
+        >
+          {bean(7, 4, 0, "t1")}
+          {bean(8, 15, -2, "t2")}
+          {bean(7, 27, 0, "t3")}
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: 9,
+              top: 10,
+              width: 20,
+              height: 15,
+              borderRadius: 10,
+              backgroundColor: pad,
+              opacity: breathe.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.22, 0.4],
+              }),
+              transform: [
+                {
+                  scale: breathe.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.08],
+                  }),
+                },
+              ],
+            }}
+          />
+        </View>
+      </View>
+    );
+  })();
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={dismiss}>

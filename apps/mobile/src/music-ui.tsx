@@ -509,7 +509,7 @@ function ProgressBar({
   const ratio = dur > 0 ? Math.min(1, position / dur) : 0;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <TText style={{ color: colors.muted, fontSize: 11.5, width: 38 }}>{fmtTime(position)}</TText>
+      <TText style={{ color: colors.muted, fontSize: 12, width: 40 }}>{fmtTime(position)}</TText>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("music.nowPlaying")}
@@ -543,7 +543,7 @@ function ProgressBar({
           }}
         />
       </Pressable>
-      <TText style={{ color: colors.muted, fontSize: 11.5, width: 38, textAlign: "right" }}>
+      <TText style={{ color: colors.muted, fontSize: 12, width: 40, textAlign: "right" }}>
         {dur > 0 ? fmtTime(dur) : "--:--"}
       </TText>
     </View>
