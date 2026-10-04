@@ -6,7 +6,7 @@
 
 ## 已完成
 
-- [x] **code P0-1**（`2026-10-05`，commit 待填）：5 个 store 的 `getSnapshot()` 返回了稳定引用，修了无限重渲染循环。文件：`api-groups/store.ts`、`api-groups/capability-store.ts`、`api-groups/dialog-model-override.ts`、`api-groups/plan-gate.ts`、`voice/store.ts`。新增回归测试 `test/snapshot-stability.test.ts`（5 个用例）。tsc 零报错、相关 76 测试全过、biome 干净。
+- [x] **code P0-1**（`2026-10-05`，commit fa62bc3）：5 个 store 的 `getSnapshot()` 返回了稳定引用，修了无限重渲染循环。文件：`api-groups/store.ts`、`api-groups/capability-store.ts`、`api-groups/dialog-model-override.ts`、`api-groups/plan-gate.ts`、`voice/store.ts`。新增回归测试 `test/snapshot-stability.test.ts`（5 个用例）。tsc 零报错、相关 76 测试全过、biome 干净。
 
 ## 待修
 
