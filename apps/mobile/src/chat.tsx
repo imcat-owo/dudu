@@ -52,6 +52,7 @@ import { MILESTONE_CELEBRATION_MS, resolveAvatarState } from "./avatar-state";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
+import { computeCanSend } from "./chat-send-gate";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, type QueuedMessage } from "./conversation-queue";
 import { TText } from "./font";
@@ -726,6 +727,18 @@ export function ChatScreen({
   useEffect(() => {
     setAiBubbleMessageId(lastAiBubbleId);
   }, [lastAiBubbleId]);
+  // P1-6: the send button's enabled state must match send()'s gate exactly —
+  // attachments with no text are a supported send, so they enable the button.
+  const canSend = computeCanSend({
+    text: draft,
+    imageCount: imageAttachments.length,
+    fileCount: fileAttachments.length,
+    loaded,
+    isReady,
+    replying,
+  });
+  const hasSendableContent =
+    draft.trim().length > 0 || imageAttachments.length > 0 || fileAttachments.length > 0;
   return (
     <View style={{ flex: 1, backgroundColor: incognitoOn ? "rgba(61,58,51,0.06)" : undefined }}>
       {bundle.wallpaper?.uri ? (
@@ -1519,13 +1532,13 @@ export function ChatScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={replying ? t("a11y.stopReply") : t("a11y.sendMessage")}
-              disabled={!replying && (!draft.trim() || !loaded || !isReady)}
+              disabled={!canSend}
               onPress={replying ? () => void stop() : send}
               style={({ pressed }) => ({
                 width: 44,
                 height: 44,
                 borderRadius: radii.xl,
-                backgroundColor: replying || draft.trim() ? colors.blue : colors.line,
+                backgroundColor: canSend ? colors.blue : colors.line,
                 alignItems: "center",
                 justifyContent: "center",
                 transform: [{ scale: pressed ? 0.94 : 1 }],
@@ -1537,7 +1550,7 @@ export function ChatScreen({
                 <ArrowUp
                   size={25}
                   strokeWidth={1.8}
-                  color={draft.trim() ? colors.onBlue : colors.muted}
+                  color={hasSendableContent ? colors.onBlue : colors.muted}
                 />
               )}
             </Pressable>
