@@ -242,6 +242,35 @@ export class SqliteKnowledgeStore {
     this.emit();
   }
 
+  /**
+   * Restore a full snapshot (backup/restore). Wipes both tables and
+   * re-inserts with the ORIGINAL ids in a single transaction — chunk
+   * docIds keep pointing at the right docs, and a crash mid-restore
+   * never leaves half a dataset behind.
+   */
+  async restoreSnapshot(docs: KbDoc[], chunks: KbChunkRecord[]): Promise<void> {
+    await this.ensureReady();
+    await this.db.withTransactionAsync(async () => {
+      await this.db.runAsync("DELETE FROM kb_chunks");
+      await this.db.runAsync("DELETE FROM kb_docs");
+      for (const d of docs) {
+        await this.db.runAsync(
+          "INSERT OR REPLACE INTO kb_docs (id, name, kind, size, chunk_count, status, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [d.id, d.name, d.kind, d.size, d.chunkCount, d.status, d.error ?? null, d.createdAt],
+        );
+      }
+      for (const c of chunks) {
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO kb_chunks
+           (id, doc_id, idx, text, heading_path, vector, embed_model)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [c.id, c.docId, c.index, c.text, c.headingPath, JSON.stringify(c.vector), c.embedModel],
+        );
+      }
+    });
+    this.emit();
+  }
+
   // ---------- chunks ----------
 
   async putChunks(records: KbChunkRecord[]): Promise<void> {

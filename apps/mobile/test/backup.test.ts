@@ -141,6 +141,69 @@ describe("collectBackup", () => {
       }
     }
   });
+
+  it("collects memories, skills, our-space, and task cards", async () => {
+    const kv = fakeKV({
+      ...SEED,
+      "dudu.memory.v1.memories": JSON.stringify([{ id: "m1", content: "she likes cats" }]),
+      "dudu.memory.v1.profile": JSON.stringify({ name: { key: "name", value: "Xing" } }),
+      "dudu.skills.v1.list": JSON.stringify([{ id: "s1", name: "travel" }]),
+      "dudu.ourspace.v1.diary": JSON.stringify([{ id: "d1", text: "dear diary" }]),
+      "dudu.ourspace.v2.anniversaries": JSON.stringify([{ id: "a1", name: "first date" }]),
+      "dudu.tasks.v1.task1": JSON.stringify({ id: "task1", title: "do the thing" }),
+    });
+    const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
+    assert.ok(b.memories, "memories section must exist");
+    assert.ok(b.skills, "skills section must exist");
+    assert.ok(b.ourSpace, "ourSpace section must exist");
+    assert.equal(
+      (b.memories["dudu.memory.v1.memories"] as unknown[]).length,
+      1,
+      "memory records collected",
+    );
+    assert.ok(b.skills["dudu.skills.v1.list"], "skill list collected");
+    assert.ok(b.ourSpace["dudu.ourspace.v1.diary"], "diary collected");
+    assert.ok(b.ourSpace["dudu.ourspace.v2.anniversaries"], "anniversaries collected");
+    assert.ok(b.ourSpace["dudu.tasks.v1.task1"], "task cards collected by prefix");
+  });
+
+  it("collects knowledge via the injected store (docs + chunks with vectors)", async () => {
+    const kb = {
+      listDocs: async () => [
+        {
+          id: "doc1",
+          name: "notes.md",
+          kind: "md" as const,
+          size: 10,
+          chunkCount: 2,
+          status: "ready" as const,
+          createdAt: 1,
+        },
+      ],
+      listChunks: async () => [
+        {
+          id: "c1",
+          docId: "doc1",
+          index: 0,
+          text: "hello",
+          headingPath: "",
+          vector: [0.1, 0.2],
+          embedModel: "api-embeddings",
+        },
+      ],
+      restoreSnapshot: async () => {},
+    };
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED), kb);
+    assert.ok(b.knowledge, "knowledge section must exist when a store is given");
+    assert.equal(b.knowledge.docs.length, 1);
+    assert.equal(b.knowledge.chunks.length, 1);
+    assert.deepEqual(b.knowledge.chunks[0].vector, [0.1, 0.2], "vectors are backed up");
+  });
+
+  it("skips the knowledge section when no store is given", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    assert.equal(b.knowledge, undefined);
+  });
 });
 
 describe("parseBackup", () => {
@@ -167,6 +230,46 @@ describe("parseBackup", () => {
     assert.equal(
       codeOf(JSON.stringify({ kind: BACKUP_KIND, version: BACKUP_VERSION })),
       "invalid-shape",
+    );
+  });
+
+  it("accepts old backups without the new sections", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    const old = {
+      kind: b.kind,
+      version: b.version,
+      exportedAt: b.exportedAt,
+      secretsExcluded: b.secretsExcluded,
+      chat: b.chat,
+      apiGroups: b.apiGroups,
+      plain: b.plain,
+      aiAuth: b.aiAuth,
+    };
+    const r = parseBackup(JSON.stringify(old));
+    assert.equal(r.ok, true, "old backups must still restore");
+  });
+
+  it("rejects corrupt new sections", () => {
+    const base = {
+      kind: BACKUP_KIND,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      secretsExcluded: { apiKeys: 0, ttsKeys: 0, sttKeys: 0 },
+      chat: { threads: [] },
+      apiGroups: [],
+      plain: {},
+      aiAuth: {},
+    };
+    const codeOf = (extra: Record<string, unknown>): string => {
+      const r = parseBackup(JSON.stringify({ ...base, ...extra }));
+      return r.ok ? "ok" : r.code;
+    };
+    assert.equal(codeOf({ memories: "not-a-record" }), "invalid-shape");
+    assert.equal(codeOf({ knowledge: { docs: [], chunks: "nope" } }), "invalid-shape");
+    assert.equal(
+      codeOf({ knowledge: { docs: [{ id: 1 }], chunks: [] } }),
+      "invalid-shape",
+      "docs must have the right shape",
     );
   });
 });
@@ -253,6 +356,141 @@ describe("applyBackup", () => {
     assert.deepEqual(stale, [], "stale threads are cleared");
     const t1 = JSON.parse((await kv.getItem("dudu.local-chat.thread1.v1")) ?? "[]");
     assert.equal(t1.length, 2, "backup threads are written");
+  });
+
+  it("restores memories, skills, and our-space sections", async () => {
+    const src = fakeKV({
+      ...SEED,
+      "dudu.memory.v1.memories": JSON.stringify([{ id: "m1", content: "she likes cats" }]),
+      "dudu.memory.v1.autoExtract": "0",
+      "dudu.skills.v1.list": JSON.stringify([{ id: "s1", name: "travel" }]),
+      "dudu.ourspace.v1.diary": JSON.stringify([{ id: "d1", text: "dear diary" }]),
+      "dudu.ourspace.v2.anniversaries": JSON.stringify([{ id: "a1", name: "first date" }]),
+      "dudu.tasks.v1.task1": JSON.stringify({ id: "task1", title: "do the thing" }),
+    });
+    const b = await collectBackup(src, fakeSecure(SECURE_SEED));
+    const kv = fakeKV();
+    await applyBackup(b, kv, fakeSecure());
+    assert.equal(
+      await kv.getItem("dudu.memory.v1.memories"),
+      JSON.stringify([{ id: "m1", content: "she likes cats" }]),
+    );
+    assert.equal(await kv.getItem("dudu.memory.v1.autoExtract"), JSON.stringify(0));
+    assert.equal(
+      await kv.getItem("dudu.skills.v1.list"),
+      JSON.stringify([{ id: "s1", name: "travel" }]),
+    );
+    assert.equal(
+      await kv.getItem("dudu.ourspace.v1.diary"),
+      JSON.stringify([{ id: "d1", text: "dear diary" }]),
+    );
+    assert.equal(
+      await kv.getItem("dudu.ourspace.v2.anniversaries"),
+      JSON.stringify([{ id: "a1", name: "first date" }]),
+    );
+    assert.equal(
+      await kv.getItem("dudu.tasks.v1.task1"),
+      JSON.stringify({ id: "task1", title: "do the thing" }),
+    );
+  });
+
+  it("clears stale task cards not in the backup (replace semantics)", async () => {
+    const src = fakeKV({
+      ...SEED,
+      "dudu.tasks.v1.task1": JSON.stringify({ id: "task1", title: "keep me" }),
+    });
+    const b = await collectBackup(src, fakeSecure(SECURE_SEED));
+    const kv = fakeKV({
+      "dudu.tasks.v1.stale": JSON.stringify({ id: "stale", title: "old task" }),
+    });
+    await applyBackup(b, kv, fakeSecure());
+    const stale = JSON.parse((await kv.getItem("dudu.tasks.v1.stale")) ?? "[]");
+    assert.deepEqual(stale, [], "stale task cards are cleared");
+    const kept = JSON.parse((await kv.getItem("dudu.tasks.v1.task1")) ?? "{}");
+    assert.equal(kept.id, "task1");
+  });
+
+  it("never writes unknown keys from the new sections", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    b.memories = { "evil.memory": "x" };
+    b.skills = { "evil.skill": "x" };
+    b.ourSpace = { "evil.space": "x", "dudu.tasks.v1x.fake": "x" };
+    const kv = fakeKV();
+    await applyBackup(b, kv, fakeSecure());
+    assert.equal(await kv.getItem("evil.memory"), null);
+    assert.equal(await kv.getItem("evil.skill"), null);
+    assert.equal(await kv.getItem("evil.space"), null);
+    assert.equal(await kv.getItem("dudu.tasks.v1x.fake"), null);
+  });
+
+  it("restores knowledge via restoreSnapshot", async () => {
+    const seen: { snap: { docs: unknown[]; chunks: unknown[] } | null } = { snap: null };
+    const kb = {
+      listDocs: async () => [
+        {
+          id: "doc1",
+          name: "notes.md",
+          kind: "md" as const,
+          size: 10,
+          chunkCount: 1,
+          status: "ready" as const,
+          createdAt: 1,
+        },
+      ],
+      listChunks: async () => [
+        {
+          id: "c1",
+          docId: "doc1",
+          index: 0,
+          text: "hello",
+          headingPath: "",
+          vector: [0.1, 0.2],
+          embedModel: "api-embeddings",
+        },
+      ],
+      restoreSnapshot: async (docs: unknown[], chunks: unknown[]) => {
+        seen.snap = { docs, chunks };
+      },
+    };
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED), kb);
+    await applyBackup(b, fakeKV(), fakeSecure(), kb);
+    if (!seen.snap) throw new Error("restoreSnapshot must be called");
+    assert.equal(seen.snap.docs.length, 1);
+    assert.equal(seen.snap.chunks.length, 1);
+    assert.deepEqual((seen.snap.chunks[0] as { vector: number[] }).vector, [0.1, 0.2]);
+  });
+
+  it("marks docs stuck in indexing as failed on knowledge restore", async () => {
+    const seen: { docs: Array<{ id: string; status: string; error?: string }> | null } = {
+      docs: null,
+    };
+    const kb = {
+      listDocs: async () => [],
+      listChunks: async () => [],
+      restoreSnapshot: async (docs: Array<{ id: string; status: string; error?: string }>) => {
+        seen.docs = docs;
+      },
+    };
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    b.knowledge = {
+      docs: [
+        {
+          id: "d1",
+          name: "x.md",
+          kind: "md",
+          size: 1,
+          chunkCount: 0,
+          status: "indexing",
+          createdAt: 1,
+        } as never,
+      ],
+      chunks: [],
+    };
+    await applyBackup(b, fakeKV(), fakeSecure(), kb);
+    const failed = seen.docs?.[0];
+    if (!failed) throw new Error("restoreSnapshot must be called");
+    assert.equal(failed.status, "failed");
+    assert.equal(failed.error, "interruptedRestore");
   });
 });
 

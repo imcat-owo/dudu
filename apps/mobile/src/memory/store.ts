@@ -87,6 +87,14 @@ export class MemoryStore {
     }
   }
 
+  /**
+   * Refresh after an out-of-band write (e.g. backup restore wrote
+   * directly to storage). Re-emits so subscribers re-read from storage.
+   */
+  refresh(): void {
+    this.emit();
+  }
+
   // ---------- write serialization ----------
   // Mutations are read-modify-write on full JSON; serialize them so
   // concurrent writes (extract task + tool call) can't lose one.

@@ -21,6 +21,10 @@ import {
 } from "./backup";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { getKnowledgeStore } from "./knowledge/instance";
+import { memoryStore } from "./memory/instance";
+import { ourSpaceStore } from "./our-space/instance";
+import { skillStore } from "./skills/instance";
 import { Button, SectionHeading, useColors } from "./ui";
 import { voiceStore } from "./voice/store";
 
@@ -61,7 +65,7 @@ export function BackupSection() {
     setBusy(true);
     setNotice("");
     try {
-      const backup = await collectBackup(AsyncStorage, secureBackend());
+      const backup = await collectBackup(AsyncStorage, secureBackend(), await getKnowledgeStore());
       const json = serializeBackup(backup);
       const FileSystem = await import("expo-file-system/legacy");
       const Sharing = await import("expo-sharing");
@@ -103,13 +107,21 @@ export function BackupSection() {
           onPress: () => {
             void (async () => {
               try {
-                await applyBackup(parsed.backup, AsyncStorage, secureBackend());
+                await applyBackup(
+                  parsed.backup,
+                  AsyncStorage,
+                  secureBackend(),
+                  await getKnowledgeStore(),
+                );
                 // Refresh in-memory store mirrors so the UI shows the
                 // restored data immediately (no app restart needed).
                 await groupStore.refresh();
                 await voiceStore.refresh();
                 await refreshChatMode();
                 await refreshFontSizeOption();
+                memoryStore.refresh();
+                skillStore.refresh();
+                ourSpaceStore.refresh();
                 setNotice(t("backup.restoreDone"));
               } catch (e) {
                 setNotice(e instanceof Error ? e.message : String(e));

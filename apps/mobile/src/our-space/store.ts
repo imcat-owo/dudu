@@ -179,6 +179,14 @@ export class OurSpaceStore {
     }
   }
 
+  /**
+   * Refresh after an out-of-band write (e.g. backup restore wrote
+   * directly to storage). Re-emits so subscribers re-read from storage.
+   */
+  refresh(): void {
+    this.emit();
+  }
+
   // ---- Status ----
 
   async getStatus(): Promise<AiStatus | null> {

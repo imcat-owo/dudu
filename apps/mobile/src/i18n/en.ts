@@ -222,7 +222,8 @@ export const enStrings: Record<StringKey, string> = {
   "backup.restore": "Restore backup",
   "backup.lastBackup": "Last backup",
   "backup.never": "Never",
-  "backup.includes": "Includes: chats, API groups, themes, voice settings, permission prefs",
+  "backup.includes":
+    "Includes: chats, API groups, themes, voice settings, permission prefs, memories, skills, our space, knowledge base",
   "backup.secretsNote": "Excludes: API keys, custom voice keys (re-enter after restore)",
   "backup.confirmRestore": "Replace current data with this backup? This cannot be undone.",
   "backup.restoreDone": "Restored. Please re-enter your API keys.",

@@ -149,6 +149,14 @@ export class SkillStore {
     }
   }
 
+  /**
+   * Refresh after an out-of-band write (e.g. backup restore wrote
+   * directly to storage). Re-emits so subscribers re-read from storage.
+   */
+  refresh(): void {
+    this.emit();
+  }
+
   private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
     const run = this.writeChain.then(fn, fn);
     this.writeChain = run.then(

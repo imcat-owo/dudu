@@ -6,7 +6,11 @@
  *
  * Included: chat threads, API group configs (WITHOUT keys), theme bundles,
  * voice/vision configs (WITHOUT keys), permission + AI-auth preferences,
- * app settings (font, font size, chat mode).
+ * app settings (font, font size, chat mode), memories (profile/memories/
+ * events/auto-extract pref), skills, our-space (diary/timeline/tell-later/
+ * status/couple/feed/replies/anniversaries/works/task cards), knowledge
+ * base (docs + chunks INCLUDING vectors, so search works after restore
+ * even though API keys are never backed up).
  *
  * NEVER included:
  * - Secrets (API keys, custom TTS/STT keys, extra headers). They live in
@@ -19,6 +23,8 @@
  * Restore validates the whole file BEFORE writing anything. Corrupt files
  * fail with a human-readable error code — never half-apply.
  */
+
+import type { KbChunkRecord, KbDoc } from "./knowledge/store.js";
 
 export const BACKUP_KIND = "dudu-backup";
 export const BACKUP_VERSION = 1;
@@ -63,6 +69,34 @@ const PLAIN_KEYS = [
   VOICE_SETTINGS_KEY,
 ];
 
+// Memories (memory/store.ts): profile + memories + audit events + the
+// auto-extract kill switch. No secrets — safe as plain JSON.
+const MEMORY_KEYS = [
+  "dudu.memory.v1.profile",
+  "dudu.memory.v1.memories",
+  "dudu.memory.v1.events",
+  "dudu.memory.v1.autoExtract",
+] as const;
+
+// Skills (skills/store.ts): name/description/instructions — no secrets.
+const SKILLS_KEYS = ["dudu.skills.v1.list"] as const;
+
+// Our-space (our-space/store.ts): the couple's space, all sections.
+const OURSPACE_KEYS = [
+  "dudu.ourspace.v1.diary",
+  "dudu.ourspace.v1.timeline",
+  "dudu.ourspace.v1.telllater",
+  "dudu.ourspace.v1.status",
+  "dudu.ourspace.v2.couple",
+  "dudu.ourspace.v2.feed",
+  "dudu.ourspace.v2.replies",
+  "dudu.ourspace.v2.anniversaries",
+  "dudu.ourspace.v2.works",
+] as const;
+
+// Task progress cards (our-space/task-progress.ts) — enumerated by prefix.
+const TASKS_PREFIX = "dudu.tasks.v1.";
+
 // TTS/STT configs live in SecureStore in production (voice/store.ts) —
 // never in plain AsyncStorage. They are read/written via the secure backend.
 const SECURE_VOICE_KEYS = [TTS_KEY, STT_KEY] as const;
@@ -78,6 +112,22 @@ export interface BackupChatThread {
   messages: unknown[];
 }
 
+/**
+ * Knowledge base dump: docs + chunks (vectors included). The SQLite store
+ * is injected so backup.ts stays pure/testable — production passes the
+ * real SqliteKnowledgeStore, tests pass a fake.
+ */
+export interface KnowledgeBackupTarget {
+  listDocs(): Promise<KbDoc[]>;
+  listChunks(): Promise<KbChunkRecord[]>;
+  restoreSnapshot(docs: KbDoc[], chunks: KbChunkRecord[]): Promise<void>;
+}
+
+export interface BackupKnowledge {
+  docs: KbDoc[];
+  chunks: KbChunkRecord[];
+}
+
 export interface BackupFile {
   kind: typeof BACKUP_KIND;
   version: typeof BACKUP_VERSION;
@@ -87,6 +137,14 @@ export interface BackupFile {
   apiGroups: unknown[];
   plain: Record<string, unknown>;
   aiAuth: Record<string, unknown>;
+  /** Optional (newer backups): memories keyed by storage key. */
+  memories?: Record<string, unknown>;
+  /** Optional (newer backups): skills keyed by storage key. */
+  skills?: Record<string, unknown>;
+  /** Optional (newer backups): our-space + task cards keyed by storage key. */
+  ourSpace?: Record<string, unknown>;
+  /** Optional (newer backups): knowledge base snapshot. */
+  knowledge?: BackupKnowledge;
 }
 
 export type BackupParseError =
@@ -180,8 +238,15 @@ function sanitizeConfigUrls(cfg: unknown): unknown {
  * Collect everything for a backup. Secrets are stripped (counted in
  * secretsExcluded). Incognito content is never in storage, so it cannot
  * appear here.
+ *
+ * `knowledge` is optional (the SQLite store needs async init and tests
+ * may not have one) — when absent the knowledge section is skipped.
  */
-export async function collectBackup(kv: KeyValueStore, secure: SecureKV): Promise<BackupFile> {
+export async function collectBackup(
+  kv: KeyValueStore,
+  secure: SecureKV,
+  knowledge?: KnowledgeBackupTarget | null,
+): Promise<BackupFile> {
   // Chat threads: enumerate by key prefix.
   const allKeys = await kv.getAllKeys();
   const chatKeys = allKeys.filter((k) => k.startsWith(CHAT_PREFIX) && k.endsWith(CHAT_SUFFIX));
@@ -240,6 +305,47 @@ export async function collectBackup(kv: KeyValueStore, secure: SecureKV): Promis
     if (v !== null) aiAuth[key] = v;
   }
 
+  // Memories: profile, memory records, audit events, auto-extract switch.
+  const memories: Record<string, unknown> = {};
+  for (const key of MEMORY_KEYS) {
+    const v = await readJson(kv, key);
+    if (v !== null) memories[key] = v;
+  }
+
+  // Skills: her taught capability packs (no secrets).
+  const skills: Record<string, unknown> = {};
+  for (const key of SKILLS_KEYS) {
+    const v = await readJson(kv, key);
+    if (v !== null) skills[key] = v;
+  }
+
+  // Our-space: fixed section keys + task progress cards (prefix-enumerated).
+  const ourSpace: Record<string, unknown> = {};
+  for (const key of OURSPACE_KEYS) {
+    const v = await readJson(kv, key);
+    if (v !== null) ourSpace[key] = v;
+  }
+  for (const key of allKeys) {
+    if (!key.startsWith(TASKS_PREFIX)) continue;
+    const v = await readJson(kv, key);
+    if (v !== null) ourSpace[key] = v;
+  }
+
+  // Knowledge base: full snapshot (docs + chunks with vectors) so search
+  // keeps working after restore without re-embedding (API keys are never
+  // backed up, so re-embedding would silently fail).
+  let kb: BackupKnowledge | undefined;
+  if (knowledge) {
+    try {
+      const docs = await knowledge.listDocs();
+      const chunks = await knowledge.listChunks();
+      kb = { docs, chunks };
+    } catch {
+      // Knowledge store unavailable — skip the section, never fail backup.
+      kb = undefined;
+    }
+  }
+
   return {
     kind: BACKUP_KIND,
     version: BACKUP_VERSION,
@@ -249,6 +355,10 @@ export async function collectBackup(kv: KeyValueStore, secure: SecureKV): Promis
     apiGroups: groups,
     plain,
     aiAuth,
+    memories,
+    skills,
+    ourSpace,
+    knowledge: kb,
   };
 }
 
@@ -258,6 +368,29 @@ export function serializeBackup(backup: BackupFile): string {
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
+}
+
+/** A backed-up knowledge doc: ids/names kept, content trusted only loosely. */
+function isBackupDoc(v: unknown): v is KbDoc {
+  if (!isRecord(v)) return false;
+  return (
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    (v.kind === "txt" || v.kind === "md" || v.kind === "pdf") &&
+    typeof v.chunkCount === "number" &&
+    (v.status === "ready" || v.status === "indexing" || v.status === "failed")
+  );
+}
+
+/** A backed-up knowledge chunk. Vectors are filtered to numbers on restore. */
+function isBackupChunk(v: unknown): v is KbChunkRecord {
+  if (!isRecord(v)) return false;
+  return (
+    typeof v.id === "string" &&
+    typeof v.docId === "string" &&
+    typeof v.index === "number" &&
+    typeof v.text === "string"
+  );
 }
 
 /**
@@ -298,6 +431,25 @@ export function parseBackup(text: string): ParseBackupResult {
   ) {
     return { ok: false, code: "invalid-shape" };
   }
+  // Newer optional sections: must be records when present, otherwise the
+  // file is corrupt. Old backups (without them) still restore fine.
+  for (const field of ["memories", "skills", "ourSpace"] as const) {
+    if (parsed[field] !== undefined && !isRecord(parsed[field])) {
+      return { ok: false, code: "invalid-shape" };
+    }
+  }
+  if (parsed.knowledge !== undefined) {
+    const k = parsed.knowledge;
+    if (
+      !isRecord(k) ||
+      !Array.isArray(k.docs) ||
+      !Array.isArray(k.chunks) ||
+      !k.docs.every(isBackupDoc) ||
+      !k.chunks.every(isBackupChunk)
+    ) {
+      return { ok: false, code: "invalid-shape" };
+    }
+  }
   return { ok: true, backup: parsed as unknown as BackupFile };
 }
 
@@ -306,11 +458,15 @@ export function parseBackup(text: string): ParseBackupResult {
  * by parseBackup BEFORE this runs; this function writes all keys.
  * Secrets are NOT restored (they were never in the file) — groups come
  * back without keys and the UI must tell the user to re-enter them.
+ *
+ * `knowledge` is optional — when present, the knowledge snapshot is
+ * restored through it; when absent, the section is skipped.
  */
 export async function applyBackup(
   backup: BackupFile,
   kv: KeyValueStore,
   secure: SecureKV,
+  knowledge?: KnowledgeBackupTarget | null,
 ): Promise<void> {
   // Chat threads: write the backup's threads FIRST, then clear stale keys.
   // Crash-safe ordering — a crash midway leaves old data plus new data,
@@ -355,6 +511,65 @@ export async function applyBackup(
   for (const [key, value] of Object.entries(backup.aiAuth)) {
     if (key !== AI_AUTH_KEY && !key.startsWith(`${AI_AUTH_KEY}.`)) continue;
     await kv.setItem(key, JSON.stringify(value));
+  }
+
+  // Memories: allowlisted keys only — a crafted backup must not be able
+  // to write arbitrary storage keys.
+  if (backup.memories) {
+    for (const [key, value] of Object.entries(backup.memories)) {
+      if (!(MEMORY_KEYS as readonly string[]).includes(key)) continue;
+      await kv.setItem(key, JSON.stringify(value));
+    }
+  }
+
+  // Skills: same allowlist discipline.
+  if (backup.skills) {
+    for (const [key, value] of Object.entries(backup.skills)) {
+      if (!(SKILLS_KEYS as readonly string[]).includes(key)) continue;
+      await kv.setItem(key, JSON.stringify(value));
+    }
+  }
+
+  // Our-space: fixed keys (allowlisted) + task cards (prefix).
+  // Task cards get replace semantics like chat threads: write the
+  // backup's cards first, then clear stale ones not in the backup.
+  if (backup.ourSpace) {
+    const wantedTaskKeys = new Set<string>();
+    for (const [key, value] of Object.entries(backup.ourSpace)) {
+      const isFixed = (OURSPACE_KEYS as readonly string[]).includes(key);
+      const isTask = key.startsWith(TASKS_PREFIX);
+      if (!isFixed && !isTask) continue;
+      if (isTask) wantedTaskKeys.add(key);
+      await kv.setItem(key, JSON.stringify(value));
+    }
+    const currentKeys = await kv.getAllKeys();
+    for (const key of currentKeys) {
+      if (!key.startsWith(TASKS_PREFIX)) continue;
+      if (!wantedTaskKeys.has(key)) {
+        await kv.setItem(key, JSON.stringify([]));
+      }
+    }
+  }
+
+  // Knowledge base: single-transaction snapshot restore (original ids
+  // preserved, vectors included). Docs stuck in "indexing" at backup
+  // time are marked failed — they were mid-index when exported and will
+  // never finish; she can delete and re-upload.
+  if (backup.knowledge && knowledge) {
+    const docs: KbDoc[] = backup.knowledge.docs.map((d) => ({
+      ...d,
+      status: d.status === "indexing" ? "failed" : d.status,
+      error: d.status === "indexing" ? "interruptedRestore" : d.error,
+    }));
+    const chunks: KbChunkRecord[] = backup.knowledge.chunks
+      .filter((c) => docs.some((d) => d.id === c.docId))
+      .map((c) => ({
+        ...c,
+        vector: Array.isArray(c.vector) ? c.vector.filter((v) => typeof v === "number") : [],
+        embedModel: typeof c.embedModel === "string" ? c.embedModel : "",
+        headingPath: typeof c.headingPath === "string" ? c.headingPath : "",
+      }));
+    await knowledge.restoreSnapshot(docs, chunks);
   }
 
   // NOTE: LAST_BACKUP_KEY is deliberately NOT written here — "last backup"
