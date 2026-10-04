@@ -5,7 +5,7 @@ import {
   useRenderTool,
   useRenderToolCall,
 } from "@copilotkit/react-native/headless";
-import { ArrowDown, ArrowUp, EyeOff, FileText, RotateCcw, Square, X } from "lucide-react-native";
+import { ArrowDown, ArrowUp, EyeOff, FileText, Plus, RotateCcw, Square, X } from "lucide-react-native";
 import {
   type ReactNode,
   useCallback,
@@ -1240,11 +1240,7 @@ export function ChatScreen({
                   backgroundColor: pressed ? colors.sky : "transparent",
                 })}
               >
-                <TText
-                  style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}
-                >
-                  +
-                </TText>
+                <Plus size={24} color={colors.text} />
               </Pressable>
             ) : (
               <Pressable
@@ -1261,11 +1257,7 @@ export function ChatScreen({
                   backgroundColor: picking || pressed ? colors.sky : "transparent",
                 })}
               >
-                <TText
-                  style={{ color: colors.text, fontSize: 29, fontWeight: "300", lineHeight: 32 }}
-                >
-                  +
-                </TText>
+                <Plus size={24} color={colors.text} />
               </Pressable>
             )}
             <TextInput
