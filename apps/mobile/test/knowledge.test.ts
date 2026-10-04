@@ -4,7 +4,11 @@ import type { ToolContext } from "../src/api-groups/local-tools.js";
 import type { ApiGroup } from "../src/api-groups/types.js";
 import { chunkDocument, chunkId, hashString } from "../src/knowledge/chunking.js";
 import { healInterruptedDocs, indexDocument, reindexDocument } from "../src/knowledge/indexer.js";
-import { type KnowledgeStorage, KnowledgeStore } from "../src/knowledge/store.js";
+import {
+  type KbChunkRecord,
+  type KnowledgeStorage,
+  KnowledgeStore,
+} from "../src/knowledge/store.js";
 import {
   createKnowledgeAddTools,
   createKnowledgeTools,
@@ -518,5 +522,90 @@ describe("knowledge_add guardrails (P2-6)", () => {
       () => tool.run({ uri: "file:///b.txt", name: "笔记" }, ctx),
       /已经在知识库里了|已经有一篇叫《笔记》/,
     );
+  });
+});
+
+describe("knowledge store write serialization (P1-1)", () => {
+  /** Storage with controllable write latency to force read-modify-write interleaving. */
+  function slowStorage(delayMs: (value: string) => number): KnowledgeStorage {
+    const map = new Map<string, string>();
+    return {
+      getItem: async (k) => map.get(k) ?? null,
+      setItem: async (k, v) => {
+        await new Promise((r) => setTimeout(r, delayMs(v)));
+        map.set(k, v);
+      },
+    };
+  }
+
+  function chunk(docId: string, i: number): KbChunkRecord {
+    return {
+      id: `c${i}`,
+      docId,
+      index: i,
+      text: `chunk ${i}`,
+      headingPath: "",
+      vector: [],
+      embedModel: "toy",
+    };
+  }
+
+  it("concurrent putChunks don't lose chunks", async () => {
+    const store = new KnowledgeStore(slowStorage(() => 20));
+    const doc = await store.addDoc("a.txt", "txt", 10);
+    await Promise.all([
+      store.putChunks([chunk(doc.id, 1), chunk(doc.id, 2)]),
+      store.putChunks([chunk(doc.id, 3), chunk(doc.id, 4)]),
+    ]);
+    const chunks = await store.listChunks(doc.id);
+    assert.equal(chunks.length, 4, "stale-read merge must not drop chunks");
+  });
+
+  it("chunks arriving after deleteDoc are dropped, not resurrected", async () => {
+    const store = new KnowledgeStore(fakeStorage());
+    const doc = await store.addDoc("a.txt", "txt", 10);
+    await store.deleteDoc(doc.id);
+    // Simulate the indexer finishing after the user deleted the doc.
+    await store.putChunks([chunk(doc.id, 0)]);
+    assert.equal(
+      (await store.listChunks()).length,
+      0,
+      "search must never return chunks of a deleted doc",
+    );
+    assert.equal((await store.listDocs()).length, 0);
+  });
+
+  it("concurrent updates to the same doc don't clobber each other", async () => {
+    const store = new KnowledgeStore(slowStorage(() => 20));
+    const doc = await store.addDoc("a.txt", "txt", 10);
+    await Promise.all([
+      store.updateDoc(doc.id, { status: "ready" }),
+      store.updateDoc(doc.id, { chunkCount: 5 }),
+    ]);
+    const got = await store.getDoc(doc.id);
+    assert.equal(got?.status, "ready");
+    assert.equal(got?.chunkCount, 5);
+  });
+
+  it("a failing write doesn't break the chain for later writes", async () => {
+    let failNext = false;
+    const map = new Map<string, string>();
+    const flaky: KnowledgeStorage = {
+      getItem: async (k) => map.get(k) ?? null,
+      setItem: async (k, v) => {
+        if (failNext) {
+          failNext = false;
+          throw new Error("disk full");
+        }
+        map.set(k, v);
+      },
+    };
+    const store = new KnowledgeStore(flaky);
+    const doc = await store.addDoc("a.txt", "txt", 10);
+    failNext = true;
+    await assert.rejects(() => store.updateDoc(doc.id, { status: "ready" }), /disk full/);
+    // The chain must still work after a failure.
+    const got = await store.updateDoc(doc.id, { status: "failed" });
+    assert.equal(got?.status, "failed");
   });
 });

@@ -69,6 +69,29 @@ function isDoc(v: unknown): v is KbDoc {
 export class KnowledgeStore {
   constructor(private storage: KnowledgeStorage) {}
 
+  /**
+   * Write chain: every mutation runs inside exclusive() so concurrent
+   * read-modify-write cycles can't interleave (stale-read merge losing
+   * chunks, or an indexer resurrecting chunks of a just-deleted doc).
+   * The chain never breaks: each link swallows its own rejection for
+   * chaining purposes, while the caller still sees fn's real
+   * result/rejection.
+   */
+  private writeChain: Promise<void> = Promise.resolve();
+
+  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this.writeChain;
+    const cur = (async () => {
+      await prev;
+      return fn();
+    })();
+    this.writeChain = cur.then(
+      () => undefined,
+      () => undefined,
+    );
+    return cur;
+  }
+
   private listeners = new Set<() => void>();
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -106,45 +129,53 @@ export class KnowledgeStore {
   }
 
   async addDoc(name: string, kind: "txt" | "md" | "pdf", size: number): Promise<KbDoc> {
-    const docs = await this.listDocs();
-    const doc: KbDoc = {
-      id: newId("kbdoc"),
-      name,
-      kind,
-      size,
-      chunkCount: 0,
-      status: "indexing",
-      createdAt: Date.now(),
-    };
-    docs.unshift(doc);
-    await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
-    this.emit();
-    return doc;
+    return this.exclusive(async () => {
+      const docs = await this.listDocs();
+      const doc: KbDoc = {
+        id: newId("kbdoc"),
+        name,
+        kind,
+        size,
+        chunkCount: 0,
+        status: "indexing",
+        createdAt: Date.now(),
+      };
+      docs.unshift(doc);
+      await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
+      this.emit();
+      return doc;
+    });
   }
 
   async updateDoc(id: string, patch: Partial<KbDoc>): Promise<KbDoc | null> {
-    const docs = await this.listDocs();
-    const i = docs.findIndex((d) => d.id === id);
-    if (i < 0) return null;
-    docs[i] = { ...docs[i], ...patch, id: docs[i].id };
-    await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
-    this.emit();
-    return docs[i];
+    return this.exclusive(async () => {
+      const docs = await this.listDocs();
+      const i = docs.findIndex((d) => d.id === id);
+      if (i < 0) return null;
+      docs[i] = { ...docs[i], ...patch, id: docs[i].id };
+      await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
+      this.emit();
+      return docs[i];
+    });
   }
 
   /** Delete a doc AND all its chunks. Really deletes. */
   async deleteDoc(id: string): Promise<void> {
-    const docs = (await this.listDocs()).filter((d) => d.id !== id);
-    await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
-    const chunks = (await this.listChunks()).filter((c) => c.docId !== id);
-    await this.storage.setItem(KEYS.chunks, JSON.stringify(chunks));
-    this.emit();
+    return this.exclusive(async () => {
+      const docs = (await this.listDocs()).filter((d) => d.id !== id);
+      await this.storage.setItem(KEYS.docs, JSON.stringify(docs));
+      const chunks = (await this.listChunks()).filter((c) => c.docId !== id);
+      await this.storage.setItem(KEYS.chunks, JSON.stringify(chunks));
+      this.emit();
+    });
   }
 
   async clearAll(): Promise<void> {
-    await this.storage.setItem(KEYS.docs, JSON.stringify([]));
-    await this.storage.setItem(KEYS.chunks, JSON.stringify([]));
-    this.emit();
+    return this.exclusive(async () => {
+      await this.storage.setItem(KEYS.docs, JSON.stringify([]));
+      await this.storage.setItem(KEYS.chunks, JSON.stringify([]));
+      this.emit();
+    });
   }
 
   // ---------- chunks ----------
@@ -163,11 +194,19 @@ export class KnowledgeStore {
   }
 
   async putChunks(records: KbChunkRecord[]): Promise<void> {
-    const existing = await this.listChunks();
-    const ids = new Set(records.map((r) => r.id));
-    const merged = [...records, ...existing.filter((c) => !ids.has(c.id))];
-    await this.storage.setItem(KEYS.chunks, JSON.stringify(merged));
-    this.emit();
+    return this.exclusive(async () => {
+      // A doc can be deleted mid-index (user deletes while the embedding
+      // pipeline is still running). Drop chunks whose doc is gone instead
+      // of resurrecting them — search must never return chunks of a
+      // deleted doc.
+      const liveDocIds = new Set((await this.listDocs()).map((d) => d.id));
+      const live = records.filter((r) => liveDocIds.has(r.docId));
+      const existing = await this.listChunks();
+      const ids = new Set(live.map((r) => r.id));
+      const merged = [...live, ...existing.filter((c) => !ids.has(c.id))];
+      await this.storage.setItem(KEYS.chunks, JSON.stringify(merged));
+      this.emit();
+    });
   }
 
   async chunkCount(): Promise<number> {
