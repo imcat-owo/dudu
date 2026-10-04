@@ -238,6 +238,8 @@ const zhHans = {
   "space.leftNote.title": "他留的话",
   "space.leftNote.dismiss": "收到了",
   "space.loveLetter.title": "他写的情书",
+  "space.loveLetter.unreadBanner": "有一封信在等你",
+  "space.loveLetter.tapToRead": "点开看看",
   "space.loveLetter.dismiss": "收好了",
   "space.loveLetter.empty": "还没有情书。想让他写一封，跟他说一声。",
   "space.time.justNow": "刚刚",

@@ -243,6 +243,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.leftNote.title": "A note from him",
   "space.leftNote.dismiss": "Got it",
   "space.loveLetter.title": "A love letter from him",
+  "space.loveLetter.unreadBanner": "A letter is waiting for you",
+  "space.loveLetter.tapToRead": "Tap to read",
   "space.loveLetter.dismiss": "Kept",
   "space.loveLetter.empty": "No love letters yet. Ask him to write you one.",
   "space.time.justNow": "Just now",
