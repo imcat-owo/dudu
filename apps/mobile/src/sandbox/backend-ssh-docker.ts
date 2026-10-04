@@ -95,6 +95,21 @@ export class SshDockerBackend implements SandboxBackend {
     this.detail = null;
   }
 
+  /**
+   * Recover from "error"/"unavailable" without an app restart.
+   * Re-detects availability: still "unavailable" when no real SSH transport
+   * is bundled, otherwise back to "disconnected" so she can retry.
+   */
+  reset(): void {
+    if (this.transport instanceof UnavailableSshTransport) {
+      this.state = "unavailable";
+      this.detail = "sandbox.transportUnavailable";
+    } else {
+      this.state = "disconnected";
+      this.detail = null;
+    }
+  }
+
   private requireConnected(): void {
     if (this.state !== "connected" || !this.transport.isConnected()) {
       throw new Error("sandbox.notConnected");

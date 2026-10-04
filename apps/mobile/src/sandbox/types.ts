@@ -73,6 +73,13 @@ export interface SandboxBackend {
   stateDetail(): string | null;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
+  /**
+   * Reset a backend out of a terminal "error"/"unavailable" state back to its
+   * initial state (re-detecting availability). Without this the UI has no way
+   * to recover after one failure — the panel bricks and only an app restart
+   * helps. Synchronous: it only flips local state, never touches the network.
+   */
+  reset(): void;
   /** List runnable environments (containers / VMs). */
   listEnvironments(): Promise<SandboxEnvironment[]>;
   startEnvironment(id: string): Promise<void>;

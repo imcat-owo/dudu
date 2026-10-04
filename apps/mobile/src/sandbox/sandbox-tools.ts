@@ -14,11 +14,34 @@
  */
 import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import type { SandboxManager } from "./manager";
+import type { SandboxBackend } from "./types";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
   if (typeof v !== "string" || !v.trim()) throw new ToolError(`Missing "${name}".`);
   return v;
+}
+
+/**
+ * Throw an honest, actionable error when the backend can't run commands.
+ * "unavailable" means the native capability isn't bundled in this build —
+ * telling her to "go connect it" would be a lie, so say plainly it needs a
+ * future app update instead.
+ */
+function requireRunnable(backend: SandboxBackend): void {
+  const state = backend.connectionState();
+  if (state === "connected") return;
+  if (state === "unavailable") {
+    throw new ToolError(
+      `Sandbox backend "${backend.id}" is unavailable in this build ` +
+        `(${backend.id === "cloud" ? "no SSH transport module is bundled yet" : "the native iSH module is not bundled yet"}). ` +
+        `Tell her honestly that sandbox commands can't run until a future app update adds it. ` +
+        `Do NOT ask her to connect it in settings — it cannot connect.`,
+    );
+  }
+  throw new ToolError(
+    "Sandbox is not connected. Ask her to connect it in the sandbox settings first.",
+  );
 }
 
 export function sandboxTools(manager: SandboxManager): LocalTool[] {
@@ -45,11 +68,7 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
       manualId: "sandbox",
       run: async (args, ctx) => {
         const backend = active();
-        if (backend.connectionState() !== "connected") {
-          throw new ToolError(
-            "Sandbox is not connected. Ask her to connect it in the sandbox settings first.",
-          );
-        }
+        requireRunnable(backend);
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: `Run in sandbox: ${String(args.command).slice(0, 120)}`,
@@ -78,9 +97,7 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
       manualId: "sandbox",
       run: async (_args, ctx) => {
         const backend = active();
-        if (backend.connectionState() !== "connected") {
-          throw new ToolError("Sandbox is not connected.");
-        }
+        requireRunnable(backend);
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: "List sandbox environments",
@@ -108,8 +125,7 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
         const backend = active();
         if (backend.id !== "cloud")
           throw new ToolError("Container start/stop is only for the cloud backend.");
-        if (backend.connectionState() !== "connected")
-          throw new ToolError("Sandbox is not connected.");
+        requireRunnable(backend);
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: `Start container ${strArg(args, "container")}`,
@@ -134,8 +150,7 @@ export function sandboxTools(manager: SandboxManager): LocalTool[] {
         const backend = active();
         if (backend.id !== "cloud")
           throw new ToolError("Container start/stop is only for the cloud backend.");
-        if (backend.connectionState() !== "connected")
-          throw new ToolError("Sandbox is not connected.");
+        requireRunnable(backend);
         const ok = await ctx.authorize({
           capability: "sandbox",
           action: `Stop container ${strArg(args, "container")}`,

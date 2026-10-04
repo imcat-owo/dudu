@@ -86,6 +86,25 @@ describe("SshDockerBackend", () => {
     assert.equal(b.connectionState(), "unavailable");
   });
 
+  it("reset() recovers from error/unavailable without an app restart", async () => {
+    // error (no config) -> reset -> disconnected, can retry
+    const b = new SshDockerBackend(fakeTransport({}));
+    await assert.rejects(() => b.connect(), /noConfig/);
+    assert.equal(b.connectionState(), "error");
+    b.reset();
+    assert.equal(b.connectionState(), "disconnected");
+    assert.equal(b.stateDetail(), null);
+
+    // unavailable (no SSH module bundled) -> reset stays honestly unavailable
+    const u = new SshDockerBackend(new UnavailableSshTransport());
+    u.setConfig(config);
+    await assert.rejects(() => u.connect());
+    assert.equal(u.connectionState(), "unavailable");
+    u.reset();
+    assert.equal(u.connectionState(), "unavailable");
+    assert.equal(u.stateDetail(), "sandbox.transportUnavailable");
+  });
+
   it("connects and lists containers", async () => {
     const b = new SshDockerBackend(
       fakeTransport({
@@ -143,6 +162,17 @@ describe("IshSandboxBackend", () => {
     assert.equal(b.connectionState(), "unavailable");
     await assert.rejects(() => b.connect(), /nativeRequired/);
     await assert.rejects(() => b.listEnvironments(), /notConnected/);
+  });
+
+  it("reset() recovers from error without an app restart", async () => {
+    const b = new IshSandboxBackend(null);
+    await assert.rejects(() => b.connect(), /nativeRequired/);
+    assert.equal(b.connectionState(), "unavailable");
+    // No native module in this environment -> stays honestly unavailable,
+    // but the call must not throw and the detail must stay accurate.
+    b.reset();
+    assert.equal(b.connectionState(), "unavailable");
+    assert.equal(b.stateDetail(), "sandbox.local.nativeRequired");
   });
 
   it("works against an injected native module", async () => {

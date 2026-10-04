@@ -114,6 +114,22 @@ export class IshSandboxBackend implements SandboxBackend {
     this.state = this.native ? "disconnected" : "unavailable";
   }
 
+  /**
+   * Recover from "error"/"unavailable" without an app restart.
+   * Re-resolves the native module (a future build may bundle it) and flips
+   * back to the matching initial state.
+   */
+  reset(): void {
+    this.native = resolveNativeISH();
+    if (this.native) {
+      this.state = "disconnected";
+      this.detail = null;
+    } else {
+      this.state = "unavailable";
+      this.detail = "sandbox.local.nativeRequired";
+    }
+  }
+
   /** iSH is a single environment: the Alpine guest. */
   async listEnvironments(): Promise<SandboxEnvironment[]> {
     this.requireConnected();

@@ -427,6 +427,23 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
     refresh();
   };
 
+  /**
+   * Recover from a terminal "error"/"unavailable" state without restarting
+   * the app. reset() re-detects availability; afterwards the normal
+   * disconnected UI (config form / connect button) comes back, or the
+   * honest "unavailable" message stays with a way to try again later.
+   */
+  const retry = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      backend.reset();
+    } finally {
+      setBusy(false);
+      refresh();
+    }
+  };
+
   const state = backend.connectionState();
 
   return (
@@ -445,6 +462,14 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
             />
           ))}
           {error ? <ErrorNotice error={error} /> : null}
+
+          {state === "error" || state === "unavailable" ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Button primary icon={RefreshCw} onPress={retry} disabled={busy}>
+                {busy ? <LoaderCircle size={16} /> : t("common.retry")}
+              </Button>
+            </View>
+          ) : null}
 
           {activeId === "cloud" && state === "disconnected" ? (
             <Card style={{ gap: 10 }}>
