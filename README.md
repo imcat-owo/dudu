@@ -1,244 +1,104 @@
-  <div align="center">
+<div align="center">
 
-# OpenMuse
+# 嘟嘟 Dudu
 
-**A personal agent with a browser, terminal, files, and work that keeps going. Compatible with any agent harness.**
+**要爱给爱，要能力给能力。**
 
-Ask for an outcome. Follow the plan, review actions, and come back to the result.
-Built with CopilotKit React Native for iOS, Android, and web.
+一个关系型 AI 伴侣 App：不只是工具，更是家里的一员。本地优先，你的数据只在你的手机上。
 
-[Quick start](#quick-start) · [Demo](#demo) · [Features](#features) · [Architecture](#architecture) · [Docs](docs/README.md) · [Contributing](CONTRIBUTING.md)
+<img src="artwork/media-generation-mascot-anime-v1-0-0a2c1da5-873d-42ba-803b-5f50f0435d72.png" width="320" alt="嘟嘟形象" />
 
-[![CI](https://github.com/CopilotKit/OpenMuse/actions/workflows/ci.yml/badge.svg)](https://github.com/CopilotKit/OpenMuse/actions/workflows/ci.yml)
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-<a href="https://trendshift.io/repositories/254992?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-254992" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/254992/daily?language=TypeScript" alt="CopilotKit%2Fopenmuse | Trendshift" width="250" height="55"/></a>
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/CopilotKit/OpenMuse)
-
-Clone this template and customize it however you want.
-
-**[Building on OpenMuse? Meet with the CopilotKit team →](https://www.copilotkit.ai/talk-to-an-engineer?ref=openmuse_hero)**
-
-https://github.com/user-attachments/assets/8014d185-346c-4954-8ff0-26c582c5093a
-
-https://github.com/user-attachments/assets/0cc87de0-c3c1-4f24-b7df-e7d04bb946fd
+[功能](#功能) · [定位](#定位) · [本地优先](#本地优先) · [开发](#开发) · [许可](#许可)
 
 </div>
 
-> **Alpha, for self-hosting and building on.** Open-ended reasoning, live Google accounts, and CopilotKit Rich Threads require their own configuration. See [what is verified](docs/VERIFICATION.md) and the [roadmap](ROADMAP.md).
+## 定位
 
-## Demo
+市面上的 AI 要么是纯工具（你问它答，办完就走），要么是纯陪伴（会撒娇，但干不了事）。
 
-On iPhone, ask OpenMuse to find interesting stories on Hacker News and summarize CopilotKit. On desktop, ask it to check the school-trip email, open the message, and research exhibits at Monterey Bay Aquarium. The agent shows email and browser results inline. **Take control** opens that same browser session when you need it.
+嘟嘟两边都要：**要爱给爱，要能力给能力**。
 
-The 38-second iPhone and 42-second desktop web demos show the current interface, framed in 16:9. The send arrow becomes a stop square inside the input pill while the agent replies, then switches back. Stopping keeps your draft intact. See the [recording notes](docs/DEMO.md) for the model setup and reproduction steps.
+- 陪伴：我们的空间、听歌房、桌宠、记忆花园、纪念日——它记得你们的事，主动惦记你
+- 能力：AI 浏览器、沙箱、多模型、多工具、原生应用授权——它真能替你办事
 
-[Mobile MP4](https://github.com/user-attachments/assets/8014d185-346c-4954-8ff0-26c582c5093a) · [Web MP4](https://github.com/user-attachments/assets/0cc87de0-c3c1-4f24-b7df-e7d04bb946fd) · [Recording details and reproduction](docs/DEMO.md)
+## 功能
 
-The [Jev aquarium-trip demo](docs/demos/jev-generative-ui.md) walks through a fictional school email, clarification choices, sourced exhibit cards, hands-on preference refinement, and a confirmed selection. [Watch the 83-second live Jev recording](assets/demos/2026-09-23/jev-live-web.mp4), where TypeSafe Jev makes the decisions and a scripted agent keeps the trip scenario repeatable. A [scripted-decision sample recording](assets/demos/2026-09-23/jev-web.mp4) is also available.
+### 我们俩的东西（全网独一份）
 
-## What it is
+| 功能 | 说明 |
+|---|---|
+| 我们的空间 | 情侣空间：双人头像、朋友圈动态流、双向点赞评论、纪念日、作品小抽屉（AI 做的图/html/主题/文件） |
+| 听歌房 | AI 当 DJ，共享歌单，记得"我们的歌"，Apple Music / 本地导入 |
+| 桌宠 | 可拖拽的小家伙，有情绪状态，能感知你在不在 |
+| 记忆花园 | AI 记得什么、拿不准什么、想问你的——全看得见，删得掉 |
+| 我的日记 | AI 用自己的语气写的日记 |
+| 稍后告诉她 | AI 想说还没说的，先存着；有由头再主动告诉你 |
+| 情书 | 纪念日、你难过、想你的时候，它写一封，收在我们的空间里 |
 
-OpenMuse is a personal-agent application with an agent computer, visible work, and rich results. It runs its own server, task worker, and browser worker. You can inspect and change the source under the MIT license.
+### 聊天内核
 
-The computer combines **persistent Chromium and an optional Linux workspace**. The agent can browse public pages, run commands in its own container, work with files, and move PDFs between the computer and the app. You can open its browser or terminal and continue the work. Graphical desktops and autonomous checkout remain future work.
+- 多模型 / API 分组（URL+key+模型名自己配，随时切换）
+- 智能 API 自适应：能力探测 + 失败分类 + 自动降级重试 + 按模型记忆可用配置（默认全开，实测不行才降级）
+- 流式输出、工具调用、分支对话、Artifacts 预览
+- Thinking 抽屉 v2：半高可拖拽，行动列表点进详情页
 
-## Features
+### 语音
 
-| Surface | What runs in this alpha |
-| --- | --- |
-| **Chat** | CopilotKit headless chat with streamed AG-UI events, mailbox search and reading, send/stop in one input pill, a visible follow-up queue, retained drafts, delegated tasks, and inline email, browser, PDF, plan, and finance cards. |
-| **Agent computer** | Persistent browser profiles and takeover console; optional isolated Linux terminal, saved command receipts, editable workspace files, and PDF transfer. |
-| **Activity** | Durable task plans, progress, input requests, pause/resume/cancel/retry, approvals, and saved receipts. SQL leases recover interrupted work. |
-| **Ideas** | Suggestions with source evidence; edit, accept, or dismiss. Sent replies and completed matching work are excluded. |
-| **Goals & Tracking** | Goals and milestones; recurring public-page checks for changes, text availability, or USD price thresholds, with deduplicated alerts and failure backoff. |
-| **Documents** | Email attachment → PDF → requested form values → filled copy → reviewed reply → receipt. Native/web PDF viewing, paging, zoom, supported fields, and sharing. |
-| **Finance** | Import transaction CSV to create a spending summary with categories, transactions, and a savings-goal action. |
-| **Gmail & Calendar** | Google OAuth adapters, complete mail threads, drafts/attachments, calendar discovery, and reviewed event creation/update/deletion. Live credentials required. |
-| **Personal context** | Editable name, tone, avatar, and memories. Background-update preferences and durable in-app notifications. |
-| **Rich Threads** | CopilotKit Intelligence persistence in every mode, with a stable main conversation, side chats, renaming, archiving, restoring, and replay. A server-only project key is required. |
+- TTS 可自定义（URL+key 想接什么接什么，默认免费高质量中文语音）
+- STT 语音转写（AI 能听见你说话）
+- 微信式语音气泡
 
-The [feature inventory](docs/FEATURES.md) describes implemented capabilities and planned extensions. Health/bank/social connectors, device push, voice, generated executable tools, and automatic reservations/payments are on the [roadmap](ROADMAP.md).
+### AI 的手
 
-## Quick start
+- AI 浏览器：AI 自己能导航/点击/输入/截图
+- 沙箱双后端：云服务器 / 仿 iSH，可切换
+- MCP 工具池、知识库（文档上传+向量检索）
+- 原生应用授权：Apple Music、HealthKit、日历/提醒事项等，iOS 允许的第三方能力一个个接
+- 纸条机制：聊到相关话题，系统主动给 AI 塞小纸条说明书；用过一次不再重复
 
-**Requirements:** Node 24 LTS, pnpm 11.19.0, and a CopilotKit Intelligence project key. The local sample app needs no model, Google account, or Docker.
+### 外观
 
-```sh
-git clone https://github.com/CopilotKit/OpenMuse.git openmuse
-cd openmuse
-pnpm install --frozen-lockfile
-cp .env.example .env
-npx copilotkit@latest login
-npx copilotkit@latest project select
-# Set CPK_INTELLIGENCE_API_KEY in .env to the generated server-only project key.
-pnpm dev
-```
+- AI 换肤（16 个工具）、主题包导入导出（JSON/二维码）、字体上传
+- 穹妹灰调手绘风默认主题，深色模式单独设计
+- 桌宠换肤、头像自定义（AI 可改，你也可改）
 
-In another terminal:
+### 隐私与安全
 
-```sh
-pnpm dev:web
-```
+- 隐身聊天：退出即销毁，服务端不留痕
+- 备份恢复：你的数据你带走
+- 本地权限套件：相册/定位/剪贴板/通知/麦克风，用时才申请
 
-Open [localhost:8081](http://localhost:8081). The API runs at [localhost:8787/api/health](http://localhost:8787/api/health).
+## 本地优先
 
-### Try it
+嘟嘟默认纯客户端：API key 配在 App 里，聊天从手机直连模型，数据存手机本地。
 
-1. In Chat, send **“Complete the permission slip”**. Open the task, supply fictional form values, inspect the saved PDF, and review the prepared reply. This writes only to the local mailbox.
-2. In **Goals → Track**, create a built-in availability watch, then change the built-in test page to trigger an alert.
-3. In **Menu → Delegate task → Finance**, use **Try example transactions** to create an interactive spending tracker.
-4. Start the [browser worker](#browser-worker) and configure a model, then ask **“Check out Hacker News for cool stuff”** or **“Summarize copilotkit.ai”**. Follow the browser inline and use **Take control** to open its session. For a model-free version of this flow, follow the [AI Mock demo setup](docs/DEMO.md#run-the-agent-browser-demo).
+云模式是可选的，两套随时切换，AI 在两套里都能用。
 
-For iOS or Android, use `pnpm --dir apps/mobile ios` or `pnpm --dir apps/mobile android`. Xcode or Android tooling is required. The PDF reader needs an Expo development build; use [native setup](apps/mobile/README.md).
+你的聊天记录只在你的手机上——没有服务器能看，因为根本没有地方看。
 
-## Deploy on Render
+## 截图
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/CopilotKit/OpenMuse)
+真机验收后补上。
 
-[render.yaml](render.yaml) deploys three services: the API, the web app, and a private browser. The API answers `/` with JSON, so the UI is its own static site.
+## 开发
 
-### First run
+```bash
+# 依赖
+pnpm install
 
-1. Click **Deploy to Render**. Wait until `openmuse-api`, `openmuse-web`, and `openmuse-browser` are live.
-2. On `openmuse-api`, open **Environment** and copy `OPENMUSE_ACCESS_KEY`.
-3. Open the `openmuse-web` URL and sign in with that key.
-4. Send a message.
-
-The deploy form asks for two values you provide. Render generates the other two.
-
-| Variable | Set by | If it is missing |
-|---|---|---|
-| `CPK_INTELLIGENCE_API_KEY` | You. Run `npx copilotkit@latest login`, then `npx copilotkit@latest project select`. Keep it on the server. | Chat cannot open a thread. |
-| `OPENAI_API_KEY` | You. Used by the default `openai/gpt-5`. Change `MODEL` and supply the matching provider key for Anthropic or Google. | The model call fails. |
-| `OPENMUSE_ACCESS_KEY` | Render | You cannot sign in. |
-| `TOKEN_ENCRYPTION_KEY` | Render | The API refuses to start in live mode. |
-
-Health check: `https://<openmuse-api>/api/health`.
-
-### Services
-
-| Service | Plan | What it runs |
-|---|---|---|
-| `openmuse-api` | Standard, with a 1 GB disk at `/var/data` | The Hono API and the in-process task worker. `DATA_DIR` is `/var/data/openmuse`. |
-| `openmuse-web` | Static site | The Expo web export. `EXPO_PUBLIC_API_URL` is baked in at build time. |
-| `openmuse-browser` | Private service, Standard, 1 GB disk at `/data` | Playwright and Chromium. The API calls it on the private network. |
-
-**Standard** is the smallest plan that stays up. At 512 MB the process runs out of memory before it binds a port, because PGlite loads an embedded Postgres build.
-
-**The disk** holds the database, PDFs, and the signing key. A redeploy without it wipes that data. Chat threads are stored by CopilotKit Intelligence, so a thread can still load after you sign back in even when the disk was never attached.
-
-**Live mode** is required. Render binds `0.0.0.0`, and sample mode rejects any host that is not loopback. The Blueprint sets `WORKSPACE_MODE=live`.
-
-**Browsing is included, and you can take it out.** `openmuse-browser` is a private service, so it has no public URL. The API reaches it at `http://openmuse-browser:8790` with a token Render generates. If the private hostname is not `openmuse-browser`, set `BROWSER_WORKER_URL` to `http://<that-host>:8790`. To deploy without it, delete the `openmuse-browser` service and the `BROWSER_WORKER_URL` and `WORKER_TOKEN` entries on `openmuse-api`. Chat, drafts, and tasks still run. Page reads, screenshots, and **Take control** do not.
-
-The Docker computer and Google mail or calendar need the setup in the sections below. This Blueprint does not start them.
-
-## Configure the agent and Google
-
-Copy the commented settings in [.env.example](.env.example) into your private `.env`:
-
-1. Set `AGENT_BACKEND=model`, `MODEL=provider/model-id`, and the matching provider key. CopilotKit supports the configured OpenAI, Anthropic or Google provider. Fictional data can still be used with a real model. Provider keys stay on the server.
-2. Create or select a CopilotKit Intelligence project with `npx copilotkit@latest login` and `npx copilotkit@latest project select`. Keep the generated `CPK_INTELLIGENCE_API_KEY` on the server.
-3. For personal mail/calendar, set `WORKSPACE_MODE=live`, the generated `CPK_INTELLIGENCE_API_KEY`, a random `OPENMUSE_ACCESS_KEY` of at least 24 characters, and `TOKEN_ENCRYPTION_KEY` containing 32 random bytes encoded as base64. Restart the API.
-4. Configure a Google OAuth web client with Gmail and Calendar APIs enabled. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; register `${PUBLIC_API_URL}/api/google/callback` as its redirect URI. Configure consent/test-user access in your Google project.
-5. Open **Apps → Gmail** (or **Google Calendar**), connect read access, and grant write access when needed. Every send or calendar change still requires its own stored review. Changing/disconnecting the account invalidates pending connection-bound work.
-
-Google credentials are encrypted at rest. File URLs and browser consoles use short-lived signatures. This deployment uses one owner protected by a shared access key; it is not a multi-tenant authentication system. Use HTTPS and restricted network access for a remote host. Keep the default local-data mode on loopback.
-
-## Browser worker
-
-Set `BROWSER_WORKER_URL=http://127.0.0.1:8790` and a random `WORKER_TOKEN` of at least 32 characters in `.env`.
-
-```sh
-pnpm --dir apps/worker exec playwright install chromium
-pnpm dev:browser
-```
-
-Or use `docker compose --env-file .env -f infra/compose.yaml up --build -d`. The same token must reach the API and worker. Sessions have persistent Chromium profiles; the app can open a live screenshot console and import PDF downloads. Agent tools can read public pages and hand interactive work to the person. [Worker setup and boundaries](apps/worker/README.md).
-
-## Persistence and operation
-
-### Linux terminal and workspace
-
-Build the computer image, enable it on the API, then open **Computer → Terminal → Start computer**:
-
-```sh
-docker build -t openmuse-computer:local apps/computer
-COMPUTER_ENABLED=true pnpm dev
-```
-
-The API needs access to the Docker CLI and engine. Commands run in a nonroot container with no host-directory mounts or credentials. A named `/workspace` volume retains files when stopped. Terminal networking is disabled; public web access uses the browser worker. Commands have a 30-second limit and saved output/exit receipts. **Files** supports folders, text editing, and PDF transfer to/from Documents. This is a Linux container, not a full operating-system VM. [Setup, Colima option, and boundaries](docs/COMPUTER.md).
-
-### Application storage
-
-By default, embedded PGlite, documents and the signing key live in `.openmuse/`; browser profiles live in `.openmuse/browser-profiles/`. Keep that directory private and back it up. The API hosts the task worker. The host must remain running for background work.
-
-For a separate task worker, configure the same `DATABASE_URL`, secrets and shared `DATA_DIR` for both processes, then set `TASK_WORKER_ENABLED=false` on the API and run `pnpm dev:worker`. PGlite cannot be opened by separate processes. Production commands are `pnpm build:server`, `pnpm start` and `pnpm start:worker`. Run one API instance; task workers coordinate through SQL leases.
-
-No hidden retry occurs after an uncertain external write. Review its provider outcome before creating a replacement. Pausing/cancelling prevents subsequent task steps; an already approved in-flight provider request may finish.
-
-## CopilotKit Rich Threads
-
-Every deployment requires `CPK_INTELLIGENCE_API_KEY` on the API server for CopilotKit Intelligence conversation persistence and replay. Create or select a project with `npx copilotkit@latest login` and `npx copilotkit@latest project select`, set the generated server-only key, and restart the API. The native menu uses `useThreads`; rich tool results link back to saved tasks, documents, and browser sessions.
-
-Intelligence is a separate service and is not included in this repository's MIT license. No project key is shipped. [Configuration and validation boundaries](docs/RICH-THREADS.md).
-
-## Architecture
-
-```mermaid
-flowchart TD
-  Client[Expo / React Native / Web] -->|AG-UI and authenticated API| API[Hono + CopilotKit runtime]
-  API --> Tasks[Durable task worker]
-  API --> Threads[CopilotKit Intelligence required in every mode]
-  API --> Store[(PGlite or PostgreSQL)]
-  Tasks --> Store
-  Tasks --> Review[Stored action review]
-  Review --> Google[Gmail / Calendar adapters]
-  Tasks --> Browser[Chromium worker + persistent profiles]
-  API --> Browser
-  API --> Computer[Optional Docker Linux computer]
-  Tasks --> Computer
-  Computer --> Volume[(Persistent workspace volume)]
-  Tasks --> Files[PDF files + structured artifacts]
-  API -. future adapter .-> OpenBot[OpenBot]
-```
-
-| Directory | Purpose |
-| --- | --- |
-| `apps/mobile` | Shared iOS, Android, and web UI with CopilotKit headless hooks. |
-| `apps/server` | API, CopilotKit runtime, identity boundary, task engine, reviews, files, and persistence. |
-| `apps/worker` | Token-protected Playwright browser service with persistent profiles. |
-| `apps/computer` | Nonroot Linux image, bounded filesystem helper, and real container verification. |
-| `packages/domain` | Shared types and request validation. |
-| `packages/integrations` | Google and browser protocol adapters. |
-| `packages/backends` | Optional OpenBot HTTP adapter and its identity boundary. |
-| `tests` | Workflow, runtime, persistence, provider-contract, and authorization tests. |
-
-### OpenBot compatibility
-
-OpenMuse's native client and personal-agent workflows are independent of OpenBot. The disabled OpenBot adapter is pinned and contract-tested against upstream interfaces. Live user/session bridging, routine mapping, and computer backend wiring remain future work. OpenBot's Intelligence runtime is not a raw AG-UI endpoint. [Integration contract](docs/OPENBOT-INTEGRATION.md).
-
-## Development
-
-```sh
-pnpm lint
-pnpm typecheck
+# 跑测试
 pnpm test
-pnpm build:server
-pnpm build:web
-pnpm build:ios
-pnpm build:android
-pnpm --dir apps/worker typecheck
-pnpm test:browser
-pnpm test:computer
+
+# 类型检查
+pnpm -C apps/mobile exec tsc --noEmit
 ```
 
-Platform build scripts export JavaScript/Hermes bundles; they do not produce signed app binaries. Browser checks require installed Chromium and public fixture access. CI also exercises the browser and Linux computer containers. See [contribution guidance](CONTRIBUTING.md) and [verification results](docs/VERIFICATION.md).
+目标平台：iOS 26。构建走 GitHub Actions / EAS。
 
-## Contributing and license
+## 许可
 
-Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), [ROADMAP.md](ROADMAP.md), and the [security policy](SECURITY.md).
+GPL-3.0。详见 [LICENSE](LICENSE)。
 
-MIT licensed. Built by CopilotKit. Its original interface and fictional assets are included. Website, email, and document content supplies evidence, not permission to act.
+---
+
+基于 [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse) 二次开发。
