@@ -300,7 +300,7 @@ function CommandReceipt({ run }: { run: ComputerCommand }) {
             {
               color:
                 run.status === "succeeded"
-                  ? "#248258"
+                  ? colors.green
                   : run.status === "running"
                     ? colors.blueDark
                     : colors.danger,
@@ -492,7 +492,7 @@ function ComputerFiles({ running, active }: { running: boolean; active: boolean 
         {editor?.path || path}
       </TText>
       <ErrorNotice error={error} />
-      {!!notice && <TText style={[s.small, { color: "#248258" }]}>{notice}</TText>}
+      {!!notice && <TText style={[s.small, { color: colors.green }]}>{notice}</TText>}
       {!running && <TText style={s.muted}>{t("term.startToBrowse")}</TText>}
       {editor ? (
         <>

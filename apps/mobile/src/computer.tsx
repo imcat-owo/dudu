@@ -58,7 +58,7 @@ export function ComputerEntry() {
           width: 5,
           height: 5,
           borderRadius: radii.xs,
-          backgroundColor: available ? "#57AD85" : "#ACB0B5",
+          backgroundColor: available ? colors.green : colors.muted,
         }}
       />
     </Pressable>

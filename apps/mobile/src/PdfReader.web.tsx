@@ -15,6 +15,10 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
   const s = useStyles();
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(100);
+  // Web has no theme provider — follow the OS color scheme like BrowserConsole.
+  const dark =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
   return (
     <View style={{ gap: 12 }}>
       <View style={[s.between, { gap: 8, flexWrap: "wrap" }]}>
@@ -53,7 +57,7 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
           width: "100%",
           border: 0,
           borderRadius: radii.md,
-          background: "#e7e9e3",
+          background: dark ? "#1C1C1E" : "#e7e9e3",
         }}
       />
       <TText style={s.small}>用阅读器工具栏下载或打印。</TText>

@@ -156,7 +156,7 @@ export function TaskCard({
           padding: compact ? 15 : 20,
           gap: 11,
           borderRadius: radii.lg,
-          backgroundColor: "#F0F1F2",
+          backgroundColor: colors.card,
         }}
       >
         <View style={[s.row, { gap: 10 }]}>
@@ -183,7 +183,7 @@ export function TaskCard({
               style={{
                 height: 4,
                 width: `${Math.round((done / task.plan.length) * 100)}%`,
-                backgroundColor: "#6AAEE0",
+                backgroundColor: colors.blueDark,
                 borderRadius: radii.xs,
               }}
             />
@@ -1188,11 +1188,11 @@ export function GoalsScreen() {
                 height: 16,
                 borderRadius: radii.sm,
                 borderWidth: 5,
-                borderColor: "#D9F1E2",
-                backgroundColor: "#24A46B",
+                borderColor: colors.green,
+                backgroundColor: colors.green,
               }}
             />
-            <TText style={[s.heading, { color: "#189A58" }]}>追踪</TText>
+            <TText style={s.heading}>追踪</TText>
           </View>
           <Button small icon={Plus} onPress={() => setAdding("Tracking")}>
             {t("agent.track")}
@@ -1206,7 +1206,7 @@ export function GoalsScreen() {
             onPress={() => setSelectedMonitor(item.id)}
             style={[s.row, { gap: 12, paddingVertical: 13 }]}
           >
-            <Square size={21} color="#A7AAAC" />
+            <Square size={21} color={colors.muted} />
             <View style={{ flex: 1, gap: 4 }}>
               <TText style={s.text}>{item.title}</TText>
               <TText numberOfLines={1} style={s.muted}>
@@ -1215,7 +1215,7 @@ export function GoalsScreen() {
                   : statusLabel(item.status)}
               </TText>
             </View>
-            <ChevronRight size={18} color="#A3A6A8" />
+            <ChevronRight size={18} color={colors.muted} />
           </Pressable>
         ))}
         {!monitors.length && (
@@ -1236,8 +1236,8 @@ export function GoalsScreen() {
               height: 16,
               borderRadius: radii.sm,
               borderWidth: 5,
-              borderColor: "#D7E9FA",
-              backgroundColor: "#3D9BDE",
+              borderColor: colors.sky,
+              backgroundColor: colors.blueDark,
             }}
           />
           <TText style={[s.heading, { color: colors.blueDark }]}>目标</TText>
@@ -1252,7 +1252,7 @@ export function GoalsScreen() {
           >
             <Square
               size={21}
-              color="#A7AAAC"
+              color={colors.muted}
               fill={item.status === "completed" ? colors.green : "transparent"}
             />
             <View style={{ flex: 1, gap: 4 }}>
@@ -1261,7 +1261,7 @@ export function GoalsScreen() {
                 {item.description || statusLabel(item.status)}
               </TText>
             </View>
-            <ChevronRight size={18} color="#A3A6A8" />
+            <ChevronRight size={18} color={colors.muted} />
           </Pressable>
         ))}
         {!data?.goals.length && (
@@ -1283,9 +1283,9 @@ export function GoalsScreen() {
           onPress={() => setAdding(item.name)}
           style={[s.row, { gap: 12, minHeight: 38 }]}
         >
-          <item.icon size={23} color="#989C9F" />
-          <TText style={[s.text, { flex: 1, color: "#666A6D" }]}>{item.label}</TText>
-          <Plus size={18} color="#989C9F" />
+          <item.icon size={23} color={colors.muted} />
+          <TText style={[s.text, { flex: 1, color: colors.muted }]}>{item.label}</TText>
+          <Plus size={18} color={colors.muted} />
         </Pressable>
       ))}
       {adding && (
@@ -1767,7 +1767,7 @@ export function AppsScreen() {
       />
       <ConnectionsScreen query={query} />
       <TText style={s.heading}>在你的电脑上</TText>
-      <Card style={{ paddingVertical: 3, backgroundColor: "#F4F5F6" }}>
+      <Card style={{ paddingVertical: 3, backgroundColor: colors.card }}>
         {shortcuts
           .filter((item) =>
             `${item.title} ${item.detail}`.toLowerCase().includes(query.toLowerCase()),

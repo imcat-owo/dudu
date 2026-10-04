@@ -86,7 +86,7 @@ export function TodayScreen() {
       <View
         style={[
           {
-            backgroundColor: "#E8F2F8",
+            backgroundColor: colors.sky,
             borderRadius: radii.xl,
             padding: 32,
             minHeight: 228,
@@ -135,7 +135,7 @@ export function TodayScreen() {
                 width: 190,
                 height: 190,
                 borderRadius: 100,
-                backgroundColor: "#DAEAF2",
+                backgroundColor: colors.sky,
               }}
             />
             <View
@@ -145,7 +145,7 @@ export function TodayScreen() {
                 height: 145,
                 borderRadius: 80,
                 borderWidth: 1,
-                borderColor: "#C8DBE6",
+                borderColor: colors.line,
               }}
             />
             <Mascot size={94} />
@@ -164,7 +164,7 @@ export function TodayScreen() {
                 },
               ]}
             >
-              <Check size={14} color="#739174" />
+              <Check size={14} color={colors.green} />
               <TText style={s.small}>{t("today.easyDay")}</TText>
             </View>
             <View
@@ -314,7 +314,7 @@ export function TodayScreen() {
                       width: 5,
                       height: 5,
                       borderRadius: radii.xs,
-                      backgroundColor: "#78ABD0",
+                      backgroundColor: colors.blueDark,
                     }}
                   />
                 )}
@@ -438,7 +438,7 @@ export function AgendaRow({
           width: 3,
           height: 42,
           borderRadius: radii.xs,
-          backgroundColor: ["#BCDAEB", "#C7D6AB", "#D9CDEA"][index % 3],
+          backgroundColor: [colors.sky, colors.green, colors.lavender][index % 3],
         }}
       />
       <View style={{ flex: 1, gap: 3 }}>
@@ -575,7 +575,7 @@ export function MailScreen() {
                     width: 6,
                     height: 6,
                     borderRadius: radii.xs,
-                    backgroundColor: "#83B5D3",
+                    backgroundColor: colors.blueDark,
                   }}
                 />
               )}
@@ -770,7 +770,7 @@ export function CalendarScreen() {
                     backgroundColor: [...events, ...w.events].some(
                       (e) => e.calendarId === calendarId && eventDate(e) === key,
                     )
-                      ? "#8DB6CA"
+                      ? colors.blueDark
                       : "transparent",
                   }}
                 />
@@ -1007,7 +1007,7 @@ export function FilesScreen() {
               <View
                 style={{
                   height: 175,
-                  backgroundColor: "#EDEFEA",
+                  backgroundColor: colors.sky,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
