@@ -13,6 +13,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
+import { createWriteChain } from "../util/write-chain";
 import {
   blankSttConfig,
   blankTtsConfig,
@@ -108,15 +109,7 @@ export function createVoiceStore(secure?: SecureBackend, kv?: KeyValueBackend) {
    * never breaks: each link swallows its own rejection for chaining
    * purposes, while the caller still sees fn's real result/rejection.
    */
-  let writeChain: Promise<void> = Promise.resolve();
-  function enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
-    const run = writeChain.then(fn, fn);
-    writeChain = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
+  let enqueueWrite = createWriteChain();
   function ensureLoaded(): Promise<void> {
     if (!loadPromise) {
       loadPromise = (async () => {

@@ -23,6 +23,8 @@
  * via tools during a chat turn.
  */
 
+import { createWriteChain } from "../util/write-chain";
+
 export type MusicAuthor = "her" | "ai";
 
 /** One timed lyric line. time is seconds from track start. */
@@ -222,7 +224,7 @@ export class MusicStore {
   private storage: MusicStorage;
   private listeners = new Set<() => void>();
   /** Serializes mutations so concurrent writes never lose data. */
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
 
   constructor(storage: MusicStorage) {
     this.storage = storage;
@@ -246,12 +248,8 @@ export class MusicStore {
   }
 
   private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
-    const run = this.writeChain.then(fn, fn);
-    this.writeChain = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   // ---------- tracks ----------

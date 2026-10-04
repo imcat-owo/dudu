@@ -12,6 +12,8 @@
  * KnowledgeStore interface stays the same.
  */
 
+import { createWriteChain } from "../util/write-chain";
+
 export type KbDocStatus = "ready" | "indexing" | "failed";
 
 export interface KbDoc {
@@ -77,19 +79,11 @@ export class KnowledgeStore {
    * chaining purposes, while the caller still sees fn's real
    * result/rejection.
    */
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
 
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.writeChain;
-    const cur = (async () => {
-      await prev;
-      return fn();
-    })();
-    this.writeChain = cur.then(
-      () => undefined,
-      () => undefined,
-    );
-    return cur;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   private listeners = new Set<() => void>();

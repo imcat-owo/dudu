@@ -13,6 +13,7 @@ import {
   MEETINGS_CAP,
   type MeetingMessage,
 } from "./group-meeting.js";
+import { createWriteChain } from "../util/write-chain";
 
 export interface GroupMeetingStorage {
   getItem(key: string): Promise<string | null>;
@@ -52,7 +53,7 @@ export interface NewMeeting {
 }
 
 export class GroupMeetingStore {
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
   private listeners = new Set<() => void>();
 
   constructor(private storage: GroupMeetingStorage) {}
@@ -69,16 +70,8 @@ export class GroupMeetingStore {
   }
 
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.writeChain;
-    const cur = (async () => {
-      await prev;
-      return fn();
-    })();
-    this.writeChain = cur.then(
-      () => {},
-      () => {},
-    );
-    return cur;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   private async readAll(): Promise<GroupMeeting[]> {

@@ -16,6 +16,8 @@
  *   the trace — the fact of the send stays visible in the trace log.
  */
 
+import { createWriteChain } from "../../util/write-chain";
+
 export type CrossDialogAction =
   | "list"
   | "read"
@@ -112,7 +114,7 @@ export class CrossDialogTraceStore {
    * Serializes append/clear so two overlapping read→modify→write cycles
    * can't lose an entry. Reads stay unlocked.
    */
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
 
   constructor(private storage: CrossDialogTraceStorage) {}
 
@@ -128,18 +130,8 @@ export class CrossDialogTraceStore {
   }
 
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.writeChain;
-    const cur = (async () => {
-      await prev;
-      return fn();
-    })();
-    // The chain never breaks on a failed mutation; the caller still sees
-    // the real error.
-    this.writeChain = cur.then(
-      () => {},
-      () => {},
-    );
-    return cur;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   /**
@@ -214,7 +206,7 @@ function isValidVisibility(v: unknown): v is CrossDialogVisibilitySnapshot {
  */
 export class CrossDialogVisibilityStore {
   private listeners = new Set<CrossDialogTraceListener>();
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
 
   constructor(private storage: CrossDialogTraceStorage) {}
 
@@ -230,16 +222,8 @@ export class CrossDialogVisibilityStore {
   }
 
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.writeChain;
-    const cur = (async () => {
-      await prev;
-      return fn();
-    })();
-    this.writeChain = cur.then(
-      () => {},
-      () => {},
-    );
-    return cur;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   async getSnapshot(): Promise<CrossDialogVisibilitySnapshot> {

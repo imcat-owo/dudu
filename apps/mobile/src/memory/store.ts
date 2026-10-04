@@ -26,6 +26,7 @@ import {
   type MemoryRecord,
   type ProfileEntry,
 } from "./types.js";
+import { createWriteChain } from "../util/write-chain";
 
 /** Minimal storage surface. AsyncStorage satisfies this in production. */
 export interface MemoryStorage {
@@ -109,17 +110,12 @@ export class MemoryStore {
   // ---------- write serialization ----------
   // Mutations are read-modify-write on full JSON; serialize them so
   // concurrent writes (extract task + tool call) can't lose one.
-  private writeChain: Promise<void> = Promise.resolve();
+  private exclusive = createWriteChain();
 
   private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
-    const run = this.writeChain.then(fn, fn);
-    // Keep the chain alive even if this write fails; the caller still
+    // The shared chain never breaks on a failed write; the caller still
     // sees the real error. Emit on success so the UI refreshes live.
-    this.writeChain = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run.then((v) => {
+    return this.exclusive(fn).then((v) => {
       this.emit();
       return v;
     });
@@ -282,30 +278,70 @@ export class MemoryStore {
     } = {},
   ): Promise<MemoryRecord> {
     return this.enqueueWrite(async () => {
-      const text = content.trim();
-      if (!text) throw new Error("Memory content must not be empty.");
-      if (text.length > 2000) throw new Error("Memory content too long (max 2000 chars).");
-      const now = Date.now();
-      const rec: MemoryRecord = {
-        id: newId("mem"),
-        content: text,
-        category: opts.category && isMemoryCategory(opts.category) ? opts.category : "other",
-        confidence:
-          opts.confidence && isMemoryConfidence(opts.confidence) ? opts.confidence : "unsure",
-        validFrom: now,
-        validTo: null,
-        supersededBy: null,
-        reinforcedCount: 0,
-        source: (opts.source ?? "").slice(0, 300),
-        createdAt: now,
-        updatedAt: now,
-      };
       const list = await this.loadMemories();
+      const rec = this.buildMemoryRecord(content, opts);
       list.push(rec);
       await this.saveMemories(list);
       await this.logEvent(rec.id, "add", opts.actor ?? "ai");
       return rec;
     });
+  }
+
+  /**
+   * Add a memory only if `isDupe` (checked against the CURRENT list,
+   * inside the same serialized write) says it isn't a duplicate.
+   * Fixes the dedup TOCTOU: two overlapping extraction passes used to
+   * read the same list outside the chain and both write the same
+   * candidate. Returns null when skipped as a duplicate.
+   */
+  async addMemoryIfNew(
+    content: string,
+    opts: {
+      category?: MemoryCategory;
+      confidence?: MemoryConfidence;
+      source?: string;
+      actor?: "ai" | "user";
+    } = {},
+    isDupe?: (existingCurrent: MemoryRecord[]) => boolean,
+  ): Promise<MemoryRecord | null> {
+    return this.enqueueWrite(async () => {
+      const list = await this.loadMemories();
+      if (isDupe && isDupe(list.filter((m) => m.validTo === null))) return null;
+      const rec = this.buildMemoryRecord(content, opts);
+      list.push(rec);
+      await this.saveMemories(list);
+      await this.logEvent(rec.id, "add", opts.actor ?? "ai");
+      return rec;
+    });
+  }
+
+  private buildMemoryRecord(
+    content: string,
+    opts: {
+      category?: MemoryCategory;
+      confidence?: MemoryConfidence;
+      source?: string;
+      actor?: "ai" | "user";
+    },
+  ): MemoryRecord {
+    const text = content.trim();
+    if (!text) throw new Error("Memory content must not be empty.");
+    if (text.length > 2000) throw new Error("Memory content too long (max 2000 chars).");
+    const now = Date.now();
+    return {
+      id: newId("mem"),
+      content: text,
+      category: opts.category && isMemoryCategory(opts.category) ? opts.category : "other",
+      confidence:
+        opts.confidence && isMemoryConfidence(opts.confidence) ? opts.confidence : "unsure",
+      validFrom: now,
+      validTo: null,
+      supersededBy: null,
+      reinforcedCount: 0,
+      source: (opts.source ?? "").slice(0, 300),
+      createdAt: now,
+      updatedAt: now,
+    };
   }
 
   /**

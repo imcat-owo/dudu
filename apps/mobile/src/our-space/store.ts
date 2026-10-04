@@ -13,6 +13,8 @@
  * via tools during a chat turn.
  */
 
+import { createWriteChain } from "../util/write-chain";
+
 export type MemoryConfidence = "blooming" | "sprouting" | "ask";
 export type TimelineKind = "moment" | "milestone" | "note";
 
@@ -213,27 +215,9 @@ export class OurSpaceStore {
    * read→modify→write sequences on the same key lose one writer's update.
    * Reads stay unlocked — they never lose data.
    */
-  private writeChain: Promise<void> = Promise.resolve();
+  private exclusive = createWriteChain();
 
   constructor(private storage: OurSpaceStorage) {}
-
-  /**
-   * Run fn after all in-flight mutations finish. The chain never breaks:
-   * each link swallows its own rejection for chaining purposes, while the
-   * caller still sees fn's real result/rejection.
-   */
-  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = this.writeChain;
-    const cur = (async () => {
-      await prev;
-      return fn();
-    })();
-    this.writeChain = cur.then(
-      () => undefined,
-      () => undefined,
-    );
-    return cur;
-  }
 
   /** Subscribe to any mutation. Returns unsubscribe. */
   subscribe(listener: OurSpaceListener): () => void {

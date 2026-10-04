@@ -14,6 +14,8 @@
  * in tests). Mutations emit to subscribers so the UI refreshes live.
  */
 
+import { createWriteChain } from "../util/write-chain";
+
 export type SkillAuthor = "her" | "ai";
 
 export interface Skill {
@@ -130,7 +132,7 @@ export function seedExampleSkills(): Skill[] {
 export class SkillStore {
   private storage: SkillStorage;
   private listeners = new Set<() => void>();
-  private writeChain: Promise<void> = Promise.resolve();
+  private writeChain = createWriteChain();
 
   constructor(storage: SkillStorage) {
     this.storage = storage;
@@ -162,12 +164,8 @@ export class SkillStore {
   }
 
   private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
-    const run = this.writeChain.then(fn, fn);
-    this.writeChain = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
+    // Serialized by the shared write-chain helper (src/util/write-chain.ts).
+    return this.writeChain(fn);
   }
 
   /** Creates seed examples on first run. Idempotent. */
