@@ -101,7 +101,9 @@ async function writeBytes(bytes: Uint8Array, ext: string): Promise<string> {
   }
   // btoa isn't in Hermes — use a manual base64 encoder for the binary string.
   const b64 = base64Encode(binary);
-  const uri = `${dir}tts_${Date.now().toString(36)}.${ext}`;
+  // P2-17: random suffix — two concurrent syntheses must never share a
+  // temp name (Date.now() alone collides within the same millisecond).
+  const uri = `${dir}tts_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
   await fs.writeAsStringAsync(uri, b64, { encoding: "base64" });
   return uri;
 }
@@ -161,6 +163,13 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
  * Results are cached by (provider, voice, model, rate, text hash) — playing the
  * same bubble twice doesn't hit the network twice.
  */
+
+// P2-17: in-flight dedup by cache key. Concurrent syntheses of identical
+// text share one network call and one cache-slot write — two racing temps
+// can no longer collide, and a corrupt temp can no longer poison the slot
+// that's replayed on every future hit.
+const inFlightSynth = new Map<string, Promise<string>>();
+
 export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) throw new TtsError("empty text");
@@ -196,17 +205,28 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
   const hit = await findCached();
   if (hit) return hit;
 
-  const uri =
-    cfg.provider === "edge-tts"
-      ? await synthesizeEdgeTts(clean, cfg.voice, cfg.rate ?? 1.0)
-      : await synthesizeCustom(clean, cfg);
-  // Move into the cache slot for next time (best-effort), keeping the real extension.
-  const ext = uri.split(".").pop() ?? "mp3";
-  const cachedUri = `${dir}${cacheKey}.${ext}`;
+  // P2-17: share the in-flight synthesis for this cache key.
+  const ongoing = inFlightSynth.get(cacheKey);
+  if (ongoing) return ongoing;
+  const job = (async (): Promise<string> => {
+    const uri =
+      cfg.provider === "edge-tts"
+        ? await synthesizeEdgeTts(clean, cfg.voice, cfg.rate ?? 1.0)
+        : await synthesizeCustom(clean, cfg);
+    // Move into the cache slot for next time (best-effort), keeping the real extension.
+    const ext = uri.split(".").pop() ?? "mp3";
+    const cachedUri = `${dir}${cacheKey}.${ext}`;
+    try {
+      await fs.moveAsync({ from: uri, to: cachedUri });
+      return cachedUri;
+    } catch {
+      return uri;
+    }
+  })();
+  inFlightSynth.set(cacheKey, job);
   try {
-    await fs.moveAsync({ from: uri, to: cachedUri });
-    return cachedUri;
-  } catch {
-    return uri;
+    return await job;
+  } finally {
+    if (inFlightSynth.get(cacheKey) === job) inFlightSynth.delete(cacheKey);
   }
 }

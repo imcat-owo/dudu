@@ -132,7 +132,8 @@ export function createPodcastTools(
         const segments = splitPodcastText(text);
         if (segments.length === 0) throw new ToolError("text is empty.");
 
-        const taskId = `podcast_${Date.now().toString(36)}`;
+        // P3-17: random suffix — same-millisecond generations must not collide.
+        const taskId = `podcast_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
         await taskStore.upsert({
           id: taskId,
           name: title,

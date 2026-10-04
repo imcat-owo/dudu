@@ -157,6 +157,7 @@ const KEYS = {
   queue: "dudu.music.v1.queue",
   nowPlaying: "dudu.music.v1.now",
   intent: "dudu.music.v1.intent",
+  appliedIntentAt: "dudu.music.v1.intent.appliedAt",
   together: "dudu.music.v1.together",
   selectedLyric: "dudu.music.v1.selectedLyric",
   togetherListens: "dudu.music.v1.togetherListens",
@@ -771,6 +772,21 @@ export class MusicStore {
 
   async getIntent(): Promise<DjIntent | null> {
     return readJson<DjIntent | null>(this.storage, KEYS.intent, null);
+  }
+
+  /**
+   * P2-20: the last intent timestamp the UI actually applied, persisted.
+   * appliedIntentAt used to be an in-memory ref — an app restart within
+   * the 5-minute window replayed the AI's "play" intent on cold start.
+   */
+  async getAppliedIntentAt(): Promise<number> {
+    return readJson<number>(this.storage, KEYS.appliedIntentAt, 0);
+  }
+
+  async setAppliedIntentAt(at: number): Promise<void> {
+    await this.enqueueWrite(async () => {
+      await writeJson(this.storage, KEYS.appliedIntentAt, at);
+    });
   }
 
   // ---------- together mode ----------

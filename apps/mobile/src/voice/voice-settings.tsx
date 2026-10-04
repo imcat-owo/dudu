@@ -290,6 +290,11 @@ function SttSection() {
   const [testError, setTestError] = useState("");
   const testTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const testStartRef = useRef(0);
+  // P2-13: the 10s auto-stop timer and her manual stop tap can both pass
+  // the isRecording check — the second recorder.stop() rejects and paints
+  // a bogus red error over a successful transcription (plus a double
+  // network transcription). First stop wins; the other is a no-op.
+  const stoppingTestRef = useRef(false);
 
   function clearTestTimer() {
     if (testTimer.current) {
@@ -336,26 +341,35 @@ function SttSection() {
   }
 
   async function stopTest() {
+    // P2-13: stop is one-shot. The auto-stop timer and a manual tap race
+    // here; without the guard the loser rejects on recorder.stop() and
+    // shows a bogus error after a successful transcription.
+    if (stoppingTestRef.current) return;
+    stoppingTestRef.current = true;
     clearTestTimer();
-    // NOTE: don't read testPhase here — the 10s auto-stop timer runs in a
-    // stale closure. recorder.isRecording is the source of truth.
-    if (!recorder.isRecording) {
-      setTestPhase("idle");
-      return;
-    }
-    setTestPhase("transcribing");
     try {
-      await recorder.stop();
-      const uri = recorder.uri;
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-      if (!uri) throw new Error(t("voice.sttTestNoAudio") as string);
-      const text = await transcribeAudio(uri, activeGroup, cfg);
-      setTestResult(text);
-    } catch (e) {
-      setTestError(e instanceof Error ? e.message : String(e));
+      // NOTE: don't read testPhase here — the 10s auto-stop timer runs in a
+      // stale closure. recorder.isRecording is the source of truth.
+      if (!recorder.isRecording) {
+        setTestPhase("idle");
+        return;
+      }
+      setTestPhase("transcribing");
+      try {
+        await recorder.stop();
+        const uri = recorder.uri;
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        if (!uri) throw new Error(t("voice.sttTestNoAudio") as string);
+        const text = await transcribeAudio(uri, activeGroup, cfg);
+        setTestResult(text);
+      } catch (e) {
+        setTestError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setTestPhase("idle");
+        setTestSecs(0);
+      }
     } finally {
-      setTestPhase("idle");
-      setTestSecs(0);
+      stoppingTestRef.current = false;
     }
   }
 

@@ -201,15 +201,26 @@ export async function generatePodcastAudio(
   text: string,
   cfg: TtsConfig,
   onProgress?: (done: number, total: number) => Promise<void> | void,
-  opts?: { ephemeral?: boolean },
+  opts?: { ephemeral?: boolean; timeoutMs?: number },
 ): Promise<PodcastResult> {
   const segments = splitPodcastText(text);
   if (segments.length === 0) throw new Error("empty text");
   const fs = await loadFs();
 
+  // P2-18: overall deadline. Combined with per-fetch timeouts this bounds
+  // the whole generation — one wedged segment can't hang the tool call
+  // forever. The caller marks the card stuck loudly on this throw.
+  const timeoutMs = opts?.timeoutMs ?? 15 * 60 * 1000;
+  const deadline = Date.now() + timeoutMs;
+
   const chunks: Uint8Array[] = [];
   let totalLen = 0;
   for (let i = 0; i < segments.length; i++) {
+    if (Date.now() > deadline) {
+      throw new Error(
+        `播客生成超时（超过 ${Math.round(timeoutMs / 60000)} 分钟）：第 ${i + 1}/${segments.length} 段还没做完。`,
+      );
+    }
     const uri = await synthesizeSpeech(segments[i], cfg);
     // P1-1: only MP3 segments can be frame-concatenated. Other formats
     // (wav/ogg/...) would silently produce a broken file — fail loudly.
@@ -235,7 +246,8 @@ export async function generatePodcastAudio(
   }
 
   const dir = await podcastDir(opts?.ephemeral === true);
-  const uri = `${dir}podcast_${Date.now().toString(36)}.mp3`;
+  // P3-17: random suffix — same-millisecond generations must not collide.
+  const uri = `${dir}podcast_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}.mp3`;
   await fs.writeAsStringAsync(uri, base64Encode(merged), {
     encoding: "base64",
   });

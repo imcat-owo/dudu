@@ -174,7 +174,7 @@ function authStateMessage(s: string): string {
       return t("music.auth.deniedHint");
     case "unavailable":
     case "not-configured":
-      return t("music.auth.setupHint");
+      return t("music.auth.setupHintUser");
     default:
       return t("music.auth.needAuth");
   }
@@ -195,7 +195,6 @@ function usePlayerEngine() {
     startedAt: 0,
     startedBy: null as "her" | "ai" | null,
   });
-  const appliedIntentAt = useRef(0);
   const activeSourceId = useRef<TrackSource>("local");
   const statusUnsub = useRef<(() => void) | null>(null);
   const contextPlaylist = useRef<string | null>(null);
@@ -223,7 +222,7 @@ function usePlayerEngine() {
     void musicStore.getTogether().then(setTogether);
   }, [v]);
 
-  const playTrack = useCallback(
+  const playTrackInner = useCallback(
     async (track: Track, playlistId?: string | null) => {
       setError("");
       try {
@@ -258,6 +257,23 @@ function usePlayerEngine() {
       }
     },
     [subscribeSource],
+  );
+
+  // P2-19: re-entrancy guard. Two rapid playTrack calls used to interleave
+  // against the singleton source — the UI showed A as now-playing while
+  // B's audio played. Calls now chain: the latest call always runs last,
+  // so the final state matches her last tap.
+  const playChainRef = useRef<Promise<void>>(Promise.resolve());
+  const playTrack = useCallback(
+    (track: Track, playlistId?: string | null): Promise<void> => {
+      const job = playChainRef.current.then(() => playTrackInner(track, playlistId));
+      playChainRef.current = job.then(
+        () => undefined,
+        () => undefined,
+      );
+      return job;
+    },
+    [playTrackInner],
   );
 
   const advance = useCallback(async () => {
@@ -324,8 +340,12 @@ function usePlayerEngine() {
   useEffect(() => {
     void (async () => {
       const intent = await musicStore.getIntent();
-      if (!intent || intent.at <= appliedIntentAt.current) return;
-      appliedIntentAt.current = intent.at;
+      // P2-20: the applied marker is persisted — an in-memory ref used to
+      // reset on launch, replaying the AI's "play" intent on cold start
+      // when the app restarted within the 5-minute window.
+      const appliedAt = await musicStore.getAppliedIntentAt();
+      if (!intent || intent.at <= appliedAt) return;
+      await musicStore.setAppliedIntentAt(intent.at);
       // Stale intents (e.g. written before the app was backgrounded) must
       // never suddenly start music — consume and ignore them.
       if (isIntentStale(intent)) return;
@@ -349,8 +369,12 @@ function usePlayerEngine() {
         } else if (intent.action === "skip") {
           await advance();
         } else if (intent.action === "restart") {
+          // P3-18: restart seeks AND resumes — seeking alone left the
+          // track paused at 0, which is not a restart.
           const { getMusicSource } = await import("./music/sources");
-          await getMusicSource(activeSourceId.current).seekTo(0);
+          const src = getMusicSource(activeSourceId.current);
+          await src.seekTo(0);
+          await src.play();
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "DJ command failed.");

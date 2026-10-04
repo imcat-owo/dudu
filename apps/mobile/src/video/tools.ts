@@ -103,7 +103,9 @@ export function extractTaskId(data: unknown): string | null {
 export function taskDone(data: unknown): boolean {
   if (typeof data !== "object" || data === null) return false;
   const d = data as Record<string, unknown>;
-  const status = d.status ?? d.state;
+  // P2-15: providers shout ("SUCCEEDED") — compare case-insensitively or
+  // the poll spins the full 10 minutes then times out.
+  const status = String(d.status ?? d.state ?? "").toLowerCase();
   return (
     status === "completed" || status === "done" || status === "succeeded" || status === "success"
   );
@@ -112,12 +114,43 @@ export function taskDone(data: unknown): boolean {
 export function taskFailed(data: unknown): string | null {
   if (typeof data !== "object" || data === null) return null;
   const d = data as Record<string, unknown>;
-  const status = d.status ?? d.state;
+  const status = String(d.status ?? d.state ?? "").toLowerCase();
   if (status === "failed" || status === "error" || status === "cancelled") {
     const err = d.error ?? d.message;
-    return typeof err === "string" ? err : `task ${String(status)}`;
+    return typeof err === "string" ? err : `task ${status}`;
   }
   return null;
+}
+
+/**
+ * P2-14: verify a candidate video URL actually serves video before we
+ * present it as "the video". HEAD (2xx + content-type video/*); servers
+ * that reject HEAD get one 1-byte range-GET chance. Anything else →
+ * false, and the caller takes the honest "no playable link" path instead
+ * of handing her a dead link.
+ */
+export async function verifyVideoUrl(url: string, timeoutMs = 10000): Promise<boolean> {
+  const check = async (method: string, range: boolean): Promise<boolean> => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), timeoutMs);
+    try {
+      const res = await fetch(
+        url,
+        range
+          ? { method, headers: { Range: "bytes=0-0" }, signal: c.signal }
+          : { method, signal: c.signal },
+      );
+      if (!res.ok) return false;
+      const ct = res.headers.get("content-type") ?? "";
+      return ct.toLowerCase().startsWith("video/");
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  if (await check("HEAD", false)) return true;
+  return check("GET", true);
 }
 
 async function postJson(
@@ -216,7 +249,9 @@ async function runBackend(
   tasks: TaskProgressStore,
   timing: ResolvedTiming,
 ): Promise<string> {
-  const taskId = `video_${Date.now().toString(36)}`;
+  // P3-17: random suffix — two videos started in the same millisecond
+  // must not share a task id.
+  const taskId = `video_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const headers = headersFor(b);
   const shortPrompt = prompt.length > 24 ? `${prompt.slice(0, 24)}…` : prompt;
   const card = (progress: number, stage: string, status: "running" | "stuck" | "done") =>
@@ -251,8 +286,18 @@ async function runBackend(
   // 2a. Synchronous provider — video URL straight back.
   const direct = extractVideoUrl(submitted);
   if (direct) {
-    await card(1, "完成了", "done");
-    return videoDoneMessage(prompt, direct);
+    // P2-14: the URL must actually serve video before we present it.
+    if (await verifyVideoUrl(direct)) {
+      await card(1, "完成了", "done");
+      return videoDoneMessage(prompt, direct);
+    }
+    const stage = `生成返回了视频地址，但验证打不开或不是视频文件`;
+    await card(1, stage, "stuck");
+    return (
+      `视频应该已经做好了，但我验证了一下返回的链接，打不开或不是视频文件，` +
+      `所以不能给你一个坏链接。任务卡（${taskId}）上记着这次任务，` +
+      `可以去「我们的空间」看一眼，也可以让我帮你检查视频模型的接口配置。不要编造链接。`
+    );
   }
 
   // 2b. Async provider — poll for completion.
@@ -299,6 +344,16 @@ async function runBackend(
           return (
             `视频应该已经做好了，但我从接口返回里找不到可以直接播放的视频地址，` +
             `所以不能给你一个链接。任务卡（${taskId}）上记着这次任务，` +
+            `可以去「我们的空间」看一眼，也可以让我帮你检查视频模型的接口配置。不要编造链接。`
+          );
+        }
+        // P2-14: verify before presenting — a non-video URL is never "the video".
+        if (!(await verifyVideoUrl(url))) {
+          const stage = `生成完成，但返回的链接验证不是视频文件（任务 ${remoteId}）`;
+          await card(1, stage, "stuck");
+          return (
+            `视频应该已经做好了，但我验证了一下返回的链接，打不开或不是视频文件，` +
+            `所以不能给你一个坏链接。任务卡（${taskId}）上记着这次任务，` +
             `可以去「我们的空间」看一眼，也可以让我帮你检查视频模型的接口配置。不要编造链接。`
           );
         }

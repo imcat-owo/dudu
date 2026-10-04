@@ -21,26 +21,38 @@ export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string
   const [state, setState] = useState<"idle" | "synthesizing" | "playing">("idle");
   const [error, setError] = useState("");
   const playerRef = useRef<AudioPlayer | null>(null);
+  const listenerRef = useRef<{ remove(): void } | null>(null);
+  // P3-15: the component can unmount while synthesis is in flight. Without
+  // this, the player created after unmount is unstoppable (no ref, no UI).
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    return () => {
-      try {
-        playerRef.current?.remove();
-      } catch {
-        // already released
-      }
-      playerRef.current = null;
-    };
-  }, []);
-
-  async function stop() {
+  /** Release the native player AND its status listener. Idempotent. */
+  function releasePlayer() {
+    try {
+      listenerRef.current?.remove();
+    } catch {
+      // already released
+    }
+    listenerRef.current = null;
     try {
       playerRef.current?.pause();
       playerRef.current?.remove();
     } catch {
-      // ignore
+      // already released
     }
     playerRef.current = null;
+  }
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      releasePlayer();
+    };
+  }, []);
+
+  async function stop() {
+    releasePlayer();
     setState("idle");
   }
 
@@ -54,14 +66,23 @@ export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string
     setState("synthesizing");
     try {
       const uri = await synthesizeSpeech(text, tts);
+      // P3-15: unmounted while synthesizing — bail before creating a player
+      // nobody can stop.
+      if (!mountedRef.current) {
+        setState("idle");
+        return;
+      }
       await setAudioModeAsync({ playsInSilentMode: true });
       const player = createAudioPlayer(uri);
       playerRef.current = player;
-      player.addListener("playbackStatusUpdate", (status) => {
+      listenerRef.current = player.addListener("playbackStatusUpdate", (status) => {
         if (!status.isLoaded) return;
         if (status.didJustFinish) {
+          // P2-12: release the native player AND the listener on finish.
+          // Previously the ref was just nulled — leaking a native player
+          // and a listener on every completed playback.
+          releasePlayer();
           setState("idle");
-          playerRef.current = null;
         }
       });
       player.play();

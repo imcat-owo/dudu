@@ -231,6 +231,48 @@ class LocalMusicSource implements MusicSource {
 // ---------------------------------------------------------------------------
 
 const APPLE_TOKEN_KEY = "dudu.music.v1.apple-music.user-token";
+
+/**
+ * P2-16: the MusicKit user token lives in the OS keychain
+ * (expo-secure-store), NEVER in plaintext AsyncStorage — the codebase's own
+ * "secrets" convention. Dynamic import keeps this module importable in
+ * plain node tests.
+ */
+async function secureTokenStore(): Promise<{
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  deleteItem(key: string): Promise<void>;
+}> {
+  const SecureStore = await import("expo-secure-store");
+  return {
+    getItem: (key) => SecureStore.getItemAsync(key),
+    setItem: (key, value) => SecureStore.setItemAsync(key, value),
+    deleteItem: (key) => SecureStore.deleteItemAsync(key),
+  };
+}
+
+/**
+ * Read the token, migrating a legacy AsyncStorage copy into the keychain
+ * once (then deleting the plaintext copy). Returns null when absent.
+ */
+async function readAppleToken(): Promise<string | null> {
+  const secure = await secureTokenStore();
+  const token = await secure.getItem(APPLE_TOKEN_KEY).catch(() => null);
+  if (token) return token;
+  // One-time migration from the old plaintext home.
+  const legacy = await AsyncStorage.getItem(APPLE_TOKEN_KEY).catch(() => null);
+  if (legacy) {
+    await secure.setItem(APPLE_TOKEN_KEY, legacy).catch(() => undefined);
+    await AsyncStorage.removeItem(APPLE_TOKEN_KEY).catch(() => undefined);
+    return legacy;
+  }
+  return null;
+}
+
+async function writeAppleToken(token: string): Promise<void> {
+  const secure = await secureTokenStore();
+  await secure.setItem(APPLE_TOKEN_KEY, token);
+}
 const APPLE_STATE_KEY = "dudu.music.v1.apple-music.auth-state";
 
 type AppleBridge = typeof import("@wwdrew/expo-apple-music");
@@ -276,7 +318,7 @@ class AppleMusicSource implements MusicSource {
     const cached = await AsyncStorage.getItem(APPLE_STATE_KEY);
     if (cached === "authorized" || cached === "denied" || cached === "not-subscribed") {
       if (cached === "authorized") {
-        const token = await AsyncStorage.getItem(APPLE_TOKEN_KEY);
+        const token = await readAppleToken();
         if (!token) return "unknown";
       }
       return cached;
@@ -299,7 +341,7 @@ class AppleMusicSource implements MusicSource {
       if (result.status !== bridge.AuthStatus.AUTHORIZED || !result.musicUserToken) {
         state = result.status === bridge.AuthStatus.DENIED ? "denied" : "unknown";
       } else {
-        await AsyncStorage.setItem(APPLE_TOKEN_KEY, result.musicUserToken);
+        await writeAppleToken(result.musicUserToken);
         try {
           const sub = await bridge.Auth.checkSubscription(result.musicUserToken);
           state = sub.canPlayCatalogContent ? "authorized" : "not-subscribed";
