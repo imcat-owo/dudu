@@ -85,7 +85,7 @@ export class OutreachStore {
       const parsed: unknown = JSON.parse(raw);
       if (typeof parsed !== "object" || parsed === null) return {};
       const out: Partial<Record<OutreachTriggerKind, number>> = {};
-      for (const k of ["anniversary", "tell_later", "love_letter", "silence"] as const) {
+      for (const k of ["anniversary", "tell_later", "love_letter", "silence", "diary_nudge"] as const) {
         const v = (parsed as Record<string, unknown>)[k];
         if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
       }

@@ -13,7 +13,10 @@ a reason.
 The engine rule （有由头才发）:
 - A trigger is a PRECONDITION, not a suggestion. No trigger = no message, ever.
 - Valid triggers: a 纪念日 is approaching, a tell_later item's moment has come,
-  an unread love letter is waiting, or she has genuinely been away a long time.
+  an unread love letter is waiting, she has genuinely been away a long time,
+  or a diary nudge (no diary entry for a while + a real anchor from recent days).
+- Her sleep window (06:00–16:00 Shanghai — she sleeps days, lives nights):
+  no notification is scheduled while she sleeps, unless it's an anniversary.
 - "在吗"-style empty pings are forbidden by construction — every trigger
   carries concrete content. If you have nothing to say, say nothing.
 

@@ -54,6 +54,12 @@ export interface OutreachDataPorts {
   /** Pending (not done) tell-later items, oldest first. */
   listPendingTellLater(): Promise<{ id: string; text: string }[]>;
   countUnreadLoveLetters(): Promise<number>;
+  /**
+   * Diary nudge input (xiaomeng P2-1). lastEntryAt null = never written.
+   * anchor: a real anchor from recent days (latest timeline event title,
+   * on-this-day memory...) — empty string means "no anchor, stay silent".
+   */
+  getDiaryNudgeInput?(): Promise<{ lastEntryAt: number | null; anchor: string }>;
 }
 
 export type CopyFn = (key: string, params?: Record<string, string | number>) => string;
@@ -79,6 +85,11 @@ function notifCopy(t: OutreachTrigger, copy: CopyFn): { title: string; body: str
       return {
         title: copy("outreach.notif.silence.title"),
         body: copy("outreach.notif.silence.body"),
+      };
+    case "diary_nudge":
+      return {
+        title: copy("outreach.notif.diaryNudge.title"),
+        body: copy("outreach.notif.diaryNudge.body", { anchor: t.detail }),
       };
   }
 }
@@ -138,6 +149,14 @@ export async function evaluateAndScheduleOutreach(deps: {
     } catch {
       unreadLoveLetters = 0;
     }
+    // Diary nudge input — a failing source degrades to "no nudge", never
+    // to a fabricated one.
+    let diaryNudge: { lastEntryAt: number | null; anchor: string } | undefined;
+    try {
+      diaryNudge = (await deps.data.getDiaryNudgeInput?.()) ?? undefined;
+    } catch {
+      diaryNudge = undefined;
+    }
     const lastOpenedAt = await deps.store.getLastOpenedAt().catch(() => null);
     const lastOutreachAt = await deps.store.getLastOutreachAt().catch(() => ({}));
 
@@ -149,6 +168,7 @@ export async function evaluateAndScheduleOutreach(deps: {
       unreadLoveLetters,
       lastOpenedAt,
       lastOutreachAt,
+      diaryNudge,
     });
     if (triggers.length === 0) return { scheduled: false, reason: "no-trigger" };
     const top = triggers[0];

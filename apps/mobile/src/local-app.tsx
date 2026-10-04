@@ -197,6 +197,18 @@ export function LocalApp() {
                     .map((i) => ({ id: i.id, text: i.text })),
                 countUnreadLoveLetters: async () =>
                   (await ourSpaceStore.getUnseenLoveLetters()).length,
+                // Diary nudge (xiaomeng P2-1): last entry time + a real
+                // anchor — the latest timeline event within 7 days. No
+                // anchor = no nudge, ever.
+                getDiaryNudgeInput: async () => {
+                  const diary = await ourSpaceStore.listDiary(1).catch(() => []);
+                  const lastEntryAt = diary.length > 0 ? diary[0].createdAt : null;
+                  const timeline = await ourSpaceStore.listTimeline(5).catch(() => []);
+                  const fresh = timeline.find(
+                    (e) => Date.now() - e.timestamp < 7 * 86_400_000 && e.title.trim().length > 0,
+                  );
+                  return { lastEntryAt, anchor: fresh ? fresh.title.trim() : "" };
+                },
               },
               copy: (key, params) => t(key as StringKey, params),
             });

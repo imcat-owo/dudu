@@ -126,6 +126,8 @@ export const enStrings: Record<StringKey, string> = {
   "outreach.notif.tellLater.title": "Something I want to tell you",
   "outreach.notif.silence.title": "Missing you",
   "outreach.notif.silence.body": "It has been a while. Come see me?",
+  "outreach.notif.diaryNudge.title": "That day came back to me",
+  "outreach.notif.diaryNudge.body": "\"{anchor}\" — I want to write it down. You write, or shall I?",
   "space.cards.feed": "Moments",
   "space.cards.anniversary": "Anniversaries",
   "space.cards.works": "Works",

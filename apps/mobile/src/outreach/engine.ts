@@ -7,7 +7,8 @@
  *
  * Design (audit round 2, xiaomeng P1-1; Dede et al. 2026 friendbot watershed):
  *  - 有由头才发. Valid triggers: anniversary approaching, tell_later item
- *    whose moment has come, unread love letter, long silence (real absence).
+ *    whose moment has come, unread love letter, long silence (real absence),
+ *    diary nudge (no diary entry for a while + a real anchor — xiaomeng P2-1).
  *  - Frequency gate: 积极 / 适度 / 安静 (default 适度). 安静 = in-session
  *    only, the engine returns nothing.
  *  - Per-kind cooldown (24h): the same kind of nudge never fires twice
@@ -16,7 +17,7 @@
 
 export type OutreachFrequency = "active" | "moderate" | "quiet";
 
-export type OutreachTriggerKind = "anniversary" | "tell_later" | "love_letter" | "silence";
+export type OutreachTriggerKind = "anniversary" | "tell_later" | "love_letter" | "silence" | "diary_nudge";
 
 export interface OutreachTrigger {
   kind: OutreachTriggerKind;
@@ -42,6 +43,12 @@ export interface OutreachEvalInput {
   lastOpenedAt: number | null;
   /** Last time each kind actually fired (for cooldown). */
   lastOutreachAt: Partial<Record<OutreachTriggerKind, number>>;
+  /**
+   * Diary nudge input (xiaomeng P2-1): when was the last diary entry
+   * written, and what real anchor from recent days justifies a nudge.
+   * Absent = the caller has no diary data → this trigger stays off.
+   */
+  diaryNudge?: { lastEntryAt: number | null; anchor: string };
 }
 
 /** Same kind of nudge never fires twice within this window. */
@@ -51,6 +58,12 @@ export const OUTREACH_COOLDOWN_MS = 24 * 3_600_000;
 export const SILENCE_THRESHOLD_MS: Record<Exclude<OutreachFrequency, "quiet">, number> = {
   active: 2 * 86_400_000,
   moderate: 4 * 86_400_000,
+};
+
+/** Diary nudge: how long without a diary entry before a nudge is allowed. */
+export const DIARY_NUDGE_GAP_MS: Record<Exclude<OutreachFrequency, "quiet">, number> = {
+  active: 3 * 86_400_000,
+  moderate: 7 * 86_400_000,
 };
 
 /** Anniversary window by frequency. */
@@ -101,13 +114,30 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
     out.push({ kind: "tell_later", priority: 2, detail: pending.text.trim().slice(0, 200) });
   }
 
-  // 4. Long silence — only a real absence counts (threshold by frequency).
+  // 4. Diary nudge (xiaomeng P2-1) — only when BOTH hold: no diary entry
+  // for a while AND a real anchor from recent days exists. Never random,
+  // never "该写日记了". The anchor rides in `detail` so the copy always
+  // says WHAT made him think of it.
+  const dn = input.diaryNudge;
+  if (dn) {
+    const anchor = dn.anchor.trim();
+    const gap = dn.lastEntryAt === null ? Infinity : now - dn.lastEntryAt;
+    if (
+      anchor.length > 0 &&
+      gap >= DIARY_NUDGE_GAP_MS[frequency] &&
+      !cooledDown("diary_nudge", now, input.lastOutreachAt)
+    ) {
+      out.push({ kind: "diary_nudge", priority: 3, detail: anchor.slice(0, 200) });
+    }
+  }
+
+  // 5. Long silence — only a real absence counts (threshold by frequency).
   // This is the "她很久没打开" trigger she approved. It never fires on a
   // fresh install (lastOpenedAt null → no baseline → stay silent).
   if (input.lastOpenedAt !== null) {
     const gap = now - input.lastOpenedAt;
     if (gap >= SILENCE_THRESHOLD_MS[frequency] && !cooledDown("silence", now, input.lastOutreachAt)) {
-      out.push({ kind: "silence", priority: 3, detail: "" });
+      out.push({ kind: "silence", priority: 4, detail: "" });
     }
   }
 

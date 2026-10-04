@@ -1130,6 +1130,24 @@ export function createLocalAgent(opts: {
             title: a.title,
             daysUntil: a.daysUntil,
           }));
+          // Diary nudge (xiaomeng P2-1): same input shape as the background
+          // scheduler. In-session, the anchor lets him write a diary entry
+          // quietly instead of only nudging via notification.
+          let oDiaryNudge: { lastEntryAt: number | null; anchor: string } | undefined;
+          try {
+            const os = opts.ourSpaceStore ?? ourSpaceStore;
+            const diary = await os.listDiary(1).catch(() => []);
+            const timeline = await os.listTimeline(5).catch(() => []);
+            const fresh = timeline.find(
+              (e) => Date.now() - e.timestamp < 7 * 86_400_000 && e.title.trim().length > 0,
+            );
+            oDiaryNudge = {
+              lastEntryAt: diary.length > 0 ? diary[0].createdAt : null,
+              anchor: fresh ? fresh.title.trim() : "",
+            };
+          } catch {
+            oDiaryNudge = undefined;
+          }
           const oTriggers = evaluateOutreachTriggers({
             frequency,
             now: Date.now(),
@@ -1140,6 +1158,7 @@ export function createLocalAgent(opts: {
             unreadLoveLetters: oLoveLetters.length,
             lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
             lastOutreachAt: await oStore.getLastOutreachAt().catch(() => ({})),
+            diaryNudge: oDiaryNudge,
           });
           outreachSection = buildOutreachSection(oTriggers);
         }

@@ -52,6 +52,7 @@ describe("evaluateOutreachTriggers", () => {
         unreadLoveLetters: 2,
         pendingTellLater: [{ id: "t1", text: "记得买牛奶" }],
         lastOpenedAt: NOW - 30 * 86_400_000,
+        diaryNudge: { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" },
       }),
     );
     assert.deepEqual(triggers, []);
@@ -128,6 +129,65 @@ describe("evaluateOutreachTriggers", () => {
     assert.equal(isOutreachFrequency("quiet"), true);
     assert.equal(isOutreachFrequency("loud"), false);
     assert.equal(isOutreachFrequency(null), false);
+  });
+});
+
+describe("diary_nudge (xiaomeng P2-1)", () => {
+  it("fires when the diary is stale AND a real anchor exists", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({
+        diaryNudge: { lastEntryAt: NOW - 10 * 86_400_000, anchor: "一起看的第一场电影" },
+      }),
+    );
+    assert.equal(triggers.length, 1);
+    assert.equal(triggers[0].kind, "diary_nudge");
+    assert.equal(triggers[0].detail, "一起看的第一场电影");
+  });
+
+  it("stays silent when the anchor is empty — never random", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({ diaryNudge: { lastEntryAt: NOW - 30 * 86_400_000, anchor: "   " } }),
+    );
+    assert.deepEqual(triggers, []);
+  });
+
+  it("stays silent when the diary is fresh", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({ diaryNudge: { lastEntryAt: NOW - 2 * 86_400_000, anchor: "一起看的第一场电影" } }),
+    );
+    assert.deepEqual(triggers, []);
+  });
+
+  it("stays silent without diary input at all", () => {
+    assert.deepEqual(evaluateOutreachTriggers(baseInput()), []);
+  });
+
+  it("yields to higher-priority triggers", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({
+        pendingTellLater: [{ id: "t1", text: "记得买牛奶" }],
+        diaryNudge: { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" },
+      }),
+    );
+    assert.equal(triggers[0].kind, "tell_later");
+    assert.equal(triggers[1].kind, "diary_nudge");
+  });
+
+  it("cools down for 24h like every other kind", () => {
+    const dn = { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" };
+    const first = evaluateOutreachTriggers(baseInput({ diaryNudge: dn }));
+    assert.equal(first[0].kind, "diary_nudge");
+    const second = evaluateOutreachTriggers(
+      baseInput({ diaryNudge: dn, lastOutreachAt: { diary_nudge: NOW - 3_600_000 } }),
+    );
+    assert.deepEqual(second, []);
+  });
+
+  it("the prompt section tells him to write quietly, not announce", () => {
+    const s = buildOutreachSection([{ kind: "diary_nudge", priority: 3, detail: "一起看的第一场电影" }]);
+    assert.ok(s.includes("diary_write"));
+    assert.ok(s.includes("一起看的第一场电影"));
+    assert.ok(s.includes("quietly"));
   });
 });
 

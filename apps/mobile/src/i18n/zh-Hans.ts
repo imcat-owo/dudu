@@ -126,6 +126,8 @@ const zhHans = {
   "outreach.notif.tellLater.title": "有件事想告诉你",
   "outreach.notif.silence.title": "想你了",
   "outreach.notif.silence.body": "好久没见你了，来看看我好不好",
+  "outreach.notif.diaryNudge.title": "那天又想起来了",
+  "outreach.notif.diaryNudge.body": "「{anchor}」——想把它记下来，你写还是我写？",
   "space.cards.feed": "动态",
   "space.cards.anniversary": "纪念日",
   "space.cards.works": "作品",

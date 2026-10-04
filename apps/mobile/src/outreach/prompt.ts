@@ -46,6 +46,12 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
           `do NOT guilt-trip her about being gone ("你好久没理我了" is forbidden).`,
       );
       break;
+    case "diary_nudge":
+      lines.push(
+        `- Today had something worth remembering: "${t.detail}". If no diary entry exists ` +
+          `for today, write one with diary_write — at most one per day, quietly; do not announce it.`,
+      );
+      break;
   }
   return lines.join("\n");
 }
