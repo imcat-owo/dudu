@@ -158,8 +158,33 @@ export type OurSpaceListener = () => void;
 
 export class OurSpaceStore {
   private listeners = new Set<OurSpaceListener>();
+  /**
+   * Serializes all mutating read-modify-write cycles. The AI (via tools)
+   * and the UI can write concurrently; without this, two overlapping
+   * read→modify→write sequences on the same key lose one writer's update.
+   * Reads stay unlocked — they never lose data.
+   */
+  private writeChain: Promise<void> = Promise.resolve();
 
   constructor(private storage: OurSpaceStorage) {}
+
+  /**
+   * Run fn after all in-flight mutations finish. The chain never breaks:
+   * each link swallows its own rejection for chaining purposes, while the
+   * caller still sees fn's real result/rejection.
+   */
+  private exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this.writeChain;
+    const cur = (async () => {
+      await prev;
+      return fn();
+    })();
+    this.writeChain = cur.then(
+      () => undefined,
+      () => undefined,
+    );
+    return cur;
+  }
 
   /** Subscribe to any mutation. Returns unsubscribe. */
   subscribe(listener: OurSpaceListener): () => void {
@@ -194,10 +219,12 @@ export class OurSpaceStore {
   }
 
   async setStatus(text: string, detail = ""): Promise<AiStatus> {
-    const s: AiStatus = { text: text.trim(), detail: detail.trim(), updatedAt: Date.now() };
-    await writeJson(this.storage, KEYS.status, s);
-    this.emit();
-    return s;
+    return this.exclusive(async () => {
+      const s: AiStatus = { text: text.trim(), detail: detail.trim(), updatedAt: Date.now() };
+      await writeJson(this.storage, KEYS.status, s);
+      this.emit();
+      return s;
+    });
   }
 
   // ---- Diary ----
@@ -208,31 +235,35 @@ export class OurSpaceStore {
   }
 
   async addDiary(title: string, content: string, date?: string): Promise<DiaryEntry> {
-    const t = title.trim();
-    const c = content.trim();
-    if (!t) throw new Error("Diary title is required.");
-    if (!c) throw new Error("Diary content is required.");
-    const entry: DiaryEntry = {
-      id: newId(),
-      date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayStr(),
-      title: t,
-      content: c,
-      createdAt: Date.now(),
-    };
-    const all = await readJson<DiaryEntry[]>(this.storage, KEYS.diary, []);
-    all.push(entry);
-    await writeJson(this.storage, KEYS.diary, all);
-    this.emit();
-    return entry;
+    return this.exclusive(async () => {
+      const t = title.trim();
+      const c = content.trim();
+      if (!t) throw new Error("Diary title is required.");
+      if (!c) throw new Error("Diary content is required.");
+      const entry: DiaryEntry = {
+        id: newId(),
+        date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayStr(),
+        title: t,
+        content: c,
+        createdAt: Date.now(),
+      };
+      const all = await readJson<DiaryEntry[]>(this.storage, KEYS.diary, []);
+      all.push(entry);
+      await writeJson(this.storage, KEYS.diary, all);
+      this.emit();
+      return entry;
+    });
   }
 
   async deleteDiary(id: string): Promise<boolean> {
-    const all = await readJson<DiaryEntry[]>(this.storage, KEYS.diary, []);
-    const next = all.filter((e) => e.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.diary, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<DiaryEntry[]>(this.storage, KEYS.diary, []);
+      const next = all.filter((e) => e.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.diary, next);
+      this.emit();
+      return true;
+    });
   }
 
   // ---- Timeline ----
@@ -247,29 +278,33 @@ export class OurSpaceStore {
     description = "",
     kind: TimelineKind = "moment",
   ): Promise<TimelineEvent> {
-    const t = title.trim();
-    if (!t) throw new Error("Timeline title is required.");
-    const ev: TimelineEvent = {
-      id: newId(),
-      timestamp: Date.now(),
-      title: t,
-      description: description.trim(),
-      kind,
-    };
-    const all = await readJson<TimelineEvent[]>(this.storage, KEYS.timeline, []);
-    all.push(ev);
-    await writeJson(this.storage, KEYS.timeline, all);
-    this.emit();
-    return ev;
+    return this.exclusive(async () => {
+      const t = title.trim();
+      if (!t) throw new Error("Timeline title is required.");
+      const ev: TimelineEvent = {
+        id: newId(),
+        timestamp: Date.now(),
+        title: t,
+        description: description.trim(),
+        kind,
+      };
+      const all = await readJson<TimelineEvent[]>(this.storage, KEYS.timeline, []);
+      all.push(ev);
+      await writeJson(this.storage, KEYS.timeline, all);
+      this.emit();
+      return ev;
+    });
   }
 
   async deleteTimeline(id: string): Promise<boolean> {
-    const all = await readJson<TimelineEvent[]>(this.storage, KEYS.timeline, []);
-    const next = all.filter((e) => e.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.timeline, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<TimelineEvent[]>(this.storage, KEYS.timeline, []);
+      const next = all.filter((e) => e.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.timeline, next);
+      this.emit();
+      return true;
+    });
   }
 
   // ---- Tell-her-later ----
@@ -281,34 +316,40 @@ export class OurSpaceStore {
   }
 
   async addTellLater(text: string): Promise<TellLaterItem> {
-    const t = text.trim();
-    if (!t) throw new Error("Tell-later text is required.");
-    const item: TellLaterItem = { id: newId(), text: t, createdAt: Date.now(), done: false };
-    const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
-    all.push(item);
-    await writeJson(this.storage, KEYS.tellLater, all);
-    this.emit();
-    return item;
+    return this.exclusive(async () => {
+      const t = text.trim();
+      if (!t) throw new Error("Tell-later text is required.");
+      const item: TellLaterItem = { id: newId(), text: t, createdAt: Date.now(), done: false };
+      const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
+      all.push(item);
+      await writeJson(this.storage, KEYS.tellLater, all);
+      this.emit();
+      return item;
+    });
   }
 
   async completeTellLater(id: string, done = true): Promise<TellLaterItem | null> {
-    const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
-    const item = all.find((i) => i.id === id);
-    if (!item) return null;
-    item.done = done;
-    item.doneAt = done ? Date.now() : undefined;
-    await writeJson(this.storage, KEYS.tellLater, all);
-    this.emit();
-    return item;
+    return this.exclusive(async () => {
+      const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
+      const item = all.find((i) => i.id === id);
+      if (!item) return null;
+      item.done = done;
+      item.doneAt = done ? Date.now() : undefined;
+      await writeJson(this.storage, KEYS.tellLater, all);
+      this.emit();
+      return item;
+    });
   }
 
   async deleteTellLater(id: string): Promise<boolean> {
-    const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
-    const next = all.filter((i) => i.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.tellLater, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<TellLaterItem[]>(this.storage, KEYS.tellLater, []);
+      const next = all.filter((i) => i.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.tellLater, next);
+      this.emit();
+      return true;
+    });
   }
 
   // ============ v2: couple profile ============
@@ -318,20 +359,22 @@ export class OurSpaceStore {
   }
 
   async setAvatar(who: "her" | "ai", uri: string | null): Promise<CoupleProfile> {
-    const cur = (await this.getCoupleProfile()) ?? {
-      herAvatarUri: null,
-      aiAvatarUri: null,
-      updatedAt: 0,
-    };
-    const next: CoupleProfile = {
-      ...cur,
-      herAvatarUri: who === "her" ? uri : cur.herAvatarUri,
-      aiAvatarUri: who === "ai" ? uri : cur.aiAvatarUri,
-      updatedAt: Date.now(),
-    };
-    await writeJson(this.storage, KEYS.couple, next);
-    this.emit();
-    return next;
+    return this.exclusive(async () => {
+      const cur = (await this.getCoupleProfile()) ?? {
+        herAvatarUri: null,
+        aiAvatarUri: null,
+        updatedAt: 0,
+      };
+      const next: CoupleProfile = {
+        ...cur,
+        herAvatarUri: who === "her" ? uri : cur.herAvatarUri,
+        aiAvatarUri: who === "ai" ? uri : cur.aiAvatarUri,
+        updatedAt: Date.now(),
+      };
+      await writeJson(this.storage, KEYS.couple, next);
+      this.emit();
+      return next;
+    });
   }
 
   // ============ v2: social feed ============
@@ -342,49 +385,55 @@ export class OurSpaceStore {
   }
 
   async addFeedPost(author: FeedAuthor, text: string, imageUri?: string): Promise<FeedPost> {
-    const t = text.trim();
-    if (!t && !imageUri) throw new Error("Feed post needs text or an image.");
-    const post: FeedPost = {
-      id: newId(),
-      author,
-      text: t,
-      imageUri: imageUri?.trim() || undefined,
-      createdAt: Date.now(),
-      likedByHer: false,
-      likedByAi: false,
-    };
-    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
-    all.push(post);
-    await writeJson(this.storage, KEYS.feed, all);
-    this.emit();
-    return post;
+    return this.exclusive(async () => {
+      const t = text.trim();
+      if (!t && !imageUri) throw new Error("Feed post needs text or an image.");
+      const post: FeedPost = {
+        id: newId(),
+        author,
+        text: t,
+        imageUri: imageUri?.trim() || undefined,
+        createdAt: Date.now(),
+        likedByHer: false,
+        likedByAi: false,
+      };
+      const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+      all.push(post);
+      await writeJson(this.storage, KEYS.feed, all);
+      this.emit();
+      return post;
+    });
   }
 
   async deleteFeedPost(id: string): Promise<boolean> {
-    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
-    const next = all.filter((p) => p.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.feed, next);
-    // Cascade: drop replies to the deleted post.
-    const replies = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
-    await writeJson(
-      this.storage,
-      KEYS.replies,
-      replies.filter((r) => r.postId !== id),
-    );
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+      const next = all.filter((p) => p.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.feed, next);
+      // Cascade: drop replies to the deleted post.
+      const replies = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+      await writeJson(
+        this.storage,
+        KEYS.replies,
+        replies.filter((r) => r.postId !== id),
+      );
+      this.emit();
+      return true;
+    });
   }
 
   async toggleFeedLike(id: string, who: FeedAuthor): Promise<FeedPost | null> {
-    const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
-    const post = all.find((p) => p.id === id);
-    if (!post) return null;
-    if (who === "her") post.likedByHer = !post.likedByHer;
-    else post.likedByAi = !post.likedByAi;
-    await writeJson(this.storage, KEYS.feed, all);
-    this.emit();
-    return post;
+    return this.exclusive(async () => {
+      const all = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+      const post = all.find((p) => p.id === id);
+      if (!post) return null;
+      if (who === "her") post.likedByHer = !post.likedByHer;
+      else post.likedByAi = !post.likedByAi;
+      await writeJson(this.storage, KEYS.feed, all);
+      this.emit();
+      return post;
+    });
   }
 
   async listReplies(postId: string): Promise<FeedReply[]> {
@@ -393,25 +442,29 @@ export class OurSpaceStore {
   }
 
   async addReply(postId: string, author: FeedAuthor, text: string): Promise<FeedReply> {
-    const t = text.trim();
-    if (!t) throw new Error("Reply text is required.");
-    const posts = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
-    if (!posts.some((p) => p.id === postId)) throw new Error("Post not found.");
-    const reply: FeedReply = { id: newId(), postId, author, text: t, createdAt: Date.now() };
-    const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
-    all.push(reply);
-    await writeJson(this.storage, KEYS.replies, all);
-    this.emit();
-    return reply;
+    return this.exclusive(async () => {
+      const t = text.trim();
+      if (!t) throw new Error("Reply text is required.");
+      const posts = await readJson<FeedPost[]>(this.storage, KEYS.feed, []);
+      if (!posts.some((p) => p.id === postId)) throw new Error("Post not found.");
+      const reply: FeedReply = { id: newId(), postId, author, text: t, createdAt: Date.now() };
+      const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+      all.push(reply);
+      await writeJson(this.storage, KEYS.replies, all);
+      this.emit();
+      return reply;
+    });
   }
 
   async deleteReply(id: string): Promise<boolean> {
-    const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
-    const next = all.filter((r) => r.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.replies, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<FeedReply[]>(this.storage, KEYS.replies, []);
+      const next = all.filter((r) => r.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.replies, next);
+      this.emit();
+      return true;
+    });
   }
 
   // ============ v2: anniversaries ============
@@ -422,35 +475,39 @@ export class OurSpaceStore {
   }
 
   async addAnniversary(title: string, date: string, description = ""): Promise<Anniversary> {
-    const t = title.trim();
-    if (!t) throw new Error("Anniversary title is required.");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
-    const [y, m, d] = date.split("-").map(Number);
-    const dt = new Date(y, m - 1, d);
-    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
-      throw new Error("Date is not a real calendar date.");
-    }
-    const item: Anniversary = {
-      id: newId(),
-      title: t,
-      date,
-      description: description.trim(),
-      createdAt: Date.now(),
-    };
-    const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
-    all.push(item);
-    await writeJson(this.storage, KEYS.anniversaries, all);
-    this.emit();
-    return item;
+    return this.exclusive(async () => {
+      const t = title.trim();
+      if (!t) throw new Error("Anniversary title is required.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
+      const [y, m, d] = date.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+        throw new Error("Date is not a real calendar date.");
+      }
+      const item: Anniversary = {
+        id: newId(),
+        title: t,
+        date,
+        description: description.trim(),
+        createdAt: Date.now(),
+      };
+      const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+      all.push(item);
+      await writeJson(this.storage, KEYS.anniversaries, all);
+      this.emit();
+      return item;
+    });
   }
 
   async deleteAnniversary(id: string): Promise<boolean> {
-    const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
-    const next = all.filter((a) => a.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.anniversaries, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+      const next = all.filter((a) => a.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.anniversaries, next);
+      this.emit();
+      return true;
+    });
   }
 
   // ============ v2: works drawer ============
@@ -467,32 +524,36 @@ export class OurSpaceStore {
     description = "",
     thumbnailUri?: string,
   ): Promise<WorkItem> {
-    const t = title.trim();
-    const u = uri.trim();
-    if (!t) throw new Error("Work title is required.");
-    if (!u) throw new Error("Work URI is required.");
-    const item: WorkItem = {
-      id: newId(),
-      type,
-      title: t,
-      uri: u,
-      thumbnailUri: thumbnailUri?.trim() || undefined,
-      description: description.trim(),
-      createdAt: Date.now(),
-    };
-    const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
-    all.push(item);
-    await writeJson(this.storage, KEYS.works, all);
-    this.emit();
-    return item;
+    return this.exclusive(async () => {
+      const t = title.trim();
+      const u = uri.trim();
+      if (!t) throw new Error("Work title is required.");
+      if (!u) throw new Error("Work URI is required.");
+      const item: WorkItem = {
+        id: newId(),
+        type,
+        title: t,
+        uri: u,
+        thumbnailUri: thumbnailUri?.trim() || undefined,
+        description: description.trim(),
+        createdAt: Date.now(),
+      };
+      const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
+      all.push(item);
+      await writeJson(this.storage, KEYS.works, all);
+      this.emit();
+      return item;
+    });
   }
 
   async deleteWork(id: string): Promise<boolean> {
-    const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
-    const next = all.filter((w) => w.id !== id);
-    if (next.length === all.length) return false;
-    await writeJson(this.storage, KEYS.works, next);
-    this.emit();
-    return true;
+    return this.exclusive(async () => {
+      const all = await readJson<WorkItem[]>(this.storage, KEYS.works, []);
+      const next = all.filter((w) => w.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.works, next);
+      this.emit();
+      return true;
+    });
   }
 }
