@@ -6,7 +6,7 @@
 
 一个关系型 AI 伴侣 App：不只是工具，更是家里的一员。本地优先，你的数据只在你的手机上。
 
-<img src="artwork/media-generation-mascot-anime-v1-0-0a2c1da5-873d-42ba-803b-5f50f0435d72.png" width="320" alt="嘟嘟形象" />
+<img src="artwork/dudu-hero.webp" width="320" alt="嘟嘟形象" />
 
 [功能](#功能) · [定位](#定位) · [本地优先](#本地优先) · [开发](#开发) · [许可](#许可)
 
