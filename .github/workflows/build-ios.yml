@@ -62,7 +62,7 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install
+          pod install --repo-update
 
       - name: Build with xcodebuild (unsigned)
         run: |
