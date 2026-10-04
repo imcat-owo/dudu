@@ -33,6 +33,7 @@ import { AnimatedAvatar } from "./animated-avatar";
 import { ActiveGroupChip } from "./api-groups/api-settings";
 import { useChatMode } from "./api-groups/mode";
 import { useApiGroups } from "./api-groups/store";
+import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
 import { resolveAvatarState } from "./avatar-state";
 import { BackgroundUpdates } from "./background-updates";
@@ -261,6 +262,8 @@ export function ChatScreen({
 }) {
   const colors = useColors();
   const s = useStyles();
+  const { scale: fontScale } = useFontSizeSetting();
+  const fs = (base: number): number => Math.round(base * fontScale * 10) / 10;
   const { tokens, bundle } = useTheme();
   const { api, workspace: w, refresh, navigate } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
@@ -1279,8 +1282,8 @@ export function ChatScreen({
                 height: inputHeight,
                 minHeight: 44,
                 maxHeight: 140,
-                fontSize: 17,
-                lineHeight: 24,
+                fontSize: fs(17),
+                lineHeight: fs(24),
                 paddingHorizontal: 2,
                 paddingTop: 10,
                 paddingBottom: 10,
