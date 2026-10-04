@@ -5,6 +5,7 @@ import {
   BACKUP_KIND,
   BACKUP_VERSION,
   collectBackup,
+  findUnbackedKeys,
   type KeyValueStore,
   parseBackup,
   type SecureKV,
@@ -450,6 +451,166 @@ describe("applyBackup", () => {
     assert.equal(await kv.getItem("dudu.tasks.v1x.fake"), null);
   });
 
+  it("collects the whole music library (P0 — reinstall must not lose her music)", async () => {
+    const kv = fakeKV({
+      ...SEED,
+      "dudu.music.v1.tracks": JSON.stringify([{ id: "t1", title: "song" }]),
+      "dudu.music.v1.playlists": JSON.stringify([{ id: "p1", name: "mix" }]),
+      "dudu.music.v1.queue": JSON.stringify(["t1"]),
+      "dudu.music.v1.comments": JSON.stringify([{ id: "c1", text: "love it" }]),
+      "dudu.music.v1.memories": JSON.stringify([{ id: "m1" }]),
+      "dudu.music.v1.together": JSON.stringify({ count: 3 }),
+      "dudu.music.v1.togetherListens": JSON.stringify([{ at: 1 }]),
+      "dudu.music.v1.now": JSON.stringify({ trackId: "t1" }),
+      "dudu.music.v1.intent": JSON.stringify({ kind: "dj" }),
+      "dudu.music.v1.intent.appliedAt": JSON.stringify(123),
+      "dudu.music.v1.selectedLyric": JSON.stringify({ trackId: "t1" }),
+      "dudu.music.v1.apple-music.auth-state": JSON.stringify("authorized"),
+    });
+    const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
+    assert.ok(b.extensions, "extensions section must exist");
+    const musicKeys = Object.keys(b.extensions).filter((k) =>
+      k.startsWith("dudu.music.v1."),
+    );
+    assert.equal(musicKeys.length, 12, "all 12 music keys collected");
+    assert.deepEqual(b.extensions["dudu.music.v1.playlists"], [{ id: "p1", name: "mix" }]);
+  });
+
+  it("collects capability groups and strips secret query params from member endpoints", async () => {
+    const kv = fakeKV({
+      ...SEED,
+      "dudu.capability-groups.v1": JSON.stringify([
+        {
+          id: "cg1",
+          name: "img",
+          tag: "image_output",
+          kind: "output",
+          members: [
+            {
+              groupId: "g1",
+              endpoint: "https://img.example.com/gen?key=SECRET-KEY&size=large",
+              pollEndpoint: "https://img.example.com/status?token=SECRET-TOK",
+            },
+          ],
+          enabled: true,
+          createdAt: 1,
+        },
+      ]),
+    });
+    const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
+    const groups = b.extensions?.["dudu.capability-groups.v1"] as Array<{
+      members: Array<{ endpoint: string; pollEndpoint: string }>;
+    }>;
+    assert.ok(groups, "capability groups collected");
+    assert.equal(
+      groups[0].members[0].endpoint,
+      "https://img.example.com/gen?size=large",
+      "secret query param stripped from endpoint",
+    );
+    assert.equal(
+      groups[0].members[0].pollEndpoint,
+      "https://img.example.com/status",
+      "secret query param stripped from pollEndpoint",
+    );
+    assert.ok(
+      b.secretsExcluded.urlsSanitized >= 2,
+      "stripped capability URLs are counted",
+    );
+  });
+
+  it("collects dialogs, coordination, meetings, outreach prefs, plans (P1-2/P2-8)", async () => {
+    const kv = fakeKV({
+      ...SEED,
+      "dudu.capability-groups.v1": JSON.stringify([]),
+      "dudu.capability-routing-enabled.v1": JSON.stringify("1"),
+      "dudu.multi-model-coordination.v1": JSON.stringify("1"),
+      "dudu.ranking-mode.v1": JSON.stringify("manual"),
+      "dudu.model-profiles.v1": JSON.stringify({ "https://x::m": { tools: "on" } }),
+      "dudu.dialog-registry.v1": JSON.stringify([{ id: "d1", name: "main" }]),
+      "dudu.dialog-model-override.v1": JSON.stringify({ d1: "m2" }),
+      "dudu.cross-dialog-trace.v1": JSON.stringify([{ at: 1 }]),
+      "dudu.cross-dialog-visibility.v1": JSON.stringify({ show: true }),
+      "dudu.group-meetings.v1": JSON.stringify([{ id: "mt1" }]),
+      "dudu.plan-gate.v1": JSON.stringify([{ id: "plan1", status: "approved" }]),
+      "dudu.outreach.v1.frequency": JSON.stringify("moderate"),
+      "dudu.outreach.v1.lastOpened": JSON.stringify(1700000000000),
+      "dudu.outreach.v1.lastOutreach": JSON.stringify(1700000001000),
+      "dudu.outreach.v1.loveLetterNudges": JSON.stringify({ letter1: 2 }),
+      "dudu.sandbox.activeBackend.v1": JSON.stringify("a"),
+      "dudu.ambientvideo.v1.overrides": JSON.stringify({ ourspace: null }),
+      "dudu.theme.aiMode.v1": JSON.stringify("auto"),
+    });
+    const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
+    assert.ok(b.extensions, "extensions section must exist");
+    for (const key of [
+      "dudu.capability-groups.v1",
+      "dudu.capability-routing-enabled.v1",
+      "dudu.multi-model-coordination.v1",
+      "dudu.ranking-mode.v1",
+      "dudu.model-profiles.v1",
+      "dudu.dialog-registry.v1",
+      "dudu.dialog-model-override.v1",
+      "dudu.cross-dialog-trace.v1",
+      "dudu.cross-dialog-visibility.v1",
+      "dudu.group-meetings.v1",
+      "dudu.plan-gate.v1",
+      "dudu.outreach.v1.frequency",
+      "dudu.outreach.v1.lastOpened",
+      "dudu.outreach.v1.lastOutreach",
+      "dudu.outreach.v1.loveLetterNudges",
+      "dudu.sandbox.activeBackend.v1",
+      "dudu.ambientvideo.v1.overrides",
+      "dudu.theme.aiMode.v1",
+    ]) {
+      assert.ok(key in b.extensions, `${key} collected`);
+    }
+    assert.deepEqual(b.extensions["dudu.plan-gate.v1"], [
+      { id: "plan1", status: "approved" },
+    ]);
+  });
+
+  it("restores extensions round-trip — music and approved plans survive", async () => {
+    const src = fakeKV({
+      ...SEED,
+      "dudu.music.v1.tracks": JSON.stringify([{ id: "t1", title: "song" }]),
+      "dudu.music.v1.playlists": JSON.stringify([{ id: "p1", name: "mix" }]),
+      "dudu.plan-gate.v1": JSON.stringify([{ id: "plan1", status: "approved" }]),
+      "dudu.outreach.v1.frequency": JSON.stringify("moderate"),
+    });
+    const b = await collectBackup(src, fakeSecure(SECURE_SEED));
+    const serialized = serializeBackup(b);
+    const parsed = parseBackup(serialized);
+    assert.equal(parsed.ok, true, "serialized backup parses");
+    const kv = fakeKV();
+    await applyBackup(parsed.ok ? parsed.backup : b, kv, fakeSecure());
+    assert.equal(
+      await kv.getItem("dudu.music.v1.tracks"),
+      JSON.stringify([{ id: "t1", title: "song" }]),
+    );
+    assert.equal(
+      await kv.getItem("dudu.plan-gate.v1"),
+      JSON.stringify([{ id: "plan1", status: "approved" }]),
+    );
+    assert.equal(await kv.getItem("dudu.outreach.v1.frequency"), JSON.stringify("moderate"));
+  });
+
+  it("never writes unknown keys from extensions", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    b.extensions = { "evil.extension": "x", "dudu.music.v1.tracks.evil": "x" };
+    const kv = fakeKV();
+    await applyBackup(b, kv, fakeSecure());
+    assert.equal(await kv.getItem("evil.extension"), null);
+    assert.equal(await kv.getItem("dudu.music.v1.tracks.evil"), null);
+  });
+
+  it("rejects a corrupt extensions section", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    b.extensions = "not-a-record" as unknown as Record<string, unknown>;
+    const parsed = parseBackup(serializeBackup(b));
+    assert.equal(parsed.ok, false);
+    if (!parsed.ok) assert.equal(parsed.code, "invalid-shape");
+  });
+
   it("restores knowledge via restoreSnapshot", async () => {
     const seen: { snap: { docs: unknown[]; chunks: unknown[] } | null } = { snap: null };
     const kb = {
@@ -534,5 +695,70 @@ describe("sanitizeUrl", () => {
     assert.equal(sanitizeUrl("not a url"), "not a url");
     assert.equal(sanitizeUrl(42), 42);
     assert.equal(sanitizeUrl(null), null);
+  });
+});
+
+describe("findUnbackedKeys", () => {
+  it("reports nothing for the full known key set", () => {
+    const known = [
+      "dudu.local-chat.thread1.v1",
+      "dudu.api-groups.v1",
+      "dudu.api-groups.active.v1",
+      "dudu.settings.chatMode.v1",
+      "dudu.settings.fontSize.v1",
+      "dudu.font.v1",
+      "dudu.theme.bundle.v1",
+      "dudu.theme.history.v1",
+      "dudu.theme.customPresets.v1",
+      "dudu.theme.aiMode.v1",
+      "dudu.voice-settings.v1",
+      "dudu.tts.v1",
+      "dudu.stt.v1",
+      "dudu.aiAuth.v1",
+      "dudu.aiAuth.v1.bluetooth",
+      "dudu.memory.v1.profile",
+      "dudu.memory.v1.memories",
+      "dudu.memory.v1.events",
+      "dudu.memory.v1.autoExtract",
+      "dudu.skills.v1.list",
+      "dudu.ourspace.v1.diary",
+      "dudu.ourspace.v2.works",
+      "dudu.tasks.v1.task1",
+      "dudu.kb.v1.docs",
+      "dudu.music.v1.tracks",
+      "dudu.music.v1.playlists",
+      "dudu.capability-groups.v1",
+      "dudu.capability-routing-enabled.v1",
+      "dudu.model-profiles.v1",
+      "dudu.dialog-registry.v1",
+      "dudu.dialog-model-override.v1",
+      "dudu.cross-dialog-trace.v1",
+      "dudu.cross-dialog-visibility.v1",
+      "dudu.group-meetings.v1",
+      "dudu.plan-gate.v1",
+      "dudu.outreach.v1.frequency",
+      "dudu.outreach.v1.lastOpened",
+      "dudu.outreach.v1.lastOutreach",
+      "dudu.outreach.v1.loveLetterNudges",
+      "dudu.sandbox.activeBackend.v1",
+      "dudu.ambientvideo.v1.overrides",
+      // deliberately excluded: secrets + bookkeeping
+      "dudu.session.token",
+      "dudu.music.v1.apple-music.user-token",
+      "dudu.sandbox.sshConfig.v1",
+      "dudu.backup.lastAt.v1",
+      "dudu.kb.v2.migrated",
+    ];
+    assert.deepEqual(findUnbackedKeys(known), []);
+  });
+
+  it("flags a new user-owned key nobody wired into backup", () => {
+    assert.deepEqual(findUnbackedKeys(["dudu.some-new-feature.v1"]), [
+      "dudu.some-new-feature.v1",
+    ]);
+  });
+
+  it("ignores non-dudu keys", () => {
+    assert.deepEqual(findUnbackedKeys(["EXPO_PUBLIC_FOO", "other.key"]), []);
   });
 });

@@ -143,4 +143,22 @@ describe("plan-gate persistence (P1-9)", () => {
     const last = persistence.saved[persistence.saved.length - 1];
     assert.equal(last.find((p) => p.id === plan.id)?.status, "approved");
   });
+
+  it("a plan proposed while hydrate is in flight survives (P2-5)", async () => {
+    let resolveLoad!: (plans: CoordinationPlan[]) => void;
+    const hangingLoad = new Promise<CoordinationPlan[]>((r) => {
+      resolveLoad = r;
+    });
+    const persistence = fakePersistence();
+    persistence.load = () => hangingLoad;
+    const store = createPlanGateStore(persistence);
+    const hydrating = store.hydrate(); // load() now pending
+    const plan = store.propose("t-race", input); // lands mid-load
+    resolveLoad([]); // stored snapshot predates the proposal
+    await hydrating;
+    const got = store.getPlan(plan.id);
+    assert.ok(got, "in-flight proposal survives hydrate");
+    assert.equal(got.title, input.title);
+    assert.equal(got.status, "proposed");
+  });
 });

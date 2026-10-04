@@ -10,12 +10,20 @@
  * events/auto-extract pref), skills, our-space (diary/timeline/tell-later/
  * status/her-mood/couple/feed/replies/anniversaries/works/task cards), knowledge
  * base (docs + chunks INCLUDING vectors, so search works after restore
- * even though API keys are never backed up).
+ * even though API keys are never backed up), the music library
+ * (tracks/playlists/queue/comments/together/now-playing/DJ intent),
+ * capability groups + routing prefs, model profiles, dialogs (registry +
+ * model overrides), cross-dialog trace + visibility, group meetings,
+ * plan gate, outreach prefs (frequency/last opened), sandbox backend
+ * choice, ambient video overrides, AI theme mode.
  *
  * NEVER included:
  * - Secrets (API keys, custom TTS/STT keys, extra headers). They live in
  *   SecureStore and are stripped on export. Restore warns the user to
  *   re-enter them. We do NOT invent homebrew encryption.
+ * - Session/Apple-Music/SSH secrets (dudu.session.token, the Apple Music
+ *   user token, dudu.sandbox.sshConfig.v1 — the last one can hold a
+ *   private key or password). All live in SecureStore and stay there.
  * - Incognito content. It is never persisted to storage, so it cannot
  *   end up in a backup (there is a test for this).
  * - Cached audio/images (regenerable, bulky) — EXCEPT her voice message
@@ -101,6 +109,55 @@ const OURSPACE_KEYS = [
 // Task progress cards (our-space/task-progress.ts) — enumerated by prefix.
 const TASKS_PREFIX = "dudu.tasks.v1.";
 
+// Music library (music/store.ts): tracks, playlists, queue, comments,
+// "our songs" counters, now-playing, DJ intent. No secrets — the Apple
+// Music user token lives in SecureStore and is never backed up.
+const MUSIC_KEYS = [
+  "dudu.music.v1.tracks",
+  "dudu.music.v1.playlists",
+  "dudu.music.v1.queue",
+  "dudu.music.v1.comments",
+  "dudu.music.v1.memories",
+  "dudu.music.v1.together",
+  "dudu.music.v1.togetherListens",
+  "dudu.music.v1.now",
+  "dudu.music.v1.intent",
+  "dudu.music.v1.intent.appliedAt",
+  "dudu.music.v1.selectedLyric",
+  "dudu.music.v1.apple-music.auth-state",
+] as const;
+
+// Capability routing (api-groups/capability-store.ts): capability groups
+// + routing switches. Member endpoint URLs get secret query params
+// stripped like API group URLs (counted in secretsExcluded.urlsSanitized).
+const CAPABILITY_GROUPS_KEY = "dudu.capability-groups.v1";
+
+// Everything else user-owned that previously fell through the cracks
+// (round-3 product/code audits): dialogs, coordination, meetings,
+// outreach prefs, sandbox backend choice, ambient video overrides,
+// AI theme mode.
+const EXTENSION_KEYS = [
+  ...MUSIC_KEYS,
+  CAPABILITY_GROUPS_KEY,
+  "dudu.capability-routing-enabled.v1",
+  "dudu.multi-model-coordination.v1",
+  "dudu.ranking-mode.v1",
+  "dudu.model-profiles.v1",
+  "dudu.dialog-registry.v1",
+  "dudu.dialog-model-override.v1",
+  "dudu.cross-dialog-trace.v1",
+  "dudu.cross-dialog-visibility.v1",
+  "dudu.group-meetings.v1",
+  "dudu.plan-gate.v1",
+  "dudu.outreach.v1.frequency",
+  "dudu.outreach.v1.lastOpened",
+  "dudu.outreach.v1.lastOutreach",
+  "dudu.outreach.v1.loveLetterNudges",
+  "dudu.sandbox.activeBackend.v1",
+  "dudu.ambientvideo.v1.overrides",
+  "dudu.theme.aiMode.v1",
+] as const;
+
 // TTS/STT configs live in SecureStore in production (voice/store.ts) —
 // never in plain AsyncStorage. They are read/written via the secure backend.
 const SECURE_VOICE_KEYS = [TTS_KEY, STT_KEY] as const;
@@ -155,6 +212,8 @@ export interface BackupFile {
   skills?: Record<string, unknown>;
   /** Optional (newer backups): our-space + task cards keyed by storage key. */
   ourSpace?: Record<string, unknown>;
+  /** Optional (newer backups): extended user-owned sections keyed by storage key. */
+  extensions?: Record<string, unknown>;
   /** Optional (newer backups): knowledge base snapshot. */
   knowledge?: BackupKnowledge;
   /**
@@ -271,6 +330,36 @@ function sanitizeConfigUrls(cfg: unknown): { config: unknown; sanitized: boolean
 }
 
 /**
+ * Strip secret-looking query params from capability-group member URLs
+ * (endpoint / pollEndpoint) — same threat class as API group URLs:
+ * she could paste a key-bearing URL into either field.
+ */
+function sanitizeCapabilityGroups(v: unknown): { groups: unknown; sanitized: number } {
+  if (!Array.isArray(v)) return { groups: v, sanitized: 0 };
+  let n = 0;
+  const groups = v.map((g) => {
+    if (typeof g !== "object" || g === null) return g;
+    const o = { ...(g as Record<string, unknown>) };
+    if (Array.isArray(o.members)) {
+      o.members = (o.members as unknown[]).map((m) => {
+        if (typeof m !== "object" || m === null) return m;
+        const mm = { ...(m as Record<string, unknown>) };
+        for (const f of ["endpoint", "pollEndpoint"]) {
+          if (typeof mm[f] === "string") {
+            const cleaned = sanitizeUrl(mm[f]);
+            if (cleaned !== mm[f]) n += 1;
+            mm[f] = cleaned;
+          }
+        }
+        return mm;
+      });
+    }
+    return o;
+  });
+  return { groups, sanitized: n };
+}
+
+/**
  * Collect everything for a backup. Secrets are stripped (counted in
  * secretsExcluded). Incognito content is never in storage, so it cannot
  * appear here.
@@ -373,6 +462,23 @@ export async function collectBackup(
     if (v !== null) ourSpace[key] = v;
   }
 
+  // Extended sections: every user-owned key that used to fall through the
+  // cracks (music, capability groups, dialogs, coordination, meetings,
+  // outreach prefs...). Capability group member URLs get secret query
+  // params stripped, same as API group URLs.
+  const extensions: Record<string, unknown> = {};
+  for (const key of EXTENSION_KEYS) {
+    const v = await readJson(kv, key);
+    if (v === null) continue;
+    if (key === CAPABILITY_GROUPS_KEY) {
+      const { groups, sanitized } = sanitizeCapabilityGroups(v);
+      urlsSanitized += sanitized;
+      extensions[key] = groups;
+    } else {
+      extensions[key] = v;
+    }
+  }
+
   // Knowledge base: full snapshot (docs + chunks with vectors) so search
   // keeps working after restore without re-embedding (API keys are never
   // backed up, so re-embedding would silently fail).
@@ -400,6 +506,7 @@ export async function collectBackup(
     memories,
     skills,
     ourSpace,
+    extensions,
     knowledge: kb,
   };
 }
@@ -475,7 +582,7 @@ export function parseBackup(text: string): ParseBackupResult {
   }
   // Newer optional sections: must be records when present, otherwise the
   // file is corrupt. Old backups (without them) still restore fine.
-  for (const field of ["memories", "skills", "ourSpace"] as const) {
+  for (const field of ["memories", "skills", "ourSpace", "extensions"] as const) {
     if (parsed[field] !== undefined && !isRecord(parsed[field])) {
       return { ok: false, code: "invalid-shape" };
     }
@@ -593,6 +700,15 @@ export async function applyBackup(
     }
   }
 
+  // Extended sections: allowlisted keys only — a crafted backup must not
+  // be able to write arbitrary storage keys.
+  if (backup.extensions) {
+    for (const [key, value] of Object.entries(backup.extensions)) {
+      if (!(EXTENSION_KEYS as readonly string[]).includes(key)) continue;
+      await kv.setItem(key, JSON.stringify(value));
+    }
+  }
+
   // Knowledge base: single-transaction snapshot restore (original ids
   // preserved, vectors included). Docs stuck in "indexing" at backup
   // time are marked failed — they were mid-index when exported and will
@@ -616,6 +732,48 @@ export async function applyBackup(
 
   // NOTE: LAST_BACKUP_KEY is deliberately NOT written here — "last backup"
   // means when an export happened, and a restore is not an export.
+}
+
+/**
+ * Coverage self-check (round-3 P2-8 suggestion): given the keys present in
+ * storage, report the `dudu.*` keys this backup does NOT cover. Secrets and
+ * internal bookkeeping are deliberately excluded and never reported.
+ * Wire any real gap into EXTENSION_KEYS or one of the dedicated sections.
+ */
+const KNOWN_UNBACKED_KEYS: ReadonlySet<string> = new Set([
+  "dudu.session.token", // secret (SecureStore)
+  "dudu.music.v1.apple-music.user-token", // secret (SecureStore)
+  "dudu.sandbox.sshConfig.v1", // secrets: can hold a private key or password (SecureStore)
+  "dudu.backup.lastAt.v1", // bookkeeping, not her data
+  "dudu.kb.v2.migrated", // internal migration flag
+]);
+
+function isKeyCovered(key: string): boolean {
+  if (key.startsWith(CHAT_PREFIX) && key.endsWith(CHAT_SUFFIX)) return true;
+  if (key.startsWith(TASKS_PREFIX)) return true;
+  if (key.startsWith("dudu.kb.v1.")) return true; // covered by the knowledge section
+  if (key === GROUPS_KEY) return true;
+  if (key === AI_AUTH_KEY || key.startsWith(`${AI_AUTH_KEY}.`)) return true;
+  const covered: readonly string[] = [
+    ...PLAIN_KEYS,
+    ...MEMORY_KEYS,
+    ...SKILLS_KEYS,
+    ...OURSPACE_KEYS,
+    ...SECURE_VOICE_KEYS,
+    ...EXTENSION_KEYS,
+  ];
+  return covered.includes(key);
+}
+
+export function findUnbackedKeys(allKeys: readonly string[]): string[] {
+  const gaps: string[] = [];
+  for (const key of allKeys) {
+    if (!key.startsWith("dudu.")) continue;
+    if (KNOWN_UNBACKED_KEYS.has(key)) continue;
+    if (isKeyCovered(key)) continue;
+    gaps.push(key);
+  }
+  return gaps.sort();
 }
 
 export async function getLastBackupAt(kv: KeyValueStore): Promise<string | null> {

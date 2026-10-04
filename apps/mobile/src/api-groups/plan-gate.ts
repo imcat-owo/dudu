@@ -253,17 +253,28 @@ export function createPlanGateStore(initialPersistence?: PlanGatePersistence) {
 
     /**
      * Load persisted plans (call once at app start). Invalid rows are
-     * dropped. Safe to call again — it replaces the in-memory map, so only
-     * call it before any session activity, not mid-conversation.
+     * dropped. Plans proposed while the load is in flight survive: the
+     * loaded snapshot may predate their persistence, so anything that
+     * appeared in memory during the await is re-applied on top (it is
+     * the newer state). Only call before session activity, not
+     * mid-conversation.
      */
     async hydrate(): Promise<void> {
       const p = persistence;
       if (!p) return;
+      const before = new Set(plans.keys());
       const loaded = await p.load().catch(() => [] as CoordinationPlan[]);
+      // Ids that appeared in memory while the load was in flight — they
+      // are newer than the snapshot and must not be wiped by the replace.
+      const inFlight = new Map<string, CoordinationPlan>();
+      for (const [id, plan] of plans) {
+        if (!before.has(id)) inFlight.set(id, plan);
+      }
       plans.clear();
       for (const p of loaded) {
         if (isValidPlan(p)) plans.set(p.id, p);
       }
+      for (const [id, plan] of inFlight) plans.set(id, plan);
       emit();
     },
 
