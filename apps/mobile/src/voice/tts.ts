@@ -20,6 +20,36 @@ export class TtsError extends Error {
   }
 }
 
+/** Custom-server timeout: a hanging server must not hang the UI forever. */
+const CUSTOM_TTS_TIMEOUT_MS = 60000;
+
+/**
+ * POST to the custom TTS endpoint with an abort timeout — RN fetch has no
+ * default timeout, so a half-open server would otherwise hang the speak
+ * button forever. Exported for tests: the rest of synthesizeCustom needs
+ * expo-file-system, which the node test env can't import.
+ */
+export async function postCustomSpeech(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CUSTOM_TTS_TIMEOUT_MS);
+  try {
+    return await fetch(url, { method: "POST", headers, body, signal: controller.signal });
+  } catch (e) {
+    if ((e as { name?: string } | null)?.name === "AbortError") {
+      throw new TtsError(
+        `TTS request timed out after ${CUSTOM_TTS_TIMEOUT_MS / 1000}s — the custom server didn't respond`,
+      );
+    }
+    throw new TtsError(`TTS request failed: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function loadFs() {
   // Legacy API surface (cacheDirectory, writeAsStringAsync, …) — this is
   // the import shape the rest of the app uses (see details.tsx).
@@ -106,22 +136,17 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const key = (cfg.customKey ?? "").trim();
   if (key) headers.Authorization = `Bearer ${key}`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: (cfg.customModel ?? "").trim(),
-        input: text,
-        voice: cfg.voice,
-        // OpenAI-compatible speed: 0.25–4.0. Only send when non-default.
-        ...(cfg.rate && cfg.rate !== 1.0 ? { speed: cfg.rate } : {}),
-      }),
-    });
-  } catch (e) {
-    throw new TtsError(`TTS request failed: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  const res = await postCustomSpeech(
+    url,
+    headers,
+    JSON.stringify({
+      model: (cfg.customModel ?? "").trim(),
+      input: text,
+      voice: cfg.voice,
+      // OpenAI-compatible speed: 0.25–4.0. Only send when non-default.
+      ...(cfg.rate && cfg.rate !== 1.0 ? { speed: cfg.rate } : {}),
+    }),
+  );
   if (!res.ok) {
     const body = (await res.text()).slice(0, 300);
     throw new TtsError(`TTS HTTP ${res.status}: ${body}`);

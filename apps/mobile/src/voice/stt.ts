@@ -22,6 +22,9 @@ export class SttError extends Error {
   }
 }
 
+/** Transcription timeout: a hanging server must not hang the UI forever. */
+const STT_TIMEOUT_MS = 120000;
+
 function extOf(uri: string): string {
   const m = /\.([a-z0-9]+)(?:\?|#|$)/i.exec(uri);
   return (m?.[1] ?? "m4a").toLowerCase();
@@ -49,11 +52,22 @@ async function postTranscription(
   const key = (apiKey ?? "").trim();
   if (key) headers.Authorization = `Bearer ${key}`;
 
+  // RN fetch has no default timeout — a half-open server would hang the
+  // "transcribing" UI until the app is killed.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers, body: form });
+    res = await fetch(url, { method: "POST", headers, body: form, signal: controller.signal });
   } catch (e) {
+    if ((e as { name?: string } | null)?.name === "AbortError") {
+      throw new SttError(
+        `${label}：请求超时（${STT_TIMEOUT_MS / 1000} 秒无响应），请检查转写服务是否可用`,
+      );
+    }
     throw new SttError(`${label}: request failed (${e instanceof Error ? e.message : String(e)})`);
+  } finally {
+    clearTimeout(timer);
   }
   const text = await res.text();
   if (!res.ok) {
