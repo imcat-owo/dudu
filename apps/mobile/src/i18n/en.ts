@@ -1282,6 +1282,7 @@ export const enStrings: Record<StringKey, string> = {
   "voice.testing": "Synthesizing…",
   "voice.testText": "Hey, it is Dudu.",
   "voice.sttTitle": "Speech-to-text (STT)",
+  "voice.saveFailed": "Couldn't save — your change wasn't stored. Please try again.",
   "voice.sttGroup": "Use the active group's transcription endpoint",
   "voice.sttCustom": "Dedicated transcription service",
   "voice.sttUrl": "Endpoint URL",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { chunkText } from "../src/voice/edge-tts.js";
-import { createVoiceStore, type SecureBackend } from "../src/voice/store.js";
+import { createVoiceStore, type KeyValueBackend, type SecureBackend } from "../src/voice/store.js";
 import { friendlyPodcastError } from "../src/voice/tools.js";
 import {
   blankSttConfig,
@@ -22,6 +22,20 @@ function fakeSecure(): SecureBackend & { data: Map<string, string> } {
       data.set(k, v);
     },
     deleteItem: async (k) => {
+      data.delete(k);
+    },
+  };
+}
+
+function fakeKv(): KeyValueBackend & { data: Map<string, string> } {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItem: async (k) => data.get(k) ?? null,
+    setItem: async (k, v) => {
+      data.set(k, v);
+    },
+    removeItem: async (k) => {
       data.delete(k);
     },
   };
@@ -132,9 +146,12 @@ describe("voice store", () => {
   });
 
   it("settings persist mic mode", async () => {
-    const store = createVoiceStore(fakeSecure());
-    await store.setSettings({ micMode: "voice-message" });
+    const kv = fakeKv();
+    const store = createVoiceStore(fakeSecure(), kv);
+    const ok = await store.setSettings({ micMode: "voice-message" });
+    assert.equal(ok, true);
     assert.equal(store.getSnapshot().settings.micMode, "voice-message");
+    assert.ok(kv.data.get("dudu.voice-settings.v1")?.includes("voice-message"));
   });
 
   it("corrupted stored json falls back to defaults", async () => {
@@ -219,5 +236,100 @@ describe("voice message files (P2-5)", () => {
   it("leaves non-voice content untouched", () => {
     const content = "hello world";
     assert.equal(rewriteVoiceMessageUris(content, "file:///new/dudu-voice-messages/"), content);
+  });
+});
+
+describe("voice store write serialization (P1-2)", () => {
+  it("a failed write returns false and keeps the old config (no silent loss)", async () => {
+    const secure = fakeSecure();
+    const store = createVoiceStore(secure);
+    await store.setTts({
+      provider: "custom",
+      voice: "old",
+      customUrl: "https://old.example.com",
+      customKey: "",
+      customModel: "m",
+    });
+    // Keychain locks up from here on.
+    secure.setItem = async () => {
+      throw new Error("keychain locked");
+    };
+    const ok = await store.setTts({
+      provider: "custom",
+      voice: "new",
+      customUrl: "https://new.example.com",
+      customKey: "",
+      customModel: "m",
+    });
+    assert.equal(ok, false, "caller must see the failure");
+    assert.equal(store.getSnapshot().tts.voice, "old", "mirror must not pretend the save worked");
+    assert.ok(
+      secure.data.get("dudu.tts.v1")?.includes('"voice":"old"'),
+      "disk must still hold the old config",
+    );
+  });
+
+  it("concurrent setTts calls serialize — last write wins on disk", async () => {
+    const data = new Map<string, string>();
+    const secure: SecureBackend = {
+      getItem: async (k) => data.get(k) ?? null,
+      // Slow first write, fast second: without serialization the stale
+      // write would land last and resurrect old config on next launch.
+      setItem: async (k, v) => {
+        await new Promise((r) => setTimeout(r, v.includes('"voice":"first"') ? 30 : 5));
+        data.set(k, v);
+      },
+      deleteItem: async (k) => {
+        data.delete(k);
+      },
+    };
+    const store = createVoiceStore(secure);
+    const cfg = (voice: string) => ({
+      provider: "custom" as const,
+      voice,
+      customUrl: `https://${voice}.example.com`,
+      customKey: "",
+      customModel: "m",
+    });
+    const [a, b] = await Promise.all([store.setTts(cfg("first")), store.setTts(cfg("second"))]);
+    assert.equal(a, true);
+    assert.equal(b, true);
+    assert.ok(
+      data.get("dudu.tts.v1")?.includes('"voice":"second"'),
+      "disk must hold the newest write",
+    );
+    assert.equal(store.getSnapshot().tts.voice, "second");
+  });
+
+  it("setStt failure keeps the old STT config too", async () => {
+    const secure = fakeSecure();
+    const store = createVoiceStore(secure);
+    await store.setStt({
+      ...blankSttConfig(),
+      provider: "custom",
+      customUrl: "https://old.example.com",
+    });
+    secure.setItem = async () => {
+      throw new Error("keychain locked");
+    };
+    const ok = await store.setStt({
+      ...blankSttConfig(),
+      provider: "custom",
+      customUrl: "https://new.example.com",
+    });
+    assert.equal(ok, false);
+    assert.equal(store.getSnapshot().stt.customUrl, "https://old.example.com");
+  });
+
+  it("setSettings failure returns false and keeps the old mic mode", async () => {
+    const kv = fakeKv();
+    const store = createVoiceStore(fakeSecure(), kv);
+    assert.equal(await store.setSettings({ micMode: "voice-message" }), true);
+    kv.setItem = async () => {
+      throw new Error("disk full");
+    };
+    const ok = await store.setSettings({ micMode: "transcribe" });
+    assert.equal(ok, false);
+    assert.equal(store.getSnapshot().settings.micMode, "voice-message");
   });
 });

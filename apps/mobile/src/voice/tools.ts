@@ -220,7 +220,12 @@ export function createTtsVoiceTools(voiceStore: import("./store.js").VoiceStore)
         const next: TtsConfig = { ...snap.tts };
         if (voice) next.voice = voice;
         if (speed !== null) next.rate = speed;
-        await voiceStore.setTts(next);
+        const saved = await voiceStore.setTts(next);
+        if (!saved) {
+          throw new ToolError(
+            "The TTS setting could not be saved (storage write failed). Tell her honestly the change didn't stick and ask her to try again from settings.",
+          );
+        }
         const parts: string[] = [];
         if (voice) parts.push(`voice → ${voice}`);
         if (speed !== null) parts.push(`speed → ${speed}x`);

@@ -106,8 +106,12 @@ function TtsSection() {
       setError(t(`voice.${problem}`));
       return;
     }
-    await voiceStore.setTts(cfg);
-    setDraft(null);
+    const ok = await voiceStore.setTts(cfg);
+    if (ok) {
+      setDraft(null);
+    } else {
+      setError(t("voice.saveFailed"));
+    }
   }
 
   async function onTest() {
@@ -366,8 +370,12 @@ function SttSection() {
       setError(t(`voice.${problem}`));
       return;
     }
-    await voiceStore.setStt(cfg);
-    setDraft(null);
+    const ok = await voiceStore.setStt(cfg);
+    if (ok) {
+      setDraft(null);
+    } else {
+      setError(t("voice.saveFailed"));
+    }
   }
 
   if (!loaded) return null;
@@ -465,9 +473,12 @@ function MicModeSection() {
   const colors = useColors();
   const s = useStyles();
   const { settings, loaded } = useVoiceConfig();
+  const [error, setError] = useState("");
 
-  function setMode(m: MicMode) {
-    void voiceStore.setSettings({ ...settings, micMode: m });
+  async function setMode(m: MicMode) {
+    setError("");
+    const ok = await voiceStore.setSettings({ ...settings, micMode: m });
+    if (!ok) setError(t("voice.saveFailed"));
   }
 
   if (!loaded) return null;
@@ -482,6 +493,7 @@ function MicModeSection() {
   return (
     <Card>
       <TText style={{ fontWeight: "700", marginBottom: 8 }}>{t("voice.micMode")}</TText>
+      {!!error && <TText style={{ color: colors.danger, marginBottom: 8 }}>{error}</TText>}
       <View style={{ gap: 8 }}>
         {modes.map((m) => {
           const active = settings.micMode === m.id;

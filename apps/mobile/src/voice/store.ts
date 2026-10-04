@@ -32,6 +32,13 @@ export interface SecureBackend {
   deleteItem(key: string): Promise<void>;
 }
 
+/** Non-secret key-value storage (voice settings live here, not secrets). */
+export interface KeyValueBackend {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
+
 async function loadSecureBackend(): Promise<SecureBackend> {
   const SecureStore = await import("expo-secure-store");
   return {
@@ -52,8 +59,10 @@ function parseJson<T>(raw: string | null, fallback: T): T {
   return fallback;
 }
 
-export function createVoiceStore(secure?: SecureBackend) {
+export function createVoiceStore(secure?: SecureBackend, kv?: KeyValueBackend) {
   let resolvedSecure: SecureBackend | null = secure ?? null;
+  // Injectable for tests — AsyncStorage throws in the node test env.
+  const kvBackend: KeyValueBackend = kv ?? AsyncStorage;
   let tts: TtsConfig | null = null;
   let stt: SttConfig | null = null;
   let settings: VoiceSettings | null = null;
@@ -91,6 +100,23 @@ export function createVoiceStore(secure?: SecureBackend) {
 
   let loadPromise: Promise<void> | null = null;
   let loadDone = false;
+
+  /**
+   * Write chain: concurrent setTts/setStt/setSettings calls can't
+   * interleave, so disk can never persist an older write after a newer
+   * one (which would resurrect stale config on next launch). The chain
+   * never breaks: each link swallows its own rejection for chaining
+   * purposes, while the caller still sees fn's real result/rejection.
+   */
+  let writeChain: Promise<void> = Promise.resolve();
+  function enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
+    const run = writeChain.then(fn, fn);
+    writeChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
   function ensureLoaded(): Promise<void> {
     if (!loadPromise) {
       loadPromise = (async () => {
@@ -105,7 +131,7 @@ export function createVoiceStore(secure?: SecureBackend) {
           stt = blankSttConfig();
         }
         try {
-          const raw = await AsyncStorage.getItem(VOICE_SETTINGS_KEY);
+          const raw = await kvBackend.getItem(VOICE_SETTINGS_KEY);
           settings = parseJson(raw, defaultVoiceSettings());
         } catch {
           settings = defaultVoiceSettings();
@@ -134,37 +160,54 @@ export function createVoiceStore(secure?: SecureBackend) {
       return snapshot;
     },
 
-    async setTts(next: TtsConfig): Promise<void> {
-      await ensureLoaded();
-      tts = next;
-      try {
-        await (await secureBackend()).setItem(TTS_KEY, JSON.stringify(next));
-      } catch {
-        // SecureStore unavailable — memory mirror keeps this session working.
-      }
-      emit();
+    /**
+     * Persist TTS config. Returns true on success, false when the write
+     * failed (locked keychain, full disk…). On failure the in-memory
+     * mirror is left untouched so the UI stays dirty and the old values
+     * — not silently-discarded new ones — load next launch.
+     */
+    async setTts(next: TtsConfig): Promise<boolean> {
+      return enqueueWrite(async () => {
+        await ensureLoaded();
+        try {
+          await (await secureBackend()).setItem(TTS_KEY, JSON.stringify(next));
+        } catch {
+          return false;
+        }
+        tts = next;
+        emit();
+        return true;
+      });
     },
 
-    async setStt(next: SttConfig): Promise<void> {
-      await ensureLoaded();
-      stt = next;
-      try {
-        await (await secureBackend()).setItem(STT_KEY, JSON.stringify(next));
-      } catch {
-        // memory mirror keeps this session working
-      }
-      emit();
+    /** Same contract as setTts: true = saved, false = write failed. */
+    async setStt(next: SttConfig): Promise<boolean> {
+      return enqueueWrite(async () => {
+        await ensureLoaded();
+        try {
+          await (await secureBackend()).setItem(STT_KEY, JSON.stringify(next));
+        } catch {
+          return false;
+        }
+        stt = next;
+        emit();
+        return true;
+      });
     },
 
-    async setSettings(next: VoiceSettings): Promise<void> {
-      await ensureLoaded();
-      settings = next;
-      try {
-        await AsyncStorage.setItem(VOICE_SETTINGS_KEY, JSON.stringify(next));
-      } catch {
-        // non-fatal
-      }
-      emit();
+    /** Same contract as setTts: true = saved, false = write failed. */
+    async setSettings(next: VoiceSettings): Promise<boolean> {
+      return enqueueWrite(async () => {
+        await ensureLoaded();
+        try {
+          await kvBackend.setItem(VOICE_SETTINGS_KEY, JSON.stringify(next));
+        } catch {
+          return false;
+        }
+        settings = next;
+        emit();
+        return true;
+      });
     },
 
     /**
@@ -192,7 +235,7 @@ export function createVoiceStore(secure?: SecureBackend) {
         // ignore
       }
       try {
-        await AsyncStorage.removeItem(VOICE_SETTINGS_KEY);
+        await kvBackend.removeItem(VOICE_SETTINGS_KEY);
       } catch {
         // ignore
       }

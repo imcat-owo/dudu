@@ -1242,6 +1242,7 @@ const zhHans = {
   "voice.testing": "合成中…",
   "voice.testText": "你好呀，我是嘟嘟。",
   "voice.sttTitle": "语音转写（STT）",
+  "voice.saveFailed": "保存失败，设置没有存上，请再试一次",
   "voice.sttGroup": "用当前分组的转写接口",
   "voice.sttCustom": "专用转写服务",
   "voice.sttUrl": "接口地址",
