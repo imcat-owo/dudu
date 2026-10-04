@@ -85,7 +85,12 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
       await taskProgressStore.setBackground(task.id, url);
       await taskProgressStore.saveIndex();
     } catch {
-      // Generation failed — keep existing background.
+      // Generation/storage failed — tell her, don't just stop the spinner.
+      Alert.alert(
+        t("space.tasks.bgFailedTitle") as string,
+        t("space.tasks.bgFailedBody") as string,
+        [{ text: t("common.confirm") as string, style: "cancel" }],
+      );
     } finally {
       setGenerating(false);
       setMenuOpen(false);
