@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDialogTools } from "../src/chat/dialog-tools.js";
+import { createDialogTools, registerRenameDialogHandler } from "../src/chat/dialog-tools.js";
 import { createKnowledgeAddTools } from "../src/knowledge/tools.js";
 import { createPetSkinTools } from "../src/pet/tools.js";
 import { createFontSizeTools } from "../src/settings/tools.js";
@@ -113,6 +113,25 @@ test("set_tts_voice requires something to change", async () => {
 test("new_dialog is registered", () => {
   const [tool] = createDialogTools();
   assert.equal(tool.name, "new_dialog");
+});
+
+test("rename_dialog is registered and renames via handler", async () => {
+  const calls: Array<{ threadId: string; name: string }> = [];
+  registerRenameDialogHandler(async (threadId, name) => {
+    calls.push({ threadId, name });
+  });
+  const tools = createDialogTools({ threadId: "t-123" });
+  const tool = tools.find((t) => t.name === "rename_dialog");
+  assert.ok(tool, "rename_dialog registered");
+  // Defaults to the current dialog's thread id
+  const res = await tool.run({ name: "旅行计划" }, ctx);
+  assert.match(res as string, /旅行计划/);
+  assert.deepEqual(calls, [{ threadId: "t-123", name: "旅行计划" }]);
+  // Explicit thread_id wins
+  await tool.run({ name: "别的", thread_id: "t-999" }, ctx);
+  assert.deepEqual(calls[1], { threadId: "t-999", name: "别的" });
+  // Missing name → honest error, not silent
+  await assert.rejects(() => tool.run({ name: "  " }, ctx));
 });
 
 test("knowledge_add_doc validates inputs", async () => {

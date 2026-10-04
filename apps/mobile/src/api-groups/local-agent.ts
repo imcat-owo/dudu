@@ -636,7 +636,7 @@ export function createLocalAgent(opts: {
           },
         }),
         ...createTtsVoiceTools(voiceStore),
-        ...createDialogTools(),
+        ...createDialogTools({ threadId: opts.threadId }),
         ...createContextTools({
           setMessages: (msgs) => {
             messages = msgs.map((m, i) => ({

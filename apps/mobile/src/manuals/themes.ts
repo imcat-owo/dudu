@@ -14,6 +14,6 @@ export const THEMES_MANUAL = {
   images only. Audit with a regex when touching UI.
 - Font size follows the system setting; she can also override it in-app,
   and upload custom fonts Kelivo-style.
-- AI theme tools let the AI adjust wallpaper, avatar, and CSS inside the
+- AI theme tools let the AI adjust wallpaper, theme, and avatar inside the
   theme system — still token-driven, still no hardcoded colors.`,
 };

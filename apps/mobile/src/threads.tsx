@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import { registerNewDialogHandler } from "./chat/dialog-tools";
+import { registerNewDialogHandler, registerRenameDialogHandler } from "./chat/dialog-tools";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
@@ -146,6 +146,12 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
   } = useMuseThread();
   const { workspace, open, navigate, refresh } = useWorkspace();
   const threads = useThreads({ agentId: "default", enabled, includeArchived: true, limit: 20 });
+  // Wire the AI "rename_dialog" tool to real thread renaming.
+  const renameRef = useRef<(threadId: string, name: string) => Promise<void>>(async () => {});
+  renameRef.current = (threadId, name) => threads.renameThread(threadId, name);
+  useEffect(() => {
+    registerRenameDialogHandler((threadId, name) => renameRef.current(threadId, name));
+  }, []);
   const [editing, setEditing] = useState<string>();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
