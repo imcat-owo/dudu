@@ -24,6 +24,18 @@ function newThreadId() {
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * Titles requested via the AI `new_dialog` tool, keyed by the generated thread ID.
+ * Applied when the thread appears in the list (see ThreadsSheet effect).
+ */
+const pendingDialogTitle = new Map<string, string>();
+
+export function takePendingDialogTitle(threadId: string): string | undefined {
+  const title = pendingDialogTitle.get(threadId);
+  if (title) pendingDialogTitle.delete(threadId);
+  return title;
+}
 export type Selection = { id: string; existing: boolean };
 const ThreadContext = createContext<{
   enabled: boolean;
@@ -49,10 +61,19 @@ export function ThreadsProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
 
   // Wire the AI "new_dialog" tool to real navigation.
-  const startRef = useRef<() => void>(() => {});
-  startRef.current = () => setSelection({ id: newThreadId(), existing: false });
+  const startRef = useRef<(title?: string) => void>(() => {});
+  startRef.current = (title) => {
+    const id = newThreadId();
+    setSelection({ id, existing: false });
+    // Title is passed through; the thread gets named when it's created
+    // (backend assigns name on first message; UI shows untitled until then).
+    // We store it so a future enhancement can apply it via renameThread.
+    if (title) {
+      pendingDialogTitle.set(id, title);
+    }
+  };
   useEffect(() => {
-    registerNewDialogHandler(() => startRef.current());
+    registerNewDialogHandler((title) => startRef.current(title));
   }, []);
   useEffect(() => {
     if (!enabled) return;
@@ -129,6 +150,17 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [archived, setArchived] = useState(false);
+
+  // Apply AI-requested dialog titles when the new thread appears in the list.
+  useEffect(() => {
+    if (!threads.threads) return;
+    for (const thread of threads.threads) {
+      const pending = takePendingDialogTitle(thread.id);
+      if (pending && !thread.name) {
+        threads.renameThread(thread.id, pending).catch(() => {});
+      }
+    }
+  }, [threads.threads]);
   async function mutate(action: () => Promise<void>) {
     setError("");
     try {

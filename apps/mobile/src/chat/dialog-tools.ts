@@ -7,7 +7,7 @@
 import type { LocalTool } from "../api-groups/local-tools.js";
 
 /** Callback the UI registers to actually open a new dialog. */
-type NewDialogHandler = () => void;
+type NewDialogHandler = (title?: string) => void;
 
 let handler: NewDialogHandler | null = null;
 
@@ -45,8 +45,8 @@ export function createDialogTools(): LocalTool[] {
       run: async (args) => {
         const title = strArg(args, "title").trim();
         if (handler) {
-          handler();
-          return title ? `New dialog opened${title ? ` (“${title}”)` : ""}.` : "New dialog opened.";
+          handler(title || undefined);
+          return "New dialog opened.";
         }
         return (
           "I can't open a new dialog from here right now — " + "ask her to tap the new-chat button."
