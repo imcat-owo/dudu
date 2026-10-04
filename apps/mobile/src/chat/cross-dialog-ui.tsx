@@ -46,6 +46,12 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionRead");
     case "send":
       return t("crossDialog.actionSend");
+    case "meeting_create":
+      return t("crossDialog.actionMeetingCreate");
+    case "meeting_round":
+      return t("crossDialog.actionMeetingRound");
+    case "meeting_end":
+      return t("crossDialog.actionMeetingEnd");
   }
 }
 

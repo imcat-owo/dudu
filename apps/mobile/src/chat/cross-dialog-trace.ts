@@ -16,7 +16,14 @@
  *   the trace — the fact of the send stays visible in the trace log.
  */
 
-export type CrossDialogAction = "list" | "read" | "send";
+export type CrossDialogAction =
+  | "list"
+  | "read"
+  | "send"
+  /** AI self-organized group chat (vision feature 3) — same trace, same law. */
+  | "meeting_create"
+  | "meeting_round"
+  | "meeting_end";
 
 export interface CrossDialogTraceEntry {
   /** Stable id, e.g. "cdt_...". */
@@ -81,7 +88,12 @@ function isValidEntry(e: unknown): e is CrossDialogTraceEntry {
   return (
     typeof v.id === "string" &&
     typeof v.at === "number" &&
-    (v.action === "list" || v.action === "read" || v.action === "send") &&
+    (v.action === "list" ||
+      v.action === "read" ||
+      v.action === "send" ||
+      v.action === "meeting_create" ||
+      v.action === "meeting_round" ||
+      v.action === "meeting_end") &&
     typeof v.fromThreadId === "string" &&
     typeof v.fromName === "string" &&
     typeof v.summary === "string" &&

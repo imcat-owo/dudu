@@ -43,3 +43,13 @@
 - [x] 能力分组设置 UI：API 分组页内「能力分组」区（路由开关、排行模式、分组/成员管理、视频接口地址）- 代码完整
 - [ ] 真机验证：分组页打开、各开关与选择器可点、选模型后当前对话实际走新模型
 - [x] 开启原则：多模型协作默认关闭；propose_coordination_plan + check_plan_status 工具对 + 计划卡片（批准/叫停），AI 必须先摆计划再等拍板 - 代码完整，测试 6/6
+
+## AI 编排 · AI 自建群 (feature 3, 2026-10-04)
+- [x] 群会议 core：GroupMeeting 数据模型（成员/轮次/记录/结论）+ SillyTavern 式发言调度（NATURAL 点名→talkativeness 骰子→兜底 / POOLED 每轮全员 / LIST 固定顺序，防连发，每人每轮至多一次）- 代码完整，测试覆盖
+- [x] AI 工具：list_models + start_group_meeting + run_meeting_round + meeting_status + end_meeting；AI 当主持人（ai-debate 模式），成员走各自模型真实调用（one-shot）- 代码完整，测试 35/35
+- [x] 开启原则：默认不开；开会需已批准计划（plan_id）或她明确要求（her_request 原话）；每轮重查计划状态；隐身会话拒绝 - 代码完整，测试覆盖
+- [x] 留痕：创建/每轮/结束全部进跨对话框 trace（meeting_create/round/end），无静默开会 - 代码完整，测试覆盖
+- [x] 人设记忆隔离：成员 prompt 只含会议主题+共享记录，结构上无法带入其他记忆（函数签名级保证，测试钉死）- 代码完整，测试覆盖
+- [x] 诚实失败：成员模型挂了只报他自己的错，不编发言顶上；未知模型/重复成员/空结论都是直白报错 - 代码完整，测试覆盖
+- [x] 纸条说明书：group-meeting 手册（何时开会/四段式结论/省钱规矩），按需注入 - 代码完整
+- [ ] 真机验证：说「你们讨论一下」→ 计划卡片 → 开会 → 多轮发言 → 结论汇报；trace 里能看到完整过程

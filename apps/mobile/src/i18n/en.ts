@@ -1469,6 +1469,9 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.actionList": "Viewed dialog list",
   "crossDialog.actionRead": "Read messages",
   "crossDialog.actionSend": "Sent a message",
+  "crossDialog.actionMeetingCreate": "Started an AI meeting",
+  "crossDialog.actionMeetingRound": "Meeting in progress",
+  "crossDialog.actionMeetingEnd": "Meeting ended",
   "crossDialog.fromDialogTag": 'From dialog "{name}"',
   "crossDialog.sendTagVisible": "Show source tag in target dialog",
   "crossDialog.sendTagVisibleDetail":

@@ -18,6 +18,8 @@ import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { createCrossDialogTools } from "../chat/cross-dialog.js";
+import { groupMeetingStore } from "../chat/group-meeting-instance.js";
+import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools.js";
 import {
   crossDialogTraceStore,
   crossDialogVisibilityStore,
@@ -788,6 +790,19 @@ export function createLocalAgent(opts: {
           storage: AsyncStorage,
           trace: crossDialogTraceStore,
           visibility: crossDialogVisibilityStore,
+          isIncognito: incognito,
+        }),
+        // AI self-organized group chat (vision feature 3): the AI moderates
+        // meetings between her other models. Every start/round/end is
+        // traced (留痕) — see src/chat/group-meeting-tools.ts for the hard
+        // constraints. Member turns call the member's own model endpoint.
+        ...createGroupMeetingTools({
+          threadId: opts.threadId,
+          storage: AsyncStorage,
+          meetings: groupMeetingStore,
+          trace: crossDialogTraceStore,
+          listApiGroups: () => groupStore.getSnapshot().groups,
+          generate: generateOneShot,
           isIncognito: incognito,
         }),
         ...createContextTools({

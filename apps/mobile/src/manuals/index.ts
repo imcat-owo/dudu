@@ -26,6 +26,7 @@ import { BACKUP_MANUAL } from "./backup.js";
 import { BROWSER_MANUAL } from "./browser.js";
 import { COORDINATION_MANUAL } from "./coordination.js";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog.js";
+import { GROUP_MEETING_MANUAL } from "./group-meeting.js";
 import { INCOGNITO_MANUAL } from "./incognito.js";
 import { KNOWLEDGE_MANUAL } from "./knowledge.js";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
@@ -67,6 +68,7 @@ export const MANUALS: ManualEntry[] = [
   API_GROUPS_MANUAL,
   COORDINATION_MANUAL,
   CROSS_DIALOG_MANUAL,
+  GROUP_MEETING_MANUAL,
   BROWSER_MANUAL,
   SANDBOX_MANUAL,
   OUR_SPACE_MANUAL,

@@ -1420,6 +1420,9 @@ const zhHans = {
   "crossDialog.actionList": "查看了对话框列表",
   "crossDialog.actionRead": "读取消息",
   "crossDialog.actionSend": "发送消息",
+  "crossDialog.actionMeetingCreate": "发起了 AI 开会",
+  "crossDialog.actionMeetingRound": "开会中",
+  "crossDialog.actionMeetingEnd": "会议结束",
   "crossDialog.fromDialogTag": "来自「{name}」对话框",
   "crossDialog.sendTagVisible": "在目标对话框显示来源标记",
   "crossDialog.sendTagVisibleDetail":
