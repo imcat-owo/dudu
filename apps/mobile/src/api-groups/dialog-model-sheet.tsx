@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
+import { radii } from "../theme/radii";
 import { Chip, useColors, useStyles } from "../ui";
 import { useDialogModelOverride } from "./dialog-model-override";
 import { useChatMode } from "./mode";
@@ -97,7 +98,7 @@ export function DialogModelChip({ threadId }: { threadId: string }) {
                 accessibilityRole="button"
                 onPress={() => void pick(null)}
                 style={{
-                  borderRadius: 12,
+                  borderRadius: radii.md,
                   borderWidth: 1,
                   borderColor: colors.line,
                   backgroundColor: colors.card,
@@ -124,7 +125,7 @@ export function DialogModelChip({ threadId }: { threadId: string }) {
                   accessibilityRole="button"
                   onPress={() => void pick(g.id)}
                   style={{
-                    borderRadius: 12,
+                    borderRadius: radii.md,
                     borderWidth: 1,
                     borderColor: isCurrent ? colors.blueDark : colors.line,
                     backgroundColor: colors.card,

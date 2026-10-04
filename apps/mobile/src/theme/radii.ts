@@ -3,6 +3,13 @@
  *
  * Hard rule: use these tiers instead of hardcoded borderRadius literals.
  * Numeric literals >= 64 (circular / pill shapes) are exempt.
+ *
+ * Exemptions (documented, not loopholes):
+ * - Perfect circles (width == height, radius == size/2): geometry, not style.
+ * - Miniature mockups: ThemeGalleryCard's mini chat mockup (appearance.tsx)
+ *   and decorative micro-elements (e.g. journal-decor's tape strip) use
+ *   physical pixel radii to keep proportions at tiny scale — snapping them
+ *   to the tiers would distort the miniature.
  */
 export const radii = {
   /** Tiny: chips, badges, small tags. */

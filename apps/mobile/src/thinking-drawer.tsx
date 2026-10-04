@@ -500,7 +500,7 @@ export function ThinkingDrawer({
               top: 10,
               width: 20,
               height: 15,
-              borderRadius: 10,
+              borderRadius: radii.sm,
               backgroundColor: pad,
               opacity: breathe.interpolate({
                 inputRange: [0, 1],

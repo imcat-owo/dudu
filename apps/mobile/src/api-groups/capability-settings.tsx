@@ -167,7 +167,7 @@ function CapabilityGroupCard({ group }: { group: CapabilityGroup }) {
                   color: colors.muted,
                   borderWidth: 1,
                   borderColor: colors.line,
-                  borderRadius: 8,
+                  borderRadius: radii.sm,
                   paddingHorizontal: 6,
                   paddingVertical: 1,
                 },
