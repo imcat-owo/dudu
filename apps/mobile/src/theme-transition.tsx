@@ -11,6 +11,7 @@
 
 import { type ReactNode, useEffect, useRef } from "react";
 import { Animated, Easing } from "react-native";
+import { DUR, EASE } from "./motion";
 import { useTheme } from "./theme/ThemeContext";
 
 export function ThemeTransition({ children }: { children: ReactNode }) {
@@ -26,8 +27,8 @@ export function ThemeTransition({ children }: { children: ReactNode }) {
     opacity.setValue(0.93);
     const anim = Animated.timing(opacity, {
       toValue: 1,
-      duration: 300,
-      easing: Easing.out(Easing.cubic),
+      duration: DUR.normal,
+      easing: Easing.bezier(...EASE.out),
       useNativeDriver: true,
     });
     anim.start();

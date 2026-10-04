@@ -45,6 +45,7 @@ import {
 import type { DrawerActionStatus, DrawerToolAction } from "./activity-drawer-model";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { DUR, SPRING } from "./motion";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
@@ -95,6 +96,7 @@ export function ThinkingStatus({
   // 0 → 1 → 0 "breath". Drives the brand-color halo ping + a gentle button
   // scale — livelier than a plain opacity blink, still subtle (motion.ts:
   // purposeful motion only; the halo answers "the AI is working right now").
+  // Ambient loop: keeps its physical 900ms period, not a transition token.
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -315,6 +317,7 @@ export function ThinkingDrawer({
   const scrollY = useRef(0);
   // Drag-handle "breathing": a slow, calm paw-print pulse. Subtle on purpose —
   // the handle is chrome, not content (motion.ts: purposeful motion only).
+  // Ambient loop: keeps its physical 1400ms period, not a transition token.
   const breathe = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -348,10 +351,10 @@ export function ThinkingDrawer({
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: SCREEN.height,
-        duration: 220,
+        duration: DUR.fast,
         useNativeDriver: true,
       }),
-      Animated.timing(backdrop, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(backdrop, { toValue: 0, duration: DUR.fast, useNativeDriver: true }),
     ]).start(() => {
       setClosing(false);
       onClose();
@@ -367,11 +370,10 @@ export function ThinkingDrawer({
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          tension: 130,
-          friction: 16,
+          ...SPRING.gentle,
           useNativeDriver: true,
         }),
-        Animated.timing(backdrop, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(backdrop, { toValue: 1, duration: DUR.fast, useNativeDriver: true }),
       ]).start();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,7 +384,7 @@ export function ThinkingDrawer({
     slideX.setValue(SHEET_W);
     Animated.timing(slideX, {
       toValue: 0,
-      duration: 250,
+      duration: DUR.normal,
       useNativeDriver: true,
     }).start();
   };
@@ -390,7 +392,7 @@ export function ThinkingDrawer({
   const backToList = () => {
     Animated.timing(slideX, {
       toValue: SHEET_W,
-      duration: 250,
+      duration: DUR.normal,
       useNativeDriver: true,
     }).start(() => setSelectedId(null));
   };
@@ -407,8 +409,7 @@ export function ThinkingDrawer({
         } else {
           Animated.spring(translateY, {
             toValue: 0,
-            tension: 130,
-            friction: 16,
+            ...SPRING.gentle,
             useNativeDriver: true,
           }).start();
         }

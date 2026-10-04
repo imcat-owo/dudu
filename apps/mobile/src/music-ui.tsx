@@ -56,6 +56,7 @@ import {
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
+import { DUR } from "./motion";
 import { musicStore } from "./music/instance";
 import {
   isIntentStale,
@@ -885,9 +886,11 @@ function AlbumGlow({ track }: { track: Track | null }) {
 
   useEffect(() => {
     if (uri === shown) return;
-    Animated.timing(fade, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => {
+    // Crossfade: exit faster than enter (motion.ts rhythm: slow enter,
+    // normal exit).
+    Animated.timing(fade, { toValue: 0, duration: DUR.normal, useNativeDriver: true }).start(() => {
       setShown(uri);
-      Animated.timing(fade, { toValue: 1, duration: 480, useNativeDriver: true }).start();
+      Animated.timing(fade, { toValue: 1, duration: DUR.slow, useNativeDriver: true }).start();
     });
   }, [uri, shown, fade]);
 
