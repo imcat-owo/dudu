@@ -41,10 +41,54 @@ export interface ImageOutputBackend {
 /** Independent timeout for image generation (OpenClaw uses 180s). */
 const IMAGE_TIMEOUT_MS = 180000;
 
+/**
+ * Timeout for verifying the free-backend URL resolves to a real image.
+ * The first request triggers generation server-side, so this must allow
+ * enough time for a render — but a dead/blocked backend fails fast with
+ * a 4xx/5xx, which is what we're guarding against.
+ */
+const VERIFY_TIMEOUT_MS = 60000;
+
 function withTimeout(ms: number): { signal: AbortSignal; done: () => void } {
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), ms);
   return { signal: c.signal, done: () => clearTimeout(t) };
+}
+
+/**
+ * The Pollinations URL is pure string concatenation — nothing confirms the
+ * backend actually rendered anything. Fetch the first byte: 200/206 means
+ * the image exists, anything else (or a timeout) means the AI must NOT
+ * announce success. This also warms the server-side cache, so the chat
+ * bubble's subsequent fetch is fast.
+ */
+async function verifyPollinationsUrl(url: string): Promise<void> {
+  const { signal, done } = withTimeout(VERIFY_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Range: "bytes=0-0" },
+      signal,
+    });
+    if (res.status !== 200 && res.status !== 206) {
+      throw new Error(`free backend returned HTTP ${res.status}`);
+    }
+    try {
+      await res.body?.cancel?.();
+    } catch {
+      // body cleanup is best-effort; the status already told us what we need
+    }
+  } catch (e) {
+    if (e instanceof Error && /HTTP \d+/.test(e.message)) throw e;
+    const aborted = (e as { name?: string } | null)?.name === "AbortError";
+    throw new Error(
+      aborted
+        ? `free backend timed out after ${VERIFY_TIMEOUT_MS / 1000}s`
+        : `free backend unreachable: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  } finally {
+    done();
+  }
 }
 
 async function tryBackendImage(backend: ImageOutputBackend, prompt: string): Promise<string> {
@@ -100,6 +144,12 @@ export interface ImageToolOptions {
    * remains the fallback.
    */
   resolveBackends?: () => ImageOutputBackend[];
+  /**
+   * Verify the free-backend URL resolves before the tool claims success.
+   * Injectable so tests don't hit the network; defaults to a real
+   * range-GET check.
+   */
+  verifyImageUrl?: (url: string) => Promise<void>;
 }
 
 /**
@@ -147,20 +197,27 @@ export function createImageTools(opts?: ImageToolOptions): LocalTool[] {
           }
         }
 
-        // 2. Free fallback (pre-existing behavior).
+        // 2. Free fallback (pre-existing behavior). buildImageUrl is pure
+        // string concatenation — it cannot fail, so the URL must be
+        // verified before the AI is told the image exists.
+        const url = buildImageUrl(fullPrompt);
+        const note =
+          backendErrors.length > 0
+            ? ` (her configured image models failed: ${backendErrors.join("; ")}, used the free backend instead)`
+            : "";
         try {
-          const url = buildImageUrl(fullPrompt);
-          const note =
-            backendErrors.length > 0
-              ? ` (her configured image models failed: ${backendErrors.join("; ")}, used the free backend instead)`
-              : "";
-          return showImageResult(prompt, url, `free backend${note}`);
-        } catch {
+          await (opts?.verifyImageUrl ?? verifyPollinationsUrl)(url);
+        } catch (e) {
           throw new ToolError(
-            `Image generation failed everywhere${backendErrors.length ? `: ${backendErrors.join("; ")}` : ""} — ` +
-              `tell her honestly it didn't work, don't pretend.`,
+            `The free image backend didn't return a usable image ` +
+              `(${e instanceof Error ? e.message : String(e)})` +
+              (backendErrors.length
+                ? `; her configured image models also failed: ${backendErrors.join("; ")}`
+                : "") +
+              ` — tell her honestly it didn't work, don't pretend.`,
           );
         }
+        return showImageResult(prompt, url, `free backend${note}`);
       },
     },
   ];
