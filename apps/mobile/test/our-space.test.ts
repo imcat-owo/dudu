@@ -113,9 +113,9 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 34 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 37 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 34);
+    assert.equal(tools.length, 37);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
@@ -699,6 +699,55 @@ describe("left notes", () => {
     // Note: tool uses real current date, so we just check it runs without error
     const out = await tool.run({}, ctx);
     assert.equal(typeof out, "string");
+  });
+});
+
+describe("love letters", () => {
+  it("write, list unseen, mark seen", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    assert.deepEqual(await s.getUnseenLoveLetters(), []);
+    const l1 = await s.writeLoveLetter("亲爱的，今晚的月亮让我想起你。");
+    assert.equal(l1.seen, false);
+    assert.equal(l1.text, "亲爱的，今晚的月亮让我想起你。");
+    const unseen = await s.getUnseenLoveLetters();
+    assert.equal(unseen.length, 1);
+    await s.markLoveLetterSeen(l1.id);
+    assert.deepEqual(await s.getUnseenLoveLetters(), []);
+    const all = await s.listLoveLetters();
+    assert.equal(all.length, 1);
+    assert.equal(all[0].seen, true);
+  });
+
+  it("rejects empty letter text", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    await assert.rejects(() => s.writeLoveLetter("   "), /required/);
+  });
+
+  it("delete love letter", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const l1 = await s.writeLoveLetter("第一封");
+    await s.writeLoveLetter("第二封");
+    assert.equal((await s.listLoveLetters()).length, 2);
+    assert.equal(await s.deleteLoveLetter(l1.id), true);
+    assert.equal((await s.listLoveLetters()).length, 1);
+    assert.equal(await s.deleteLoveLetter("nope"), false);
+  });
+
+  it("love_letter_write/read/delete tools work", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const tools = createOurSpaceTools(s);
+    const write = tools.find((t) => t.name === "love_letter_write")!;
+    const read = tools.find((t) => t.name === "love_letter_read")!;
+    const del = tools.find((t) => t.name === "love_letter_delete")!;
+    assert.equal(await read.run({}, ctx), "No love letters written yet.");
+    await write.run({ text: "想你了" }, ctx);
+    const out = await read.run({}, ctx);
+    assert.match(out, /想你了/);
+    assert.match(out, /unread/);
+    await assert.rejects(() => write.run({ text: "" }, ctx), /Missing required/);
+    const id = (await s.listLoveLetters())[0].id;
+    assert.equal(await del.run({ id }, ctx), "Love letter deleted.");
+    await assert.rejects(() => del.run({ id: "nope" }, ctx), /No love letter/);
   });
 });
 

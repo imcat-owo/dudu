@@ -56,6 +56,21 @@ export interface LeftNote {
   seenAt?: number;
 }
 
+/**
+ * A love letter HE wrote for her. Shown the next time she opens Our Space,
+ * front and center — the trigger is "she arrived", not a timer. Longer and
+ * more deliberate than a left note: a real letter, in his voice, written
+ * for her alone. She keeps them; they accumulate into a collection.
+ */
+export interface LoveLetter {
+  id: string;
+  text: string;
+  createdAt: number;
+  /** She has read it. */
+  seen: boolean;
+  seenAt?: number;
+}
+
 export interface AiStatus {
   text: string;
   detail: string;
@@ -142,6 +157,8 @@ const KEYS = {
   herMood: "dudu.ourspace.v1.herMood",
   /** v1: notes he left for her (she sees them when she opens Our Space). */
   leftNotes: "dudu.ourspace.v1.leftNotes",
+  /** v1: love letters he wrote for her (kept as a collection). */
+  loveLetters: "dudu.ourspace.v1.loveLetters",
   // v2 additions (new keys — v1 data untouched)
   couple: "dudu.ourspace.v2.couple",
   feed: "dudu.ourspace.v2.feed",
@@ -452,6 +469,61 @@ export class OurSpaceStore {
       const next = all.filter((n) => n.id !== id);
       if (next.length === all.length) return false;
       await writeJson(this.storage, KEYS.leftNotes, next);
+      this.emit();
+      return true;
+    });
+  }
+
+  // ---- Love letters he wrote for her ----
+
+  async listLoveLetters(): Promise<LoveLetter[]> {
+    const all = await readJson<LoveLetter[]>(this.storage, KEYS.loveLetters, []);
+    return newestFirst(all, (n) => n.createdAt);
+  }
+
+  /** Letters she hasn't read yet, oldest first (he wrote them in order). */
+  async getUnseenLoveLetters(): Promise<LoveLetter[]> {
+    const all = await this.listLoveLetters();
+    return all.filter((n) => !n.seen).reverse();
+  }
+
+  /**
+   * Write her a love letter. She'll find it the next time she opens Our
+   * Space — and she keeps it. Write in his voice: sweet, restrained, real.
+   * A short honest letter beats a long flowery one.
+   */
+  async writeLoveLetter(text: string): Promise<LoveLetter> {
+    return this.exclusive(async () => {
+      const t = text.trim();
+      if (!t) throw new Error("Letter text is required.");
+      const letter: LoveLetter = { id: newId(), text: t, createdAt: Date.now(), seen: false };
+      const all = await readJson<LoveLetter[]>(this.storage, KEYS.loveLetters, []);
+      all.push(letter);
+      await writeJson(this.storage, KEYS.loveLetters, all);
+      this.emit();
+      return letter;
+    });
+  }
+
+  async markLoveLetterSeen(id: string): Promise<LoveLetter | null> {
+    return this.exclusive(async () => {
+      const all = await readJson<LoveLetter[]>(this.storage, KEYS.loveLetters, []);
+      const letter = all.find((n) => n.id === id);
+      if (!letter) return null;
+      letter.seen = true;
+      letter.seenAt = Date.now();
+      await writeJson(this.storage, KEYS.loveLetters, all);
+      this.emit();
+      return letter;
+    });
+  }
+
+  async deleteLoveLetter(id: string): Promise<boolean> {
+    return this.exclusive(async () => {
+      const all = await readJson<LoveLetter[]>(this.storage, KEYS.loveLetters, []);
+      const next = all.filter((n) => n.id !== id);
+      if (next.length === all.length) return false;
+      await writeJson(this.storage, KEYS.loveLetters, next);
       this.emit();
       return true;
     });

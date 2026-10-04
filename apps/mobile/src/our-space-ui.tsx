@@ -31,6 +31,7 @@ import {
   MessageCircle,
   MessageCircleQuestion,
   MoonStar,
+  ScrollText,
   Send,
   Sprout,
   Trash2,
@@ -70,6 +71,7 @@ import type {
   FeedReply,
   HerMood,
   LeftNote,
+  LoveLetter,
   MemoryConfidence,
   TellLaterItem,
   TimelineEvent,
@@ -879,7 +881,8 @@ type SpacePage =
   | { type: "garden" }
   | { type: "status" }
   | { type: "tellLater" }
-  | { type: "music" };
+  | { type: "music" }
+  | { type: "loveLetters" };
 
 /** Couple header: her avatar + AI avatar overlapping, both customizable. */
 function CoupleHeader() {
@@ -1063,6 +1066,7 @@ const CARDS: CardDef[] = [
   { page: "tellLater", labelKey: "space.tabs.tellLater", icon: Bell },
   { page: "works", labelKey: "space.cards.works", icon: Images },
   { page: "music", labelKey: "space.cards.music", icon: Headphones },
+  { page: "loveLetters", labelKey: "space.cards.loveLetters", icon: ScrollText },
 ];
 
 const TAPE_ROTATION: Record<string, TapeColor> = {
@@ -1074,6 +1078,7 @@ const TAPE_ROTATION: Record<string, TapeColor> = {
   tellLater: "pink",
   works: "yellow",
   music: "blue",
+  loveLetters: "pink",
 };
 
 // ---- Today card: a quiet daily briefing — anniversaries, on-this-day, her mood ----
@@ -1964,6 +1969,125 @@ function LeftNoteView() {
   );
 }
 
+/** Unread love letters, shown front and center when she opens Our Space. */
+function LoveLetterView() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const { tokens } = useTheme();
+  const [letters, setLetters] = useState<LoveLetter[]>([]);
+
+  useEffect(() => {
+    void ourSpaceStore.getUnseenLoveLetters().then(setLetters);
+  }, [v]);
+
+  if (letters.length === 0) return null;
+
+  const letter = letters[0];
+  const dismiss = () => {
+    void ourSpaceStore.markLoveLetterSeen(letter.id);
+  };
+
+  return (
+    <FadeIn>
+      <View style={{ marginBottom: 18 }}>
+        <SoftCard>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: radii.xl,
+                backgroundColor: tokens.accent.bg,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ScrollText size={22} color={tokens.accent.fg} strokeWidth={1.6} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <TText
+                style={{
+                  color: colors.muted,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.5,
+                  marginBottom: 4,
+                }}
+              >
+                {t("space.loveLetter.title")}
+              </TText>
+              <TText style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>
+                {letter.text}
+              </TText>
+            </View>
+          </View>
+          <Pressable
+            onPress={dismiss}
+            style={{
+              marginTop: 14,
+              paddingVertical: 10,
+              borderRadius: radii.md,
+              backgroundColor: tokens.accent.bg,
+              alignItems: "center",
+            }}
+          >
+            <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "700" }}>
+              {t("space.loveLetter.dismiss")}
+            </TText>
+          </Pressable>
+        </SoftCard>
+        {letters.length > 1 && (
+          <TText style={{ color: colors.muted, fontSize: 11, marginTop: 8, textAlign: "center" }}>
+            +{letters.length - 1}
+          </TText>
+        )}
+      </View>
+    </FadeIn>
+  );
+}
+
+/** All love letters, kept as a collection. */
+function LoveLettersPage() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const [letters, setLetters] = useState<LoveLetter[]>([]);
+
+  useEffect(() => {
+    void ourSpaceStore.listLoveLetters().then(setLetters);
+  }, [v]);
+
+  if (letters.length === 0) {
+    return (
+      <View style={{ paddingTop: 40, alignItems: "center" }}>
+        <TText style={{ color: colors.muted, fontSize: 14, textAlign: "center", lineHeight: 22 }}>
+          {t("space.loveLetter.empty")}
+        </TText>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 14 }}>
+      {letters.map((letter) => (
+        <SoftCard key={letter.id}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+            <ScrollText size={18} color={colors.muted} strokeWidth={1.6} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <TText style={{ color: colors.text, fontSize: 15, lineHeight: 24 }}>
+                {letter.text}
+              </TText>
+              <TText style={{ color: colors.muted, fontSize: 11, marginTop: 8 }}>
+                {new Date(letter.createdAt).toLocaleDateString()}
+              </TText>
+            </View>
+            <DeleteEntryButton onDelete={() => ourSpaceStore.deleteLoveLetter(letter.id)} />
+          </View>
+        </SoftCard>
+      ))}
+    </View>
+  );
+}
+
 export function OurSpaceScreen() {
   const [page, setPage] = useState<SpacePage>({ type: "home" });
   const colors = useColors();
@@ -1978,6 +2102,7 @@ export function OurSpaceScreen() {
       status: t("space.status.title"),
       tellLater: t("space.tellLater.title"),
       music: t("music.title"),
+      loveLetters: t("space.cards.loveLetters"),
     };
     return (
       <View style={{ flex: 1, backgroundColor: colors.canvas }}>
@@ -1994,6 +2119,7 @@ export function OurSpaceScreen() {
             </>
           )}
           {page.type === "tellLater" && <TellLaterView />}
+          {page.type === "loveLetters" && <LoveLettersPage />}
           {page.type === "music" && <MusicRoomPage />}
         </PageShell>
       </View>
@@ -2008,6 +2134,7 @@ export function OurSpaceScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LeftNoteView />
+        <LoveLetterView />
         <FadeIn>
           <CoupleHeader />
         </FadeIn>

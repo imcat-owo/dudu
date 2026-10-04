@@ -11,13 +11,21 @@
  * never logs, never chat.
  */
 
-import { useEffect, useState } from "react";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from "expo-audio";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, Switch, View } from "react-native";
+import { useApiGroups } from "../api-groups/store";
 import { TText } from "../font";
 import { getLocale, t } from "../i18n";
 import { radii } from "../theme/radii";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
 import { useVoiceConfig, voiceStore } from "./store";
+import { transcribeAudio } from "./stt";
 import { synthesizeSpeech } from "./tts";
 import {
   EDGE_TTS_CHINESE_VOICES,
@@ -247,10 +255,88 @@ function TtsSection() {
 function SttSection() {
   const colors = useColors();
   const { stt, loaded } = useVoiceConfig();
+  const { active: activeGroup } = useApiGroups();
   const [draft, setDraft] = useState<SttConfig | null>(null);
   const [error, setError] = useState("");
   const cfg = draft ?? stt;
   const dirty = draft !== null;
+
+  // ---- STT test: record a short clip, transcribe it, show the result ----
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [testPhase, setTestPhase] = useState<"idle" | "recording" | "transcribing">("idle");
+  const [testSecs, setTestSecs] = useState(0);
+  const [testResult, setTestResult] = useState("");
+  const [testError, setTestError] = useState("");
+  const testTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const testStartRef = useRef(0);
+
+  function clearTestTimer() {
+    if (testTimer.current) {
+      clearInterval(testTimer.current);
+      testTimer.current = null;
+    }
+  }
+
+  // Cleanup on unmount: stop any in-progress test recording.
+  useEffect(() => {
+    return () => {
+      clearTestTimer();
+      if (recorder.isRecording) {
+        void recorder.stop().catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function startTest() {
+    setTestResult("");
+    setTestError("");
+    try {
+      const { status } = await requestRecordingPermissionsAsync();
+      if (status !== "granted") {
+        setTestError(t("voice.sttTestNoMic") as string);
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      testStartRef.current = Date.now();
+      setTestSecs(0);
+      setTestPhase("recording");
+      testTimer.current = setInterval(() => {
+        const s = Math.floor((Date.now() - testStartRef.current) / 1000);
+        setTestSecs(s);
+        if (s >= 10) void stopTest(); // auto-stop at 10s
+      }, 500);
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : String(e));
+      setTestPhase("idle");
+    }
+  }
+
+  async function stopTest() {
+    clearTestTimer();
+    // NOTE: don't read testPhase here — the 10s auto-stop timer runs in a
+    // stale closure. recorder.isRecording is the source of truth.
+    if (!recorder.isRecording) {
+      setTestPhase("idle");
+      return;
+    }
+    setTestPhase("transcribing");
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      if (!uri) throw new Error(t("voice.sttTestNoAudio") as string);
+      const text = await transcribeAudio(uri, activeGroup, cfg);
+      setTestResult(text);
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTestPhase("idle");
+      setTestSecs(0);
+    }
+  }
 
   function set<K extends keyof SttConfig>(key: K, value: SttConfig[K]) {
     setDraft((d) => ({ ...(d ?? stt), [key]: value }));
@@ -315,6 +401,45 @@ function SttSection() {
           </Button>
         </View>
       )}
+      {/* ---- STT test entry ---- */}
+      <View
+        style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line }}
+      >
+        <TText style={{ fontWeight: "700", marginBottom: 4 }}>{t("voice.sttTest")}</TText>
+        <TText style={{ color: colors.muted, fontSize: 12, marginBottom: 10 }}>
+          {t("voice.sttTestDesc")}
+        </TText>
+        {testPhase === "idle" ? (
+          <Button onPress={() => void startTest()}>{t("voice.sttTestStart")}</Button>
+        ) : testPhase === "recording" ? (
+          <View style={{ gap: 8 }}>
+            <TText style={{ color: colors.danger, fontWeight: "700" }}>
+              {t("voice.sttTestRecording", { n: testSecs })}
+            </TText>
+            <Button onPress={() => void stopTest()}>{t("voice.sttTestStop")}</Button>
+          </View>
+        ) : (
+          <TText style={{ color: colors.muted }}>{t("voice.sttTestTranscribing")}</TText>
+        )}
+        {!!testResult && (
+          <View
+            style={{
+              marginTop: 10,
+              padding: 10,
+              borderRadius: radii.sm,
+              backgroundColor: colors.sky,
+            }}
+          >
+            <TText style={{ fontWeight: "700", fontSize: 12, marginBottom: 4 }}>
+              {t("voice.sttTestResult")}
+            </TText>
+            <TText style={{ fontSize: 14, lineHeight: 20 }}>{testResult}</TText>
+          </View>
+        )}
+        {!!testError && (
+          <TText style={{ color: colors.danger, marginTop: 10, fontSize: 13 }}>{testError}</TText>
+        )}
+      </View>
     </Card>
   );
 }

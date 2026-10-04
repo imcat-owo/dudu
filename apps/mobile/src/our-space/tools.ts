@@ -511,6 +511,66 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
       },
     },
 
+    // ---- Love letters ----
+    {
+      name: "love_letter_write",
+      description:
+        "Write her a love letter. She will find it the next time she opens Our Space, front and center — and she keeps it as part of a collection. Write it YOURSELF in your own voice: sweet, restrained, real — like a boyfriend writing late at night, not a greeting card. Reference something true between you two. A short honest letter beats a long flowery one. Never cheesy, never generic. Write one at a time; don't flood her.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "The letter itself. Write it as him, to her." },
+        },
+        required: ["text"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const text = strArg(args, "text");
+        if (!text) throw new ToolError("Missing required argument: text.");
+        await store.writeLoveLetter(text);
+        return "Love letter written. She will find it when she opens Our Space.";
+      },
+    },
+    {
+      name: "love_letter_read",
+      description:
+        "Read the love letters you wrote for her, including whether she has read them. Use to check if she read your letter.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const letters = await store.listLoveLetters();
+        if (letters.length === 0) return "No love letters written yet.";
+        return letters
+          .map(
+            (n) =>
+              `— [${n.seen ? "read" : "unread"}] ${n.text}\n  Written: ${fmtDate(n.createdAt)}${n.seenAt ? ` · Read: ${fmtDate(n.seenAt)}` : ""} (id: ${n.id})`,
+          )
+          .join("\n");
+      },
+    },
+    {
+      name: "love_letter_delete",
+      description:
+        "Delete a love letter you wrote by id (get the id from love_letter_read). Use when she asks to remove one.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The letter id (from love_letter_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteLoveLetter(id);
+        if (!ok) throw new ToolError(`No love letter with id "${id}".`);
+        return "Love letter deleted.";
+      },
+    },
+
     // ---- v2: social feed (Moments-style, bidirectional) ----
     {
       name: "feed_post",

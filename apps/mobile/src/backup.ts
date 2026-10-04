@@ -90,6 +90,7 @@ const OURSPACE_KEYS = [
   "dudu.ourspace.v1.status",
   "dudu.ourspace.v1.herMood",
   "dudu.ourspace.v1.leftNotes",
+  "dudu.ourspace.v1.loveLetters",
   "dudu.ourspace.v2.couple",
   "dudu.ourspace.v2.feed",
   "dudu.ourspace.v2.replies",
