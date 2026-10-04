@@ -55,7 +55,7 @@ export type VisionPlan =
       viaGroup: CapabilityGroup;
       candidates: ResolvedMember[];
     }
-  | { mode: "unavailable"; reason: "no-vision-config" | "group-empty" | "routing-disabled" };
+  | { mode: "unavailable"; reason: "no-active-group" | "no-vision-config" | "group-empty" | "routing-disabled" };
 
 /** Resolve member ids against real ApiGroups, preserving order. Missing
  *  groups (deleted connections) are skipped, not fatal. */
@@ -93,7 +93,9 @@ export function planVision(
   apiGroups: ApiGroup[],
   routingEnabled: boolean,
 ): VisionPlan {
-  if (!current) return { mode: "unavailable", reason: "no-vision-config" };
+  // P3-7: no active group at all — a distinct reason. "no-vision-config"
+  // would wrongly imply a group exists but lacks vision settings.
+  if (!current) return { mode: "unavailable", reason: "no-active-group" };
 
   // 1. Fast path — the current model sees images itself.
   if (current.vision?.native) {

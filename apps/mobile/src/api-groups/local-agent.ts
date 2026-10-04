@@ -38,20 +38,23 @@ import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
-import { buildAnniversarySection, getUpcomingAnniversaries } from "../our-space/anniversary-section.js";
-import type { Anniversary } from "../our-space/store.js";
-import { evaluateOutreachTriggers } from "../outreach/engine.js";
-import { buildOutreachSection } from "../outreach/prompt.js";
+import {
+  buildAnniversarySection,
+  getUpcomingAnniversaries,
+} from "../our-space/anniversary-section.js";
 import { buildHerMoodSection } from "../our-space/her-mood-section.js";
 import { buildHerRhythmSection } from "../our-space/her-rhythm.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { buildNicknameSection } from "../our-space/nickname-section.js";
+import type { Anniversary } from "../our-space/store.js";
 import { taskProgressStore } from "../our-space/task-progress-instance.js";
 import {
   createAmbientVideoTools,
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools.js";
+import { evaluateOutreachTriggers } from "../outreach/engine.js";
+import { buildOutreachSection } from "../outreach/prompt.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { createFontSizeTools } from "../settings/tools.js";
@@ -618,8 +621,15 @@ export function createLocalAgent(opts: {
 
   function emit() {
     const snap = [...messages];
-    for (const l of listeners)
-      l({ messages: snap, historySaveFailed: historyPersistFailed(opts.threadId) });
+    for (const l of listeners) {
+      // P3-11: one throwing subscriber must not kill the others or the
+      // agent itself — isolate each listener.
+      try {
+        l({ messages: snap, historySaveFailed: historyPersistFailed(opts.threadId) });
+      } catch {
+        // A subscriber's render threw; the agent's state is still fine.
+      }
+    }
   }
 
   function newId(prefix: string): string {
@@ -922,11 +932,9 @@ export function createLocalAgent(opts: {
             // current content so the turn result survives in UI/storage.
             // An explicit full clear ([]) is honored as-is: she asked for a
             // fresh start, and the next reply will be a new message.
-            if (msgs.length > 0 && lastReply && !messages.some((m) => m.id === lastReply!.id)) {
-              messages = [
-                ...messages,
-                { id: lastReply.id, role: "assistant", content: lastReply.content },
-              ];
+            const live = lastReply;
+            if (msgs.length > 0 && live && !messages.some((m) => m.id === live.id)) {
+              messages = [...messages, { id: live.id, role: "assistant", content: live.content }];
             }
             emit();
             persist(messages);
@@ -1212,6 +1220,7 @@ export function createLocalAgent(opts: {
         }
       } catch {
         // Outreach eval failure: skip silently, never break the prompt.
+      }
       }
       // Intelligent API adaptation: resolve effective tools/thinking state.
       // Precedence: her manual override (group) → learned profile → auto

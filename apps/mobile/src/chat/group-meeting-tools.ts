@@ -27,9 +27,9 @@
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import { planGateStore } from "../api-groups/plan-gate-instance.js";
 import type { ApiGroup } from "../api-groups/types.js";
+import { createWriteChain, type ExclusiveRunner } from "../util/write-chain.js";
 import { type CrossDialogStorage, DEFAULT_PERSONA_ID, listDialogs } from "./cross-dialog.js";
 import type { CrossDialogTraceStore } from "./cross-dialog-trace.js";
-import { createWriteChain, type ExclusiveRunner } from "../util/write-chain.js";
 import {
   buildMemberPrompt,
   DEFAULT_MAX_ROUNDS,
@@ -145,7 +145,7 @@ function roundChain(meetingId: string): ExclusiveRunner {
   return c;
 }
 
-function checkPlanGate(planId: string | null): void {
+function checkPlanGate(planId: string | null, meetingId?: string): void {
   if (!planId) return;
   const plan = planGateStore.getPlan(planId);
   if (!plan) {
@@ -167,14 +167,17 @@ function checkPlanGate(planId: string | null): void {
     );
   }
   if (plan.status === "consumed") {
+    // P2-9: a consumed plan is spent — UNLESS this meeting is the one that
+    // spent it. Rounds belong to the meeting the approval authorized, so
+    // they keep passing the per-round re-check; a *different* meeting (or a
+    // fresh start_group_meeting) may not reuse it.
+    if (meetingId && plan.consumedByMeetingId === meetingId) return;
     throw new ToolError(
       `计划「${plan.title}」已经用过一次、开过一个会了（consumed）——一次批准只够开一次会。想再开会，重新用 propose_coordination_plan 提计划，等她批准。`,
     );
   }
   if (plan.status === "revoked") {
-    throw new ToolError(
-      `计划「${plan.title}」的批准被她收回了（revoked）。不要再用这个计划开会。`,
-    );
+    throw new ToolError(`计划「${plan.title}」的批准被她收回了（revoked）。不要再用这个计划开会。`);
   }
   throw new ToolError(
     `计划「${plan.title}」她还没决定（proposed）。等她点了批准再开会，不要先斩后奏。`,
@@ -370,7 +373,9 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
         if (planId) {
           // P2-9: one approval authorizes ONE meeting. Consume it now that
           // the meeting exists — a second meeting needs a fresh approval.
-          planGateStore.consumePlan(planId);
+          // The meeting id is recorded so this meeting's own rounds keep
+          // passing the per-round re-check below.
+          planGateStore.consumePlan(planId, meeting.id);
         }
 
         const name0 = await fromName();
@@ -410,9 +415,7 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       manualId: "group-meeting",
       run: async (args) => {
         if (incognito()) {
-          throw new ToolError(
-            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
-          );
+          throw new ToolError("隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。");
         }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
@@ -427,66 +430,67 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
               `会议「${meeting.name}」已经结束了${meeting.conclusion ? "，结论已写" : ""}。想再聊就开个新会。`,
             );
           }
-          // 开启原则：每轮重查计划——她随时能叫停。
-        checkPlanGate(meeting.planId ?? null);
+          // 开启原则：每轮重查计划——她随时能叫停。传入本会 id：计划是为这个会
+          // 消费的，自己的轮次不受 consumed 限制（P2-9）。
+          checkPlanGate(meeting.planId ?? null, meeting.id);
 
-        const groups = deps.listApiGroups();
-        const speakers = selectSpeakers(meeting);
-        const roundNo = meeting.roundsCompleted + 1;
-        const lines: string[] = [];
-        const failures: string[] = [];
+          const groups = deps.listApiGroups();
+          const speakers = selectSpeakers(meeting);
+          const roundNo = meeting.roundsCompleted + 1;
+          const lines: string[] = [];
+          const failures: string[] = [];
 
-        for (const speaker of speakers) {
-          const group = groups.find((g) => g.id === speaker.apiGroupId);
-          if (!group) {
-            failures.push(`${speaker.displayName} 的模型找不到了（分组可能被她删了），跳过。`);
-            continue;
+          for (const speaker of speakers) {
+            const group = groups.find((g) => g.id === speaker.apiGroupId);
+            if (!group) {
+              failures.push(`${speaker.displayName} 的模型找不到了（分组可能被她删了），跳过。`);
+              continue;
+            }
+            const { system, user } = buildMemberPrompt(speaker, meeting);
+            try {
+              const text = await deps.generate(group, system, user);
+              const saved = await deps.meetings.appendMessage(meeting.id, {
+                memberId: speaker.id,
+                memberName: speaker.displayName,
+                text,
+                round: roundNo,
+              });
+              // In-round visibility: the next speaker sees this one (ST-style serial
+              // generation). The persisted message carries the real id.
+              if (saved) meeting.transcript.push(saved);
+              lines.push(`${speaker.displayName}：${text}`);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              failures.push(`${speaker.displayName} 的模型出错了（${msg}），本轮跳过他。`);
+            }
           }
-          const { system, user } = buildMemberPrompt(speaker, meeting);
-          try {
-            const text = await deps.generate(group, system, user);
-            const saved = await deps.meetings.appendMessage(meeting.id, {
-              memberId: speaker.id,
-              memberName: speaker.displayName,
-              text,
-              round: roundNo,
-            });
-            // In-round visibility: the next speaker sees this one (ST-style serial
-            // generation). The persisted message carries the real id.
-            if (saved) meeting.transcript.push(saved);
-            lines.push(`${speaker.displayName}：${text}`);
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            failures.push(`${speaker.displayName} 的模型出错了（${msg}），本轮跳过他。`);
+
+          const updated = await deps.meetings.completeRound(meeting.id);
+          const done = updated ? shouldEndMeeting(updated) : false;
+
+          const name0 = await fromName();
+          const summaryParts = [
+            `第 ${roundNo} 轮：${speakers.length} 位发言`,
+            ...failures.map((f) => `${f}`),
+          ];
+          await deps.trace.append({
+            action: "meeting_round",
+            fromThreadId: deps.threadId,
+            fromName: name0,
+            toThreadId: meeting.id,
+            toName: meeting.name,
+            summary: summaryParts.join("；"),
+            reason: meeting.planId ? `approved plan ${meeting.planId}` : "her request",
+            personaId,
+          });
+
+          let out = `第 ${roundNo} 轮结束（${meetingProgressLabel(updated ?? meeting)}）：\n${lines.join("\n")}`;
+          if (failures.length > 0) out += `\n\n本轮故障：\n${failures.join("\n")}`;
+          if (done) {
+            out +=
+              `\n\n会议达到结束条件了——用 end_meeting 写四段式结论` +
+              `（主题/各方观点/共识/未解决分歧），然后用你自己的话向她汇报。不要再开新轮。`;
           }
-        }
-
-        const updated = await deps.meetings.completeRound(meeting.id);
-        const done = updated ? shouldEndMeeting(updated) : false;
-
-        const name0 = await fromName();
-        const summaryParts = [
-          `第 ${roundNo} 轮：${speakers.length} 位发言`,
-          ...failures.map((f) => `${f}`),
-        ];
-        await deps.trace.append({
-          action: "meeting_round",
-          fromThreadId: deps.threadId,
-          fromName: name0,
-          toThreadId: meeting.id,
-          toName: meeting.name,
-          summary: summaryParts.join("；"),
-          reason: meeting.planId ? `approved plan ${meeting.planId}` : "her request",
-          personaId,
-        });
-
-        let out = `第 ${roundNo} 轮结束（${meetingProgressLabel(updated ?? meeting)}）：\n${lines.join("\n")}`;
-        if (failures.length > 0) out += `\n\n本轮故障：\n${failures.join("\n")}`;
-        if (done) {
-          out +=
-            `\n\n会议达到结束条件了——用 end_meeting 写四段式结论` +
-            `（主题/各方观点/共识/未解决分歧），然后用你自己的话向她汇报。不要再开新轮。`;
-        }
           return out;
         });
       },
@@ -504,11 +508,9 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       },
       manualId: "group-meeting",
       run: async (args) => {
-        if (incognito()) {
-          throw new ToolError(
-            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
-          );
-        }
+        // P3-10: genuinely read-only (description promises it) — no
+        // incognito refusal. It writes nothing and spends no API money,
+        // unlike start/run/end. The old check was copied from those.
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
         const meeting = await deps.meetings.get(meetingId);
@@ -538,9 +540,7 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       manualId: "group-meeting",
       run: async (args) => {
         if (incognito()) {
-          throw new ToolError(
-            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
-          );
+          throw new ToolError("隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。");
         }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");

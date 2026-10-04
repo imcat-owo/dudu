@@ -315,9 +315,17 @@ export function streamChat(
     // Mid-stream stall watchdog (P2-1 companion to xhr.timeout below).
     let stallTimer: ReturnType<typeof setTimeout> | null = null;
 
+    // P3-9: named abort handler, removed on settle — the old anonymous
+    // listener was never detached and pinned this whole closure (xhr,
+    // parser, callbacks) to the AbortSignal.
+    const onAbort = () => fail(new GroupError(group.name, "aborted"));
+    callbacks.signal?.addEventListener("abort", onAbort);
+    const detachAbort = () => callbacks.signal?.removeEventListener("abort", onAbort);
+
     const succeed = () => {
       if (settled) return;
       settled = true;
+      detachAbort();
       if (fallbackTimer) clearTimeout(fallbackTimer);
       clearStallTimer();
       try {
@@ -338,6 +346,7 @@ export function streamChat(
     const fail = (e: Error) => {
       if (settled) return;
       settled = true;
+      detachAbort();
       if (fallbackTimer) clearTimeout(fallbackTimer);
       clearStallTimer();
       try {
@@ -380,8 +389,6 @@ export function streamChat(
       if (stallTimer) clearTimeout(stallTimer);
       stallTimer = null;
     };
-
-    callbacks.signal?.addEventListener("abort", () => fail(new GroupError(group.name, "aborted")));
 
     xhr.open("POST", endpointFor(group));
     for (const [k, v] of Object.entries(requestHeaders(group))) xhr.setRequestHeader(k, v);

@@ -16,7 +16,7 @@
  *   the trace — the fact of the send stays visible in the trace log.
  */
 
-import { createWriteChain } from "../../util/write-chain";
+import { createWriteChain } from "../util/write-chain.js";
 
 export type CrossDialogAction =
   | "list"
@@ -144,9 +144,10 @@ export class CrossDialogTraceStore {
     return all.filter(isValidEntry).reverse().slice(0, Math.max(0, limit));
   }
 
-  /** Record one action. Always succeeds from the caller's perspective — a
-   *  storage failure must never take the AI turn down, but it also must
-   *  never silently pass: the error is rethrown so the tool reports it. */
+  /** Record one action. Storage failures propagate to the caller (the tool
+   *  reports them) — a trace entry is never silently dropped. P3-6: the old
+   *  docstring claimed "always succeeds" AND "the error is rethrown"; the
+   *  code rethrows, so the docstring now says that. */
   async append(entry: NewTraceEntry): Promise<CrossDialogTraceEntry> {
     return this.exclusive(async () => {
       const all = await readJson<unknown[]>(this.storage, TRACE_STORAGE_KEY, []);

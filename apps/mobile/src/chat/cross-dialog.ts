@@ -251,6 +251,12 @@ export async function listDialogs(
  * Resolve a dialog by id or name. Honest failures: unknown ref, ambiguous
  * name, or persona mismatch all throw ToolError with a plain message —
  * never a guess.
+ *
+ * P3-8: single pass over keys + registry only. The old version called
+ * listDialogs() which loaded EVERY dialog's full message history just to
+ * resolve one ref — O(entire history) per resolve. Name matching uses the
+ * registry name (unnamed dialogs fall back to the short id); for derived
+ * names the caller lists dialogs first — the error message says so.
  */
 export async function resolveDialog(
   storage: CrossDialogStorage,
@@ -260,30 +266,39 @@ export async function resolveDialog(
   const needle = ref.trim();
   if (!needle) throw new ToolError("Tell me which dialog — by name or id.");
   const lower = needle.toLowerCase();
-  // Persona isolation, explicit and first: the dialog exists but belongs to
-  // a different persona — the AI must not touch it, and must say so plainly.
-  // (Checked before the empty-list shortcut so the denial is never masked.)
   const allKeys = await storage.getAllKeys().catch(() => [] as readonly string[]);
   const registry = await readRegistry(storage);
+  const own: DialogInfo[] = [];
   for (const key of allKeys) {
     const id = threadIdFromKey(key);
     if (!id) continue;
-    if (id === needle || (registry[id]?.name ?? "").toLowerCase() === lower) {
-      const entryPersona = registry[id]?.personaId ?? DEFAULT_PERSONA_ID;
+    const entryPersona = registry[id]?.personaId ?? DEFAULT_PERSONA_ID;
+    const name = registry[id]?.name ?? `未命名对话 ${shortId(id)}`;
+    // Persona isolation, explicit and first: the dialog exists but belongs to
+    // a different persona — the AI must not touch it, and must say so plainly.
+    if (id === needle || name.toLowerCase() === lower) {
       if (entryPersona !== personaId) {
         throw new ToolError(
           "That dialog belongs to a different persona — I can't read it or send to it. Persona data never crosses over.",
         );
       }
     }
+    if (entryPersona !== personaId) continue;
+    own.push({
+      id,
+      name,
+      personaId: entryPersona,
+      messageCount: 0,
+      lastActiveAt: 0,
+      named: !!registry[id]?.name,
+    });
   }
-  const dialogs = await listDialogs(storage, personaId);
-  if (dialogs.length === 0) throw new ToolError("There are no other dialogs yet.");
-  const exactId = dialogs.find((d) => d.id === needle);
+  if (own.length === 0) throw new ToolError("There are no other dialogs yet.");
+  const exactId = own.find((d) => d.id === needle);
   if (exactId) return exactId;
-  const exactName = dialogs.filter((d) => d.name.toLowerCase() === lower);
+  const exactName = own.filter((d) => d.name.toLowerCase() === lower);
   if (exactName.length === 1) return exactName[0];
-  const partial = dialogs.filter((d) => d.name.toLowerCase().includes(lower));
+  const partial = own.filter((d) => d.name.toLowerCase().includes(lower));
   if (partial.length === 1) return partial[0];
   if (partial.length > 1) {
     throw new ToolError(

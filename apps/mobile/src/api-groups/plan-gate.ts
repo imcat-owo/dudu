@@ -52,6 +52,9 @@ export interface CoordinationPlan {
   steps: CoordinationPlanStep[];
   status: CoordinationPlanStatus;
   createdAt: number;
+  /** P2-9: which meeting spent this approval. Rounds of that same meeting
+   * keep passing the per-round plan re-check; a different meeting may not. */
+  consumedByMeetingId?: string;
 }
 
 export interface ProposePlanInput {
@@ -217,13 +220,18 @@ export function createPlanGateStore(initialPersistence?: PlanGatePersistence) {
     /**
      * Consume an approved plan (P2-9): one approval authorizes ONE meeting.
      * start_group_meeting calls this after the meeting is created, so a
-     * second meeting can't ride on the same approval. Returns false unless
-     * the plan was approved and unused.
+     * second meeting can't ride on the same approval. The spending meeting's
+     * id is recorded so its own rounds keep passing the per-round re-check.
+     * Returns false unless the plan was approved and unused.
      */
-    consumePlan(planId: string): boolean {
+    consumePlan(planId: string, meetingId?: string): boolean {
       const p = plans.get(planId);
       if (p?.status !== "approved") return false;
-      plans.set(planId, { ...p, status: "consumed" });
+      plans.set(planId, {
+        ...p,
+        status: "consumed",
+        ...(meetingId ? { consumedByMeetingId: meetingId } : {}),
+      });
       emit();
       scheduleSave();
       return true;
