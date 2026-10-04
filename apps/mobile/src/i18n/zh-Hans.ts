@@ -212,6 +212,7 @@ const zhHans = {
   "space.couple.useInChat": "用在聊天里",
   "space.couple.usedInChat": "已用在聊天里",
   "space.couple.daysTogether": "在一起 {n} 天",
+  "space.couple.counters": "这是我们第 {listens} 次一起听歌 · 第 {letters} 封情书",
   "space.feed.title": "动态",
   "space.feed.empty": "这里空空的，等我们一起填满。跟我说一声，我来发第一条。",
   "space.feed.postHint": "此刻，想说什么…",

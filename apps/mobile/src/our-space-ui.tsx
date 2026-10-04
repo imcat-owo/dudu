@@ -83,6 +83,8 @@ import type {
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
 import { daysTogether, resolveTogetherSince } from "./our-space/together";
+import { getCoupleCounters, type CoupleCounters } from "./our-space/couple-counters";
+import { musicStore } from "./music/instance";
 import { SoraAmbient } from "./sora-ambient";
 import { ambientVideoStore } from "./sora-ambient-video-instance";
 import { radii } from "./theme/radii";
@@ -914,6 +916,7 @@ function CoupleHeader() {
   const { bundle, applyBundle } = useTheme();
   const [profile, setProfile] = useState<CoupleProfile | null>(null);
   const [togetherDays, setTogetherDays] = useState<number | null>(null);
+  const [counters, setCounters] = useState<CoupleCounters | null>(null);
   const [chatApplied, setChatApplied] = useState(false);
 
   useEffect(() => {
@@ -923,6 +926,13 @@ function CoupleHeader() {
       const anniversaries = await ourSpaceStore.listAnniversaries();
       const since = resolveTogetherSince(p, anniversaries);
       setTogetherDays(daysTogether(since));
+      // "我们第 N 次" (xiaomeng P2-2): derived from real records only.
+      const c = await getCoupleCounters({
+        countTogetherListens: () => musicStore.countTogetherListens(),
+        countLoveLetters: async () => (await ourSpaceStore.listLoveLetters()).length,
+        countDiaryEntries: async () => (await ourSpaceStore.listDiary(1_000_000)).length,
+      }).catch(() => null);
+      setCounters(c);
     })();
   }, [v]);
 
@@ -1131,6 +1141,14 @@ function CoupleHeader() {
             {t("space.couple.daysTogether", { n: togetherDays })}
           </TText>
         </View>
+      )}
+      {counters !== null && (counters.togetherListens > 0 || counters.loveLetters > 0) && (
+        <TText style={{ color: colors.muted, fontSize: 12, marginTop: 6, textAlign: "center" }}>
+          {t("space.couple.counters", {
+            listens: counters.togetherListens,
+            letters: counters.loveLetters,
+          })}
+        </TText>
       )}
     </View>
   );

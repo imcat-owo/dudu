@@ -656,6 +656,15 @@ export class MusicStore {
       .sort((a, b) => b - a);
   }
 
+  /**
+   * Total "我们一起听过" count — every entry exists because a track
+   * actually played with together mode on (xiaomeng P2-2: "我们第 N 次").
+   */
+  async countTogetherListens(): Promise<number> {
+    const all = await readJson<TogetherListen[]>(this.storage, KEYS.togetherListens, []);
+    return all.length;
+  }
+
   // ---------- queue ----------
 
   async enqueue(trackId: string): Promise<boolean> {

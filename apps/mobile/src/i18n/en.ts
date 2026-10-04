@@ -215,6 +215,7 @@ export const enStrings: Record<StringKey, string> = {
   "space.couple.useInChat": "Use in chat",
   "space.couple.usedInChat": "Now in chat",
   "space.couple.daysTogether": "Together for {n} days",
+  "space.couple.counters": "Listened together {listens} times · {letters} love letters",
   "space.feed.title": "Moments",
   "space.feed.empty":
     "Empty here, waiting for us to fill it. Say the word and I will post the first one.",
