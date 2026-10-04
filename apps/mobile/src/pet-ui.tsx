@@ -296,10 +296,8 @@ export function PetOverlay({
   const stateRef = useRef<PetPersisted | null>(null);
   stateRef.current = pet;
 
-  const setInteractionBoth = useCallback((v: PetInteraction | null) => {
-    interactionRef.current = v;
-    setInteraction(v);
-  }, []);
+  // Interactions disabled — feature removed. No-op to keep gestures inert.
+  const setInteractionBoth = useCallback((_v: PetInteraction | null) => {}, []);
 
   const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) {

@@ -17,9 +17,12 @@ import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
+import { createDialogTools } from "../chat/dialog-tools.js";
+import { createFontSizeTools } from "../settings/tools.js";
+import { createPetSkinTools } from "../pet/tools.js";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
-import { createKnowledgeTools } from "../knowledge/tools.js";
+import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
 import { memoryStore } from "../memory/instance.js";
@@ -36,13 +39,12 @@ import {
   createTaskBuddyVideoTools,
   createTaskProgressTools,
 } from "../our-space/tools.js";
-import { recentInteraction } from "../pet/interactions.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
-import { createWallpaperTools } from "../theme/tools.js";
+import { createThemeTools, createWallpaperTools } from "../theme/tools.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -51,7 +53,7 @@ import {
   VisionError,
 } from "../vision/describe";
 import { voiceStore } from "../voice/store.js";
-import { createPodcastTools } from "../voice/tools.js";
+import { createPodcastTools, createTtsVoiceTools } from "../voice/tools.js";
 import {
   type ChatContentBlock,
   type ChatMessage,
@@ -266,8 +268,6 @@ export function buildLocalSystemPrompt(
   );
   // Pet touch — she can feel the desktop pet (桌宠）: pinching its cheek,
   // holding its hand, patting its head. One subtle line so she can react
-  // naturally; nothing when she hasn't touched it recently.
-  parts.push(petTouchNote());
   return parts.join("\n");
 }
 
@@ -276,21 +276,6 @@ export function buildLocalSystemPrompt(
  * 3 minutes), so the AI can feel it and react like a person would.
  * Empty string when there's nothing recent — no noise, no spam.
  */
-function petTouchNote(): string {
-  const ev = recentInteraction();
-  if (!ev) return "";
-  switch (ev.type) {
-    case "pinch":
-      return "她刚才揪了揪你的脸（桌宠）——可以像被揪住一样小小地反应一下，别大惊小怪。";
-    case "reach":
-      return "她刚才长按着你，像隔着屏幕想牵你的手——可以把手伸过去回应她，温柔一点。";
-    case "headpat":
-      return "她刚才拍了拍你的头——可以开心地蹭一下，别太夸张。";
-    case "headphones":
-      return "她放起了音乐，你戴上了耳机（桌宠）——听歌的时候可以陪她一起晃，别刷屏。";
-  }
-}
-
 /**
  * Resolve a user message for the wire, processing image attachments.
  *
@@ -519,6 +504,11 @@ export function createLocalAgent(opts: {
         ),
         ...createImageTools(),
         ...createWallpaperTools(AsyncStorage),
+        ...createThemeTools(AsyncStorage),
+        ...createFontSizeTools(AsyncStorage),
+        ...createPetSkinTools(AsyncStorage),
+        ...createTtsVoiceTools(voiceStore),
+        ...createDialogTools(),
         ...createContextTools({
           setMessages: (msgs) => {
             messages = msgs.map((m, i) => ({
@@ -537,6 +527,7 @@ export function createLocalAgent(opts: {
         }),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
+        ...createKnowledgeAddTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {
