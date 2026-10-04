@@ -44,7 +44,7 @@ import { useChatMode } from "./api-groups/mode";
 import { useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
-import { resolveAvatarState } from "./avatar-state";
+import { MILESTONE_CELEBRATION_MS, resolveAvatarState } from "./avatar-state";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
@@ -65,6 +65,7 @@ import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { resolveAssistantText } from "./message-text";
+import { taskProgressStore } from "./our-space/task-progress-instance";
 import {
   registerDropZone,
   setAiBubbleMessageId,
@@ -618,9 +619,14 @@ export function ChatScreen({
     }
     // P2-5: persist to stable storage first — the recorder's temp URI can be
     // purged by the OS and is never backed up. Best-effort: sending never breaks.
+    // Incognito: skip the durable copy — the session is ephemeral, so the
+    // recorder's temp URI is enough for in-session playback and nothing
+    // durable is left on disk.
     try {
-      const { persistVoiceMessage } = await import("./voice/voice-message-files.js");
-      uri = await persistVoiceMessage(uri);
+      if (!incognitoOn) {
+        const { persistVoiceMessage } = await import("./voice/voice-message-files.js");
+        uri = await persistVoiceMessage(uri);
+      }
     } catch {
       // keep the original uri
     }
@@ -638,17 +644,53 @@ export function ChatScreen({
       : null;
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const replying = busy || agent.isRunning;
+  // Creative tools executing right now — the avatar plays its
+  // "making something" clip instead of the generic working one.
+  const makingSomething =
+    agent.activeToolName === "generate_image" || agent.activeToolName === "generate_podcast";
+  // Milestone celebration: when a task card freshly reaches done, the avatar
+  // plays the level-up clip for a few seconds, then falls back to the live
+  // signals. Cards already done at mount are seeded silently — no confetti
+  // for old news.
+  const [celebrateUntil, setCelebrateUntil] = useState(0);
+  const taskStatuses = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const check = () => {
+      const prev = taskStatuses.current;
+      const next = new Map<string, string>();
+      let freshDone = false;
+      for (const t of taskProgressStore.list()) {
+        next.set(t.id, t.status);
+        if (t.status === "done" && prev && prev.get(t.id) !== "done") freshDone = true;
+      }
+      taskStatuses.current = next;
+      if (freshDone) {
+        setCelebrateUntil(Date.now() + MILESTONE_CELEBRATION_MS);
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => setCelebrateUntil(0), MILESTONE_CELEBRATION_MS);
+      }
+    };
+    check();
+    const unsub = taskProgressStore.subscribe(check);
+    return () => {
+      unsub();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
   // The desktop pet watches this: while the AI is working it shows busy.
   // Same source of truth as AnimatedAvatar (resolveAvatarState) — the pet
   // mirrors the avatar's state video.
   useEffect(() => {
     petActivity.setAiBusy(replying);
-    petActivity.setAvatarState(resolveAvatarState({ busy, running: agent.isRunning }));
+    petActivity.setAvatarState(
+      resolveAvatarState({ busy, running: agent.isRunning, makingSomething, celebrateUntil }),
+    );
     return () => {
       petActivity.setAiBusy(false);
       petActivity.setAvatarState("idle");
     };
-  }, [replying]);
+  }, [replying, agent.activeToolName, celebrateUntil]);
   // Id of the last assistant message with a visible bubble — the pet's
   // "sit on the AI bubble" drop target.
   const lastAiBubbleId = useMemo(() => {

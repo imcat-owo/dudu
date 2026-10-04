@@ -1,8 +1,9 @@
 /**
  * 知识库 (Knowledge Base) — management UI.
  *
- * Sheet with the document list: upload (txt/md), indexing progress,
- * delete. PDF/Word are honestly labeled "coming soon" — no fake support.
+ * Sheet with the document list: upload (txt/md/pdf), indexing progress,
+ * delete. Word/Excel/PowerPoint are honestly labeled "coming soon" —
+ * no fake support. PDF text extraction is real (hidden WebView extractor).
  *
  * Sora gray, compact refined type, lucide icons only. Zero emoji.
  */
@@ -31,7 +32,6 @@ import { healInterruptedDocs, type IndexProgress, indexDocument, reindexDocument
 import { getKnowledgeStore } from "./instance";
 import { PdfTextExtractor } from "./pdf-extract";
 import type { KbDoc } from "./store";
-import type { SqliteKnowledgeStore } from "./vec-store";
 
 const SUPPORTED_EXT = /\.(txt|md|markdown|pdf)$/i;
 const UNSUPPORTED_EXT = /\.(docx?|pptx?|xlsx?)$/i;
@@ -55,7 +55,6 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<IndexProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [, setStore] = useState<SqliteKnowledgeStore | null>(null);
   // PDF extraction state: when set, renders a hidden PdfTextExtractor.
   const [pdfJob, setPdfJob] = useState<{
     uri: string;
@@ -66,7 +65,6 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
 
   const refresh = useCallback(async () => {
     const s = await getKnowledgeStore();
-    setStore(s);
     setDocs(await s.listDocs());
   }, []);
 
@@ -75,7 +73,6 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
     let cancelled = false;
     void getKnowledgeStore().then((s) => {
       if (cancelled) return;
-      setStore(s);
       // Self-healing: docs left "indexing" by a crashed session would spin
       // forever — mark the stale ones failed (recent ones might still be
       // indexing right now, so those are left alone).

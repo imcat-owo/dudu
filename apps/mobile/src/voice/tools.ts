@@ -82,6 +82,7 @@ export function createPodcastTools(
   voiceStore: import("./store.js").VoiceStore,
   taskStore: import("../our-space/task-progress.js").TaskProgressStore,
   locale: PodcastLocale = "zh-Hans",
+  opts?: { isIncognito?: () => boolean },
 ): LocalTool[] {
   const s = pickStrings(locale);
   return [
@@ -156,6 +157,8 @@ export function createPodcastTools(
                 backgroundUri: null,
               });
             },
+            // Incognito: the audio file goes to cache (temp), not documents.
+            { ephemeral: opts?.isIncognito?.() === true },
           );
           await taskStore.remove(taskId);
           await taskStore.saveIndex();

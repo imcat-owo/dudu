@@ -6,11 +6,9 @@
  * covers working+waiting_for_subagents, plus making_something.mp4 and
  * milestone_level_up.mp4.
  *
- * Today the app can only produce coarse signals (busy / running) — see
- * resolveAvatarState. The richer states exist in the type so future work
- * (subagent events, the "our space" status area) can wire them without
- * changing the component contract. Don't invent states the app can't
- * produce; map what's real.
+ * Today the app produces busy/running plus two finer signals — see
+ * resolveAvatarState: a creative tool executing (making_something) and a
+ * task card freshly reaching done (milestone_level_up, transient).
  */
 export type AvatarState =
   | "idle"
@@ -46,12 +44,30 @@ export const AVATAR_STATES: readonly AvatarState[] = [
   "milestone_level_up",
 ];
 
+/** How long the level-up clip plays when a task card freshly reaches done. */
+export const MILESTONE_CELEBRATION_MS = 8000;
+
 /**
  * Map the app's real AI activity signals to an AvatarState.
  * `busy` = chat turn in flight; `running` = agent engine running
- * (both exist today in chat.tsx). Everything else is "idle" until the
- * app learns finer-grained signals.
+ * (both exist today in chat.tsx). `makingSomething` = a creative tool
+ * (image/podcast generation) is executing right now — tracked by the
+ * local agent's tool loop. `celebrateUntil` = ms timestamp of a recent
+ * milestone (a task card reaching done); while now < celebrateUntil the
+ * level-up clip plays, then the state falls back to the live signals.
+ * `now` is injectable for tests. Priority: celebration > making > working.
  */
-export function resolveAvatarState(opts: { busy: boolean; running: boolean }): AvatarState {
+export function resolveAvatarState(opts: {
+  busy: boolean;
+  running: boolean;
+  makingSomething?: boolean;
+  celebrateUntil?: number;
+  now?: number;
+}): AvatarState {
+  const now = opts.now ?? Date.now();
+  if (opts.celebrateUntil !== undefined && now < opts.celebrateUntil) {
+    return "milestone_level_up";
+  }
+  if (opts.makingSomething) return "making_something";
   return opts.busy || opts.running ? "working" : "idle";
 }

@@ -139,6 +139,13 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
 export interface ChatAgent {
   readonly messages: LocalChatMessage[];
   readonly isRunning: boolean;
+  /**
+   * Name of the tool currently executing, null when idle. Lets the UI
+   * reflect fine-grained AI activity (e.g. the avatar's "making something"
+   * clip while image/podcast generation runs). Cloud mode has no tool
+   * visibility and always reports null.
+   */
+  readonly activeToolName: string | null;
   subscribe(listener: { onMessagesChanged?: (e: { messages: LocalChatMessage[] }) => void }): {
     unsubscribe(): void;
   };
@@ -449,6 +456,9 @@ export function createLocalAgent(opts: {
 
   let messages: LocalChatMessage[] = [];
   let running = false;
+  // Tool currently executing (null when idle). Powers the avatar's
+  // "making something" state — set around registry.execute, cleared after.
+  let activeToolName: string | null = null;
   let aborter: AbortController | null = null;
   const listeners = new Set<(e: { messages: LocalChatMessage[] }) => void>();
   // Thread-scoped vision cache: one agent instance == one thread, so history
@@ -470,6 +480,9 @@ export function createLocalAgent(opts: {
     },
     get isRunning() {
       return running;
+    },
+    get activeToolName() {
+      return activeToolName;
     },
     subscribe(listener) {
       if (listener.onMessagesChanged) listeners.add(listener.onMessagesChanged);
@@ -537,6 +550,8 @@ export function createLocalAgent(opts: {
           voiceStore,
           taskProgressStore,
           getLocale() === "en" ? "en" : "zh-Hans",
+          // Incognito: podcast audio goes to cache (temp), not documents.
+          { isIncognito: incognito },
         ),
         ...createImageTools(),
         ...themeTools,
@@ -1056,7 +1071,17 @@ export function createLocalAgent(opts: {
             let result: string;
             try {
               const args = parseToolArgs(tc.arguments);
-              result = await registry.execute(tc.name, args, toolCtx);
+              // Track the executing tool so the UI can show fine-grained
+              // activity (avatar "making something"). Emit on both edges so
+              // subscribers re-render into/out of the state.
+              activeToolName = tc.name;
+              emit();
+              try {
+                result = await registry.execute(tc.name, args, toolCtx);
+              } finally {
+                activeToolName = null;
+                emit();
+              }
               if (tc.name === READ_MANUAL_TOOL_NAME) {
                 const mid = args.manual_id;
                 if (typeof mid === "string" && mid) readManuals.add(mid);

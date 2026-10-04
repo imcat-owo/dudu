@@ -10,6 +10,16 @@
 
 export type TaskStatus = "running" | "stuck" | "done";
 
+/**
+ * A "running" task with no progress update for this long is presumed
+ * abandoned and auto-marked "stuck". Generous on purpose: tasks that report
+ * progress (any upsert) refresh updatedAt and never trip this. The backstop
+ * exists so a crashed/killed task can't leave a stale "running" card
+ * forever — the manual says "never leave a stale running card", and this
+ * is the enforcement behind that promise rather than AI discipline alone.
+ */
+export const STUCK_AFTER_MS = 24 * 60 * 60 * 1000;
+
 export interface BackgroundTask {
   id: string;
   /** Display name, e.g. "知识库索引" */
@@ -73,6 +83,7 @@ export class TaskProgressStore {
   async upsert(
     input: Omit<BackgroundTask, "updatedAt" | "createdAt"> & { createdAt?: number },
   ): Promise<BackgroundTask> {
+    await this.sweepStale();
     const now = Date.now();
     const prev = this.cache.get(input.id);
     const task: BackgroundTask = {
@@ -138,6 +149,29 @@ export class TaskProgressStore {
         /* skip corrupt entries */
       }
     }
+    // A crash between sessions can leave "running" cards with ancient
+    // updatedAt — sweep them to "stuck" on hydrate so they never sit stale.
+    await this.sweepStale();
+  }
+
+  /**
+   * Mark long-silent running tasks as "stuck" (persisted + emitted).
+   * Pure time check on updatedAt; any upsert refreshes updatedAt, so only
+   * truly abandoned tasks trip it.
+   */
+  private async sweepStale(now: number = Date.now()): Promise<void> {
+    const stale: BackgroundTask[] = [];
+    for (const task of this.cache.values()) {
+      if (task.status === "running" && now - task.updatedAt > STUCK_AFTER_MS) {
+        task.status = "stuck";
+        task.updatedAt = now;
+        stale.push(task);
+      }
+    }
+    for (const task of stale) {
+      await this.storage.setItem(KEY_PREFIX + task.id, JSON.stringify(task)).catch(() => null);
+    }
+    if (stale.length > 0) this.emit();
   }
 
   /** Persist the id index (call after upsert/remove in production wiring). */

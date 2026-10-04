@@ -71,7 +71,11 @@ export function normalizeSkill(s: Skill): Skill {
   };
 }
 
-/** Seed examples so the list is not empty. Clearly marked, deletable. */
+/**
+ * Seed examples so the list is not empty. Clearly marked, deletable.
+ * Seeded DISABLED on purpose: examples must not ride along in every
+ * system prompt until she (or the AI, via the skill tool) enables one.
+ */
 export function seedExampleSkills(): Skill[] {
   const now = Date.now();
   return [
@@ -96,7 +100,7 @@ export function seedExampleSkills(): Skill[] {
 ## 输出
 - 按天给行程，标出交通方式和大概花费
 - 最后给一个总预算估算`,
-      enabled: true,
+      enabled: false,
       isExample: true,
       createdBy: "her",
       createdAt: now,
@@ -114,7 +118,7 @@ export function seedExampleSkills(): Skill[] {
 - 事情分三级：今天必须做 / 这周做 / 有空再说
 - 别一次塞太多，一天最多三件正事
 - 提醒我时提前说，别卡着点`,
-      enabled: true,
+      enabled: false,
       isExample: true,
       createdBy: "her",
       createdAt: now,

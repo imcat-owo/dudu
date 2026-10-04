@@ -50,6 +50,11 @@ export interface AgentMessage {
 export interface ChatAgent {
   readonly messages: AgentMessage[];
   readonly isRunning: boolean;
+  /**
+   * Name of the tool currently executing, null when idle. Powers the
+   * avatar's "making something" state. Cloud mode: always null.
+   */
+  readonly activeToolName: string | null;
   subscribe(listener: { onMessagesChanged?: (e: { messages: AgentMessage[] }) => void }): {
     unsubscribe(): void;
   };
@@ -87,6 +92,10 @@ function useCloudAgent({ agentId, threadId }: { agentId: string; threadId: strin
       },
       get isRunning() {
         return agent.isRunning;
+      },
+      get activeToolName() {
+        // Cloud mode: no tool visibility.
+        return null;
       },
       subscribe: (listener) =>
         agent.subscribe({
@@ -179,6 +188,9 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
       },
       get isRunning() {
         return local.isRunning;
+      },
+      get activeToolName() {
+        return local.activeToolName;
       },
       subscribe: (listener) =>
         local.subscribe({

@@ -177,9 +177,13 @@ export interface PodcastResult {
   segments: number;
 }
 
-async function podcastDir(): Promise<string> {
+async function podcastDir(ephemeral = false): Promise<string> {
   const fs = await loadFs();
-  const base = fs.documentDirectory ?? fs.cacheDirectory;
+  // Incognito: write to the cache directory (temp, OS-purgeable) instead of
+  // documents — the file plays fine in-session but is not durable/backup'd.
+  const base = ephemeral
+    ? (fs.cacheDirectory ?? fs.documentDirectory)
+    : (fs.documentDirectory ?? fs.cacheDirectory);
   const dir = `${base}dudu-podcasts/`;
   const info = await fs.getInfoAsync(dir);
   if (!info.exists) await fs.makeDirectoryAsync(dir, { intermediates: true });
@@ -197,6 +201,7 @@ export async function generatePodcastAudio(
   text: string,
   cfg: TtsConfig,
   onProgress?: (done: number, total: number) => Promise<void> | void,
+  opts?: { ephemeral?: boolean },
 ): Promise<PodcastResult> {
   const segments = splitPodcastText(text);
   if (segments.length === 0) throw new Error("empty text");
@@ -229,7 +234,7 @@ export async function generatePodcastAudio(
     off += c.length;
   }
 
-  const dir = await podcastDir();
+  const dir = await podcastDir(opts?.ephemeral === true);
   const uri = `${dir}podcast_${Date.now().toString(36)}.mp3`;
   await fs.writeAsStringAsync(uri, base64Encode(merged), {
     encoding: "base64",

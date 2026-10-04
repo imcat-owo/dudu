@@ -73,9 +73,9 @@ describe("SkillStore", () => {
 
   it("buildSkillIndex is token-minimal and skips disabled", async () => {
     const store = new SkillStore(fakeStorage());
-    await store.listSkills();
+    await store.listSkills(); // seed (examples start disabled)
     const all = await store.listSkills();
-    await store.setEnabled(all[0].id, false);
+    await store.setEnabled(all[1].id, true); // enable exactly one
     const index = await store.buildSkillIndex();
     assert.ok(index.includes("skill:"));
     assert.ok(!index.includes(all[0].name));
@@ -96,6 +96,11 @@ describe("seed examples", () => {
     assert.equal(seeds.length, 2);
     assert.ok(seeds.every((s) => s.isExample));
     assert.ok(seeds.some((s) => s.name === "旅行规划"));
+  });
+
+  it("seed disabled — examples must not ride every system prompt", () => {
+    const seeds = seedExampleSkills();
+    assert.ok(seeds.every((s) => s.enabled === false));
   });
 });
 

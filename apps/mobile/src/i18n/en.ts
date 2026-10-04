@@ -1220,6 +1220,8 @@ export const enStrings: Record<StringKey, string> = {
   "voice.ttsKey": "Key",
   "voice.ttsModel": "Model",
   "voice.test": "Preview",
+  "voice.testOk": "Playing the preview — if you can hear it, this voice works.",
+  "voice.testFail": "Preview failed: {msg}",
   "voice.podcast.stage": "Synthesizing {done}/{total}",
   "voice.podcast.failed": "Synthesis failed",
   "voice.podcast.defaultTitle": "Podcast",

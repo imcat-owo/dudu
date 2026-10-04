@@ -55,4 +55,37 @@ describe("resolveAvatarState", () => {
   it("is idle when nothing is happening", () => {
     assert.equal(resolveAvatarState({ busy: false, running: false }), "idle");
   });
+
+  it("is making_something while a creative tool executes", () => {
+    assert.equal(
+      resolveAvatarState({ busy: true, running: true, makingSomething: true }),
+      "making_something",
+    );
+  });
+
+  it("celebrates a fresh milestone over making/working", () => {
+    const now = 1_000_000;
+    assert.equal(
+      resolveAvatarState({
+        busy: true,
+        running: true,
+        makingSomething: true,
+        celebrateUntil: now + 5000,
+        now,
+      }),
+      "milestone_level_up",
+    );
+  });
+
+  it("falls back to live signals after the celebration window", () => {
+    const now = 1_000_000;
+    assert.equal(
+      resolveAvatarState({ busy: true, running: false, celebrateUntil: now - 1, now }),
+      "working",
+    );
+    assert.equal(
+      resolveAvatarState({ busy: false, running: false, celebrateUntil: now - 1, now }),
+      "idle",
+    );
+  });
 });

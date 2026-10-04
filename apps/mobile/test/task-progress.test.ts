@@ -126,3 +126,40 @@ test("skips corrupt entries on load", async () => {
   assert.equal(s.get("b")?.progress, 0.3);
   assert.equal(s.get("a"), null);
 });
+
+test("marks long-silent running tasks stuck on load", async () => {
+  const storage = memStorage();
+  const old = Date.now() - 25 * 60 * 60 * 1000; // 25h ago
+  const fresh = Date.now() - 60 * 1000; // 1min ago
+  await storage.setItem("dudu.tasks.v1.__index", JSON.stringify(["old", "fresh", "done"]));
+  await storage.setItem(
+    "dudu.tasks.v1.old",
+    JSON.stringify({ ...base("old"), createdAt: old, updatedAt: old }),
+  );
+  await storage.setItem(
+    "dudu.tasks.v1.fresh",
+    JSON.stringify({ ...base("fresh"), createdAt: fresh, updatedAt: fresh }),
+  );
+  await storage.setItem(
+    "dudu.tasks.v1.done",
+    JSON.stringify({ ...base("done"), status: "done", createdAt: old, updatedAt: old }),
+  );
+  const s = new TaskProgressStore(storage);
+  await s.load();
+  assert.equal(s.get("old")?.status, "stuck");
+  assert.equal(s.get("fresh")?.status, "running");
+  assert.equal(s.get("done")?.status, "done");
+});
+
+test("a fresh progress report revives a stale task", async () => {
+  const s = new TaskProgressStore(memStorage());
+  const old = Date.now() - 25 * 60 * 60 * 1000;
+  await s.upsert({ ...base("a"), createdAt: old });
+  // Simulate the stored updatedAt going stale, then a new report arrives.
+  const t = s.get("a");
+  assert.ok(t);
+  t.updatedAt = old;
+  const revived = await s.upsert({ ...base("a"), progress: 0.6, stage: "still going" });
+  assert.equal(revived.status, "running");
+  assert.equal(revived.progress, 0.6);
+});

@@ -293,8 +293,7 @@ export class PetStore {
  * interaction timers.
  *
  * avatarState is the full AI state (idle/working/making_something/
- * milestone_level_up). Today chat.tsx can only produce idle/working —
- * the richer states flow through automatically once wired there.
+ * milestone_level_up), resolved in chat.tsx from the agent's live signals.
  */
 export interface PetActivity {
   aiBusy: boolean;

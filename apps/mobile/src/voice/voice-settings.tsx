@@ -82,6 +82,15 @@ function TtsSection() {
   const [error, setError] = useState("");
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState("");
+  const [testOk, setTestOk] = useState(false);
+  // The preview player must be released — every test used to leak one.
+  const testPlayer = useRef<{ release: () => void } | null>(null);
+  useEffect(() => {
+    return () => {
+      testPlayer.current?.release();
+      testPlayer.current = null;
+    };
+  }, []);
   const cfg = draft ?? tts;
   const dirty = draft !== null;
 
@@ -109,16 +118,22 @@ function TtsSection() {
     }
     setTesting(true);
     setTestMsg("");
+    setTestOk(false);
     try {
       const uri = await synthesizeSpeech(t("voice.testText"), cfg);
       // Play it back immediately — hearing it IS the test.
       const { createAudioPlayer, setAudioModeAsync } = await import("expo-audio");
       await setAudioModeAsync({ playsInSilentMode: true });
+      // Release the previous preview first: one player at a time, no leaks.
+      testPlayer.current?.release();
       const player = createAudioPlayer(uri);
+      testPlayer.current = player;
       player.play();
-      setTestMsg(t("voice.test"));
+      setTestOk(true);
+      setTestMsg(t("voice.testOk"));
     } catch (e) {
-      setTestMsg(e instanceof Error ? e.message : String(e));
+      setTestOk(false);
+      setTestMsg(t("voice.testFail", { msg: e instanceof Error ? e.message : String(e) }));
     } finally {
       setTesting(false);
     }
@@ -232,7 +247,9 @@ function TtsSection() {
           </View>
         </View>
         {!!error && <TText style={{ color: colors.danger }}>{error}</TText>}
-        {!!testMsg && <TText style={{ color: colors.muted }}>{testMsg}</TText>}
+        {!!testMsg && (
+          <TText style={{ color: testOk ? colors.text : colors.danger }}>{testMsg}</TText>
+        )}
         <View style={{ flexDirection: "row", gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Button onPress={() => void onTest()} busy={testing}>

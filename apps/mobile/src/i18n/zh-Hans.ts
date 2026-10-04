@@ -1183,6 +1183,8 @@ const zhHans = {
   "voice.ttsKey": "Key",
   "voice.ttsModel": "模型",
   "voice.test": "试听",
+  "voice.testOk": "正在播放试听——能听见，就说明这个声音没问题。",
+  "voice.testFail": "试听失败：{msg}",
   "voice.podcast.stage": "正在合成 {done}/{total} 段",
   "voice.podcast.failed": "合成失败",
   "voice.podcast.defaultTitle": "播客",
