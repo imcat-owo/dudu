@@ -8,7 +8,9 @@ A shared React Native workspace for iOS, Android, and the web preview. The clien
 
 [iPhone · 38 seconds](../../assets/demos/2026-09-16/mobile.mp4) · [Desktop web · 42 seconds](../../assets/demos/2026-09-16/web.mp4) · [Recording setup](../../docs/DEMO.md)
 
-Meet OpenMuse's capybara in two different journeys: Hacker News and CopilotKit on iPhone; reading a school-trip email and researching aquarium exhibits on desktop. Results appear inline in chat, with **Take control** opening the same browser session. Send and Stop share the input pill's primary control.
+Meet Dudu's 穹妹 avatar in two different journeys: Hacker News and CopilotKit on iPhone; reading a school-trip email and researching aquarium exhibits on desktop. Results appear inline in chat, with **Take control** opening the same browser session. Send and Stop share the input pill's primary control.
+
+Note: the recordings and screenshots in this section are historical archives from before the rebrand; the mascot shown (capybara) has since been replaced by 穹妹, the grey-tone hand-drawn default avatar.
 
 ## Run
 

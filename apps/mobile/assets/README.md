@@ -1,5 +1,7 @@
-# OpenMuse capybara
+# Dudu avatar assets
 
-`capybara.png` is original artwork generated for OpenMuse with the built-in image-generation tool on September 16, 2026. The transparent PNG is bundled locally and used by the shared `Mascot` component. Sky, sand and lilac backgrounds preserve the avatar color preference. The asset is included under this repository's MIT license.
+`avatar/sora-avatar.webp` is the default AI avatar: 穹妹, a grey-tone hand-drawn original. It is bundled locally and used wherever the AI's avatar appears. Preset palettes in the appearance system are derived from it.
 
-Generation prompt: “An original friendly capybara assistant mascot, with a broad boxy rounded snout, small round ears, tiny relaxed eyes, a squat body and short legs. Sitting in a gentle three-quarter view, with warm caramel and oat tan coloring, a calm expression, a soft clay/plush finish and restrained detail readable at 48–96 pixels. Entire character centered on a transparent background. One character, no clothing, props, text, logos or watermark.”
+`mascot/` holds the ten pixel-devil stickers (`devil-01.jpg` … `devil-10.jpg`), used as-is in the avatar picker for both the user and the AI.
+
+The old capybara mascot artwork has been removed from the App and replaced by the above. This directory no longer ships any capybara assets.
