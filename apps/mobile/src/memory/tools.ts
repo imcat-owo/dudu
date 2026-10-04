@@ -181,5 +181,25 @@ export function createMemoryTools(store: MemoryStore): LocalTool[] {
         return `Confirmed — now remembered as certain: ${rec.content}`;
       },
     },
+    {
+      name: "memory_reinforce",
+      description:
+        "Reinforce a memory you naturally re-mentioned in conversation and she engaged with (she agreed, elaborated, or laughed — it landed). Reinforced memories rank higher in future recall. Do NOT spam: at most once per memory per conversation turn. Use the id from memory_search.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Memory id from memory_search." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "memory",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const rec = await store.reinforceMemory(id, "ai");
+        return `Reinforced — it will surface more readily next time: ${rec.content}`;
+      },
+    },
   ];
 }

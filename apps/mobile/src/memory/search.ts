@@ -98,7 +98,12 @@ export function searchMemories(
     const ageDays = Math.max(0, (now - m.updatedAt) / 86_400_000);
     const recency = 1 / (1 + ageDays / 60);
 
-    const score = bm25 * (0.7 + 0.3 * recency) * CONFIDENCE_BOOST[m.confidence];
+    // Reinforcement (design doc §8): memories she confirmed or engaged
+    // with re-rank higher — a gentle multiplier, not a veto. Caps at 1.6
+    // so an old joke that landed 30 times cannot drown everything.
+    const reinforcement = 1 + Math.min(m.reinforcedCount, 12) * 0.05;
+
+    const score = bm25 * (0.7 + 0.3 * recency) * CONFIDENCE_BOOST[m.confidence] * reinforcement;
     scored.push({ record: m, score });
   }
 

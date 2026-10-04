@@ -37,6 +37,14 @@ export interface MemoryRecord {
   validTo: number | null;
   /** Id of the newer record that replaced this one, if any. */
   supersededBy: string | null;
+  /**
+   * Reinforcement count (design doc §8): +1 every time she confirms it
+   * (memory_confirm) or he naturally re-mentions it in conversation and
+   * she engages (memory_reinforce). Repeatedly surfaced memories are
+   * remembered better — this is the retrieval weight for that.
+   * Old records without the field normalize to 0 on load.
+   */
+  reinforcedCount: number;
   /** Where it came from: short chat excerpt, "user-told", "imported". */
   source: string;
   createdAt: number;
@@ -54,7 +62,7 @@ export interface ProfileEntry {
 export interface MemoryEvent {
   id: string;
   memoryId: string | null;
-  op: "add" | "update" | "supersede" | "delete" | "confirm" | "profile_set";
+  op: "add" | "update" | "supersede" | "delete" | "confirm" | "reinforce" | "profile_set";
   at: number;
   /** Who did it: "ai" (tool/extraction) or "user" (she said so in dialog). */
   actor: "ai" | "user";

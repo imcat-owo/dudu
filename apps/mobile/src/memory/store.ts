@@ -59,8 +59,19 @@ function isRecord(v: unknown): v is MemoryRecord {
     isMemoryConfidence(r.confidence) &&
     typeof r.validFrom === "number" &&
     (r.validTo === null || typeof r.validTo === "number") &&
-    (r.supersededBy === null || typeof r.supersededBy === "string")
+    (r.supersededBy === null || typeof r.supersededBy === "string") &&
+    // reinforcedCount is optional for records written before the field
+    // existed — they normalize to 0 on load (see normalizeRecord).
+    (r.reinforcedCount === undefined || typeof r.reinforcedCount === "number")
   );
+}
+
+/** Backfill reinforcedCount for records written before the field existed. */
+function normalizeRecord(r: MemoryRecord): MemoryRecord {
+  if (typeof r.reinforcedCount !== "number" || r.reinforcedCount < 0) {
+    r.reinforcedCount = 0;
+  }
+  return r;
 }
 
 export class MemoryStore {
@@ -139,7 +150,7 @@ export class MemoryStore {
       if (!raw) return [];
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isRecord);
+      return parsed.filter(isRecord).map(normalizeRecord);
     } catch {
       return [];
     }
@@ -284,6 +295,7 @@ export class MemoryStore {
         validFrom: now,
         validTo: null,
         supersededBy: null,
+        reinforcedCount: 0,
         source: (opts.source ?? "").slice(0, 300),
         createdAt: now,
         updatedAt: now,
@@ -323,6 +335,9 @@ export class MemoryStore {
         validFrom: now,
         validTo: null,
         supersededBy: null,
+        // A correction carries the reinforcement forward — she cared
+        // enough to correct it, so it matters.
+        reinforcedCount: old.reinforcedCount,
         source: (opts.source ?? old.source).slice(0, 300),
         createdAt: now,
         updatedAt: now,
@@ -340,6 +355,7 @@ export class MemoryStore {
   /**
    * Promote an unsure/question memory to confident — she confirmed it
    * in dialog (memory_confirm). Only the confidence changes.
+   * Confirmation is also a reinforcement (design doc §8): reinforcedCount +1.
    */
   async confirmMemory(id: string, actor: "ai" | "user" = "user"): Promise<MemoryRecord> {
     return this.enqueueWrite(async () => {
@@ -349,9 +365,31 @@ export class MemoryStore {
       if (rec.validTo !== null)
         throw new Error("That memory is superseded; confirm the current one instead.");
       rec.confidence = "confident";
+      rec.reinforcedCount += 1;
       rec.updatedAt = Date.now();
       await this.saveMemories(list);
       await this.logEvent(rec.id, "confirm", actor);
+      return rec;
+    });
+  }
+
+  /**
+   * Reinforcement (design doc §8): he naturally re-mentioned this memory
+   * in conversation and she engaged with it ("对", elaborated, laughed —
+   * anything that shows it landed). +1. Never throws for unknown ids —
+   * reinforcement is a hint, not a command; the tool reports it.
+   */
+  async reinforceMemory(id: string, actor: "ai" | "user" = "ai"): Promise<MemoryRecord> {
+    return this.enqueueWrite(async () => {
+      const list = await this.loadMemories();
+      const rec = list.find((m) => m.id === id);
+      if (!rec) throw new Error(`Memory not found: ${id}.`);
+      if (rec.validTo !== null)
+        throw new Error("That memory is superseded; reinforce the current one instead.");
+      rec.reinforcedCount += 1;
+      rec.updatedAt = Date.now();
+      await this.saveMemories(list);
+      await this.logEvent(rec.id, "reinforce", actor);
       return rec;
     });
   }

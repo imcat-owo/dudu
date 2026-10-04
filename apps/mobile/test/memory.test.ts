@@ -246,7 +246,7 @@ describe("memory write path", () => {
 });
 
 describe("memory tools", () => {
-  it("5 tools: add/search/update/delete/confirm all work", async () => {
+  it("6 tools: add/search/update/delete/confirm/reinforce all work", async () => {
     const s = new MemoryStore(fakeStorage());
     const tools = createMemoryTools(s);
     const registry = createToolRegistry(tools);
@@ -254,6 +254,7 @@ describe("memory tools", () => {
       "memory_add",
       "memory_confirm",
       "memory_delete",
+      "memory_reinforce",
       "memory_search",
       "memory_update",
     ]);
