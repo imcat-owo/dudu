@@ -29,6 +29,7 @@ import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
 import { MuseApi } from "./api";
 import { ApiSettingsScreen } from "./api-groups/api-settings";
+import { useChatMode } from "./api-groups/mode";
 import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
 import AIBrowserView from "./browser/AIBrowserView";
@@ -120,6 +121,9 @@ export function LocalApp() {
   const colors = useColors();
   const [section, setSection] = useState<LocalSection>("chat");
   const [toast, setToast] = useState("");
+  // remount discipline for useChatAgent: ChatScreen must remount when the
+  // chat mode flips (hook sets differ between cloud and local agent).
+  const mode = useChatMode();
   const [prompt, setPrompt] = useState<{ id: number; text: string }>();
   const api = useMemo(() => new NullMuseApi(), []);
 
@@ -200,7 +204,7 @@ export function LocalApp() {
                     <View style={{ flex: 1 }}>
                       <ErrorBoundary resetKey={section} label={section}>
                         {section === "chat" ? (
-                          <ChatScreen prompt={prompt} active={true} />
+                          <ChatScreen key={mode} prompt={prompt} active={true} />
                         ) : section === "space" ? (
                           <OurSpaceScreen />
                         ) : section === "connections" ? (
