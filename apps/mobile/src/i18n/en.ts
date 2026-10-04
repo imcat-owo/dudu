@@ -26,6 +26,10 @@ export const enStrings: Record<StringKey, string> = {
   "common.refresh": "Refresh",
   "common.settings": "Settings",
 
+  // ---- crash fallback ----
+  "error.crashTitle": "This page tripped",
+  "error.crashBody": "Don't worry — nothing of yours was lost. Tap retry and I'll take you back.",
+
   // ---- app chrome ----
   "app.name": "Dudu",
   "app.tagline": "A little room for your day.",

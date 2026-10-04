@@ -33,6 +33,7 @@ import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
 import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
+import { ErrorBoundary } from "./error-boundary";
 import { FontProvider } from "./font";
 import { GlassView } from "./glass";
 import { t } from "./i18n";
@@ -183,15 +184,17 @@ export function LocalApp() {
                       <AIBrowserView visible />
                     </View>
                     <View style={{ flex: 1 }}>
-                      {section === "chat" ? (
-                        <ChatScreen prompt={prompt} active={true} />
-                      ) : section === "space" ? (
-                        <OurSpaceScreen />
-                      ) : section === "connections" ? (
-                        <ApiSettingsScreen />
-                      ) : (
-                        <AppearanceScreen />
-                      )}
+                      <ErrorBoundary resetKey={section} label={section}>
+                        {section === "chat" ? (
+                          <ChatScreen prompt={prompt} active={true} />
+                        ) : section === "space" ? (
+                          <OurSpaceScreen />
+                        ) : section === "connections" ? (
+                          <ApiSettingsScreen />
+                        ) : (
+                          <AppearanceScreen />
+                        )}
+                      </ErrorBoundary>
                     </View>
                     {!!toast && (
                       <View

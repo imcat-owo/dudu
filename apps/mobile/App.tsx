@@ -42,6 +42,7 @@ import { ChatScreen, WorkspaceTools } from "./src/chat";
 import { ComputerEntry } from "./src/computer";
 import { ComputerDraftProvider } from "./src/computer-drafts";
 import { Details } from "./src/details";
+import { ErrorBoundary } from "./src/error-boundary";
 import { FontProvider } from "./src/font";
 import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
@@ -102,7 +103,9 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <Splash onDone={() => setSplashed(true)} />
+        <ErrorBoundary label="splash">
+          <Splash onDone={() => setSplashed(true)} />
+        </ErrorBoundary>
       </SafeAreaProvider>
     );
   }
@@ -110,11 +113,17 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <LocalApp />
+        <ErrorBoundary label="app">
+          <LocalApp />
+        </ErrorBoundary>
       </SafeAreaProvider>
     );
   }
-  return <CloudApp />;
+  return (
+    <ErrorBoundary label="app">
+      <CloudApp />
+    </ErrorBoundary>
+  );
 }
 
 function CloudApp() {
@@ -525,7 +534,9 @@ function WorkspaceShell({
                   )}
                   <Text style={[s.title, { fontSize: 25, marginBottom: 22 }]}>{title?.title}</Text>
                   <ErrorNotice error={error} />
-                  <Screen />
+                  <ErrorBoundary resetKey={section} label={section}>
+                    <Screen />
+                  </ErrorBoundary>
                 </ScrollView>
               )}
               <View
