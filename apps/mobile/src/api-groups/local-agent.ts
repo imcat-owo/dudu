@@ -84,6 +84,11 @@ import {
   type VisionPlan,
 } from "./group-router";
 import {
+  buildIncognitoPromptSection,
+  incognitoRefusal,
+  isBlockedInIncognito,
+} from "./incognito-guard";
+import {
   createLocalTools,
   createToolRegistry,
   type LocalTool,
@@ -298,12 +303,16 @@ export function buildLocalSystemPrompt(
   resolve: (key: StringKey) => string,
   basePrompt?: string,
   extraSections?: string[],
+  opts?: { isIncognito?: boolean },
 ): string {
   const parts: string[] = [];
   if (basePrompt) parts.push(basePrompt);
   parts.push(
     "You are a helpful on-device AI assistant. You have tools you can call to get things done — use them when they help answer, don't narrate them.",
   );
+  // Incognito: the AI must KNOW the session is incognito (P1-3) — otherwise
+  // it promises "I'll remember this" for a session that remembers nothing.
+  if (opts?.isIncognito) parts.push(buildIncognitoPromptSection());
   // Proactive companionship: she wants a partner who notices things, not a
   // helpdesk that only answers. Claude-style restrained — present, not clingy.
   parts.push(
@@ -1001,7 +1010,13 @@ export function createLocalAgent(opts: {
           },
         }),
       ];
-      const registry = createToolRegistry(tools);
+      // Incognito (P1-3): a session that promised zero trace must not even
+      // SEE the write tools — filter them before the prompt and registry are
+      // built. The tool loop below also refuses them loudly as a backstop.
+      const effectiveTools = incognito()
+        ? tools.filter((t) => !isBlockedInIncognito(t.name))
+        : tools;
+      const registry = createToolRegistry(effectiveTools);
       const toolCtx: ToolContext = opts.toolContext ?? {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.
         authorize: async () => false,
@@ -1058,16 +1073,22 @@ export function createLocalAgent(opts: {
       };
       let toolsOn = resolveSwitch(activeGroup.toolsMode, profile?.tools ?? "auto");
       let thinkingOn = resolveSwitch(activeGroup.thinkingMode, profile?.thinking ?? "auto");
-      const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [
-        memorySection,
-        skillSection,
-        anniversarySection,
-        herMoodSection,
-        nicknameSection,
-        // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
-        // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
-        buildRankingSlip(capSnap.rankingMode),
-      ]);
+      const systemPrompt = buildLocalSystemPrompt(
+        effectiveTools,
+        t,
+        opts.systemPrompt,
+        [
+          memorySection,
+          skillSection,
+          anniversarySection,
+          herMoodSection,
+          nicknameSection,
+          // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
+          // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
+          buildRankingSlip(capSnap.rankingMode),
+        ],
+        { isIncognito: incognito() },
+      );
       const allWireTools = registry.definitions();
       // wireTools is mutable: auto-fallback may clear it on retry.
       let wireTools = toolsOn ? allWireTools : [];
@@ -1275,16 +1296,23 @@ export function createLocalAgent(opts: {
             let result: string;
             try {
               const args = parseToolArgs(tc.arguments);
-              // Track the executing tool so the UI can show fine-grained
-              // activity (avatar "making something"). Emit on both edges so
-              // subscribers re-render into/out of the state.
-              activeToolName = tc.name;
-              emit();
-              try {
-                result = await registry.execute(tc.name, args, toolCtx);
-              } finally {
-                activeToolName = null;
+              // Incognito backstop (P1-3): write tools are filtered from the
+              // prompt/registry, but refuse loudly if one is invoked anyway —
+              // never let a "no trace" session write.
+              if (incognito() && isBlockedInIncognito(tc.name)) {
+                result = `Error: ${incognitoRefusal(tc.name)}`;
+              } else {
+                // Track the executing tool so the UI can show fine-grained
+                // activity (avatar "making something"). Emit on both edges so
+                // subscribers re-render into/out of the state.
+                activeToolName = tc.name;
                 emit();
+                try {
+                  result = await registry.execute(tc.name, args, toolCtx);
+                } finally {
+                  activeToolName = null;
+                  emit();
+                }
               }
               if (tc.name === READ_MANUAL_TOOL_NAME) {
                 const mid = args.manual_id;

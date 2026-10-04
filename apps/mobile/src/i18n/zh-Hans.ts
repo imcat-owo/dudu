@@ -380,7 +380,7 @@ const zhHans = {
   "chat.importPdfHint": "在文件里导入 PDF，就可以在对话中使用。",
   "chat.incognitoOn": "隐身开",
   "chat.incognitoOff": "隐身",
-  "chat.incognitoNote": "隐身模式下不保存历史记录。",
+  "chat.incognitoNote": "隐身模式：这段对话不保存，也不会留下任何记录。",
   "chat.placeholder.connecting": "连接中…",
   "chat.placeholder.loading": "加载对话中…",
   "chat.placeholder.message": "说点什么…",

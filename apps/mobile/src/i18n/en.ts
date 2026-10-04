@@ -390,7 +390,7 @@ export const enStrings: Record<StringKey, string> = {
   "chat.importPdfHint": "Import PDFs in Files to use them in conversation.",
   "chat.incognitoOn": "Incognito on",
   "chat.incognitoOff": "Incognito",
-  "chat.incognitoNote": "History isn't saved in incognito mode.",
+  "chat.incognitoNote": "Incognito: this chat isn't saved and leaves no trace.",
   "chat.placeholder.connecting": "Connecting…",
   "chat.placeholder.loading": "Loading conversation…",
   "chat.placeholder.message": "Say something…",
