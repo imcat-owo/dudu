@@ -16,6 +16,7 @@ import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
+import { createWallpaperTools } from "../theme/tools.js";
 import { knowledgeStore } from "../knowledge/instance.js";
 import { createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -518,6 +519,7 @@ export function createLocalAgent(opts: {
           getLocale() === "en" ? "en" : "zh-Hans",
         ),
         ...createImageTools(),
+        ...createWallpaperTools(AsyncStorage),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(knowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
