@@ -372,14 +372,15 @@ export const enStrings: Record<StringKey, string> = {
   "a11y.browserPreview": "Browser preview: {title}",
 
   // ---- chat (chat.tsx) ----
-  "chat.welcomeTitle.morning": "Morning.",
-  "chat.welcomeBody.morning": "A new day. Tell me what you'd like to do today.",
-  "chat.welcomeTitle.afternoon": "Afternoon.",
-  "chat.welcomeBody.afternoon": "Take a breather? Talk to me, or hand things off to me.",
-  "chat.welcomeTitle.evening": "Evening.",
-  "chat.welcomeBody.evening": "Long day? Come talk to me and unwind a little.",
-  "chat.welcomeTitle.night": "Still up?",
-  "chat.welcomeBody.night": "I'm here with you. Talk, or let me take care of something.",
+  "chat.greet.anniversaryToday": "\"{title}\" is here",
+  "chat.greet.anniversarySoon": "\"{title}\" is in {days} days",
+  "chat.greet.letterWaiting": "A letter is waiting for you",
+  "chat.greet.rhythm.waking": "You're up",
+  "chat.greet.rhythm.evening": "You're here",
+  "chat.greet.rhythm.lateNight": "Still up?",
+  "chat.greet.rhythm.preDawn": "Almost dawn",
+  "chat.greet.body.tellLater": "{n} little things I want to tell you — no rush",
+  "chat.greet.body.soft": "I'm here. Talk, or let me take care of something.",
   "chat.retryLoad": "Retry loading conversation",
   "chat.retrySave": "Retry saving conversation",
   "chat.historySaveFailed":

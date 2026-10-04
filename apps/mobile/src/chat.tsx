@@ -54,9 +54,11 @@ import { ChatAvatar } from "./chat-avatar";
 import { computeCanSend } from "./chat-send-gate";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, canFlushQueue, type QueuedMessage } from "./conversation-queue";
+import { composeGreeting } from "./chat/greeting";
 import { TText } from "./font";
 import { GlassView } from "./glass";
-import { t } from "./i18n";
+import { t, type StringKey } from "./i18n";
+import { describeHerMoment } from "./our-space/her-rhythm";
 import {
   buildImageUrl,
   encodeImageMessage,
@@ -264,16 +266,10 @@ function useSafeRenderToolCall(): (args: { toolCall: unknown; toolMessage: unkno
 }
 
 /**
- * Time-of-day bucket for the welcome message: morning (5–11),
- * afternoon (11–18), evening (18–23), night (23–5).
+ * Personal greeting (P3-1): composed from her rhythm + real anchors
+ * (anniversary countdown, unread love letter, pending tell-later) — never
+ * a clock-time bucket. Loaded once when the empty thread renders.
  */
-function welcomeTimeBucket(date = new Date()): "morning" | "afternoon" | "evening" | "night" {
-  const h = date.getHours();
-  if (h >= 5 && h < 11) return "morning";
-  if (h >= 11 && h < 18) return "afternoon";
-  if (h >= 18 && h < 23) return "evening";
-  return "night";
-}
 
 export function ChatScreen({
   prompt,
@@ -308,6 +304,56 @@ export function ChatScreen({
   const [inputHeight, setInputHeight] = useState(44);
   const [showResults, setShowResults] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Personal greeting (P3-1): title/body composed from her rhythm + real
+  // anchors. Null until the anchors load — then the empty thread greets
+  // her like he means it, not like a clock.
+  const [greeting, setGreeting] = useState<{ title: string; body: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const [{ ourSpaceStore }, { getUpcomingAnniversaries }] = await Promise.all([
+          import("./our-space/instance"),
+          import("./our-space/anniversary-section"),
+        ]);
+        const [anniversaries, letters, tellLater] = await Promise.all([
+          ourSpaceStore.listAnniversaries().catch(() => []),
+          ourSpaceStore.getUnseenLoveLetters().catch(() => []),
+          ourSpaceStore.listTellLater(false).catch(() => []),
+        ]);
+        const g = composeGreeting(describeHerMoment(Date.now()), {
+          anniversaries: getUpcomingAnniversaries(anniversaries, new Date(), 30).map((a) => ({
+            title: a.title,
+            daysUntil: a.daysUntil,
+          })),
+          unseenLoveLetters: letters.length,
+          pendingTellLater: tellLater.filter((i) => !i.done).length,
+        });
+        if (alive) {
+          setGreeting({
+            title: t(g.titleKey as StringKey, g.titleParams),
+            body: t(g.bodyKey as StringKey, g.bodyParams),
+          });
+        }
+      } catch {
+        // Anchors unreadable — fall back to a rhythm-only greeting.
+        if (alive) {
+          const g = composeGreeting(describeHerMoment(Date.now()), {
+            anniversaries: [],
+            unseenLoveLetters: 0,
+            pendingTellLater: 0,
+          });
+          setGreeting({
+            title: t(g.titleKey as StringKey, g.titleParams),
+            body: t(g.bodyKey as StringKey, g.bodyParams),
+          });
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -834,10 +880,10 @@ export function ChatScreen({
                 maxWidth: 350,
               }}
             >
-              {t(`chat.welcomeTitle.${welcomeTimeBucket()}` as const)}
+              {greeting ? greeting.title : t("chat.greet.rhythm.evening")}
             </TText>
             <TText style={[s.muted, { maxWidth: 320, textAlign: "center", lineHeight: 23 }]}>
-              {t(`chat.welcomeBody.${welcomeTimeBucket()}` as const)}
+              {greeting ? greeting.body : t("chat.greet.body.soft")}
             </TText>
             <View style={{ width: "100%", maxWidth: 360, marginTop: 14, gap: 8 }}>
               {[
