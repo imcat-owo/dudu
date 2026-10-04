@@ -91,10 +91,10 @@ function base64Encode(binary: string): string {
   return out;
 }
 
-async function synthesizeEdgeTts(text: string, voice: string): Promise<string> {
+async function synthesizeEdgeTts(text: string, voice: string, rate = 1.0): Promise<string> {
   let bytes: Uint8Array;
   try {
-    bytes = await edgeTtsSynthesize(text, voice);
+    bytes = await edgeTtsSynthesize(text, voice, rate);
   } catch (e) {
     throw new TtsError(e instanceof Error ? e.message : "edge-tts failed");
   }
@@ -115,6 +115,8 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
         model: (cfg.customModel ?? "").trim(),
         input: text,
         voice: cfg.voice,
+        // OpenAI-compatible speed: 0.25–4.0. Only send when non-default.
+        ...(cfg.rate && cfg.rate !== 1.0 ? { speed: cfg.rate } : {}),
       }),
     });
   } catch (e) {
@@ -169,7 +171,7 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
 
   const uri =
     cfg.provider === "edge-tts"
-      ? await synthesizeEdgeTts(clean, cfg.voice)
+      ? await synthesizeEdgeTts(clean, cfg.voice, cfg.rate ?? 1.0)
       : await synthesizeCustom(clean, cfg);
   // Move into the cache slot for next time (best-effort), keeping the real extension.
   const ext = uri.split(".").pop() ?? "mp3";

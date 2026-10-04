@@ -116,3 +116,21 @@ export async function refreshFontSizeOption(): Promise<void> {
     // Non-fatal: keep the in-memory value.
   }
 }
+
+/**
+ * Set the font-size option programmatically (e.g. from an AI tool).
+ * Updates memory immediately (UI re-renders via useSyncExternalStore),
+ * persists to AsyncStorage. No React needed — safe to call from PURE modules.
+ */
+export async function setFontSizeOption(o: FontSizeOption): Promise<void> {
+  if (o !== current) {
+    generation += 1;
+    current = o;
+    emit();
+  }
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, o);
+  } catch {
+    // Non-fatal: preference stays in memory for this session.
+  }
+}

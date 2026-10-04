@@ -30,6 +30,7 @@ import { API_URL } from "../api";
 import { applyCssOverrides } from "./css";
 import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { defaultPreset } from "./presets";
+import { registerThemeApplyHandler } from "./tools";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
 export const THEME_STORAGE_KEY = "dudu.theme.bundle.v1";
@@ -393,6 +394,16 @@ export function ThemeProvider({
     },
     [apiToken, archiveCurrent, bumpTransition],
   );
+
+  // Wire the AI theme tools (set_theme, set_ai_avatar) to immediate apply.
+  // The tools pass a partial patch; we merge it into the current bundle.
+  useEffect(() => {
+    registerThemeApplyHandler(async (patch) => {
+      const current = confirmedRef.current;
+      const merged = { ...current, ...patch } as ThemeBundle;
+      return applyBundle(merged);
+    });
+  }, [applyBundle]);
 
   const rollback = useCallback(async (): Promise<void> => {
     const target = previousRef.current ?? defaultPreset;

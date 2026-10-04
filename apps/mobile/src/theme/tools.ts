@@ -20,6 +20,20 @@ export interface ThemeStorage {
 }
 
 /**
+ * Callback the UI layer registers to apply theme changes immediately
+ * via ThemeContext.applyBundle (which updates React state + persists).
+ * Falls back to direct storage write when no handler is registered.
+ */
+type ThemeApplyHandler = (patch: Record<string, unknown>) => Promise<string>;
+
+let applyHandler: ThemeApplyHandler | null = null;
+
+/** UI layer (ThemeContext provider) calls this once to wire immediate apply. */
+export function registerThemeApplyHandler(h: ThemeApplyHandler): void {
+  applyHandler = h;
+}
+
+/**
  * Build the wallpaper tool set.
  */
 export function createWallpaperTools(storage: ThemeStorage): LocalTool[] {
@@ -97,6 +111,12 @@ export function createThemeTools(storage: ThemeStorage): LocalTool[] {
         if (mode !== "light" && mode !== "dark" && mode !== "system") {
           throw new ToolError('mode must be "light", "dark", or "system".');
         }
+        if (applyHandler) {
+          const result = await applyHandler({ mode });
+          return result === "ok"
+            ? `Theme mode set to ${mode}.`
+            : `Theme mode set to ${mode} (local only).`;
+        }
         const bundle = await readBundle();
         bundle.mode = mode;
         await storage.setItem(THEME_STORAGE_KEY, JSON.stringify(bundle));
@@ -121,6 +141,24 @@ export function createThemeTools(storage: ThemeStorage): LocalTool[] {
       manualId: "themes",
       run: async (args) => {
         const uri = strArg(args, "uri").trim();
+        if (applyHandler) {
+          const bundle = await readBundle();
+          const avatar =
+            typeof bundle.avatar === "object" && bundle.avatar !== null
+              ? (bundle.avatar as Record<string, unknown>)
+              : {};
+          if (uri) {
+            avatar.assistant = uri;
+          } else {
+            delete avatar.assistant;
+          }
+          const result = await applyHandler({ avatar });
+          return uri
+            ? result === "ok"
+              ? "AI avatar updated."
+              : "AI avatar updated (local only)."
+            : "AI avatar reset to the default.";
+        }
         const bundle = await readBundle();
         const avatar =
           typeof bundle.avatar === "object" && bundle.avatar !== null

@@ -44,6 +44,7 @@ import {
   petActivity,
   resolvePetMood,
 } from "./pet/store";
+import { registerPetSkinHandler } from "./pet/tools";
 
 const PET_SIZE = 64;
 /** Bottom tab bar height — the pet never parks under it. */
@@ -277,6 +278,13 @@ export function PetOverlay({
   const { width: W, height: H } = useWindowDimensions();
   const [pet, setPet] = useState<PetPersisted | null>(null);
   const [activity, setActivity] = useState(petActivity.snapshot());
+
+  // Wire the AI "set_pet_skin" tool to immediate apply via petStore.
+  useEffect(() => {
+    registerPetSkinHandler(async (skin) => {
+      await petStore.setSkin(skin);
+    });
+  }, []);
   const [dragging, setDragging] = useState(false);
   const [interaction, setInteraction] = useState<PetInteraction | null>(null);
   const [, setTick] = useState(0);

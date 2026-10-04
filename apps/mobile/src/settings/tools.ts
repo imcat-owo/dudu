@@ -22,6 +22,20 @@ export interface SettingsStorage {
 }
 
 /**
+ * Callback the UI layer registers to apply font-size changes immediately
+ * via app-settings setFontSizeOption (updates memory + emits + persists).
+ * Falls back to direct storage write when no handler is registered.
+ */
+type FontSizeHandler = (option: string) => Promise<void>;
+
+let fontSizeHandler: FontSizeHandler | null = null;
+
+/** UI layer calls this once to wire immediate apply. */
+export function registerFontSizeHandler(h: FontSizeHandler): void {
+  fontSizeHandler = h;
+}
+
+/**
  * Build the font-size tool set.
  */
 export function createFontSizeTools(storage: SettingsStorage): LocalTool[] {
@@ -29,7 +43,7 @@ export function createFontSizeTools(storage: SettingsStorage): LocalTool[] {
     {
       name: "set_font_size",
       description:
-        "Change the app font size. Use when she says '字调大一点' / '字太小了' / '字调小一点'. option is system (follow OS) | small (compact, default) | standard | large. Applies on next app restart; tell her if she wants it immediately.",
+        "Change the app font size. Use when she says '字调大一点' / '字太小了' / '字调小一点'. option is system (follow OS) | small (compact, default) | standard | large. Applies immediately.",
       parameters: {
         type: "object",
         properties: {
@@ -46,11 +60,12 @@ export function createFontSizeTools(storage: SettingsStorage): LocalTool[] {
         if (!(VALID_OPTIONS as readonly string[]).includes(option)) {
           throw new ToolError('option must be "system", "small", "standard", or "large".');
         }
+        if (fontSizeHandler) {
+          await fontSizeHandler(option);
+          return `Font size set to ${option}.`;
+        }
         await storage.setItem(FONT_SIZE_STORAGE_KEY, option);
-        return (
-          `Font size set to ${option}. ` +
-          `It applies after the app restarts — the in-app setting screen picks it up immediately if she opens it.`
-        );
+        return `Font size set to ${option}. It applies on the next app restart.`;
       },
     },
   ];

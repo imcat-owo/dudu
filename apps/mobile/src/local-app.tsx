@@ -23,12 +23,13 @@ import {
   Plug,
   SlidersHorizontal,
 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
 import { MuseApi } from "./api";
 import { ApiSettingsScreen } from "./api-groups/api-settings";
+import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
 import { ChatScreen } from "./chat";
 import { FontProvider } from "./font";
@@ -37,6 +38,7 @@ import { IncognitoProvider } from "./incognito";
 import { OurSpaceScreen } from "./our-space-ui";
 import { useDropZone } from "./pet/registry";
 import { PetOverlay } from "./pet-ui";
+import { registerFontSizeHandler } from "./settings/tools";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
@@ -115,6 +117,13 @@ export function LocalApp() {
   const [toast, setToast] = useState("");
   const [prompt, setPrompt] = useState<{ id: number; text: string }>();
   const api = useMemo(() => new NullMuseApi(), []);
+
+  // Wire the AI "set_font_size" tool to immediate apply.
+  useEffect(() => {
+    registerFontSizeHandler(async (option) => {
+      await setFontSizeOption(option as FontSizeOption);
+    });
+  }, []);
 
   const nav: { id: LocalSection; label: string; icon: LucideIcon }[] = [
     { id: "chat", label: t("tab.chat"), icon: MessageCircle },

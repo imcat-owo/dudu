@@ -20,6 +20,8 @@ export interface TtsConfig {
   provider: TtsProvider;
   /** Voice id. edge-tts: e.g. "zh-CN-XiaoxiaoNeural". custom: provider's voice id. */
   voice: string;
+  /** Speech speed multiplier, 0.5 (slow) to 2.0 (fast). 1.0 is normal. */
+  rate?: number;
   /** Custom provider only: base URL, e.g. https://api.openai.com/v1 (no trailing slash). */
   customUrl?: string;
   /** Custom provider only: secret, SecureStore-backed. */

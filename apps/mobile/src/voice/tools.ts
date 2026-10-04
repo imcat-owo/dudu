@@ -179,10 +179,7 @@ export function createTtsVoiceTools(voiceStore: import("./store.js").VoiceStore)
         const snap = voiceStore.getSnapshot();
         const next: TtsConfig = { ...snap.tts };
         if (voice) next.voice = voice;
-        // Speed lives on the config when the provider supports it.
-        if (speed !== null) {
-          (next as unknown as Record<string, unknown>).speed = speed;
-        }
+        if (speed !== null) next.rate = speed;
         await voiceStore.setTts(next);
         const parts: string[] = [];
         if (voice) parts.push(`voice → ${voice}`);

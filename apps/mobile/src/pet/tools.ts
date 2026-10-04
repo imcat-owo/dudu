@@ -68,10 +68,24 @@ export interface PetStorage {
   setItem(key: string, value: string): Promise<void>;
 }
 
-type PetSkin =
+export type PetSkin =
   | { kind: "sora" }
   | { kind: "devil"; index: number }
   | { kind: "custom"; imageUri: string };
+
+/**
+ * Callback the UI layer registers to apply skin changes immediately
+ * via petStore.setSkin() (which updates React state + persists + emits).
+ * Falls back to direct storage write when no handler is registered.
+ */
+type PetSkinHandler = (skin: PetSkin) => Promise<void>;
+
+let skinHandler: PetSkinHandler | null = null;
+
+/** UI layer (pet provider) calls this once to wire immediate apply. */
+export function registerPetSkinHandler(h: PetSkinHandler): void {
+  skinHandler = h;
+}
 
 /**
  * Build the pet skin tool set — change the desktop pet's skin on request.
@@ -111,6 +125,10 @@ export function createPetSkinTools(storage: PetStorage): LocalTool[] {
           skin = { kind: "custom", imageUri: uri };
         } else {
           throw new ToolError('skin must be "sora", "devil:0"-"devil:9", or "custom:<image-uri>".');
+        }
+        if (skinHandler) {
+          await skinHandler(skin);
+          return `Pet skin changed to ${raw}.`;
         }
         const stored = await storage.getItem(PET_STORAGE_KEY);
         let state: Record<string, unknown> = {};

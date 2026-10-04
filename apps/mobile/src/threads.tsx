@@ -11,10 +11,11 @@ import {
 } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
+import { registerNewDialogHandler } from "./chat/dialog-tools";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
 
 function newThreadId() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -46,6 +47,13 @@ export function ThreadsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+
+  // Wire the AI "new_dialog" tool to real navigation.
+  const startRef = useRef<() => void>(() => {});
+  startRef.current = () => setSelection({ id: newThreadId(), existing: false });
+  useEffect(() => {
+    registerNewDialogHandler(() => startRef.current());
+  }, []);
   useEffect(() => {
     if (!enabled) return;
     let active = true;

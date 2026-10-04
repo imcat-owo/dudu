@@ -14,7 +14,6 @@ import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import type { ApiGroup } from "../api-groups/types.js";
 import type { EmbedResult } from "./embeddings.js";
 import { selectEmbeddingProvider } from "./embeddings-local.js";
-import type { KnowledgeStore } from "./store.js";
 import { topKByCosine } from "./vectors.js";
 
 export interface KnowledgeToolDeps {

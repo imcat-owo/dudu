@@ -113,10 +113,13 @@ function speechConfigMessage(): string {
   );
 }
 
-function ssmlMessage(text: string, voice: string, requestId: string): string {
+function ssmlMessage(text: string, voice: string, requestId: string, rate = 1.0): string {
+  // SSML prosody rate: "+20%" = 1.2x, "-20%" = 0.8x, "+0%" = normal.
+  const pct = Math.round((rate - 1) * 100);
+  const rateAttr = pct >= 0 ? `+${pct}%` : `${pct}%`;
   const ssml =
     `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-CN'>` +
-    `<voice name='${voice}'><prosody pitch='+0Hz' rate='+0%' volume='+0%'>` +
+    `<voice name='${voice}'><prosody pitch='+0Hz' rate='${rateAttr}' volume='+0%'>` +
     `${escapeXml(text)}</prosody></voice></speak>`;
   return (
     `X-RequestId:${requestId}\r\n` +
@@ -148,7 +151,12 @@ declare const WebSocket: new (
  * Synthesize one chunk of text. Resolves with the raw MP3 bytes
  * (concatenated across the turn). Rejects with EdgeTtsError.
  */
-function synthesizeChunk(text: string, voice: string, timeoutMs = 30000): Promise<Uint8Array> {
+function synthesizeChunk(
+  text: string,
+  voice: string,
+  rate = 1.0,
+  timeoutMs = 30000,
+): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     let ws: WsLike | null = null;
     let settled = false;
@@ -188,7 +196,7 @@ function synthesizeChunk(text: string, voice: string, timeoutMs = 30000): Promis
     ws.onopen = () => {
       try {
         ws?.send(speechConfigMessage());
-        ws?.send(ssmlMessage(text, voice, uuid().replace(/-/g, "")));
+        ws?.send(ssmlMessage(text, voice, uuid().replace(/-/g, ""), rate));
       } catch (e) {
         finish(e instanceof Error ? e : new EdgeTtsError("send failed"));
       }
@@ -245,13 +253,17 @@ function synthesizeChunk(text: string, voice: string, timeoutMs = 30000): Promis
  * Synthesize full text to MP3 bytes. Chunks long text and concatenates.
  * Pure protocol — no file I/O here (callers decide where to save).
  */
-export async function edgeTtsSynthesize(text: string, voice: string): Promise<Uint8Array> {
+export async function edgeTtsSynthesize(
+  text: string,
+  voice: string,
+  rate = 1.0,
+): Promise<Uint8Array> {
   const trimmed = text.trim();
   if (!trimmed) throw new EdgeTtsError("empty text");
   const chunks = chunkText(trimmed);
   const parts: Uint8Array[] = [];
   for (const chunk of chunks) {
-    const bytes = await synthesizeChunk(chunk, voice);
+    const bytes = await synthesizeChunk(chunk, voice, rate);
     if (bytes.length === 0) throw new EdgeTtsError("edge-tts returned no audio");
     parts.push(bytes);
   }
