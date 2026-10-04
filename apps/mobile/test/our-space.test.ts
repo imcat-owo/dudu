@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getManual } from "../src/manuals/index.js";
 import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
-import {
-  type OurSpaceStorage,
-  OurSpaceStore,
-} from "../src/our-space/store.js";
+import { getManual } from "../src/manuals/index.js";
+import { buildAnniversarySection } from "../src/our-space/anniversary-section.js";
+import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
 import { createOurSpaceTools } from "../src/our-space/tools.js";
 
 function fakeStorage(): OurSpaceStorage {
@@ -116,13 +114,23 @@ describe("our-space tools", () => {
     assert.equal(tools.length, 17);
     const names = tools.map((t) => t.name);
     for (const n of [
-      "my_status_read", "my_status_update",
-      "diary_write", "diary_read",
-      "timeline_add", "timeline_read",
-      "tell_later_add", "tell_later_read", "tell_later_done",
-      "feed_post", "feed_read", "feed_reply", "feed_like",
-      "anniversary_add", "anniversary_read",
-      "work_add", "work_read",
+      "my_status_read",
+      "my_status_update",
+      "diary_write",
+      "diary_read",
+      "timeline_add",
+      "timeline_read",
+      "tell_later_add",
+      "tell_later_read",
+      "tell_later_done",
+      "feed_post",
+      "feed_read",
+      "feed_reply",
+      "feed_like",
+      "anniversary_add",
+      "anniversary_read",
+      "work_add",
+      "work_read",
     ]) {
       assert.ok(names.includes(n), `missing tool ${n}`);
     }
@@ -135,7 +143,11 @@ describe("our-space tools", () => {
   it("diary_write + diary_read round-trip via registry", async () => {
     const store = new OurSpaceStore(fakeStorage());
     const reg = createToolRegistry(createOurSpaceTools(store));
-    const out = await reg.execute("diary_write", { title: "Test day", content: "It was good." }, ctx);
+    const out = await reg.execute(
+      "diary_write",
+      { title: "Test day", content: "It was good." },
+      ctx,
+    );
     assert.match(out, /saved/i);
     const read = await reg.execute("diary_read", {}, ctx);
     assert.match(read, /Test day/);
@@ -288,11 +300,7 @@ describe("our-space v2: works drawer", () => {
   it("AI tools: work_add / work_read; rejects unknown type", async () => {
     const store = new OurSpaceStore(fakeStorage());
     const reg = createToolRegistry(createOurSpaceTools(store));
-    await reg.execute(
-      "work_add",
-      { type: "image", title: "Pic", uri: "file:///pic.jpg" },
-      ctx,
-    );
+    await reg.execute("work_add", { type: "image", title: "Pic", uri: "file:///pic.jpg" }, ctx);
     const read = await reg.execute("work_read", {}, ctx);
     assert.match(read, /\[image\] Pic/);
     await assert.rejects(() =>
@@ -307,5 +315,57 @@ describe("our-space v2: no duplicate tool names", () => {
     const tools = createOurSpaceTools(store);
     const names = tools.map((t) => t.name);
     assert.equal(names.length, new Set(names).size);
+  });
+});
+
+describe("anniversary-section: buildAnniversarySection", () => {
+  // Fixed "now": 2026-10-04 (Sunday), to make date math deterministic.
+  const NOW = new Date(2026, 9, 4, 12, 0, 0);
+
+  function ann(title: string, date: string) {
+    return { id: "x", title, date, description: "", createdAt: 0 };
+  }
+
+  it("returns empty string when no anniversaries", () => {
+    assert.equal(buildAnniversarySection([], NOW), "");
+  });
+
+  it("injects a line when the anniversary is today", () => {
+    const s = buildAnniversarySection([ann("相识纪念日", "2026-10-04")], NOW);
+    assert.match(s, /今天是「相识纪念日」/);
+  });
+
+  it("injects a countdown line when upcoming within 7 days", () => {
+    const s = buildAnniversarySection([ann("她的生日", "2026-10-09")], NOW);
+    assert.match(s, /「她的生日」还有 5 天/);
+  });
+
+  it("stays silent for anniversaries more than 7 days away", () => {
+    const s = buildAnniversarySection([ann("圣诞节", "2026-12-25")], NOW);
+    assert.equal(s, "");
+  });
+
+  it("stays silent for past anniversaries (days-together style)", () => {
+    const s = buildAnniversarySection([ann("在一起", "2025-01-01")], NOW);
+    assert.equal(s, "");
+  });
+
+  it("handles multiple anniversaries, only the near ones", () => {
+    const s = buildAnniversarySection(
+      [ann("远的", "2027-01-01"), ann("今天的", "2026-10-04"), ann("近的", "2026-10-06")],
+      NOW,
+    );
+    assert.match(s, /今天是「今天的」/);
+    assert.match(s, /「近的」还有 2 天/);
+    assert.doesNotMatch(s, /远的/);
+  });
+
+  it("never emits emoji", () => {
+    const s = buildAnniversarySection(
+      [ann("相识纪念日", "2026-10-04"), ann("她的生日", "2026-10-09")],
+      NOW,
+    );
+    // eslint-disable-next-line no-control-regex
+    assert.doesNotMatch(s, /[\u{1F000}-\u{1FAFF}\u2600-\u{27BF}]/u);
   });
 });

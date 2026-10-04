@@ -15,11 +15,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
+import { createDialogTools } from "../chat/dialog-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
-import { createDialogTools } from "../chat/dialog-tools.js";
-import { createFontSizeTools } from "../settings/tools.js";
-import { createPetSkinTools } from "../pet/tools.js";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -29,6 +27,7 @@ import type { MemoryStore } from "../memory/store.js";
 import { musicStore } from "../music/instance.js";
 import { createMusicTools } from "../music/tools.js";
 import { createNativeAppTools } from "../native-apps-tools.js";
+import { buildAnniversarySection } from "../our-space/anniversary-section.js";
 import { ourSpaceStore } from "../our-space/instance.js";
 import { taskProgressStore } from "../our-space/task-progress-instance.js";
 import {
@@ -36,8 +35,10 @@ import {
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools.js";
+import { createPetSkinTools } from "../pet/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
+import { createFontSizeTools } from "../settings/tools.js";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
@@ -263,16 +264,9 @@ export function buildLocalSystemPrompt(
   parts.push(
     `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })} (Asia/Shanghai).`,
   );
-  // Pet touch — she can feel the desktop pet (桌宠）: pinching its cheek,
-  // holding its hand, patting its head. One subtle line so she can react
   return parts.join("\n");
 }
 
-/**
- * One-line note about her most recent touch on the desktop pet (last
- * 3 minutes), so the AI can feel it and react like a person would.
- * Empty string when there's nothing recent — no noise, no spam.
- */
 /**
  * Resolve a user message for the wire, processing image attachments.
  *
@@ -677,6 +671,16 @@ export function createLocalAgent(opts: {
       // Skills index: one line per enabled skill (token-minimal, same pattern
       // as the manual index). Empty string when she has no enabled skills.
       const skillSection = await (opts.skillStore ?? skillStore).buildSkillIndex();
+      // Anniversary awareness: when a 纪念日 is today or within 7 days, one
+      // subtle line so he remembers and can prepare — the petTouchNote pattern.
+      // Empty string when nothing is near: no noise, no spam.
+      let anniversarySection = "";
+      try {
+        const anniversaries = await (opts.ourSpaceStore ?? ourSpaceStore).listAnniversaries();
+        anniversarySection = buildAnniversarySection(anniversaries);
+      } catch {
+        // Anniversary read failure: skip silently, never break the prompt.
+      }
       // Intelligent API adaptation: resolve effective tools/thinking state.
       // Precedence: her manual override (group) → learned profile → auto
       // (optimistic ON — her rule: everything ON unless proven impossible).
@@ -695,6 +699,7 @@ export function createLocalAgent(opts: {
       const systemPrompt = buildLocalSystemPrompt(tools, t, opts.systemPrompt, [
         memorySection,
         skillSection,
+        anniversarySection,
       ]);
       const allWireTools = registry.definitions();
       // wireTools is mutable: auto-fallback may clear it on retry.
