@@ -1,7 +1,8 @@
 /**
  * 我们的空间 — Our Space. The part of the app that belongs to the two of them.
  *
- * Five areas, ALL dialog-driven and AI-operated — she never edits manually:
+ * Five areas, dialog-driven and AI-operated — with one exception: she can
+ * write diary entries herself (user P2-2), everything else he writes for them:
  * - status:    my status (doing / background / stuck)
  * - diary:     my diary, written for the two of them
  * - timeline:  我们的时光 — shared moments, told like a story
@@ -452,20 +453,130 @@ function StatusView() {
 }
 
 // ---- Diary: journal rhythm — date, title, body ----
+// user P2-2: the diary nudge offers "你写还是我写？" — so she gets a real
+// write path here, not just his entries. Same store, same AI tools.
 
-function DiaryView() {
+function DiaryView({ autoCompose }: { autoCompose?: boolean }) {
   const v = useOurSpaceVersion();
   const colors = useColors();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [composing, setComposing] = useState(false);
+  const [dTitle, setDTitle] = useState("");
+  const [dContent, setDContent] = useState("");
+  const [dError, setDError] = useState("");
 
   useEffect(() => {
     void ourSpaceStore.listDiary(50).then(setEntries);
   }, [v]);
+  useEffect(() => {
+    if (autoCompose) setComposing(true);
+  }, [autoCompose]);
 
-  if (entries.length === 0) return <EmptyState text={t("space.diary.empty")} />;
+  async function saveEntry() {
+    setDError("");
+    try {
+      await ourSpaceStore.addDiary(dTitle, dContent);
+      setDTitle("");
+      setDContent("");
+      setComposing(false);
+    } catch {
+      setDError(t("space.diary.fillBoth") as string);
+    }
+  }
+
+  const writeButton = (
+    <PressableScale
+      onPress={() => {
+        setDError("");
+        setComposing((c) => !c);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={t("space.diary.write") as string}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.card,
+        }}
+      >
+        <BookOpen size={15} color={colors.text} strokeWidth={1.8} />
+        <TText style={{ color: colors.text, fontSize: 13.5, fontWeight: "600" }}>
+          {t("space.diary.write")}
+        </TText>
+      </View>
+    </PressableScale>
+  );
+
+  const composer = composing ? (
+    <SoftCard>
+      <TextInput
+        value={dTitle}
+        onChangeText={setDTitle}
+        placeholder={t("space.diary.titlePlaceholder") as string}
+        placeholderTextColor={colors.muted}
+        style={{ color: colors.text, fontSize: 16, fontWeight: "700", marginBottom: 10 }}
+      />
+      <TextInput
+        value={dContent}
+        onChangeText={setDContent}
+        placeholder={t("space.diary.contentPlaceholder") as string}
+        placeholderTextColor={colors.muted}
+        multiline
+        style={{ color: colors.text, fontSize: 14, lineHeight: 24, minHeight: 90, textAlignVertical: "top" }}
+      />
+      {!!dError && (
+        <TText style={{ color: colors.danger, fontSize: 12.5, marginTop: 8 }}>{dError}</TText>
+      )}
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+        <PressableScale onPress={() => void saveEntry()} accessibilityRole="button">
+          <View
+            style={{
+              paddingHorizontal: 18,
+              paddingVertical: 9,
+              borderRadius: radii.lg,
+              backgroundColor: colors.text,
+            }}
+          >
+            <TText style={{ color: colors.card, fontSize: 13.5, fontWeight: "700" }}>
+              {t("space.diary.save")}
+            </TText>
+          </View>
+        </PressableScale>
+        <PressableScale
+          onPress={() => {
+            setComposing(false);
+            setDError("");
+          }}
+          accessibilityRole="button"
+        >
+          <View style={{ paddingHorizontal: 14, paddingVertical: 9 }}>
+            <TText style={{ color: colors.muted, fontSize: 13.5 }}>{t("common.cancel")}</TText>
+          </View>
+        </PressableScale>
+      </View>
+    </SoftCard>
+  ) : null;
+
+  if (entries.length === 0 && !composing)
+    return (
+      <View style={{ gap: 16 }}>
+        <EmptyState text={t("space.diary.empty")} />
+        {writeButton}
+      </View>
+    );
   return (
     <FadeIn>
       <View style={{ gap: 20 }}>
+        {writeButton}
+        {composer}
         {entries.map((e, i) => (
           <StaggerIn key={e.id} index={i}>
             <View>
@@ -513,8 +624,9 @@ function DiaryView() {
 // ---- Timeline: a story, grouped by month ----
 
 function monthLabel(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+  return new Intl.DateTimeFormat(getLocale(), { year: "numeric", month: "numeric" }).format(
+    new Date(ts),
+  );
 }
 
 function TimelineView() {
@@ -1431,7 +1543,7 @@ function PageShell({
           gap: 6,
         }}
       >
-        <PressableScale onPress={onBack} accessibilityRole="button" accessibilityLabel="Back">
+        <PressableScale onPress={onBack} accessibilityRole="button" accessibilityLabel={t("a11y.back")}>
           <View
             style={{
               width: 36,
@@ -2379,8 +2491,32 @@ function LoveLettersPage() {
   );
 }
 
-export function OurSpaceScreen() {
-  const [page, setPage] = useState<SpacePage>({ type: "home" });
+export type OurSpaceStartPage = Exclude<SpacePage, { type: "home" }>["type"];
+
+/**
+ * user P2-1: proactive notification taps deep-link here.
+ * startPage opens that page; startCompose opens the diary composer
+ * straight away (the diary nudge offers "你写" — it must be real).
+ * deepLinkId re-applies the link when it arrives after mount.
+ */
+export function OurSpaceScreen({
+  startPage,
+  startCompose,
+  deepLinkId,
+}: {
+  startPage?: OurSpaceStartPage;
+  startCompose?: boolean;
+  deepLinkId?: number;
+}) {
+  const [page, setPage] = useState<SpacePage>(
+    startPage ? { type: startPage } : { type: "home" },
+  );
+  const [composeDiary, setComposeDiary] = useState(false);
+  useEffect(() => {
+    if (deepLinkId == null) return;
+    if (startPage) setPage({ type: startPage });
+    setComposeDiary(startPage === "diary" && startCompose === true);
+  }, [deepLinkId, startPage, startCompose]);
   const colors = useColors();
 
   if (page.type !== "home") {
@@ -2401,7 +2537,7 @@ export function OurSpaceScreen() {
           {page.type === "feed" && <FeedPage />}
           {page.type === "works" && <WorksPage />}
           {page.type === "anniversary" && <AnniversaryPage />}
-          {page.type === "diary" && <DiaryView />}
+          {page.type === "diary" && <DiaryView autoCompose={composeDiary} />}
           {page.type === "garden" && <GardenView />}
           {page.type === "status" && (
             <>

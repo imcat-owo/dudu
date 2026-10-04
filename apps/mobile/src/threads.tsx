@@ -183,7 +183,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
   }
   return (
     <Sheet
-      title="嘟嘟"
+      title={t("threads.appName")}
       subtitle={workspace.mode === "sample" ? t("detail.homeTitle") : workspace.profile.name}
       onClose={onClose}
     >
@@ -201,7 +201,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
           <>
             <LinkRow
               icon={MessageCircle}
-              title="主聊天"
+              title={t("threads.mainChat")}
               detail={t("threads.ongoingConversation")}
               onPress={() => {
                 select({ id: mainId, existing: true });
@@ -341,7 +341,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
           <>
             <LinkRow
               icon={MessageCircle}
-              title="主聊天"
+              title={t("threads.mainChat")}
               detail={t("threads.savedInWorkspace")}
               onPress={() => {
                 navigate("chat");
@@ -354,7 +354,7 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
         <View style={s.divider} />
         <LinkRow
           icon={Plus}
-          title="委派任务"
+          title={t("threads.delegateTask")}
           detail={t("threads.planSummary")}
           onPress={() => {
             onClose();
@@ -363,16 +363,16 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
         />
         <LinkRow
           icon={Monitor}
-          title="Agent 电脑"
+          title={t("threads.agentComputer")}
           detail={t("threads.browserDetail")}
           onPress={() => {
             onClose();
             open({ type: "computer" });
           }}
         />
-        <LinkRow icon={CalendarDays} title="日历" onPress={() => go("calendar")} />
-        <LinkRow icon={FileText} title="文件" onPress={() => go("files")} />
-        <LinkRow icon={Settings2} title="应用和设置" onPress={() => go("apps")} />
+        <LinkRow icon={CalendarDays} title={t("threads.calendar")} onPress={() => go("calendar")} />
+        <LinkRow icon={FileText} title={t("threads.files")} onPress={() => go("files")} />
+        <LinkRow icon={Settings2} title={t("threads.appsSettings")} onPress={() => go("apps")} />
         <Button small icon={RefreshCw} onPress={() => void mutate(refresh)}>
           Refresh workspace
         </Button>

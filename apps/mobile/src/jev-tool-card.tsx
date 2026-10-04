@@ -200,12 +200,12 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
     <Card style={{ width: "100%", maxWidth: 440, padding: 17, gap: 13 }}>
       <View style={{ gap: 5 }}>
         <TText style={s.heading}>{panel.title}</TText>
-        {panel.mode === "sample" && <TText style={s.small}>示例·预设决策</TText>}
-        {panel.mode === "live" && <TText style={s.small}>实时 Jev·模型决策</TText>}
+        {panel.mode === "sample" && <TText style={s.small}>{t("jev.sampleDecision")}</TText>}
+        {panel.mode === "live" && <TText style={s.small}>{t("jev.liveDecision")}</TText>}
         {preferredOption && !selectedId && (
-          <TText style={s.small}>Previous preference: {preferredOption.label}</TText>
+          <TText style={s.small}>{t("jev.preferredOption", { label: preferredOption.label })}</TText>
         )}
-        {stale && <TText style={s.small}>之前的选择</TText>}
+        {stale && <TText style={s.small}>{t("jev.staleChoice")}</TText>}
         {selectedId && <TText style={s.small}>选择已提交</TText>}
       </View>
       {panel.type === "clarification" ? (

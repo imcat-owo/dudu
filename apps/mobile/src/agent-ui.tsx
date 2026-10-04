@@ -244,7 +244,7 @@ export function AgentActivityScreen() {
         <TaskCard key={task.id} task={task} />
       ))}
       {!tasks.length && (
-        <Empty icon={ListChecks} title="工作的地方" detail={t("agent.emptyDetail")} />
+        <Empty icon={ListChecks} title={t("agent.emptyTitle")} detail={t("agent.emptyDetail")} />
       )}
       <SectionHeading title={t("agent.reviews")} />
       <ActivityScreen />
@@ -511,7 +511,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
                   value={answer}
                   onChangeText={setAnswer}
                   multiline
-                  placeholder="补充缺失的细节…"
+                  placeholder={t("agent.addDetailPlaceholder")}
                 />
               )}
               {task.kind === "document" && !fieldNames.length && (
@@ -740,7 +740,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
     try {
       await mutate("/goals", {
         title: goalTitle.trim(),
-        category: "财务",
+        category: t("agent.categoryFinance"),
         description: `来自 ${artifact.title}：${artifact.summary}`,
         milestones: ["定个储蓄目标", "每周看看花销"],
       });
@@ -825,7 +825,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 >
                   {amount(artifact.data[key])}
                 </TText>
-                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>原币种</TText>
+                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>{t("agent.origCurrency")}</TText>
               </View>
             ))}
           </View>
@@ -833,7 +833,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
         <View style={[s.row, { gap: 11, paddingHorizontal: 8, paddingTop: 13, paddingBottom: 4 }]}>
           <Wallet size={26} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 2 }}>
-            <TText style={[s.text, { fontWeight: "600" }]}>财务追踪</TText>
+            <TText style={[s.text, { fontWeight: "600" }]}>{t("agent.financeTitle")}</TText>
             <TText style={s.small}>支出、储蓄，以及下一步的计划。</TText>
           </View>
           <ChevronRight size={17} color={colors.muted} />
@@ -864,7 +864,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
               </View>
             );
           })}
-          <TText style={s.small}>金额使用原币种。本汇总覆盖导入的日期范围。</TText>
+          <TText style={s.small}>{t("agent.financeOrigNote")}</TText>
           {goalSaved ? (
             <TText style={s.text}>你的储蓄目标已保存在目标里。</TText>
           ) : (
@@ -873,7 +873,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 label={t("fin.goalLabel")}
                 value={goalTitle}
                 onChangeText={setGoalTitle}
-                placeholder="你想为什么存钱？"
+                placeholder={t("agent.savingGoalPlaceholder")}
               />
               <ErrorNotice error={goalError} />
               <Button
@@ -939,7 +939,7 @@ export function DelegateSheet() {
     }
   }
   return (
-    <Sheet title="交付成果" subtitle={t("agent.delegateSubtitle")} onClose={close}>
+    <Sheet title={t("agent.deliverablesTitle")} subtitle={t("agent.delegateSubtitle")} onClose={close}>
       <View style={[s.row, { flexWrap: "wrap", gap: 8, marginBottom: 20 }]}>
         {(["plan", "document", "finance", "agent"] as const).map((item) => (
           <Button small primary={kind === item} key={item} onPress={() => setKind(item)}>
@@ -1346,7 +1346,7 @@ function GoalForm({ onDone, category }: { onDone: () => void; category?: string 
         label={t("agent.goalTitle")}
         value={title}
         onChangeText={setTitle}
-        placeholder="建立三个月的应急基金"
+        placeholder={t("agent.emergencyFundPlaceholder")}
       />
       <Field
         label={t("agent.successLook")}
@@ -1498,7 +1498,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
         label={t("agent.watchingWhat")}
         value={title}
         onChangeText={setTitle}
-        placeholder="在我最喜欢的餐厅订个桌子"
+        placeholder={t("agent.restaurantPlaceholder")}
       />
       {workspace.mode === "sample" && (
         <CheckRow
@@ -1661,7 +1661,7 @@ export function NotificationsSheet() {
     }
   }
   return (
-    <Sheet title="通知" subtitle={t("agent.notifSubtitle")} onClose={close}>
+    <Sheet title={t("agent.notifTitle")} subtitle={t("agent.notifSubtitle")} onClose={close}>
       <View style={{ gap: 14 }}>
         <ErrorNotice error={error} />
         {data?.notifications.map((item) => (
@@ -1763,10 +1763,10 @@ export function AppsScreen() {
         label={t("agent.searchApps")}
         value={query}
         onChangeText={setQuery}
-        placeholder="搜索连接器"
+        placeholder={t("agent.searchConnectors")}
       />
       <ConnectionsScreen query={query} />
-      <TText style={s.heading}>在你的电脑上</TText>
+      <TText style={s.heading}>{t("agent.onComputerTitle")}</TText>
       <Card style={{ paddingVertical: 3, backgroundColor: colors.card }}>
         {shortcuts
           .filter((item) =>
@@ -1858,7 +1858,7 @@ export function AppsScreen() {
             </Button>
           </Card>
           <Card style={{ gap: 12 }}>
-            <SectionHeading title="记忆" />
+            <SectionHeading title={t("agent.memoryTitle")} />
             <TText style={s.muted}>你可以查看、修正或忘记的上下文。</TText>
             {data?.memories.map((item) => (
               <MemoryRow key={item.id} memory={item} />
@@ -1867,7 +1867,7 @@ export function AppsScreen() {
               label={t("agent.rememberLabel")}
               value={memory}
               onChangeText={setMemory}
-              placeholder="我更喜欢早上的会议"
+              placeholder={t("agent.meetingPrefPlaceholder")}
             />
             <Button
               busy={busy}

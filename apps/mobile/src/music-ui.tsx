@@ -55,7 +55,7 @@ import {
 } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
-import { type StringKey, t } from "./i18n";
+import { getLocale, type StringKey, t } from "./i18n";
 import { DUR } from "./motion";
 import { musicStore } from "./music/instance";
 import {
@@ -1180,7 +1180,10 @@ function SongRow({
   const listenLabel =
     listenDates.length > 0
       ? t("music.togetherListened", {
-          date: `${new Date(listenDates[0]).getMonth() + 1}月${new Date(listenDates[0]).getDate()}日`,
+          date: new Intl.DateTimeFormat(getLocale(), {
+            month: "numeric",
+            day: "numeric",
+          }).format(new Date(listenDates[0])),
         }) +
         (listenDates.length > 1 ? t("music.togetherListenedMore", { n: listenDates.length }) : "")
       : null;

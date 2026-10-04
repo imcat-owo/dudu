@@ -105,7 +105,7 @@ export function BrowserToolCard({
           <Globe2 size={21} color={colors.blueDark} />
         </View>
         <View style={{ flex: 1, gap: 1 }}>
-          <TText style={[s.text, { fontWeight: "600" }]}>浏览器</TText>
+          <TText style={[s.text, { fontWeight: "600" }]}>{t("browsercard.title")}</TText>
           <TText numberOfLines={1} style={[s.small, { fontSize: 12 }]}>
             {working
               ? t("browsercard.reading")
