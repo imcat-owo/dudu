@@ -11,12 +11,14 @@
  *   so they survive rotation and restarts.
  *
  * Mood is DERIVED (see resolvePetMood), never stored: dragging beats
- * everything, then a short happy window after drop/tap, then AI-busy,
- * then music-bopping, then sleepy after 90s of no interaction.
+ * everything, then a short happy window after drop/tap, then HER — he
+ * notices when she talks to him (happy 6s) and when she comes back to the
+ * app (greeting bounce 4s) — then AI-busy, then music-bopping, then sleepy
+ * after 90s of no interaction.
  */
 
-import { clampMascotIndex, DEFAULT_MASCOT_INDEX } from "../mascot";
 import type { AvatarState } from "../avatar-state";
+import { clampMascotIndex, DEFAULT_MASCOT_INDEX } from "../mascot";
 
 export type PetSkin =
   | { kind: "sora" }
@@ -119,10 +121,23 @@ export function resolvePetMood(input: {
   musicPlaying: boolean;
   lastHappyAt: number;
   lastInteractAt: number;
+  /**
+   * P2-30 — he notices HER. Timestamp (ms) of the last message she sent
+   * him: he's delighted she talked to him → happy for 6s.
+   */
+  lastHerMessageAt?: number;
+  /**
+   * P2-30 — timestamp (ms) of the last time she came back to the app after
+   * being away: a greeting bounce → happy for 4s.
+   */
+  lastHerBackAt?: number;
   now: number;
 }): PetMood {
   if (input.dragging) return "dragged";
   if (input.now - input.lastHappyAt < 2500) return "happy";
+  // P2-30: her presence beats the AI's busyness — she's the point of him.
+  if (input.lastHerMessageAt && input.now - input.lastHerMessageAt < 6000) return "happy";
+  if (input.lastHerBackAt && input.now - input.lastHerBackAt < 4000) return "happy";
   if (input.aiBusy) return "busy";
   if (input.musicPlaying) return "bopping";
   if (input.now - input.lastInteractAt > 90000) return "sleepy";
@@ -271,6 +286,9 @@ export class PetStore {
  * Live activity signals (module-level, NOT persisted). chat.tsx reports
  * AI-busy + the resolved AvatarState (same source of truth as
  * AnimatedAvatar via resolveAvatarState); music-ui.tsx reports playback.
+ * P2-30: chat.tsx also reports HER (noteHerMessage on every send) and the
+ * pet overlay reports her returns (noteHerBack on foreground-after-away) —
+ * the pet perceives her presence, not just touches and system state.
  * The pet overlay subscribes and derives mood from these + drag state +
  * interaction timers.
  *
@@ -282,10 +300,26 @@ export interface PetActivity {
   aiBusy: boolean;
   musicPlaying: boolean;
   avatarState: AvatarState;
+  /**
+   * P2-30 — he perceives HER. Timestamp (ms) of the last message she sent
+   * (chat.tsx reports every send, text or voice). 0 = never.
+   */
+  lastHerMessageAt: number;
+  /**
+   * P2-30 — timestamp (ms) of the last time she returned to the app after
+   * being away a while (pet-ui AppState listener). 0 = never.
+   */
+  lastHerBackAt: number;
 }
 
 const activityListeners = new Set<(a: PetActivity) => void>();
-const activityState: PetActivity = { aiBusy: false, musicPlaying: false, avatarState: "idle" };
+const activityState: PetActivity = {
+  aiBusy: false,
+  musicPlaying: false,
+  avatarState: "idle",
+  lastHerMessageAt: 0,
+  lastHerBackAt: 0,
+};
 
 function emitActivity(): void {
   for (const l of activityListeners) {
@@ -314,6 +348,22 @@ export const petActivity = {
   setMusicPlaying(b: boolean): void {
     if (activityState.musicPlaying === b) return;
     activityState.musicPlaying = b;
+    emitActivity();
+  },
+  /**
+   * P2-30 — she talked to him. Called by chat.tsx on every send (text or
+   * voice note). He notices: delighted → happy for 6s (see resolvePetMood).
+   */
+  noteHerMessage(): void {
+    activityState.lastHerMessageAt = Date.now();
+    emitActivity();
+  },
+  /**
+   * P2-30 — she's back. Called by the pet overlay's AppState listener when
+   * the app returns to foreground after she'd been away a while.
+   */
+  noteHerBack(): void {
+    activityState.lastHerBackAt = Date.now();
     emitActivity();
   },
   subscribe(fn: (a: PetActivity) => void): () => void {

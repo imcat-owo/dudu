@@ -169,6 +169,23 @@ const LIGHT_RECIPES: Record<SurfaceId, SurfaceRecipe> = {
   },
 };
 
+/**
+ * DARK DESIGN SYSTEM (P2-29) — dark mode is designed dark-first, NOT the
+ * light recipes tone-flipped. Three principles:
+ *
+ * 1. Elevation through lightness: surfaces get lighter as they rise off the
+ *    canvas (canvas 6 → card 12 → input 16 → aiBubble 22). Depth reads as
+ *    light, not shadow, because shadows are invisible on dark.
+ * 2. Luminous restraint: large colored fills go DEEPER in dark, not
+ *    brighter. A mid-bright fill on a dark canvas glares like a neon sign
+ *    (the old userBubble at primary/65 did exactly this). Color reads as
+ *    glow via bright text on a deep fill — the way iMessage does dark
+ *    bubbles. Only small highlights (icons, active dots, accent accents)
+ *    use the brightest tones (80+).
+ * 3. Quiet text: primary text is bright (90) but never pure white; borders
+ *    stay whisper-thin (22–28) so panels separate without drawing lines
+ *    across the screen.
+ */
 const DARK_RECIPES: Record<SurfaceId, SurfaceRecipe> = {
   canvas: {
     bg: { p: "neutral", t: 6 },
@@ -193,10 +210,12 @@ const DARK_RECIPES: Record<SurfaceId, SurfaceRecipe> = {
     radius: 20,
   },
   userBubble: {
-    bg: { p: "primary", t: 65 },
-    fg: { p: "primary", t: 12 },
+    // Principle 2: deep fill + bright text in dark (was primary/65 with
+    // dark text — a neon slab). Now it glows instead of glaring.
+    bg: { p: "primary", t: 45 },
+    fg: { p: "primary", t: 92 },
     accent: { p: "primary", t: 80 },
-    border: { p: "primary", t: 50 },
+    border: { p: "primary", t: 35 },
     radius: 18,
   },
   aiBubble: {
@@ -207,8 +226,10 @@ const DARK_RECIPES: Record<SurfaceId, SurfaceRecipe> = {
     radius: 18,
   },
   accent: {
-    bg: { p: "primary", t: 80 },
-    fg: { p: "primary", t: 20 },
+    // Principle 2: buttons sit one step down from max brightness (75, not
+    // 80) so large tap targets don't bloom; small highlights keep 80+.
+    bg: { p: "primary", t: 75 },
+    fg: { p: "primary", t: 15 },
     accent: { p: "tertiary", t: 70 },
     radius: 12,
   },

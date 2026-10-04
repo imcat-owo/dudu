@@ -64,6 +64,57 @@ describe("resolvePetMood priority", () => {
   });
 });
 
+describe("resolvePetMood perceives her (P2-30)", () => {
+  const base = {
+    dragging: false,
+    aiBusy: false,
+    musicPlaying: false,
+    lastHappyAt: -10000,
+    lastInteractAt: 1000,
+    now: 2000,
+  };
+  it("her message delights him (happy 6s), beating busy/music", () => {
+    assert.equal(
+      resolvePetMood({
+        ...base,
+        lastHerMessageAt: 1000,
+        now: 2000,
+        aiBusy: true,
+        musicPlaying: true,
+      }),
+      "happy",
+    );
+    // window expires after 6s
+    assert.equal(
+      resolvePetMood({ ...base, lastHerMessageAt: 1000, now: 8000, aiBusy: true }),
+      "busy",
+    );
+  });
+  it("her return gets a greeting bounce (happy 4s)", () => {
+    assert.equal(
+      resolvePetMood({ ...base, lastHerBackAt: 1000, now: 2000, musicPlaying: true }),
+      "happy",
+    );
+    assert.equal(
+      resolvePetMood({ ...base, lastHerBackAt: 1000, now: 6000, musicPlaying: true }),
+      "bopping",
+    );
+  });
+  it("tap-happy still beats her-message; dragging beats everything", () => {
+    assert.equal(
+      resolvePetMood({ ...base, lastHappyAt: 1500, lastHerMessageAt: 1000, now: 2000 }),
+      "happy",
+    );
+    assert.equal(
+      resolvePetMood({ ...base, dragging: true, lastHerMessageAt: 1000, now: 2000 }),
+      "dragged",
+    );
+  });
+  it("old callers without the new fields still work", () => {
+    assert.equal(resolvePetMood(base), "idle");
+  });
+});
+
 describe("drop-zone geometry", () => {
   it("pointInRect", () => {
     assert.equal(pointInRect({ x: 0, y: 0, width: 10, height: 10 }, 5, 5), true);

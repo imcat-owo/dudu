@@ -17,6 +17,7 @@ import { IconButton, useColors, useStyles } from "./ui";
 export {
   buildImageUrl,
   encodeImageMessage,
+  extractImageMessage,
   type ImageMessage,
   parseImageCommand,
   parseImageMessage,

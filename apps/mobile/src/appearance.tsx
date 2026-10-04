@@ -52,7 +52,7 @@ import type { PetSkin } from "./pet/store";
 import { SandboxSheet } from "./sandbox/sandbox-ui";
 import { SkillsSheet } from "./skills-ui";
 import { type AiThemeMode, getAiThemeMode, setAiThemeMode } from "./theme/ai-mode";
-import { makeThemeBundle, normalizeHex } from "./theme/derive";
+import { deriveSurfaces, makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
@@ -110,6 +110,190 @@ function seedFromBundle(bundle: ThemeBundle): DraftSeed {
     secondary: bundle.seed.secondary ?? bundle.seed.primary,
     accent: bundle.seed.tertiary ?? bundle.seed.primary,
   };
+}
+
+/**
+ * Gallery-style theme preview card (P2-28): instead of a bare color dot,
+ * each preset renders a miniature chat mockup in its OWN derived tokens —
+ * canvas, an AI bubble row, a user bubble row, and an input bar — so she
+ * can see what the theme actually feels like before trying it on.
+ */
+function ThemeGalleryCard({
+  preset,
+  selected,
+  accent,
+  muted,
+  onPress,
+}: {
+  preset: ThemeBundle;
+  selected: boolean;
+  /** Current UI accent (for the selected ring) — from live theme tokens. */
+  accent: string;
+  /** Current UI muted text color. */
+  muted: string;
+  onPress: () => void;
+}) {
+  const preview = useMemo(
+    () => deriveSurfaces(preset.seed, preset.mode === "dark" ? "dark" : "light"),
+    [preset],
+  );
+  const modeTag = preset.mode === "dark" ? t("appearance.mode.dark") : t("appearance.mode.light");
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={`${displayName(preset)} ${modeTag}`}
+      onPress={onPress}
+      style={{
+        flexBasis: "47%",
+        flexGrow: 1,
+        borderRadius: radii.lg,
+        padding: 10,
+        gap: 8,
+        backgroundColor: preview.canvas.bg,
+        borderWidth: selected ? 2.5 : 1,
+        borderColor: selected ? accent : (preview.card.border ?? preview.canvas.bg),
+      }}
+    >
+      {/* Mini chat mockup */}
+      <View style={{ gap: 6 }} pointerEvents="none">
+        {/* header strip */}
+        <View
+          style={{
+            height: 14,
+            borderRadius: 7,
+            backgroundColor: preview.card.bg,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 6,
+            gap: 4,
+          }}
+        >
+          <View
+            style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: preview.accent.bg }}
+          />
+          <View
+            style={{
+              width: 34,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: preview.text.fg,
+              opacity: 0.35,
+            }}
+          />
+        </View>
+        {/* AI bubble row */}
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 5 }}>
+          <View
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              backgroundColor: preview.accent.bg,
+            }}
+          />
+          <View
+            style={{
+              backgroundColor: preview.aiBubble.bg,
+              borderRadius: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              gap: 4,
+              maxWidth: "72%",
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: preview.aiBubble.fg,
+                opacity: 0.45,
+              }}
+            />
+            <View
+              style={{
+                width: 42,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: preview.aiBubble.fg,
+                opacity: 0.3,
+              }}
+            />
+          </View>
+        </View>
+        {/* user bubble row */}
+        <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+          <View
+            style={{
+              backgroundColor: preview.userBubble.bg,
+              borderRadius: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              maxWidth: "62%",
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: preview.userBubble.fg,
+                opacity: 0.55,
+              }}
+            />
+          </View>
+        </View>
+        {/* input bar */}
+        <View
+          style={{
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: preview.input.bg,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 7,
+          }}
+        >
+          <View
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: preview.input.fg,
+              opacity: 0.3,
+            }}
+          />
+          <View style={{ flex: 1 }} />
+          <View
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: preview.accent.bg,
+            }}
+          />
+        </View>
+      </View>
+      {/* name + mode */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <TText
+          style={{
+            color: preview.text.fg,
+            fontSize: 12,
+            fontWeight: selected ? "700" : "500",
+            flex: 1,
+          }}
+          numberOfLines={1}
+        >
+          {displayName(preset)}
+        </TText>
+        <TText style={{ color: muted, fontSize: 10 }} numberOfLines={1}>
+          {modeTag}
+        </TText>
+      </View>
+    </Pressable>
+  );
 }
 
 export function AppearanceScreen() {
@@ -508,51 +692,21 @@ export function AppearanceScreen() {
         </Card>
       </View>
 
-      <View>
+      <View style={{ gap: 8 }}>
         <SectionHeading title={t("appearance.presetsLabel")} />{" "}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", gap: 12, paddingRight: 4 }}>
-            {[...PRESETS, ...customs].map((preset) => {
-              const selected = bundle.id === preset.id;
-              return (
-                <Pressable
-                  key={preset.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={displayName(preset)}
-                  onPress={() => tryPreset(preset)}
-                  style={{
-                    alignItems: "center",
-                    gap: 8,
-                    padding: 12,
-                    borderRadius: radii.md,
-                    minWidth: 92,
-                    backgroundColor: tokens.card.bg,
-                    borderWidth: selected ? 2 : 1,
-                    borderColor: selected
-                      ? tokens.accent.accent
-                      : (tokens.card.border ?? tokens.card.bg),
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: radii.lg,
-                      backgroundColor: preset.seed.primary,
-                    }}
-                  />
-                  <TText
-                    style={{ color: fg, fontSize: 12, fontWeight: selected ? "600" : "400" }}
-                    numberOfLines={1}
-                  >
-                    {displayName(preset)}
-                  </TText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
+        <TText style={{ color: colors.muted, fontSize: 12 }}>{t("appearance.presetsHint")}</TText>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          {[...PRESETS, ...customs].map((preset) => (
+            <ThemeGalleryCard
+              key={preset.id}
+              preset={preset}
+              selected={bundle.id === preset.id}
+              accent={tokens.accent.accent}
+              muted={colors.muted}
+              onPress={() => tryPreset(preset)}
+            />
+          ))}
+        </View>
       </View>
 
       <View>

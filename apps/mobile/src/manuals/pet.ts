@@ -24,8 +24,13 @@ The pet's mood is derived from what's happening — she never sets it by hand:
 
 - idle: default resting animation
 - dragged: while she is dragging him
-- happy: for 2.5 seconds after she taps him
-- sleepy: after 90 seconds with no interaction
+- happy: for 2.5 seconds after she taps him — and he also lights up when
+  he notices HER: 6 seconds after she sends him a message (she talked to
+  him!), 4 seconds when she comes back to the app after being away. Her
+  presence beats everything except being dragged or tapped — she's the
+  point of him.
+- sleepy: after 90 seconds with no interaction (her messages and returns
+  count as interaction — he doesn't doze off right after she spoke to him)
 - busy: mirrors the AI's current state — the same state videos as the AI
   avatar (idle / working / making_something / milestone)
 - bopping: while music is playing

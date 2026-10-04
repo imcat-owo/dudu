@@ -6,34 +6,38 @@
  * image-generation.tsx re-exports everything for backward compatibility.
  */
 
+import { extractEnvelope } from "../message-envelope.js";
+
 export type ImageMessage = {
   uri: string;
   prompt: string;
 };
 
+export interface ImageMessageHit {
+  image: ImageMessage;
+  /** Surrounding prose with the envelope stripped ("" when the AI output JSON only). */
+  rest: string;
+}
+
 /**
  * Detect an image message encoded in message content.
  * Convention: {"type":"image_message","uri":"...","prompt":"..."}
+ *
+ * Tolerant (P2-27): found even inside a ```json fence or surrounded by the
+ * AI's own words — rendering no longer depends on verbatim JSON output.
  */
+export function extractImageMessage(content: string): ImageMessageHit | null {
+  const hit = extractEnvelope(content, "image_message");
+  if (!hit) return null;
+  const uri = hit.data.uri;
+  const prompt = hit.data.prompt;
+  if (typeof uri !== "string" || !uri || typeof prompt !== "string") return null;
+  return { image: { uri, prompt }, rest: hit.rest };
+}
+
+/** Legacy: just the image payload, or null. */
 export function parseImageMessage(content: string): ImageMessage | null {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{")) return null;
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      (parsed as Record<string, unknown>).type === "image_message" &&
-      typeof (parsed as Record<string, unknown>).uri === "string" &&
-      typeof (parsed as Record<string, unknown>).prompt === "string"
-    ) {
-      const p = parsed as { uri: string; prompt: string };
-      if (p.uri) return { uri: p.uri, prompt: p.prompt };
-    }
-  } catch {
-    // not JSON — not an image message
-  }
-  return null;
+  return extractImageMessage(content)?.image ?? null;
 }
 
 export function encodeImageMessage(uri: string, prompt: string): string {

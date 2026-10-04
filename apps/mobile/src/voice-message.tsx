@@ -10,44 +10,20 @@ import {
 import { Mic, Pause, Play } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
+import { TText } from "./font";
+import {
+  encodeVoiceMessage,
+  extractVoiceMessage,
+  parseVoiceMessage,
+  type VoiceMessage,
+  type VoiceMessageHit,
+} from "./message-envelope";
+import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors, useStyles } from "./ui";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
-export type VoiceMessage = {
-  uri: string;
-  duration: number; // seconds
-};
-
-/**
- * Detect a voice message encoded in message content.
- * Convention: {"type":"voice_message","uri":"...","duration":12}
- */
-export function parseVoiceMessage(content: string): VoiceMessage | null {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith("{")) return null;
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      (parsed as Record<string, unknown>).type === "voice_message" &&
-      typeof (parsed as Record<string, unknown>).uri === "string" &&
-      typeof (parsed as Record<string, unknown>).duration === "number"
-    ) {
-      const p = parsed as { uri: string; duration: number };
-      if (p.uri && p.duration >= 0) return { uri: p.uri, duration: p.duration };
-    }
-  } catch {
-    // not JSON — not a voice message
-  }
-  return null;
-}
-
-export function encodeVoiceMessage(uri: string, duration: number): string {
-  return JSON.stringify({ type: "voice_message", uri, duration });
-}
+export type { VoiceMessage, VoiceMessageHit };
+export { encodeVoiceMessage, extractVoiceMessage, parseVoiceMessage };
 
 function formatDuration(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);

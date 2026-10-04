@@ -56,9 +56,9 @@ import { t } from "./i18n";
 import {
   buildImageUrl,
   encodeImageMessage,
+  extractImageMessage,
   ImageBubble,
   parseImageCommand,
-  parseImageMessage,
 } from "./image-generation";
 import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
@@ -89,7 +89,7 @@ import { useVoiceConfig } from "./voice/store";
 import { transcribeAudio } from "./voice/stt";
 import {
   encodeVoiceMessage,
-  parseVoiceMessage,
+  extractVoiceMessage,
   VoiceBubble,
   VoiceRecorderButton,
 } from "./voice-message";
@@ -548,6 +548,8 @@ export function ChatScreen({
     setImageAttachments([]);
     setFileAttachments([]);
     setPicking(false);
+    // P2-30: the pet notices she talked to him.
+    petActivity.noteHerMessage();
   }
   function sendVoice(uri: string, duration: number) {
     if (!isReady || !loaded) return;
@@ -555,6 +557,8 @@ export function ChatScreen({
       queue.resume();
     setShowResults(false);
     enqueue(encodeVoiceMessage(uri, duration));
+    // P2-30: a voice note is her talking to him too.
+    petActivity.noteHerMessage();
   }
   async function pickImage() {
     try {
@@ -812,19 +816,31 @@ export function ChatScreen({
                 : undefined;
             const thinkingStreaming =
               !!thinking && (busy || agent.isRunning) && index === visible.length - 1;
+            // Voice / image envelopes are detected tolerantly (P2-27): the AI
+            // may add its own words around the JSON — `rest` is the prose
+            // with the envelope stripped, rendered as a text bubble above.
+            // (User messages can also carry envelopes: recorded voice notes
+            // and /img generations are encoded the same way.)
+            const voiceHit =
+              typeof message.content === "string" ? extractVoiceMessage(message.content) : null;
+            const voice = voiceHit?.voice ?? null;
+            const imageHit =
+              !voiceHit && typeof message.content === "string"
+                ? extractImageMessage(message.content)
+                : null;
+            const generatedImage = imageHit?.image ?? null;
+            const envelopeRest = voiceHit?.rest || imageHit?.rest || "";
             const text =
               typeof message.content === "string"
                 ? user
-                  ? displayJevUserMessage(
-                      message.content,
-                      messages.slice(0, messages.indexOf(message)),
-                    )
-                  : message.content
+                  ? voiceHit || imageHit
+                    ? ""
+                    : displayJevUserMessage(
+                        message.content,
+                        messages.slice(0, messages.indexOf(message)),
+                      )
+                  : envelopeRest || message.content
                 : "";
-            const voice =
-              typeof message.content === "string" ? parseVoiceMessage(message.content) : null;
-            const generatedImage =
-              typeof message.content === "string" ? parseImageMessage(message.content) : null;
             const userImages =
               user && typeof message.content === "string"
                 ? parseUserMessageWithImages(message.content)
@@ -842,6 +858,34 @@ export function ChatScreen({
             // A thinking-only message (reasoning streamed, reply not yet)
             // still renders its inline thinking status.
             const hasBubble = !!voice || !!generatedImage || !!text || !!userImages || !!thinking;
+            // A media envelope (voice/image) may carry the AI's own prose
+            // around it (P2-27) — render the prose as a text bubble stacked
+            // above the media bubble instead of dropping it.
+            const textBubble = !!text && (
+              <View
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                  borderRadius: radius,
+                  borderBottomRightRadius: user ? 6 : radius,
+                  borderBottomLeftRadius: user ? radius : 6,
+                  backgroundColor: bubble.bg,
+                }}
+              >
+                {user ? (
+                  <TText selectable style={[s.text, { color: bubble.fg }]}>
+                    {text}
+                  </TText>
+                ) : (
+                  <View>
+                    <AssistantResponse content={text} />
+                    <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+                      <SpeakButton text={text} bubbleFg={bubble.fg} />
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
             return (
               <View key={message.id} style={{ gap: 6 }}>
                 {hasBubble && (
@@ -865,10 +909,15 @@ export function ChatScreen({
                           onOpen={() => setActivityId(message.id)}
                         />
                       )}
-                      {voice ? (
-                        <VoiceBubble voice={voice} user={user} />
-                      ) : generatedImage ? (
-                        <ImageBubble image={generatedImage} user={user} />
+                      {voice || generatedImage ? (
+                        <View style={{ gap: 6 }}>
+                          {textBubble}
+                          {voice ? (
+                            <VoiceBubble voice={voice} user={user} />
+                          ) : generatedImage ? (
+                            <ImageBubble image={generatedImage} user={user} />
+                          ) : null}
+                        </View>
                       ) : userImages ? (
                         <View
                           style={{
@@ -895,31 +944,7 @@ export function ChatScreen({
                           )}
                         </View>
                       ) : (
-                        !!text && (
-                          <View
-                            style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 9,
-                              borderRadius: radius,
-                              borderBottomRightRadius: user ? 6 : radius,
-                              borderBottomLeftRadius: user ? radius : 6,
-                              backgroundColor: bubble.bg,
-                            }}
-                          >
-                            {user ? (
-                              <TText selectable style={[s.text, { color: bubble.fg }]}>
-                                {text}
-                              </TText>
-                            ) : (
-                              <View>
-                                <AssistantResponse content={text} />
-                                <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-                                  <SpeakButton text={text} bubbleFg={bubble.fg} />
-                                </View>
-                              </View>
-                            )}
-                          </View>
-                        )
+                        textBubble
                       )}
                     </View>
                     {user && <ChatAvatar who="user" />}

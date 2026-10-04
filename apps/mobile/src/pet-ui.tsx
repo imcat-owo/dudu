@@ -11,13 +11,15 @@
  *   making_something→making_something.mp4, milestone→milestone_level_up.mp4);
  *   static webp underneath as poster/fallback. Devil skins: static
  *   sticker + built-in motion (breathing / bounce).
- * - Mood is derived: dragged > happy (2.5s after drop/tap) > AI-busy >
+ * - Mood is derived: dragged > happy (2.5s after drop/tap) > HER (her
+ *   message 6s, her return 4s — he perceives her, P2-30) > AI-busy >
  *   music-bopping > sleepy (90s idle) > idle.
  */
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  AppState,
   Easing,
   Image,
   PanResponder,
@@ -254,12 +256,38 @@ export function PetOverlay({
         aiBusy: activity.aiBusy,
         musicPlaying: activity.musicPlaying,
         lastHappyAt: lastHappyAt.current,
-        lastInteractAt: lastInteractAt.current,
+        // P2-30: her talking to him / coming back counts as interaction —
+        // he doesn't doze off right after she spoke to him.
+        lastInteractAt: Math.max(
+          lastInteractAt.current,
+          activity.lastHerMessageAt,
+          activity.lastHerBackAt,
+        ),
+        lastHerMessageAt: activity.lastHerMessageAt,
+        lastHerBackAt: activity.lastHerBackAt,
         now: Date.now(),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dragging, activity, pet],
   );
+
+  // P2-30: he perceives her comings and goings. When the app returns to the
+  // foreground after she'd been away a while (>10s, so rapid switches don't
+  // spam greetings), he notices she's back → greeting bounce.
+  useEffect(() => {
+    let backgroundedAt = 0;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") {
+        backgroundedAt = Date.now();
+      } else if (state === "active") {
+        if (backgroundedAt > 0 && Date.now() - backgroundedAt > 10000) {
+          petActivity.noteHerBack();
+        }
+        backgroundedAt = 0;
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const maxX = Math.max(0, W - PET_SIZE);
   const maxY = Math.max(0, H - PET_SIZE - TAB_BAR_SPACE);

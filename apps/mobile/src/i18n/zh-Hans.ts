@@ -908,6 +908,7 @@ const zhHans = {
   "appearance.fontSize.standard": "标准",
   "appearance.fontSize.large": "大",
   "appearance.presetsLabel": "预设",
+  "appearance.presetsHint": "点一张试穿，喜欢再点应用。",
   "appearance.customLabel": "自定义配色",
   "appearance.primary": "主色",
   "appearance.secondary": "副色",

@@ -937,6 +937,7 @@ export const enStrings: Record<StringKey, string> = {
   "appearance.fontSize.standard": "Standard",
   "appearance.fontSize.large": "Large",
   "appearance.presetsLabel": "Presets",
+  "appearance.presetsHint": "Tap a theme to try it on — apply it if you like it.",
   "appearance.customLabel": "Custom colors",
   "appearance.primary": "Primary",
   "appearance.secondary": "Secondary",

@@ -2,9 +2,9 @@
  * Podcast / long-audio generation — AI tool. PURE module: no direct
  * React Native / expo imports (lazy inside ./podcast.ts).
  *
- * The tool returns a voice_message JSON string. The AI must output it
- * VERBATIM as its reply message so chat renders a playable WeChat-style
- * voice bubble — never as a file attachment.
+ * The tool returns a voice_message JSON string. Include it in your reply —
+ * the app detects it and renders a playable WeChat-style voice bubble,
+ * even if you add a short intro line around it. Never attach it as a file.
  */
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
@@ -94,8 +94,8 @@ export function createPodcastTools(
         "joins them into one audio file. " +
         "IMPORTANT: the tool returns a JSON string like " +
         '{"type":"voice_message","uri":"file:///...","duration":123}. ' +
-        "Output that JSON VERBATIM as your entire reply message (no other text around it) so it renders as a " +
-        "WeChat-style voice bubble she can tap to play. Never describe it, never attach it as a file.",
+        "Include that JSON in your reply (a short intro line is fine — the app finds it and renders " +
+        "a WeChat-style voice bubble she can tap to play). Never describe it, never attach it as a file.",
       parameters: {
         type: "object",
         properties: {
