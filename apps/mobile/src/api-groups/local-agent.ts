@@ -56,6 +56,7 @@ import {
 } from "../our-space/tools.js";
 import { evaluateOutreachTriggers } from "../outreach/engine.js";
 import type { OutreachTriggerKind } from "../outreach/engine.js";
+import { buildOnThisDayInput } from "../outreach/on-this-day-input.js";
 import { buildOutreachSection } from "../outreach/prompt.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
@@ -1232,6 +1233,11 @@ export function createLocalAgent(opts: {
           const oLastOutreachAt: Partial<Record<OutreachTriggerKind, number>> = await oStore
             .getLastOutreachAt()
             .catch(() => ({}));
+          // On-this-day (round 3, xiaomeng P1-1 review fix): the in-session
+          // evaluation must receive the same onThisDay input the background
+          // scheduler passes (local-app.tsx listOnThisDay) — without it the
+          // on_this_day prompt line can never fire. Null = no memory today.
+          const oOnThisDay = await buildOnThisDayInput(opts.ourSpaceStore ?? ourSpaceStore);
           const oTriggers = evaluateOutreachTriggers({
             frequency,
             now: Date.now(),
@@ -1243,6 +1249,7 @@ export function createLocalAgent(opts: {
             lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
             lastOutreachAt: oLastOutreachAt,
             diaryNudge: oDiaryNudge,
+            onThisDay: oOnThisDay,
           });
           // xiaomeng P3-2: a silence notification fired within the last 24h
           // already said "missed you" — don't double up in-session.
