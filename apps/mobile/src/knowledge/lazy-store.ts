@@ -20,7 +20,15 @@ type Store = typeof knowledgeStore | SqliteKnowledgeStore;
 let sqlitePromise: Promise<SqliteKnowledgeStore> | null = null;
 
 function getSqlite(): Promise<SqliteKnowledgeStore> {
-  if (!sqlitePromise) sqlitePromise = getKnowledgeStore();
+  if (!sqlitePromise) {
+    sqlitePromise = getKnowledgeStore().catch((e) => {
+      // Don't cache the rejection — reset so the next call retries SQLite
+      // init instead of permanently degrading to the AsyncStorage fallback
+      // (which would split-brain AI writes away from the UI's SQLite reads).
+      sqlitePromise = null;
+      throw e;
+    });
+  }
   return sqlitePromise;
 }
 

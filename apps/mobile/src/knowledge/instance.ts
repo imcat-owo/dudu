@@ -42,10 +42,19 @@ let storePromise: Promise<SqliteKnowledgeStore> | null = null;
 export function getKnowledgeStore(): Promise<SqliteKnowledgeStore> {
   if (!storePromise) {
     storePromise = (async () => {
-      const db = await SQLite.openDatabaseAsync(DB_NAME);
-      const store = new SqliteKnowledgeStore(wrapExpoDb(db));
-      await migrateIfNeeded(store);
-      return store;
+      try {
+        const db = await SQLite.openDatabaseAsync(DB_NAME);
+        const store = new SqliteKnowledgeStore(wrapExpoDb(db));
+        await migrateIfNeeded(store);
+        return store;
+      } catch (e) {
+        // Don't cache the rejection — a transient failure (e.g. DB lock
+        // during migration) must not permanently degrade to a split brain
+        // where AI tools fall back to AsyncStorage while the UI expects
+        // SQLite. Next call retries init.
+        storePromise = null;
+        throw e;
+      }
     })();
   }
   return storePromise;
