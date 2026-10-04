@@ -474,8 +474,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           </View>
           {task.status === "waiting_approval" && (
             <Card style={{ backgroundColor: colors.lavender, gap: 12 }}>
-              <TText style={s.heading}>等待你的审核</TText>
-              <TText style={s.muted}>执行前请核对具体的操作和账号。</TText>
+              <TText style={s.heading}>{t("agent.approvalTitle")}</TText>
+              <TText style={s.muted}>{t("agent.approvalHint")}</TText>
               <Button primary busy={busy} onPress={() => void review()}>
                 {t("agent.reviewAction")}
               </Button>
@@ -543,7 +543,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           )}
           {!!task.plan.length && (
             <Card style={{ gap: 15 }}>
-              <TText style={s.heading}>计划</TText>
+              <TText style={s.heading}>{t("agent.planTab")}</TText>
               {task.plan.map((step, index) => (
                 <View key={step.id} style={[s.row, { gap: 10, alignItems: "flex-start" }]}>
                   {step.status === "succeeded" ? (
@@ -623,11 +623,11 @@ export function TaskDetail({ taskId }: { taskId: string }) {
           ))}
           {!!task.evidence.length && (
             <View style={{ gap: 14 }}>
-              <TText style={s.heading}>来源</TText>
+              <TText style={s.heading}>{t("agent.sourceTab")}</TText>
               <EvidenceList items={task.evidence} />
             </View>
           )}
-          <TText style={s.heading}>时间线</TText>
+          <TText style={s.heading}>{t("agent.timelineTab")}</TText>
           {detail?.events.map((event) => (
             <View
               key={event.id}
@@ -642,7 +642,7 @@ export function TaskDetail({ taskId }: { taskId: string }) {
               </TText>
             </View>
           ))}
-          {!detail?.events.length && <TText style={s.muted}>Worker 会在这里记录每一步。</TText>}
+          {!detail?.events.length && <TText style={s.muted}>{t("agent.workerStepsNote")}</TText>}
         </View>
       )}
     </Sheet>
@@ -741,8 +741,11 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
       await mutate("/goals", {
         title: goalTitle.trim(),
         category: t("agent.categoryFinance"),
-        description: `来自 ${artifact.title}：${artifact.summary}`,
-        milestones: ["定个储蓄目标", "每周看看花销"],
+        description: t("agent.goalFromArtifact", {
+          title: artifact.title,
+          summary: artifact.summary,
+        }),
+        milestones: [t("agent.milestoneSaving"), t("agent.milestoneWeekly")],
       });
       setGoalSaved(true);
     } catch (error) {
@@ -825,7 +828,9 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 >
                   {amount(artifact.data[key])}
                 </TText>
-                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>{t("agent.origCurrency")}</TText>
+                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>
+                  {t("agent.origCurrency")}
+                </TText>
               </View>
             ))}
           </View>
@@ -834,14 +839,14 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
           <Wallet size={26} color={colors.blueDark} />
           <View style={{ flex: 1, gap: 2 }}>
             <TText style={[s.text, { fontWeight: "600" }]}>{t("agent.financeTitle")}</TText>
-            <TText style={s.small}>支出、储蓄，以及下一步的计划。</TText>
+            <TText style={s.small}>{t("agent.financeBlurb")}</TText>
           </View>
           <ChevronRight size={17} color={colors.muted} />
         </View>
       </Pressable>
       {details && (
         <View style={{ gap: 16, padding: 10 }}>
-          <TText style={s.label}>你的钱花在哪了</TText>
+          <TText style={s.label}>{t("agent.financeWhere")}</TText>
           {categories.map((category) => {
             const row = record(category);
             if (!row) return null;
@@ -866,7 +871,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
           })}
           <TText style={s.small}>{t("agent.financeOrigNote")}</TText>
           {goalSaved ? (
-            <TText style={s.text}>你的储蓄目标已保存在目标里。</TText>
+            <TText style={s.text}>{t("agent.goalSavedNote")}</TText>
           ) : (
             <View style={{ gap: 10 }}>
               <Field
@@ -939,7 +944,11 @@ export function DelegateSheet() {
     }
   }
   return (
-    <Sheet title={t("agent.deliverablesTitle")} subtitle={t("agent.delegateSubtitle")} onClose={close}>
+    <Sheet
+      title={t("agent.deliverablesTitle")}
+      subtitle={t("agent.delegateSubtitle")}
+      onClose={close}
+    >
       <View style={[s.row, { flexWrap: "wrap", gap: 8, marginBottom: 20 }]}>
         {(["plan", "document", "finance", "agent"] as const).map((item) => (
           <Button small primary={kind === item} key={item} onPress={() => setKind(item)}>
@@ -962,7 +971,7 @@ export function DelegateSheet() {
       />
       {kind === "document" && (
         <View style={{ gap: 8, marginBottom: 18 }}>
-          <TText style={s.heading}>选择带 PDF 的邮件</TText>
+          <TText style={s.heading}>{t("agent.pickPdfMail")}</TText>
           {workspace.mail
             .filter((mail) => mail.attachments.length)
             .map((mail) => (
@@ -1043,7 +1052,7 @@ export function IdeasScreen() {
     <View style={{ gap: 20 }}>
       <AgentStatus />
       <View style={s.between}>
-        <TText style={s.small}>来自你连接的应用</TText>
+        <TText style={s.small}>{t("agent.fromConnectedApp")}</TText>
         <Button small icon={RefreshCw} busy={busy} onPress={() => void refreshIdeas()}>
           {t("agent.findIdeas")}
         </Button>
@@ -1060,7 +1069,7 @@ export function IdeasScreen() {
         .map((idea) => (
           <Card key={idea.id} style={{ gap: 7 }}>
             <TText style={s.heading}>{idea.title}</TText>
-            <Chip tint={colors.green}>已开始</Chip>
+            <Chip tint={colors.green}>{t("agent.started")}</Chip>
             {!!idea.taskId && <TaskLink taskId={idea.taskId} />}
           </Card>
         ))}
@@ -1192,7 +1201,7 @@ export function GoalsScreen() {
                 backgroundColor: colors.green,
               }}
             />
-            <TText style={s.heading}>追踪</TText>
+            <TText style={s.heading}>{t("agent.trackTab")}</TText>
           </View>
           <Button small icon={Plus} onPress={() => setAdding("Tracking")}>
             {t("agent.track")}
@@ -1219,7 +1228,7 @@ export function GoalsScreen() {
           </Pressable>
         ))}
         {!monitors.length && (
-          <TText style={[s.muted, { paddingVertical: 10 }]}>票价、预订、你在关注的页面。</TText>
+          <TText style={[s.muted, { paddingVertical: 10 }]}>{t("agent.trackBlurb")}</TText>
         )}
         {monitors.length > 3 && (
           <Button small onPress={() => setShowAll(!showAll)}>
@@ -1240,7 +1249,7 @@ export function GoalsScreen() {
               backgroundColor: colors.blueDark,
             }}
           />
-          <TText style={[s.heading, { color: colors.blueDark }]}>目标</TText>
+          <TText style={[s.heading, { color: colors.blueDark }]}>{t("agent.goalTab")}</TText>
         </View>
         {data?.goals.map((item) => (
           <Pressable
@@ -1265,11 +1274,11 @@ export function GoalsScreen() {
           </Pressable>
         ))}
         {!data?.goals.length && (
-          <TText style={[s.muted, { paddingVertical: 10 }]}>大计划从一小步开始。</TText>
+          <TText style={[s.muted, { paddingVertical: 10 }]}>{t("agent.goalEmpty")}</TText>
         )}
       </View>
       <View style={{ height: 1, backgroundColor: colors.line }} />
-      <TText style={s.heading}>创建目标</TText>
+      <TText style={s.heading}>{t("agent.createGoal")}</TText>
       {[
         { name: "Health", label: t("agent.cat.health"), icon: Heart },
         { name: "Relationships", label: t("agent.cat.relationships"), icon: Users },
@@ -1516,7 +1525,7 @@ function MonitorForm({ onDone }: { onDone: () => void }) {
           placeholder="https://example.com/product"
         />
       )}
-      <TText style={[s.small, { marginBottom: 10 }]}>当…时通知我</TText>
+      <TText style={[s.small, { marginBottom: 10 }]}>{t("agent.notifyMeWhen")}</TText>
       <View style={[s.row, { gap: 7, flexWrap: "wrap", marginBottom: 16 }]}>
         {(["change", "contains", "price_below"] as const).map((item) => (
           <Button small primary={condition === item} key={item} onPress={() => setCondition(item)}>
@@ -1671,7 +1680,7 @@ export function NotificationsSheet() {
           >
             <View style={s.between}>
               <TText style={s.heading}>{item.title}</TText>
-              {!item.read && <Chip>新建</Chip>}
+              {!item.read && <Chip>{t("agent.newBadge")}</Chip>}
             </View>
             <TText style={s.muted}>{item.body}</TText>
             <TText style={s.small}>{stamp(item.createdAt)}</TText>
@@ -1698,7 +1707,7 @@ export function AppsScreen() {
   const { data, mutate } = useAgentWorkspace();
   const [query, setQuery] = useState("");
   const [settings, setSettings] = useState(false);
-  const [name, setName] = useState(data?.identity.name || "嘟嘟");
+  const [name, setName] = useState(data?.identity.name || t("app.name"));
   const [tone, setTone] = useState(data?.identity.tone || "warm");
   const [avatar, setAvatar] = useState(data?.identity.avatar || "sky");
   const [showChatUpdates, setShowChatUpdates] = useState(data?.identity.showChatUpdates !== false);
@@ -1859,7 +1868,7 @@ export function AppsScreen() {
           </Card>
           <Card style={{ gap: 12 }}>
             <SectionHeading title={t("agent.memoryTitle")} />
-            <TText style={s.muted}>你可以查看、修正或忘记的上下文。</TText>
+            <TText style={s.muted}>{t("agent.contextNote")}</TText>
             {data?.memories.map((item) => (
               <MemoryRow key={item.id} memory={item} />
             ))}

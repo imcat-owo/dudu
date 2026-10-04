@@ -295,9 +295,7 @@ export interface EdgeVoice {
 const VOICE_LIST_TIMEOUT_MS = 10_000;
 
 /** Fetch the service's voice list (for a future voice picker). Best-effort. */
-export async function fetchEdgeVoices(
-  opts: { timeoutMs?: number } = {},
-): Promise<EdgeVoice[]> {
+export async function fetchEdgeVoices(opts: { timeoutMs?: number } = {}): Promise<EdgeVoice[]> {
   const timeoutMs = opts.timeoutMs ?? VOICE_LIST_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

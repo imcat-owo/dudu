@@ -9,12 +9,12 @@
  */
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { classifyError } from "../src/api-groups/error-classifier.js";
 import { testConnection } from "../src/api-groups/direct-transport.js";
+import { classifyError } from "../src/api-groups/error-classifier.js";
 import type { ApiGroup } from "../src/api-groups/types.js";
 import { generateOneShot, verifyHerRequest } from "../src/chat/group-meeting-tools.js";
 import { embedTexts } from "../src/knowledge/embeddings.js";
-import { VisionError, postVisionRequest } from "../src/vision/describe.js";
+import { postVisionRequest, VisionError } from "../src/vision/describe.js";
 import { EdgeTtsError, fetchEdgeVoices } from "../src/voice/edge-tts.js";
 
 const realFetch = globalThis.fetch;
@@ -65,10 +65,9 @@ describe("generateOneShot timeout (round-3 code P1-1)", () => {
 
   it("still resolves on a healthy server", async () => {
     globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({ choices: [{ message: { content: "  hello  " } }] }),
-        { status: 200 },
-      )) as unknown as typeof fetch;
+      new Response(JSON.stringify({ choices: [{ message: { content: "  hello  " } }] }), {
+        status: 200,
+      })) as unknown as typeof fetch;
     const text = await generateOneShot(fakeGroup(), "sys", "user", { timeoutMs: 5000 });
     assert.equal(text, "hello");
   });
@@ -89,10 +88,7 @@ describe("verifyHerRequest hardening (round-3 code P2-7 / ai-use P2-3)", () => {
 
   it("rejects a padded fabrication that merely contains her 2-char reply", () => {
     // Old code: req.includes(u) let this through. New code must refuse it.
-    assert.throws(
-      () => verifyHerRequest("好，你跟备用讨论一下今晚吃什么吧", ["好"]),
-      /找不到原样/,
-    );
+    assert.throws(() => verifyHerRequest("好，你跟备用讨论一下今晚吃什么吧", ["好"]), /找不到原样/);
   });
 
   it("rejects a quote that never appeared in her messages", () => {

@@ -15,7 +15,12 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Font from "expo-font";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { Text, type TextProps } from "react-native";
+import { StyleSheet, Text, type TextProps, type TextStyle } from "react-native";
+import { useFontSizeSetting } from "./app-settings";
+import { scaleTextStyle } from "./text-scale";
+
+export type { TextStyle };
+export { scaleTextStyle };
 
 const FONT_STORAGE_KEY = "dudu.font.v1";
 const FONT_DIR = "dudu/fonts";
@@ -144,11 +149,25 @@ export function FontProvider({ children }: { children: ReactNode }) {
 
 /**
  * Drop-in replacement for react-native Text.
- * Applies the user's custom font when one is set; otherwise identical.
+ * Applies the user's custom font when one is set; otherwise identical —
+ * plus it is the SINGLE place the font-size setting takes effect:
+ * every fontSize/lineHeight reaching a TText is scaled here, exactly once,
+ * via scaleTextStyle (text-scale.ts).
+ * (The shared stylesheet and all component styles now carry BASE sizes;
+ * nothing pre-scales. "system" follows the OS via allowFontScaling;
+ * explicit options set allowFontScaling={false} so the OS never stacks
+ * on top of our scale.)
  */
 export function TText(props: TextProps) {
   const { fontFamily } = useFont();
-  const { style, ...rest } = props;
-  if (!fontFamily) return <Text {...rest} style={style} />;
-  return <Text {...rest} style={[{ fontFamily }, style]} />;
+  const { scale, followSystem } = useFontSizeSetting();
+  const { style, allowFontScaling, ...rest } = props;
+  // Fast path: nothing to do.
+  if (scale === 1 && !fontFamily && (allowFontScaling ?? followSystem)) {
+    return <Text {...rest} style={style} />;
+  }
+  const flat = StyleSheet.flatten(style) ?? undefined;
+  const scaled = scaleTextStyle(flat, scale);
+  const finalStyle = fontFamily ? [{ fontFamily }, scaled] : scaled;
+  return <Text {...rest} allowFontScaling={allowFontScaling ?? followSystem} style={finalStyle} />;
 }

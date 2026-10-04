@@ -127,7 +127,7 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
     return (
       <View style={[s.row, { gap: 10, padding: 14 }]}>
         <ActivityIndicator size="small" color={colors.blueDark} />
-        <TText style={s.muted}>准备选项中…</TText>
+        <TText style={s.muted}>{t("jev.preparing")}</TText>
       </View>
     );
   }
@@ -203,10 +203,12 @@ export function JevToolCard({ result, loading }: { result: unknown; loading: boo
         {panel.mode === "sample" && <TText style={s.small}>{t("jev.sampleDecision")}</TText>}
         {panel.mode === "live" && <TText style={s.small}>{t("jev.liveDecision")}</TText>}
         {preferredOption && !selectedId && (
-          <TText style={s.small}>{t("jev.preferredOption", { label: preferredOption.label })}</TText>
+          <TText style={s.small}>
+            {t("jev.preferredOption", { label: preferredOption.label })}
+          </TText>
         )}
         {stale && <TText style={s.small}>{t("jev.staleChoice")}</TText>}
-        {selectedId && <TText style={s.small}>选择已提交</TText>}
+        {selectedId && <TText style={s.small}>{t("jev.submitted")}</TText>}
       </View>
       {panel.type === "clarification" ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

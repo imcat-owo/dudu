@@ -655,7 +655,7 @@ export function ApiSettingsScreen() {
             </TText>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("a11y.close")}
               onPress={() => setEditing(null)}
               style={{ padding: 8 }}
             >

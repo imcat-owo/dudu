@@ -9,6 +9,7 @@
  *   memory_delete   — forget ("忘了 X" -> really deletes)
  *   memory_confirm  — promote unsure/question -> confident (she confirmed)
  *   memory_reinforce — boost recall rank of a memory that landed in conversation
+ * (six tools total)
  *
  * All tools are in-app (no authorization gate — nothing crosses the app
  * boundary). Memory NEVER presents an unsure item as confident: search and
@@ -41,6 +42,11 @@ function fmtRecord(m: {
  * Every tool REALLY works — no placeholders.
  */
 export function createMemoryTools(store: MemoryStore): LocalTool[] {
+  // Mechanical once-per-memory-per-turn cap for memory_reinforce: the tool
+  // set is rebuilt every agent turn (local-agent runTurn), so this set
+  // naturally resets each turn. A repeated reinforce in the same turn is
+  // refused loudly instead of silently stacking +N.
+  const reinforcedThisTurn = new Set<string>();
   return [
     {
       name: "memory_add",
@@ -185,7 +191,7 @@ export function createMemoryTools(store: MemoryStore): LocalTool[] {
     {
       name: "memory_reinforce",
       description:
-        "Reinforce a memory you naturally re-mentioned in conversation and she engaged with (she agreed, elaborated, or laughed — it landed). Reinforced memories rank higher in future recall. Do NOT spam: at most once per memory per conversation turn. Use the id from memory_search.",
+        "Reinforce a memory you naturally re-mentioned in conversation and she engaged with (she agreed, elaborated, or laughed — it landed). Reinforced memories rank higher in future recall. Do NOT spam: at most once per memory per conversation turn — a second reinforce of the same memory in one turn is refused. Use the id from memory_search.",
       parameters: {
         type: "object",
         properties: {
@@ -198,7 +204,13 @@ export function createMemoryTools(store: MemoryStore): LocalTool[] {
       run: async (args) => {
         const id = strArg(args, "id");
         if (!id) throw new ToolError("Missing required argument: id.");
+        if (reinforcedThisTurn.has(id)) {
+          throw new ToolError(
+            "这个记忆本轮已经加强过一次了——重复加强不会让它更靠前，换个记忆或者等下一轮。",
+          );
+        }
         const rec = await store.reinforceMemory(id, "ai");
+        reinforcedThisTurn.add(id);
         return `Reinforced — it will surface more readily next time: ${rec.content}`;
       },
     },

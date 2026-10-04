@@ -59,13 +59,16 @@ export async function embedTexts(
   const url = `${normalizeBaseUrl(group.baseUrl)}/embeddings`;
   const own = opts.signal ? null : new AbortController();
   const timer = own ? setTimeout(() => own.abort(), EMBED_TIMEOUT_MS) : null;
+  // own is non-null exactly when opts.signal is absent, so one of the two
+  // is always a real signal — no non-null assertion needed.
+  const signal: AbortSignal | undefined = opts.signal ?? own?.signal ?? undefined;
   let res: Response;
   try {
     res = await fetch(url, {
       method: "POST",
       headers: embeddingHeaders(group),
       body: JSON.stringify({ model, input: texts }),
-      signal: opts.signal ?? own!.signal,
+      signal,
     });
   } catch (e) {
     if (timer) clearTimeout(timer);

@@ -12,7 +12,7 @@ export function browserAddress(value: string): string {
       throw new Error(t("browser.invalidAddress"));
     return url.href;
   } catch {
-    throw new Error("Enter a website address, like copilotkit.ai or https://news.ycombinator.com.");
+    throw new Error(t("browser.addressHint"));
   }
 }
 

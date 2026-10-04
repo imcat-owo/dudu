@@ -44,7 +44,8 @@ export class MuseApi {
             ? {}
             : { "Content-Type": "application/json" }),
         },
-        body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+        body:
+          body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
         signal: s.signal,
       });
     } catch (e) {

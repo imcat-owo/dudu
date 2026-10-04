@@ -297,7 +297,7 @@ function ThemeGalleryCard({
 export function AppearanceScreen() {
   const { bundle, staging, tokens, stageBundle, discardStage, applyBundle, rollback } = useTheme();
   const colors = useColors();
-  const { option: fontOption, setOption: setFontOption, scale: fontScale } = useFontSizeSetting();
+  const { option: fontOption, setOption: setFontOption } = useFontSizeSetting();
   const { fontName, pickFont, clearFont } = useFont();
   const [fontBusy, setFontBusy] = useState(false);
   const [customs, setCustoms] = useState<ThemeBundle[]>([]);
@@ -843,7 +843,7 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <TText style={{ color: tokens.aiBubble.fg, fontSize: Math.round(14 * fontScale) }}>
+                <TText style={{ color: tokens.aiBubble.fg, fontSize: 14 }}>
                   {t("appearance.sampleAi")}
                 </TText>
               </View>
@@ -857,9 +857,7 @@ export function AppearanceScreen() {
                   paddingHorizontal: 14,
                 }}
               >
-                <TText
-                  style={{ color: tokens.userBubble.fg, fontSize: Math.round(14 * fontScale) }}
-                >
+                <TText style={{ color: tokens.userBubble.fg, fontSize: 14 }}>
                   {t("appearance.sampleUser")}
                 </TText>
               </View>

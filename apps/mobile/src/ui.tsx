@@ -15,7 +15,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFontSizeSetting } from "./app-settings";
 import { TText } from "./font";
 import { GlassView } from "./glass";
 import { t } from "./i18n";
@@ -127,28 +126,28 @@ export function paletteFromTokens(
 }
 
 /**
- * Build the shared stylesheet from a palette + font scale.
+ * Build the shared stylesheet from a palette.
  * Compact by default (owner direction 2026-10-03): tight paddings, small radii,
- * delicate type. Font sizes multiply by the user's font-size setting; the OS
- * text-size setting still applies via allowFontScaling (untouched).
+ * delicate type. Font sizes here are BASE sizes — the user's font-size setting
+ * is applied exactly once inside TText (font.tsx), which is the single
+ * scaling point. Do NOT pre-scale here; TText would scale twice.
  */
-export function createThemedStyles(p: UIPalette, scale: number) {
-  const fs = (base: number): number => Math.round(base * scale * 10) / 10;
+export function createThemedStyles(p: UIPalette) {
   return StyleSheet.create({
     row: { flexDirection: "row", alignItems: "center" },
     between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    text: { color: p.text, fontSize: fs(15), lineHeight: fs(23) },
-    muted: { color: p.muted, fontSize: fs(14), lineHeight: fs(21) },
-    small: { color: p.muted, fontSize: fs(11), lineHeight: fs(17) },
+    text: { color: p.text, fontSize: 15, lineHeight: 23 },
+    muted: { color: p.muted, fontSize: 14, lineHeight: 21 },
+    small: { color: p.muted, fontSize: 11, lineHeight: 17 },
     label: {
       color: p.muted,
-      fontSize: fs(10),
+      fontSize: 10,
       fontWeight: "700",
       letterSpacing: 1.4,
       textTransform: "uppercase",
     },
-    title: { color: p.text, fontSize: fs(20), fontWeight: "600", letterSpacing: -0.5 },
-    heading: { color: p.text, fontSize: fs(15), fontWeight: "600", letterSpacing: -0.25 },
+    title: { color: p.text, fontSize: 20, fontWeight: "600", letterSpacing: -0.5 },
+    heading: { color: p.text, fontSize: 15, fontWeight: "600", letterSpacing: -0.25 },
     card: {
       backgroundColor: p.card,
       borderRadius: radii.lg,
@@ -164,7 +163,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
       paddingHorizontal: 14,
       paddingVertical: 10,
       color: p.text,
-      fontSize: fs(15),
+      fontSize: 15,
       backgroundColor: p.inputBg,
       minHeight: 42,
     },
@@ -181,7 +180,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
     },
     primary: { backgroundColor: p.blue },
     secondary: { backgroundColor: p.secondaryBg },
-    buttonText: { fontSize: fs(13), fontWeight: "600" },
+    buttonText: { fontSize: 13, fontWeight: "600" },
     chip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
@@ -189,7 +188,7 @@ export function createThemedStyles(p: UIPalette, scale: number) {
       alignSelf: "flex-start",
       backgroundColor: p.canvas,
     },
-    chipText: { fontSize: fs(10), fontWeight: "600", color: p.muted },
+    chipText: { fontSize: 10, fontWeight: "600", color: p.muted },
     iconBox: {
       width: 38,
       height: 38,
@@ -247,8 +246,9 @@ export function useColors(): UIPalette {
  */
 export function useStyles(): ThemedStyles {
   const colors = useColors();
-  const { scale } = useFontSizeSetting();
-  return useMemo(() => createThemedStyles(colors, scale), [colors, scale]);
+  // Note: font sizes are base sizes; TText applies the user's font-size
+  // setting at render time, so the stylesheet does not depend on it.
+  return useMemo(() => createThemedStyles(colors), [colors]);
 }
 
 export function Button({

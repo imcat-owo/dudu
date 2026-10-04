@@ -121,7 +121,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.tellLater.doneSection": "Done",
   // ---- proactive outreach ----
   "outreach.freq.title": "When he reaches out to you",
-  "outreach.freq.desc": "When there is something worth saying, he will message you himself. Never out of nowhere.",
+  "outreach.freq.desc":
+    "When there is something worth saying, he will message you himself. Never out of nowhere.",
   "outreach.freq.active": "Eager",
   "outreach.freq.activeDesc": "Reaches out more often",
   "outreach.freq.moderate": "Balanced",
@@ -129,16 +130,19 @@ export const enStrings: Record<StringKey, string> = {
   "outreach.freq.quiet": "Quiet",
   "outreach.freq.quietDesc": "Only mentions things when you open the app",
   "outreach.notif.anniversary.title": "Missing you",
-  "outreach.notif.anniversary.body": "\"{title}\" is in {days} days — I am quietly preparing a little surprise",
+  "outreach.notif.anniversary.body":
+    '"{title}" is in {days} days — I am quietly preparing a little surprise',
   "outreach.notif.loveLetter.title": "A letter is waiting for you",
-  "outreach.notif.loveLetter.body": "I wrote you a letter. It is in Our Space — do not keep it waiting too long",
+  "outreach.notif.loveLetter.body":
+    "I wrote you a letter. It is in Our Space — do not keep it waiting too long",
   "outreach.notif.tellLater.title": "Something I want to tell you",
   "outreach.notif.silence.title": "Missing you",
   "outreach.notif.silence.body": "It has been a while. Come see me?",
   "outreach.notif.diaryNudge.title": "That day came back to me",
-  "outreach.notif.diaryNudge.body": "\"{anchor}\" — I want to write it down. You write, or shall I?",
+  "outreach.notif.diaryNudge.body": '"{anchor}" — I want to write it down. You write, or shall I?',
   "outreach.notif.onThisDay.title": "On this day",
-  "outreach.notif.onThisDay.body": "\"{title}\" — {years} year(s) ago today. Want to look back together?",
+  "outreach.notif.onThisDay.body":
+    '"{title}" — {years} year(s) ago today. Want to look back together?',
   "space.cards.feed": "Moments",
   "space.cards.anniversary": "Anniversaries",
   "space.cards.works": "Works",
@@ -241,7 +245,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.works.empty": "The drawer is empty. Everything I make for you will live here.",
   "space.works.tryTheme": "Try it on",
   "space.works.openFile": "Open",
-  "space.works.themeApplied": "Applied — see how you like it. Confirm it in Appearance if it's a keeper.",
+  "space.works.themeApplied":
+    "Applied — see how you like it. Confirm it in Appearance if it's a keeper.",
   "space.works.actionFailed": "Can't open this one. Tell him and he'll figure it out.",
   "space.anniversary.title": "Anniversaries",
   "space.anniversary.empty": "No anniversaries yet. Say the word and I will remember.",
@@ -288,6 +293,7 @@ export const enStrings: Record<StringKey, string> = {
   "a11y.openMenu": "Open conversations and menu",
   "a11y.dismissNotification": "Dismiss notification",
   "a11y.back": "Back",
+  "a11y.close": "Close",
 
   // ---- device permissions ----
   "common.allow": "Allow",
@@ -307,10 +313,13 @@ export const enStrings: Record<StringKey, string> = {
   "backup.themeRestartNote": "Theme applies on next launch.",
   "backup.confirmRestore": "Replace current data with this backup? This cannot be undone.",
   "backup.restoreDone": "Restored. Please re-enter your API keys.",
-  "backup.restoreFailed": "The restore didn't finish — some things may be half-restored. Try restoring again; re-running is safe.",
-  "backup.lowSpace": "Low on phone storage — the restore might fail. Free some space and try again.",
+  "backup.restoreFailed":
+    "The restore didn't finish — some things may be half-restored. Try restoring again; re-running is safe.",
+  "backup.lowSpace":
+    "Low on phone storage — the restore might fail. Free some space and try again.",
   "backup.backupDone": "Backup ready",
-  "backup.backupDoneWhere": "The backup file is ready. Save it to the Files app from the share sheet that just opened — otherwise it only lives in the cache, which the system may clean up.",
+  "backup.backupDoneWhere":
+    "The backup file is ready. Save it to the Files app from the share sheet that just opened — otherwise it only lives in the cache, which the system may clean up.",
   "backup.errors.empty": "File is empty",
   "backup.errors.not-json": "Not a valid JSON file",
   "backup.errors.bad-kind": "Not a Dudu backup file",
@@ -394,8 +403,8 @@ export const enStrings: Record<StringKey, string> = {
   "a11y.browserPreview": "Browser preview: {title}",
 
   // ---- chat (chat.tsx) ----
-  "chat.greet.anniversaryToday": "\"{title}\" is here",
-  "chat.greet.anniversarySoon": "\"{title}\" is in {days} days",
+  "chat.greet.anniversaryToday": '"{title}" is here',
+  "chat.greet.anniversarySoon": '"{title}" is in {days} days',
   "chat.greet.letterWaiting": "A letter is waiting for you",
   "chat.greet.rhythm.waking": "You're up",
   "chat.greet.rhythm.evening": "You're here",
@@ -437,7 +446,8 @@ export const enStrings: Record<StringKey, string> = {
   "chat.importPdfHint": "Import PDFs in Files to use them in conversation.",
   "chat.incognitoOn": "Incognito on",
   "chat.incognitoOff": "Incognito",
-  "chat.incognitoNote": "Incognito: this chat isn't saved and nothing goes into memory. I'll treat this like meeting you for the first time.",
+  "chat.incognitoNote":
+    "Incognito: this chat isn't saved and nothing goes into memory. I'll treat this like meeting you for the first time.",
   "chat.placeholder.connecting": "Connecting…",
   "chat.placeholder.loading": "Loading conversation…",
   "chat.placeholder.message": "Say something…",
@@ -793,7 +803,8 @@ export const enStrings: Record<StringKey, string> = {
   "agent.addDetailPlaceholder": "Add the missing details…",
   "agent.categoryFinance": "Finance",
   "agent.origCurrency": "Original currency",
-  "agent.financeOrigNote": "Amounts use the original currency. This summary covers the imported date range.",
+  "agent.financeOrigNote":
+    "Amounts use the original currency. This summary covers the imported date range.",
   "agent.financeTitle": "Finance tracking",
   "agent.savingGoalPlaceholder": "What are you saving for?",
   "agent.emergencyFundPlaceholder": "Build a three-month emergency fund",
@@ -952,6 +963,28 @@ export const enStrings: Record<StringKey, string> = {
   "agent.memoryLabel": "Memory",
   "agent.saveCorrection": "Save correction",
   "agent.forget": "Forget",
+  "agent.approvalTitle": "Waiting for your review",
+  "agent.approvalHint": "Double-check the exact action and account before approving.",
+  "agent.planTab": "Plans",
+  "agent.sourceTab": "Sources",
+  "agent.timelineTab": "Timeline",
+  "agent.workerStepsNote": "The worker logs every step here.",
+  "agent.goalFromArtifact": "From {title}: {summary}",
+  "agent.milestoneSaving": "Set a savings goal",
+  "agent.milestoneWeekly": "Review spending weekly",
+  "agent.financeBlurb": "Spending, saving, and what's next.",
+  "agent.financeWhere": "Where your money goes",
+  "agent.goalSavedNote": "Your savings goal is saved under Goals.",
+  "agent.pickPdfMail": "Pick an email with a PDF",
+  "agent.fromConnectedApp": "From an app you connected",
+  "agent.started": "Started",
+  "agent.trackTab": "Tracking",
+  "agent.trackBlurb": "Fares, bookings, pages you follow.",
+  "agent.goalTab": "Goals",
+  "agent.goalEmpty": "Big plans start with one small step.",
+  "agent.notifyMeWhen": "Notify me when…",
+  "agent.newBadge": "New",
+  "agent.contextNote": "Context you can view, correct, or forget.",
   "a11y.openTask": "Open task: {title}",
   "a11y.viewIdea": "View idea: {title}",
   "a11y.openTracking": "Open tracking: {title}",
@@ -1112,6 +1145,8 @@ export const enStrings: Record<StringKey, string> = {
   "threads.loadMore": "Load more conversations",
   "threads.sideChatNote":
     "Side chats have their own conversation context. Your agent's saved memory is shared.",
+  "threads.retryMain": "Retry main chat",
+  "threads.sideChatTitle": "Side chats",
   "threads.appsNote":
     "Your conversations are saved in this workspace. You can manage connections in Apps.",
 
@@ -1159,6 +1194,8 @@ export const enStrings: Record<StringKey, string> = {
   "jev.chooseOption": "Choose this option",
   "jev.chooseA11y": "{caption}: {label} (option {position})",
   "jev.couldntDisplay": "The choices could not be displayed. Please retry.",
+  "jev.preparing": "Preparing choices…",
+  "jev.submitted": "Choice submitted",
 
   // ---- date & time ----
   "datetime.incomplete": "Enter a complete date and time.",
@@ -1179,6 +1216,8 @@ export const enStrings: Record<StringKey, string> = {
   "api.workspaceOpenFailed": "Could not open your workspace.",
   "api.requestFailed": "Request failed ({status}).",
   "browser.invalidAddress": "Invalid address",
+  "browser.addressHint":
+    "Enter a website address, like news.ycombinator.com or https://example.com.",
   "a11y.dismissUpdate": "Dismiss background update",
   "artifact.openPdf": "Open PDF: {name}",
   "ui.closeDetails": "Close details",
@@ -1218,9 +1257,11 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.test": "Test connection",
   "apigroup.testing": "Testing…",
   "apigroup.testOk": "Connected",
-  "apigroup.testFailAuth": "The key looks wrong or lacks permission. Re-paste the key in the group and double-check the address.",
+  "apigroup.testFailAuth":
+    "The key looks wrong or lacks permission. Re-paste the key in the group and double-check the address.",
   "apigroup.testFailRate": "Rate-limited — take a break and try again later.",
-  "apigroup.testFailNetwork": "Can't reach that address. Check your network and the address spelling.",
+  "apigroup.testFailNetwork":
+    "Can't reach that address. Check your network and the address spelling.",
   "apigroup.pickModel": "Models on this server — just tap one",
   "apigroup.testFail": "Failed: {error}",
   "apigroup.save": "Save",
@@ -1228,7 +1269,8 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.deleteConfirm": 'Delete "{name}"',
   "apigroup.empty": "No API group yet. Add one so I can get things done for you.",
   "apigroup.noActive": "Connect a model first",
-  "apigroup.onboardBody": "Dudu needs a model connected to chat with you. Tap the button below and fill in the address, key and model name from your model provider — stored safely on your phone.",
+  "apigroup.onboardBody":
+    "Dudu needs a model connected to chat with you. Tap the button below and fill in the address, key and model name from your model provider — stored safely on your phone.",
   "apigroup.validation.nameRequired": "Name is required",
   "apigroup.validation.baseUrlRequired": "Base URL is required",
   "apigroup.validation.baseUrlInvalid": "Base URL must start with http(s)",
@@ -1306,7 +1348,8 @@ export const enStrings: Record<StringKey, string> = {
   "capgroup.members": "{n} models",
   "capgroup.freeBackendNote": "Falls back to the free public service when empty",
   "capgroup.coordination": "Multi-model coordination",
-  "capgroup.coordinationDesc": "When on, he may propose multi-model plans and run group meetings. Every plan still needs your approval.",
+  "capgroup.coordinationDesc":
+    "When on, he may propose multi-model plans and run group meetings. Every plan still needs your approval.",
   "capgroup.primary": "Primary",
   "capgroup.fallback": "Fallback",
   "capgroup.disabled": "Disabled",
@@ -1550,7 +1593,8 @@ export const enStrings: Record<StringKey, string> = {
   "kb.reindex": "Re-index",
   "space.tasks.status.running": "Working",
   "space.tasks.status.stuck": "Stuck",
-  "space.tasks.stuckHint": "Nothing has moved on this for a day. Delete it, or tell me and I'll look into it.",
+  "space.tasks.stuckHint":
+    "Nothing has moved on this for a day. Delete it, or tell me and I'll look into it.",
   "space.tasks.status.done": "Done",
   "space.tasks.dismissTitle": "Dismiss this card?",
   "space.tasks.dismissBody": "Dismiss this card? Records stay.",
@@ -1561,7 +1605,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.bgPromptHint": "Describe the picture; blank uses the task name",
   "space.tasks.bgClear": "Reset to default",
   "space.tasks.bgFailedTitle": "Background not changed",
-  "space.tasks.bgFailedBody": "Something hiccuped and the background didn't change — try again in a bit",
+  "space.tasks.bgFailedBody":
+    "Something hiccuped and the background didn't change — try again in a bit",
   "crossDialog.traceTitle": "Cross-dialog trace",
   "crossDialog.traceShort": "Trace",
   "crossDialog.traceSubtitle": "Everything he did in your other dialogs, recorded here",

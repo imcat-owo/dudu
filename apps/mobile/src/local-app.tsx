@@ -24,7 +24,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { AppState, Dimensions, Pressable, Text, View } from "react-native";
+import { AppState, Dimensions, Pressable, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
 import { MuseApi } from "./api";
@@ -36,15 +36,15 @@ import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
 import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
 import { ErrorBoundary } from "./error-boundary";
-import { FontProvider } from "./font";
+import { FontProvider, TText } from "./font";
 import { GlassView } from "./glass";
-import { t, type StringKey } from "./i18n";
-import type { NotificationPort, OutreachTriggerKind } from "./outreach/notify";
-import { notificationDeepLink } from "./outreach/notify";
+import { type StringKey, t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
 import { OurSpaceScreen, type OurSpaceStartPage } from "./our-space-ui";
+import type { NotificationPort, OutreachTriggerKind } from "./outreach/notify";
+import { notificationDeepLink } from "./outreach/notify";
 import { registerFontSizeHandler } from "./settings/tools";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
@@ -88,9 +88,9 @@ function TabButton({
     >
       <Icon size={22} strokeWidth={1.8} color={colors.text} />
       {/* P2-3: icons alone are guesswork — every tab gets a small label. */}
-      <Text style={{ fontSize: 10, lineHeight: 12, color: colors.text }} numberOfLines={1}>
+      <TText style={{ fontSize: 10, lineHeight: 12, color: colors.text }} numberOfLines={1}>
         {label}
-      </Text>
+      </TText>
     </Pressable>
   );
 }
@@ -410,7 +410,7 @@ export function LocalApp() {
                             maxWidth: 560,
                           }}
                         >
-                          <Text style={{ color: colors.canvas }}>{toast}</Text>
+                          <TText style={{ color: colors.canvas }}>{toast}</TText>
                         </View>
                       </View>
                     )}

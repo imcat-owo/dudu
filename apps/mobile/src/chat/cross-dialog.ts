@@ -37,8 +37,8 @@
 import type { LocalTool } from "../api-groups/local-tools.js";
 import { ToolError } from "../api-groups/local-tools.js";
 import { planGateStore } from "../api-groups/plan-gate.js";
-import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
 import { sharedKeyedChain as exclusiveFor } from "../util/write-chain.js";
+import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
 
 /** Must match historyKey() in api-groups/local-agent.ts. */
 const CHAT_HISTORY_PREFIX = "dudu.local-chat.";
@@ -521,7 +521,8 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
         const limit = Math.min(Math.max(Math.floor(numArg(args, "limit", 20)), 1), 100);
         const entries = await opts.trace.list(limit);
         const mine = entries.filter((e) => e.personaId === personaId);
-        if (mine.length === 0) return "Your trace log is empty — you haven't touched other dialogs yet.";
+        if (mine.length === 0)
+          return "Your trace log is empty — you haven't touched other dialogs yet.";
         const lines = mine.map((e) => {
           const when = new Date(e.at).toLocaleString("zh-CN");
           const where = e.toName ? ` → "${e.toName}"` : "";

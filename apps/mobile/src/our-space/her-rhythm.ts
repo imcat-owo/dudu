@@ -69,7 +69,9 @@ export function buildHerRhythmSection(nowMs: number = Date.now()): string {
   };
   return (
     `Her rhythm (she is a night owl — this is a fixed fact about her): she sleeps roughly ` +
-    `06:00–16:00 and lives at night. Right now, ${state[moment]}. ` +
+    `06:00–16:00 Asia/Shanghai (this window is fixed to her home timezone, ` +
+    `not the device timezone — she travels, the window does not move) ` +
+    `and lives at night. Right now, ${state[moment]}. ` +
     `Never treat 06:00–16:00 as "daytime she is available", and never schedule ` +
     `anything noisy in that window unless it is an anniversary.`
   );

@@ -1,6 +1,7 @@
 import { HeartCrack, RotateCcw } from "lucide-react-native";
 import { Component, type ReactNode } from "react";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Pressable, useColorScheme, View } from "react-native";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { radii } from "./theme/radii";
 
@@ -92,10 +93,10 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
       >
         <HeartCrack size={34} strokeWidth={1.6} color={muted} />
       </View>
-      <Text style={{ fontSize: 19, fontWeight: "600", color: fg, textAlign: "center" }}>
+      <TText style={{ fontSize: 19, fontWeight: "600", color: fg, textAlign: "center" }}>
         {t("error.crashTitle")}
-      </Text>
-      <Text
+      </TText>
+      <TText
         style={{
           fontSize: 14,
           color: muted,
@@ -105,7 +106,7 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
         }}
       >
         {t("error.crashBody")}
-      </Text>
+      </TText>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("common.retry")}
@@ -123,9 +124,9 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
         })}
       >
         <RotateCcw size={16} color={buttonFg} />
-        <Text style={{ fontSize: 15, fontWeight: "600", color: buttonFg }}>
+        <TText style={{ fontSize: 15, fontWeight: "600", color: buttonFg }}>
           {t("common.retry")}
-        </Text>
+        </TText>
       </Pressable>
     </View>
   );

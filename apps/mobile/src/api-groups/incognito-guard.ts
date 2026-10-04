@@ -126,7 +126,7 @@ export function buildIncognitoPromptSection(): string {
     "- Never promise \"I'll remember this\" — you won't. Be honest about it." +
     "- One honest exception: out-of-app actions she approves herself (calendar, reminders) " +
     "still ask her for permission. If she approves one, it leaves a real record — so tell her " +
-    "plainly BEFORE she approves: \"this will leave a record, breaking the incognito promise; " +
-    "still want it?\" Never let it happen silently."
+    'plainly BEFORE she approves: "this will leave a record, breaking the incognito promise; ' +
+    'still want it?" Never let it happen silently.'
   );
 }

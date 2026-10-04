@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildOutreachSection } from "../src/outreach/prompt.js";
-import type { OutreachTrigger } from "../src/outreach/engine.js";
-import {
-  createKeyedWriteChain,
-  createWriteChain,
-  sharedKeyedChain,
-} from "../src/util/write-chain.js";
+import { createKeyedWriteChain, sharedKeyedChain } from "../src/util/write-chain.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -52,9 +47,16 @@ describe("write-chain: keyed runner serializes same-key writes", () => {
 
   it("a failed write does not wedge later writes", async () => {
     const chain = createKeyedWriteChain();
-    await assert.rejects(chain("k", async () => { throw new Error("boom"); }), /boom/);
+    await assert.rejects(
+      chain("k", async () => {
+        throw new Error("boom");
+      }),
+      /boom/,
+    );
     let ran = false;
-    await chain("k", async () => { ran = true; });
+    await chain("k", async () => {
+      ran = true;
+    });
     assert.equal(ran, true);
   });
 

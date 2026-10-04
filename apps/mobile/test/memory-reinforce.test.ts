@@ -8,14 +8,19 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { MemoryStore } from "../src/memory/store.js";
+import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
 import { searchMemories } from "../src/memory/search.js";
+import { MemoryStore } from "../src/memory/store.js";
+import { createMemoryTools } from "../src/memory/tools.js";
 import type { MemoryRecord } from "../src/memory/types.js";
 
 function memStorage() {
   const map = new Map<string, string>();
   return {
-    getItem: async (k: string) => (map.has(k) ? map.get(k)! : null),
+    getItem: async (k: string) => {
+      const v = map.get(k);
+      return v === undefined ? null : v;
+    },
     setItem: async (k: string, v: string) => {
       map.set(k, v);
     },
@@ -94,8 +99,61 @@ describe("reinforcedCount", () => {
     );
     // Veto check: an unreinforced exact hit still outranks a reinforced weak hit.
     const weak = rec({ id: "w", content: "抹茶", reinforcedCount: 12 });
-    const strong = rec({ id: "s", content: "抹茶蛋糕是她最喜欢的甜点抹茶蛋糕", reinforcedCount: 0 });
+    const strong = rec({
+      id: "s",
+      content: "抹茶蛋糕是她最喜欢的甜点抹茶蛋糕",
+      reinforcedCount: 0,
+    });
     const ranked3 = searchMemories([weak, strong], "抹茶蛋糕");
     assert.equal(ranked3[0].record.id, "s");
+  });
+});
+
+describe("memory_reinforce once-per-turn mechanical cap", () => {
+  const ctx: ToolContext = { authorize: async () => true };
+
+  it("second reinforce of the same memory in one turn is refused", async () => {
+    const store = new MemoryStore(memStorage());
+    const rec0 = await store.addMemory("她喜欢抹茶味的蛋糕");
+    // Same tool set = same turn (local-agent rebuilds tools per turn).
+    const registry = createToolRegistry(createMemoryTools(store));
+    const first = await registry.execute("memory_reinforce", { id: rec0.id }, ctx);
+    assert.ok(first.includes("Reinforced"));
+    await assert.rejects(
+      () => registry.execute("memory_reinforce", { id: rec0.id }, ctx),
+      /已经加强过一次/,
+      "second reinforce in the same turn must be refused loudly",
+    );
+    const after = await store.listCurrent();
+    assert.equal(after[0].reinforcedCount, 1, "no silent stacking");
+  });
+
+  it("different memories can each be reinforced once per turn", async () => {
+    const store = new MemoryStore(memStorage());
+    const a = await store.addMemory("她喜欢抹茶味的蛋糕");
+    const b = await store.addMemory("她喜欢灰调");
+    const registry = createToolRegistry(createMemoryTools(store));
+    await registry.execute("memory_reinforce", { id: a.id }, ctx);
+    const r = await registry.execute("memory_reinforce", { id: b.id }, ctx);
+    assert.ok(r.includes("Reinforced"));
+  });
+
+  it("fresh tool set (next turn) allows reinforce again", async () => {
+    const store = new MemoryStore(memStorage());
+    const rec0 = await store.addMemory("她喜欢抹茶味的蛋糕");
+    await createToolRegistry(createMemoryTools(store)).execute(
+      "memory_reinforce",
+      { id: rec0.id },
+      ctx,
+    );
+    // New turn = new tool set = cap resets.
+    const r2 = await createToolRegistry(createMemoryTools(store)).execute(
+      "memory_reinforce",
+      { id: rec0.id },
+      ctx,
+    );
+    assert.ok(r2.includes("Reinforced"));
+    const after = await store.listCurrent();
+    assert.equal(after[0].reinforcedCount, 2);
   });
 });

@@ -543,7 +543,9 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       manualId: "group-meeting",
       run: async (args) => {
         if (incognito()) {
-          throw new ToolError("隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。");
+          throw new ToolError(
+            "隐身会话承诺了无副作用——结束会议要写结论进存储、留痕，隐身会话里不开会、不收尾。",
+          );
         }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
@@ -638,12 +640,10 @@ export async function generateOneShot(
       `model call failed: HTTP ${res.status}${body ? ` — ${body.slice(0, 120)}` : ""}`,
     );
   }
-  const data = (await res
-    .json()
-    .catch((e: unknown) => {
-      if ((e as { name?: string } | null)?.name === "AbortError") throw oneShotFailed(e, timeoutMs);
-      return null;
-    })) as {
+  const data = (await res.json().catch((e: unknown) => {
+    if ((e as { name?: string } | null)?.name === "AbortError") throw oneShotFailed(e, timeoutMs);
+    return null;
+  })) as {
     choices?: Array<{ message?: { content?: unknown } }>;
   } | null;
   clearTimeout(timer);

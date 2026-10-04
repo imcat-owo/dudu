@@ -7,7 +7,8 @@
  *
  *  1. pipeline: deriveSurfaces(seed) -> paletteFromTokens -> createThemedStyles
  *     yields different rendered style values for different presets, with text
- *     colors never pure black/white and font scale applied;
+ *     colors never pure black/white; font scale is applied separately in
+ *     TText (font.tsx scaleTextStyle), the single scaling point;
  *  2. provider: a component mounted inside ThemeProvider that reads useColors()
  *     / useStyles() actually re-renders with new style values after
  *     stageBundle() and applyBundle() with a different preset, and rollback()
@@ -73,8 +74,8 @@ describe("ui theme migration", () => {
     assert.notEqual(palL.blue, palD.blue, "accent follows theme");
     assert.notEqual(palL.danger, palD.danger, "danger adapts to mode");
 
-    const sL = createThemedStyles(palL, 1);
-    const sD = createThemedStyles(palD, 1);
+    const sL = createThemedStyles(palL);
+    const sD = createThemedStyles(palD);
     assert.notEqual(bgOf(sL.card), bgOf(sD.card), "rendered card bg changes");
     assert.notEqual(fgOf(sL.text), fgOf(sD.text), "rendered text color changes");
     assert.notEqual(bgOf(sL.primary), bgOf(sD.primary), "rendered button bg changes");
@@ -93,11 +94,17 @@ describe("ui theme migration", () => {
       }
     }
 
-    const sScaled = createThemedStyles(palL, 0.88);
+    // Font scale is applied in TText (font.tsx), not in the stylesheet:
+    // the stylesheet carries base sizes; scaleTextStyle (text-scale.ts,
+    // tsx-safe pure module) is the single point.
+    const { scaleTextStyle } = await import("../src/text-scale.ts");
+    const base = fsOf(sL.text);
+    const scaled = scaleTextStyle({ fontSize: base, lineHeight: base + 8 }, 0.88);
     assert.ok(
-      fsOf(sScaled.text) < fsOf(sL.text),
-      `font scale applies (0.88): ${fsOf(sScaled.text)} < ${fsOf(sL.text)}`,
+      scaled && typeof scaled.fontSize === "number" && scaled.fontSize < base,
+      `font scale applies (0.88): ${scaled?.fontSize} < ${base}`,
     );
+    assert.equal(scaled?.lineHeight, Math.round((base + 8) * 0.88 * 10) / 10);
   });
 
   it("provider: stage/apply/rollback repaint a mounted themed component", async (t) => {
