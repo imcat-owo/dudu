@@ -182,6 +182,12 @@ export const enStrings: Record<StringKey, string> = {
   "music.auth.setupHint":
     "Two steps left: enable the MusicKit service on the App ID, then rebuild and reinstall the app.",
   "music.added": "Added to playlist",
+  "music.source.searchFailed": "Search failed. Try again.",
+  "music.source.noResults": "No songs found. Try different words.",
+  "image.viewFullscreen": "View full image",
+  "image.saved": "Saved to photo library",
+  "image.saveFailed": "Couldn't save. Try again.",
+  "image.shareFailed": "Couldn't share. Try again.",
   "space.couple.herAvatar": "Her avatar",
   "space.couple.aiAvatar": "My avatar",
   "space.couple.changeAvatar": "Change avatar",

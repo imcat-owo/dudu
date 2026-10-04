@@ -1589,6 +1589,7 @@ function AddSongModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<import("./music/sources").SourceTrack[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [appleState, setAppleState] = useState("unknown");
   const [busy, setBusy] = useState(false);
 
@@ -1614,6 +1615,7 @@ function AddSongModal({
     setLrc("");
     setQuery("");
     setResults([]);
+    setSearchError(null);
   };
 
   const pickAudio = async () => {
@@ -1665,11 +1667,19 @@ function AddSongModal({
     const q = query.trim();
     if (!q || searching) return;
     setSearching(true);
+    setSearchError(null);
     try {
       const { getMusicSource } = await import("./music/sources");
-      setResults(await getMusicSource("apple-music").search(q, 10));
-    } catch {
+      const hits = await getMusicSource("apple-music").search(q, 10);
+      setResults(hits);
+      if (hits.length === 0) setSearchError(t("music.source.noResults"));
+    } catch (e) {
       setResults([]);
+      const msg = e instanceof Error ? e.message : "";
+      // Map known native-bridge failures to the auth hints she already sees.
+      if (/not authorized/i.test(msg)) setSearchError(t("music.auth.needAuth"));
+      else if (/not available/i.test(msg)) setSearchError(t("music.auth.unavailable"));
+      else setSearchError(t("music.source.searchFailed"));
     } finally {
       setSearching(false);
     }
@@ -1943,6 +1953,18 @@ function AddSongModal({
                     </View>
                   </PressableScale>
                 </View>
+                {!!searchError && (
+                  <TText
+                    style={{
+                      color: colors.danger,
+                      fontSize: 12.5,
+                      textAlign: "center",
+                      paddingTop: 6,
+                    }}
+                  >
+                    {searchError}
+                  </TText>
+                )}
                 {results.map((hit) => (
                   <View
                     key={hit.id}
