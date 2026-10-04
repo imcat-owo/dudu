@@ -1153,7 +1153,10 @@ export function createLocalAgent(opts: {
       // finds something genuinely worth mentioning, one quiet line rides
       // the prompt so he brings it up naturally in conversation. Empty
       // string when nothing is near — the petTouchNote pattern.
+      // Incognito: never evaluated or injected — the session behaves like
+      // a first meeting (same rule as memory/anniversary/mood).
       let outreachSection = "";
+      if (!incognitoOn) {
       try {
         // Dynamic import: the singleton is AsyncStorage-backed (RN), and
         // local-agent must stay importable in node tests. Tests inject

@@ -306,9 +306,42 @@ export function ChatScreen({
   const [inputHeight, setInputHeight] = useState(44);
   const [showResults, setShowResults] = useState(false);
   const [busy, setBusy] = useState(false);
+  // (greeting effect lives below useIncognito, so it can gate on it)
+  const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  // Local-mode image attachments (vision): picked via expo-image-picker,
+  // processed by the local agent at runTurn time.
+  const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
+  // Local-mode document attachments (txt/md/pdf): picked via expo-document-picker,
+  // surfaced to the AI as file URIs for knowledge_add_file.
+  const [fileAttachments, setFileAttachments] = useState<UserFileAttachment[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
+  // Thinking drawer: track the message id (not a text snapshot) so the
+  // drawer content live-updates while thinking is still streaming in.
+  const [activityId, setActivityId] = useState<string | null>(null);
+  const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
+  const list = useRef<ScrollView>(null);
+  const [queue] = useState(() => new ConversationQueue());
+  const choiceCompletions = useRef(
+    new Map<string, { resolve: () => void; reject: (error: unknown) => void }>(),
+  );
+  const outbox = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getSnapshot);
+  const followLatest = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
+  const runLock = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const [historyError, setHistoryError] = useState("");
+  const [historySaveFailed, setHistorySaveFailed] = useState(false);
+  const [historyAttempt, setHistoryAttempt] = useState(0);
+  const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
   // Personal greeting (P3-1): title/body composed from her rhythm + real
   // anchors. Null until the anchors load — then the empty thread greets
   // her like he means it, not like a clock.
+  // Incognito: anchors (anniversary/unread letter/tell-later) are personal
+  // data — never read in incognito; the greeting falls back to rhythm-only,
+  // same as the system prompt (first-meeting rule).
   const [greeting, setGreeting] = useState<{ title: string; body: string } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -318,11 +351,13 @@ export function ChatScreen({
           import("./our-space/instance"),
           import("./our-space/anniversary-section"),
         ]);
-        const [anniversaries, letters, tellLater] = await Promise.all([
-          ourSpaceStore.listAnniversaries().catch(() => []),
-          ourSpaceStore.getUnseenLoveLetters().catch(() => []),
-          ourSpaceStore.listTellLater(false).catch(() => []),
-        ]);
+        const [anniversaries, letters, tellLater] = incognitoOn
+          ? [[], [], []]
+          : await Promise.all([
+              ourSpaceStore.listAnniversaries().catch(() => []),
+              ourSpaceStore.getUnseenLoveLetters().catch(() => []),
+              ourSpaceStore.listTellLater(false).catch(() => []),
+            ]);
         const g = composeGreeting(describeHerMoment(Date.now()), {
           anniversaries: getUpcomingAnniversaries(anniversaries, new Date(), 30).map((a) => ({
             title: a.title,
@@ -355,36 +390,7 @@ export function ChatScreen({
     return () => {
       alive = false;
     };
-  }, []);
-  const [error, setError] = useState("");
-  const [loaded, setLoaded] = useState(false);
-  const [picking, setPicking] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
-  // Local-mode image attachments (vision): picked via expo-image-picker,
-  // processed by the local agent at runTurn time.
-  const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
-  // Local-mode document attachments (txt/md/pdf): picked via expo-document-picker,
-  // surfaced to the AI as file URIs for knowledge_add_file.
-  const [fileAttachments, setFileAttachments] = useState<UserFileAttachment[]>([]);
-  const [transcribing, setTranscribing] = useState(false);
-  // Thinking drawer: track the message id (not a text snapshot) so the
-  // drawer content live-updates while thinking is still streaming in.
-  const [activityId, setActivityId] = useState<string | null>(null);
-  const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
-  const list = useRef<ScrollView>(null);
-  const [queue] = useState(() => new ConversationQueue());
-  const choiceCompletions = useRef(
-    new Map<string, { resolve: () => void; reject: (error: unknown) => void }>(),
-  );
-  const outbox = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getSnapshot);
-  const followLatest = useRef(true);
-  const [awayFromLatest, setAwayFromLatest] = useState(false);
-  const runLock = useRef(false);
-  const [saveError, setSaveError] = useState("");
-  const [historyError, setHistoryError] = useState("");
-  const [historySaveFailed, setHistorySaveFailed] = useState(false);
-  const [historyAttempt, setHistoryAttempt] = useState(0);
-  const { incognito: incognitoOn, toggle: toggleIncognito } = useIncognito();
+  }, [incognitoOn]);
   useEffect(() => {
     if (!isReady) return;
     let active = true;

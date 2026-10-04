@@ -209,8 +209,11 @@ function CapabilityGroupCard({ group }: { group: CapabilityGroup }) {
             {t("capgroup.members", { n: group.members.length })}
             {group.members.length > 0 ? ` · ${t("capgroup.primary")}` : ""}
           </TText>
-          {/* P3-12: honest about the silent free fallback — she sees it here. */}
-          {group.members.length === 0 ? (
+          {/* P3-12: honest about the silent free fallback — she sees it here.
+              Only the image_output group actually falls back to the free
+              Pollinations backend when empty; the other three groups report
+              unavailable/group-empty instead. */}
+          {group.members.length === 0 && group.tag === CAPABILITY_TAGS.IMAGE_OUTPUT ? (
             <TText style={[s.small, { color: colors.muted }]}>{t("capgroup.freeBackendNote")}</TText>
           ) : null}
         </View>
