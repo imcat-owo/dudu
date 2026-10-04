@@ -34,6 +34,7 @@ import { ActiveGroupChip } from "./api-groups/api-settings";
 import { useChatMode } from "./api-groups/mode";
 import { useApiGroups } from "./api-groups/store";
 import { AssistantResponse } from "./assistant-response";
+import { resolveAvatarState } from "./avatar-state";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
@@ -59,7 +60,6 @@ import {
   useDropZone,
 } from "./pet/registry";
 import { petActivity } from "./pet/store";
-import { resolveAvatarState } from "./avatar-state";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
@@ -261,7 +261,7 @@ export function ChatScreen({
 }) {
   const colors = useColors();
   const s = useStyles();
-  const { tokens } = useTheme();
+  const { tokens, bundle } = useTheme();
   const { api, workspace: w, refresh, navigate } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
   const { enabled: threadsEnabled, mainId, claimPrompt } = useMuseThread();
@@ -596,6 +596,25 @@ export function ChatScreen({
   }, [lastAiBubbleId]);
   return (
     <View style={{ flex: 1, backgroundColor: incognitoOn ? "rgba(61,58,51,0.06)" : undefined }}>
+      {bundle.wallpaper?.uri ? (
+        <>
+          <Image
+            source={{ uri: bundle.wallpaper.uri }}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            resizeMode={bundle.wallpaper.fit === "contain" ? "contain" : "cover"}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: `rgba(0,0,0,${bundle.wallpaper.dim ?? 0.35})`,
+            }}
+          />
+        </>
+      ) : null}
       <View
         style={[s.row, { justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8 }]}
       >

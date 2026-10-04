@@ -57,6 +57,11 @@ export function createWallpaperTools(storage: ThemeStorage): LocalTool[] {
       run: async (args) => {
         const uri = strArg(args, "uri").trim();
         if (!uri) throw new ToolError("uri is required.");
+        const wallpaper = { uri, fit: "cover", dim: 0.35 };
+        if (applyHandler) {
+          const result = await applyHandler({ wallpaper });
+          return result === "ok" ? "Wallpaper updated." : "Wallpaper updated (local only).";
+        }
         // Read current bundle, update wallpaper, write back.
         const raw = await storage.getItem(THEME_STORAGE_KEY);
         let bundle: Record<string, unknown> = {};
@@ -67,7 +72,7 @@ export function createWallpaperTools(storage: ThemeStorage): LocalTool[] {
             bundle = {};
           }
         }
-        bundle.wallpaper = { uri, fit: "cover", dim: 0.35 };
+        bundle.wallpaper = wallpaper;
         await storage.setItem(THEME_STORAGE_KEY, JSON.stringify(bundle));
         return "Wallpaper updated. It applies on the next theme refresh.";
       },
