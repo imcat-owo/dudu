@@ -12,12 +12,15 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { refreshFontSizeOption } from "../app-settings.js";
+import { createBackupTools } from "../backup-tools.js";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { createDialogTools } from "../chat/dialog-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools } from "../image/tools.js";
+import { getKnowledgeStore } from "../knowledge/instance.js";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -68,7 +71,9 @@ import {
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
+import { refreshChatMode } from "./mode.js";
 import { modelProfileStore } from "./model-profiles";
+import { groupStore } from "./store.js";
 import type { ApiGroup, FeatureSwitch } from "./types";
 
 export interface LocalToolCall {
@@ -507,6 +512,63 @@ export function createLocalAgent(opts: {
         ...createThemeTools(AsyncStorage),
         ...createFontSizeTools(AsyncStorage),
         ...createPetSkinTools(AsyncStorage),
+        ...createBackupTools({
+          kv: AsyncStorage,
+          secure: {
+            getItem: async (key: string) => {
+              const { getItemAsync } = await import("expo-secure-store");
+              return getItemAsync(key);
+            },
+            setItem: async (key: string, value: string) => {
+              const { setItemAsync } = await import("expo-secure-store");
+              return setItemAsync(key, value);
+            },
+          },
+          getKnowledgeStore: () => getKnowledgeStore().catch(() => null),
+          saveBackupFile: async (filename: string, json: string) => {
+            const FileSystem = await import("expo-file-system/legacy");
+            const Sharing = await import("expo-sharing");
+            const path = `${FileSystem.cacheDirectory}${filename}`;
+            await FileSystem.writeAsStringAsync(path, json);
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(path);
+              return `shared via system share sheet (${filename})`;
+            }
+            return `saved to app cache (${filename})`;
+          },
+          listBackupFiles: async () => {
+            const FileSystem = await import("expo-file-system/legacy");
+            const dir = FileSystem.cacheDirectory ?? "";
+            const names = await FileSystem.readDirectoryAsync(dir).catch(() => [] as string[]);
+            const out: Array<{ name: string; modifiedAt: number }> = [];
+            for (const name of names) {
+              if (!name.startsWith("dudu-backup-") || !name.endsWith(".json")) continue;
+              const info = await FileSystem.getInfoAsync(dir + name).catch(() => null);
+              out.push({
+                name,
+                modifiedAt:
+                  info?.exists && "modificationTime" in info
+                    ? (info.modificationTime as number)
+                    : 0,
+              });
+            }
+            out.sort((a, b) => b.modifiedAt - a.modifiedAt);
+            return out;
+          },
+          readBackupFile: async (name: string) => {
+            const FileSystem = await import("expo-file-system/legacy");
+            return FileSystem.readAsStringAsync(`${FileSystem.cacheDirectory}${name}`);
+          },
+          onRestored: async () => {
+            await groupStore.refresh();
+            await voiceStore.refresh();
+            await refreshChatMode();
+            await refreshFontSizeOption();
+            memoryStore.refresh();
+            skillStore.refresh();
+            ourSpaceStore.refresh();
+          },
+        }),
         ...createTtsVoiceTools(voiceStore),
         ...createDialogTools(),
         ...createContextTools({
