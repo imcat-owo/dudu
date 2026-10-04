@@ -78,7 +78,9 @@ export function BackupSection() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(path);
       }
-      setNotice(t("backup.backupDone"));
+      // P3-11: tell her WHERE the file went — the share sheet can be
+      // dismissed and the file sits in the cache. Ask her to confirm saving.
+      setNotice(t("backup.backupDoneWhere") as string);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
     } finally {
@@ -99,6 +101,17 @@ export function BackupSection() {
       if (!parsed.ok) {
         setNotice(errorText(parsed.code));
         return;
+      }
+      // P2-14: pre-flight storage check — a half-restore from a full disk
+      // is the worst outcome. Warn in human words before asking for confirm.
+      try {
+        const free = await FileSystem.getFreeDiskStorageAsync();
+        if (free < text.length * 3) {
+          setNotice(t("backup.lowSpace") as string);
+          return;
+        }
+      } catch {
+        // Can't measure free space — proceed; the failure path below is safe.
       }
       Alert.alert(t("backup.title"), t("backup.confirmRestore"), [
         { text: t("common.cancel"), style: "cancel" },
@@ -133,8 +146,10 @@ export function BackupSection() {
                     ? t("backup.restoreDone")
                     : `${t("backup.restoreDone")} ${t("backup.themeRestartNote")}`,
                 );
-              } catch (e) {
-                setNotice(e instanceof Error ? e.message : String(e));
+              } catch {
+                // P2-14: applyBackup is idempotent (full-value writes), so a
+                // failed restore is safe to retry — say so in human words.
+                setNotice(t("backup.restoreFailed") as string);
               }
             })();
           },

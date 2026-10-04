@@ -202,6 +202,10 @@ export function VoiceRecorderButton({
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [hint, setHint] = useState("");
+  // P3-2: slide-up-to-cancel — track the finger's vertical travel; sliding
+  // up past the threshold arms cancel, and release discards the recording.
+  const [cancelArmed, setCancelArmed] = useState(false);
+  const touchStartY = useRef<number | null>(null);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
@@ -251,6 +255,8 @@ export function VoiceRecorderButton({
       recorder.record();
       startTimeRef.current = Date.now();
       setSeconds(0);
+      setCancelArmed(false);
+      touchStartY.current = null;
       setRecording(true);
       timerRef.current = setInterval(() => {
         setSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -317,7 +323,18 @@ export function VoiceRecorderButton({
   }
 
   return (
-    <View style={{ alignItems: "center" }}>
+    <View
+      style={{ alignItems: "center" }}
+      // P3-2: slide up while holding to cancel. pageY travel is device
+      // pixels — 60 is comfortably past a wobble, well within a swipe.
+      onTouchStart={(e) => {
+        touchStartY.current = e.nativeEvent.pageY;
+      }}
+      onTouchMove={(e) => {
+        if (!recording || touchStartY.current == null) return;
+        setCancelArmed(touchStartY.current - e.nativeEvent.pageY > 60);
+      }}
+    >
       {!!hint && !recording && (
         <TText style={[s.small, { color: colors.danger, marginBottom: 4, textAlign: "center" }]}>
           {hint}
@@ -349,15 +366,17 @@ export function VoiceRecorderButton({
               {formatTimer(seconds)}
             </TText>
           </View>
-          <TText style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>松开发送</TText>
+          <TText style={{ color: "#FFFFFF", fontSize: 12, marginTop: 4 }}>
+            {cancelArmed ? "松开取消" : "松开发送 · 上滑取消"}
+          </TText>
         </View>
       )}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={recording ? "松开发送语音" : "按住说话"}
+        accessibilityLabel={recording ? (cancelArmed ? "松开取消语音" : "松开发送语音") : "按住说话"}
         disabled={disabled}
         onPressIn={() => void startRecording()}
-        onPressOut={() => void stopRecording(false)}
+        onPressOut={() => void stopRecording(cancelArmed)}
         style={({ pressed }) => ({
           width: 44,
           height: 44,

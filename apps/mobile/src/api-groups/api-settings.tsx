@@ -21,6 +21,7 @@ import { Button, Card, Chip, Field, useColors, useStyles } from "../ui";
 import { VoiceSettingsSection } from "../voice/voice-settings";
 import { CapabilitySettingsSection } from "./capability-settings";
 import { testConnection } from "./direct-transport";
+import { classifyError } from "./error-classifier";
 import { type ChatMode, useChatMode, useSetChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
 import { groupStore, useApiGroups } from "./store";
@@ -90,6 +91,8 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
   const [error, setError] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  // P2-12: model names offered by /models after a successful test.
+  const [models, setModels] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   function pickVendor(v: ApiVendor) {
@@ -119,13 +122,32 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
     }
     setTesting(true);
     setTestResult(null);
+    setModels([]);
     try {
-      await testConnection({ ...draft, baseUrl: normalizeBaseUrl(draft.baseUrl) });
+      // P2-12: testConnection returns the /models list (Kelivo-style) —
+      // offer it as a picker so she never has to hand-type a model name.
+      const { models } = await testConnection({
+        ...draft,
+        baseUrl: normalizeBaseUrl(draft.baseUrl),
+      });
+      setModels(models);
       setTestResult({ ok: true, text: t("apigroup.testOk") });
     } catch (e) {
+      // P2-11: human words by error class, not raw technical English.
+      const cls = classifyError(e);
+      const key =
+        cls === "auth_error"
+          ? "apigroup.testFailAuth"
+          : cls === "rate_limit"
+            ? "apigroup.testFailRate"
+            : cls === "network_error"
+              ? "apigroup.testFailNetwork"
+              : null;
       setTestResult({
         ok: false,
-        text: t("apigroup.testFail", { error: e instanceof Error ? e.message : String(e) }),
+        text: key
+          ? (t(key) as string)
+          : t("apigroup.testFail", { error: e instanceof Error ? e.message : String(e) }),
       });
     } finally {
       setTesting(false);
@@ -233,6 +255,37 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
         autoCapitalize="none"
         autoCorrect={false}
       />
+      {/* P2-12: pick from the server's /models list instead of hand-typing. */}
+      {models.length > 0 && (
+        <View style={{ gap: 6 }}>
+          <TText style={[s.small, { color: colors.muted }]}>{t("apigroup.pickModel")}</TText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {models.slice(0, 24).map((m) => {
+              const selected = m === draft.model;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => set("model", m)}
+                  accessibilityRole="button"
+                  accessibilityLabel={m}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: radii.lg,
+                    borderWidth: 1,
+                    borderColor: selected ? colors.text : colors.line,
+                    backgroundColor: selected ? colors.sky : "transparent",
+                  }}
+                >
+                  <TText style={[s.small, { color: colors.text }]} numberOfLines={1}>
+                    {m}
+                  </TText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       <TText style={[s.small, { fontWeight: "600" }]}>{t("vision.title")}</TText>
       <View

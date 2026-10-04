@@ -127,6 +127,13 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
           <TText style={{ color: colors.muted, fontSize: 11.5 }}>
             {t(statusLabel(task.status))} · {pct}%
           </TText>
+          {/* P3-8: a stuck card used to say only "卡住了" + delete. Say
+              what happened in human words. */}
+          {task.status === "stuck" ? (
+            <TText style={{ color: colors.muted, fontSize: 11.5 }}>
+              {t("space.tasks.stuckHint")}
+            </TText>
+          ) : null}
         </View>
         <Pressable onPress={() => setMenuOpen(true)} hitSlop={8}>
           <ImageIcon size={16} color={colors.muted} />

@@ -11,6 +11,7 @@ import {
   EyeOff,
   FileText,
   MessagesSquare,
+  Play,
   Plus,
   RotateCcw,
   Square,
@@ -45,6 +46,7 @@ import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
 import { PlanGateCard } from "./api-groups/plan-gate-card";
+import { GroupMeetingCard } from "./chat/group-meeting-card";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
@@ -896,6 +898,13 @@ export function ChatScreen({
                   text: t("chat.suggest.summarize"),
                   action: () => enqueue(t("chat.suggest.summarize")),
                 },
+                // P3-1: /img was undiscoverable — a suggestion button that
+                // runs it with a sample prompt, so she learns the shortcut
+                // by seeing it work.
+                {
+                  text: t("chat.suggest.draw"),
+                  action: () => enqueue(t("chat.suggest.drawCommand")),
+                },
                 // "goals" has no screen in local mode — offering the button
                 // there would be a dead button (P1-1).
                 ...(supportsSection(supportedSections, "goals")
@@ -1229,6 +1238,24 @@ export function ChatScreen({
           </View>
         )}
         <ErrorNotice error={error} />
+        {/* P3-3: she stopped the reply — offer "继续" (resume + rerun this
+            turn) instead of leaving her with a half answer and no way back. */}
+        {outbox.paused && !outbox.pending.length && !error && !busy && !agent.isRunning && (
+          <Button
+            style={{ alignSelf: "flex-start" }}
+            icon={Play}
+            onPress={() => {
+              queue.resume();
+              void run()
+                .then(() => {
+                  if (!queue.getSnapshot().paused) flush();
+                })
+                .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+            }}
+          >
+            {t("chat.continueReply")}
+          </Button>
+        )}
         {!!error && (
           <Button
             style={{ alignSelf: "flex-start" }}
@@ -1264,6 +1291,9 @@ export function ChatScreen({
         {/* Plan gate (开启原则): a proposed multi-model plan waits for her
             approve/stop here — the AI must not act before she decides. */}
         <PlanGateCard threadId={threadId} />
+        {/* Group meeting (P2-13): a live meeting for this thread is visible
+            here — members, round progress, one-tap stop. */}
+        <GroupMeetingCard threadId={threadId} />
         <ErrorNotice error={saveError} />
         {!!saveError && (
           <Button

@@ -121,42 +121,47 @@ function CapabilityRow({
         )}
       </View>
 
-      {/* AI authorization preference — her revocable switch */}
-      <View style={[s.between]}>
-        <TText style={s.small}>{t("perm.aiAuth.section")}</TText>
-        <View
-          style={{
-            flexDirection: "row",
-            borderRadius: radii.sm,
-            overflow: "hidden",
-            borderWidth: 1,
-            borderColor: colors.line,
-          }}
-        >
-          {AI_AUTH_PREFERENCES.map((pref) => {
-            const active = aiPref === pref;
-            return (
-              <Pressable
-                key={pref}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => void setAiAuthPreference(id, pref)}
-                style={{
-                  paddingVertical: 5,
-                  paddingHorizontal: 9,
-                  backgroundColor: active ? colors.blueDark : "transparent",
-                }}
-              >
-                <TText
-                  style={[s.small, { fontSize: 11, color: active ? colors.onBlue : colors.muted }]}
+      {/* AI authorization preference — her revocable switch.
+          P3-10: bluetooth has no BLE module in this build, so its switch
+          governs a capability that can never exist — hide it there instead
+          of letting her "allow" something permanently unavailable. */}
+      {id !== "bluetooth" ? (
+        <View style={[s.between]}>
+          <TText style={s.small}>{t("perm.aiAuth.section")}</TText>
+          <View
+            style={{
+              flexDirection: "row",
+              borderRadius: radii.sm,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: colors.line,
+            }}
+          >
+            {AI_AUTH_PREFERENCES.map((pref) => {
+              const active = aiPref === pref;
+              return (
+                <Pressable
+                  key={pref}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => void setAiAuthPreference(id, pref)}
+                  style={{
+                    paddingVertical: 5,
+                    paddingHorizontal: 9,
+                    backgroundColor: active ? colors.blueDark : "transparent",
+                  }}
                 >
-                  {aiAuthLabel(pref)}
-                </TText>
-              </Pressable>
-            );
-          })}
+                  <TText
+                    style={[s.small, { fontSize: 11, color: active ? colors.onBlue : colors.muted }]}
+                  >
+                    {aiAuthLabel(pref)}
+                  </TText>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }

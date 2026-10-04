@@ -49,7 +49,8 @@ function kindLabel(kind: CapabilityKind): string {
 }
 
 export function CapabilitySettingsSection() {
-  const { groups, routingEnabled, rankingMode, loaded } = useCapabilityGroups();
+  const { groups, routingEnabled, coordinationEnabled, rankingMode, loaded } =
+    useCapabilityGroups();
   const colors = useColors();
   const s = useStyles();
 
@@ -78,6 +79,31 @@ export function CapabilitySettingsSection() {
               <Switch
                 value={routingEnabled}
                 onValueChange={(v) => void capabilityStore.setRoutingEnabled(v)}
+              />
+            </View>
+          </Card>
+
+          {/* Multi-model coordination master switch (P3-9): this was a dead
+              switch — nobody read it. Now it's real: the AI can only propose
+              coordination plans / start group meetings when it's ON.
+              Default OFF (her 开启原则: multi-model stays off until she says so). */}
+          <Card>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <TText style={{ fontWeight: "700" }}>{t("capgroup.coordination")}</TText>
+                <TText style={[s.small, { color: colors.muted }]}>
+                  {t("capgroup.coordinationDesc")}
+                </TText>
+              </View>
+              <Switch
+                value={coordinationEnabled}
+                onValueChange={(v) => void capabilityStore.setCoordinationEnabled(v)}
               />
             </View>
           </Card>
@@ -183,6 +209,10 @@ function CapabilityGroupCard({ group }: { group: CapabilityGroup }) {
             {t("capgroup.members", { n: group.members.length })}
             {group.members.length > 0 ? ` · ${t("capgroup.primary")}` : ""}
           </TText>
+          {/* P3-12: honest about the silent free fallback — she sees it here. */}
+          {group.members.length === 0 ? (
+            <TText style={[s.small, { color: colors.muted }]}>{t("capgroup.freeBackendNote")}</TText>
+          ) : null}
         </View>
         <Switch
           value={group.enabled}

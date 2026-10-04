@@ -53,6 +53,7 @@ import {
 } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
+import { WebView } from "react-native-webview";
 import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
@@ -92,7 +93,7 @@ import { radii } from "./theme/radii";
 import { BRAND_OCHRE } from "./theme/brand";
 import { shadows } from "./theme/shadows";
 import { useTheme } from "./theme/ThemeContext";
-import { useColors } from "./ui";
+import { Button, useColors } from "./ui";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
 
@@ -1765,9 +1766,35 @@ const WORK_ICONS: Record<WorkType, typeof Heart> = {
 function WorksPage() {
   const v = useOurSpaceVersion();
   const colors = useColors();
-  const { tokens } = useTheme();
+  const { tokens, stageBundle } = useTheme();
   const [works, setWorks] = useState<WorkItem[]>([]);
   const [viewer, setViewer] = useState<WorkItem | null>(null);
+  const [workNotice, setWorkNotice] = useState("");
+
+  // P2-9: theme works stage as a try-on (she confirms in 外观 if she likes it).
+  async function applyWorkTheme(uri: string) {
+    setWorkNotice("");
+    try {
+      const FileSystem = await import("expo-file-system/legacy");
+      const bundle = JSON.parse(await FileSystem.readAsStringAsync(uri));
+      if (stageBundle(bundle)) setWorkNotice(t("space.works.themeApplied") as string);
+      else setWorkNotice(t("space.works.actionFailed") as string);
+    } catch {
+      setWorkNotice(t("space.works.actionFailed") as string);
+    }
+  }
+
+  // P2-9: file works open through the system share sheet.
+  async function openWorkFile(uri: string) {
+    setWorkNotice("");
+    try {
+      const Sharing = await import("expo-sharing");
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+      else setWorkNotice(t("space.works.actionFailed") as string);
+    } catch {
+      setWorkNotice(t("space.works.actionFailed") as string);
+    }
+  }
 
   useEffect(() => {
     void ourSpaceStore.listWorks().then(setWorks);
@@ -1839,6 +1866,18 @@ function WorksPage() {
                   style={{ width: "100%", aspectRatio: 1, borderRadius: radii.md }}
                   resizeMode="contain"
                 />
+              ) : viewer.type === "html" ? (
+                // P2-9: HTML works preview in a real WebView, not a URI line.
+                <View
+                  style={{
+                    height: 440,
+                    borderRadius: radii.md,
+                    overflow: "hidden",
+                    backgroundColor: colors.card,
+                  }}
+                >
+                  <WebView source={{ uri: viewer.uri }} style={{ flex: 1 }} />
+                </View>
               ) : (
                 <View
                   style={{
@@ -1871,6 +1910,22 @@ function WorksPage() {
                   <TText style={{ color: colors.muted, fontSize: 11 }} selectable>
                     {viewer.uri}
                   </TText>
+                  {/* P2-9: theme works get a try-on button; files get open/share.
+                      Every work type now does something — no dead ends. */}
+                  {viewer.type === "theme" ? (
+                    <Button small primary onPress={() => void applyWorkTheme(viewer.uri)}>
+                      {t("space.works.tryTheme")}
+                    </Button>
+                  ) : viewer.type === "file" ? (
+                    <Button small onPress={() => void openWorkFile(viewer.uri)}>
+                      {t("space.works.openFile")}
+                    </Button>
+                  ) : null}
+                  {!!workNotice && (
+                    <TText style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>
+                      {workNotice}
+                    </TText>
+                  )}
                 </View>
               )}
               <TText
