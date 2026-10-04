@@ -246,9 +246,11 @@ function mentionsName(text: string, name: string): boolean {
     while (idx !== -1) {
       const before = idx === 0 ? "" : t[idx - 1];
       const after = idx + c.length >= t.length ? "" : t[idx + c.length];
-      // Word boundary: neighbors must not be word chars (letters/digits).
-      // CJK chars are not \w, so "主力" matches inside Chinese text.
-      if (!/[\p{L}\p{N}_]/u.test(before) && !/[\p{L}\p{N}_]/u.test(after)) return true;
+      // Word boundary, ASCII-only: CJK ideographs ARE \p{L}, so a
+      // Unicode-aware boundary would wrongly block "备用" inside
+      // "我觉得备用不错". In Chinese there are no spaces — a name is a
+      // substring match unless glued to ASCII letters/digits.
+      if (!/[A-Za-z0-9_]/.test(before) && !/[A-Za-z0-9_]/.test(after)) return true;
       idx = t.indexOf(c, idx + 1);
     }
     return false;

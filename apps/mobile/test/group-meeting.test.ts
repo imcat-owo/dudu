@@ -201,6 +201,41 @@ describe("selectSpeakers (ST NATURAL port)", () => {
     assert.equal(picked[0].id, "m2", "mentioned member speaks first");
   });
 
+  it("@mention fires mid-sentence in Chinese (CJK has no word spaces)", () => {
+    const m = meeting({
+      transcript: [
+        {
+          id: "x1",
+          memberId: "m1",
+          memberName: "主力 (gpt-4o)",
+          text: "我觉得备用不错，你说呢备用",
+          round: 1,
+          at: 1,
+        },
+      ],
+    });
+    const picked = selectSpeakers(m, { random: scriptedRandom(0.99, 0.99) });
+    assert.ok(picked.some((p) => p.id === "m2"), "bare CJK mention must respond");
+  });
+
+  it("@mention does not fire inside ASCII words", () => {
+    // If mention wrongly matched "Al" inside "Alice", m1 would be picked
+    // regardless of the dice/fallback. Force the fallback to m3: a clean
+    // [m3] proves the mention did not fire.
+    const m = meeting({
+      members: [member("m1", "Al", 0), member("m2", "Bob", 0), member("m3", "Cat", 0)],
+      transcript: [
+        { id: "x1", memberId: "m2", memberName: "Bob", text: "Alice is here", round: 1, at: 1 },
+      ],
+    });
+    const picked = selectSpeakers(m, { random: scriptedRandom(0.99, 0.99, 0.99) });
+    assert.deepEqual(
+      picked.map((p) => p.id),
+      ["m3"],
+      "Al must not match inside Alice",
+    );
+  });
+
   it("talkativeness dice: chatty speaks, shy stays quiet", () => {
     const m = meeting({
       members: [member("m1", "话痨", 1), member("m2", "闷葫芦", 0)],
