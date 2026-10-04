@@ -12,6 +12,7 @@ import {
   Lightbulb,
   ListChecks,
   Mail,
+  MessagesSquare,
   Palette,
   Pause,
   Play,
@@ -1792,6 +1793,18 @@ export function AppsScreen() {
             title={t("appearance.entryTitle")}
             detail={t("appearance.entryDetail")}
             onPress={() => navigate("appearance")}
+          />
+        </Card>
+      )}
+      {`${t("crossDialog.appsEntry")} ${t("crossDialog.appsEntryDetail")}`
+        .toLowerCase()
+        .includes(query.toLowerCase()) && (
+        <Card style={{ paddingVertical: 3 }}>
+          <LinkRow
+            icon={MessagesSquare}
+            title={t("crossDialog.appsEntry")}
+            detail={t("crossDialog.appsEntryDetail")}
+            onPress={() => open({ type: "crossDialogTrace" })}
           />
         </Card>
       )}

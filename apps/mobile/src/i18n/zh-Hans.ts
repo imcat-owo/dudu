@@ -1414,6 +1414,22 @@ const zhHans = {
   "space.tasks.bgGenerating": "正在生图…",
   "space.tasks.bgPromptHint": "描述一下想要的画面，不写就按任务名来",
   "space.tasks.bgClear": "恢复默认背景",
+  "crossDialog.traceTitle": "跨对话框留痕",
+  "crossDialog.traceSubtitle": "他在别的对话框干了什么，这里都有记录",
+  "crossDialog.traceEmpty": "还没有跨对话框的操作记录。",
+  "crossDialog.actionList": "查看了对话框列表",
+  "crossDialog.actionRead": "读取消息",
+  "crossDialog.actionSend": "发送消息",
+  "crossDialog.fromDialogTag": "来自「{name}」对话框",
+  "crossDialog.sendTagVisible": "在目标对话框显示来源标记",
+  "crossDialog.sendTagVisibleDetail":
+    "关掉后，送过去的消息不再带「来自某对话框」的小标记，但这条记录里照样能看到（留痕关不掉）。",
+  "crossDialog.perDialog": "按对话框单独设置",
+  "crossDialog.followGlobal": "跟随全局",
+  "crossDialog.clearTrace": "清空记录",
+  "crossDialog.clearConfirm": "把留痕记录全部清空？清空后就看不到了。",
+  "crossDialog.appsEntry": "跨对话框留痕",
+  "crossDialog.appsEntryDetail": "他在别的对话框干了什么",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

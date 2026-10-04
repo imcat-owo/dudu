@@ -971,6 +971,23 @@ export function ChatScreen({
                       ref={message.id === lastAiBubbleId ? lastAiBubbleRef : undefined}
                       style={{ maxWidth: "80%" }}
                     >
+                      {/* Cross-dialog delivery marker (vision feature 2):
+                          the AI sent this from another dialog. The tag is
+                          her visibility setting; the trace log records the
+                          send either way. */}
+                      {!user &&
+                        typeof message.crossDialog === "object" &&
+                        message.crossDialog !== null &&
+                        typeof (message.crossDialog as { fromName?: unknown }).fromName ===
+                          "string" && (
+                          <TText
+                            style={[s.small, { color: bubble.fg, opacity: 0.75, marginBottom: 2 }]}
+                          >
+                            {t("crossDialog.fromDialogTag", {
+                              name: (message.crossDialog as { fromName: string }).fromName,
+                            })}
+                          </TText>
+                        )}
                       {!!thinking && (
                         <ThinkingStatus
                           thinking={thinking}

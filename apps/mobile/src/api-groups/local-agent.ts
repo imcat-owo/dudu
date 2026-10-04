@@ -17,6 +17,11 @@ import { createBackupTools } from "../backup-tools.js";
 import { createBrowserTools } from "../browser/tools.js";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
+import { createCrossDialogTools } from "../chat/cross-dialog.js";
+import {
+  crossDialogTraceStore,
+  crossDialogVisibilityStore,
+} from "../chat/cross-dialog-instance.js";
 import { createDialogTools } from "../chat/dialog-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools, type ImageOutputBackend } from "../image/tools.js";
@@ -50,7 +55,6 @@ import { ambientVideoStore } from "../sora-ambient-video-instance.js";
 import { getAiThemeMode } from "../theme/ai-mode.js";
 import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
 import { createVideoTools, type VideoBackend } from "../video/tools.js";
-import { createPlanTools } from "./plan-tools";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -77,7 +81,6 @@ import {
   resolveMembers,
   type VisionPlan,
 } from "./group-router";
-import { buildRankingSlip } from "./model-ranking";
 import {
   createLocalTools,
   createToolRegistry,
@@ -88,6 +91,8 @@ import {
 } from "./local-tools";
 import { refreshChatMode } from "./mode.js";
 import { modelProfileStore } from "./model-profiles";
+import { buildRankingSlip } from "./model-ranking";
+import { createPlanTools } from "./plan-tools";
 import { groupStore } from "./store.js";
 import type { ApiGroup, FeatureSwitch } from "./types";
 
@@ -117,6 +122,13 @@ export interface LocalChatMessage {
   toolCalls?: LocalToolCall[];
   /** For role "tool": the id of the tool call this result answers. */
   toolCallId?: string;
+  /**
+   * Cross-dialog delivery marker (vision feature 2): present when the AI
+   * delivered this message from another dialog via send_to_dialog. The
+   * chat UI renders a "from dialog X" tag from it. Survives history
+   * load/save — loadLocalHistory only filters on id/role.
+   */
+  crossDialog?: { fromThreadId: string; fromName: string; at: number };
 }
 
 /** Max tool-calling iterations per turn — hard cap, no infinite loops. */
@@ -768,6 +780,16 @@ export function createLocalAgent(opts: {
         }),
         ...createTtsVoiceTools(voiceStore),
         ...createDialogTools({ threadId: opts.threadId }),
+        // Cross-dialog read/write (vision feature 2): the AI can reach her
+        // other dialogs. Every action is traced (留痕) — see
+        // src/chat/cross-dialog.ts for the hard constraints.
+        ...createCrossDialogTools({
+          threadId: opts.threadId,
+          storage: AsyncStorage,
+          trace: crossDialogTraceStore,
+          visibility: crossDialogVisibilityStore,
+          isIncognito: incognito,
+        }),
         ...createContextTools({
           setMessages: (msgs) => {
             messages = msgs.map((m, i) => ({
