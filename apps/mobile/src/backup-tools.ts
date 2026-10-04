@@ -42,6 +42,16 @@ export interface BackupToolDeps {
    * Returns true when the restored theme bundle was re-applied immediately
    * (false = no theme UI mounted; the stored bundle applies on next launch). */
   onRestored: () => Promise<boolean>;
+  /**
+   * Optional: collect her voice message recordings as filename → base64.
+   * Absent = this build can't read them; backup skips them honestly. (P2-5)
+   */
+  collectVoiceFiles?: () => Promise<Record<string, string>>;
+  /**
+   * Optional: write restored voice files back to stable storage and rewrite
+   * their URIs inside chat messages. Returns the number of files restored.
+   */
+  restoreVoiceFiles?: (files: Record<string, string>) => Promise<number>;
 }
 
 function summarize(backup: {
@@ -96,18 +106,31 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
     {
       name: "backup_create",
       description:
-        "Create a full backup of her app data (chat threads, API group configs WITHOUT keys, theme, voice settings, app settings, memories, skills, our-space incl. diary/timeline/anniversaries/task cards, knowledge base docs+vectors). Use when she says '备份一下' / '帮我备份'. The backup is saved to a file; secrets (API keys, custom request headers, custom voice keys) are never included. Returns a summary of what was backed up.",
+        "Create a full backup of her app data (chat threads, API group configs WITHOUT keys, theme, voice settings, app settings, memories, skills, our-space incl. diary/timeline/anniversaries/task cards, knowledge base docs+vectors, her voice message recordings). Use when she says '备份一下' / '帮我备份'. The backup is saved to a file; secrets (API keys, custom request headers, custom voice keys) are never included. Returns a summary of what was backed up.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "backup",
       run: async () => {
         const knowledge = await deps.getKnowledgeStore().catch(() => null);
         const backup = await collectBackup(deps.kv, deps.secure, knowledge);
+        // P2-5: her voice message recordings are irreplaceable — include them.
+        let voiceFileCount = 0;
+        if (deps.collectVoiceFiles) {
+          try {
+            backup.voiceMessages = await deps.collectVoiceFiles();
+            voiceFileCount = Object.keys(backup.voiceMessages).length;
+          } catch {
+            // backup proceeds without them; never fail the whole backup
+          }
+        }
         const json = serializeBackup(backup);
         const stamp = new Date().toISOString().slice(0, 10);
         const filename = `dudu-backup-${stamp}.json`;
         const savedHint = await deps.saveBackupFile(filename, json);
         await markBackedUp(deps.kv);
-        return `${summarize(backup)}\nSaved: ${savedHint}`;
+        const summary = summarize(backup);
+        return voiceFileCount > 0
+          ? `${summary}\nVoice message recordings: ${voiceFileCount} included.\nSaved: ${savedHint}`
+          : `${summary}\nSaved: ${savedHint}`;
       },
     },
     {
@@ -157,11 +180,26 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
         const knowledge = await deps.getKnowledgeStore().catch(() => null);
         await applyBackup(parsed.backup, deps.kv, deps.secure, knowledge);
         const themeApplied = await deps.onRestored();
+        // P2-5: restore her voice recordings and re-point message URIs at
+        // this device's stable directory, so old voice bubbles keep playing.
+        let voiceRestored = 0;
+        if (parsed.backup.voiceMessages && deps.restoreVoiceFiles) {
+          try {
+            voiceRestored = await deps.restoreVoiceFiles(parsed.backup.voiceMessages);
+          } catch {
+            // restore of other data already succeeded; don't fail it here
+          }
+        }
         const b = parsed.backup;
         const se = b.secretsExcluded;
         const out = [
           `Restore complete from ${source} (exported at ${b.exportedAt}).`,
           `Restored: ${b.chat.threads.length} chat threads, ${b.apiGroups.length} API groups (without keys), knowledge ${b.knowledge ? `${b.knowledge.docs.length} docs` : "skipped"}.`,
+          voiceRestored > 0
+            ? `Voice message recordings restored: ${voiceRestored}.`
+            : b.voiceMessages
+              ? "Voice message recordings were in the backup but couldn't be restored on this device."
+              : "No voice message recordings in this backup.",
           themeApplied
             ? "Theme re-applied from the backup."
             : "Theme settings restored — they apply on next app launch.",

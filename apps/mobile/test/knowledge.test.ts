@@ -8,6 +8,7 @@ import { type KnowledgeStorage, KnowledgeStore } from "../src/knowledge/store.js
 import {
   createKnowledgeAddTools,
   createKnowledgeTools,
+  KB_MAX_DOC_CHARS,
   registerPdfExtractHandler,
 } from "../src/knowledge/tools.js";
 import { cosineSimilarity, topKByCosine } from "../src/knowledge/vectors.js";
@@ -456,5 +457,66 @@ describe("knowledge_add_file", () => {
     assert.ok(out.includes("indexed"), `got: ${out}`);
     const docs = await s.listDocs();
     assert.equal(docs[0].kind, "pdf");
+  });
+});
+
+describe("knowledge_add guardrails (P2-6)", () => {
+  function addTools(s: KnowledgeStore) {
+    return createKnowledgeAddTools(s, { getGroup: () => fakeGroup, embed: toyEmbed });
+  }
+
+  it("rejects a duplicate name", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s);
+    const tool = tools.find((t) => t.name === "knowledge_add_doc");
+    assert.ok(tool);
+    await tool.run({ name: "菜谱", text: "宫保鸡丁要放糖。" }, ctx);
+    await assert.rejects(
+      () =>
+        tool.run(
+          { name: "菜谱", text: "这是一篇完全不同的、长得多的内容，讲的是红烧肉的做法。" },
+          ctx,
+        ),
+      /已经有一篇叫《菜谱》/,
+    );
+    assert.equal((await s.listDocs()).length, 1);
+  });
+
+  it("rejects the exact same document (name+size)", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s);
+    const tool = tools.find((t) => t.name === "knowledge_add_doc");
+    assert.ok(tool);
+    await tool.run({ name: "菜谱", text: "宫保鸡丁要放糖。" }, ctx);
+    await assert.rejects(
+      () => tool.run({ name: "菜谱", text: "宫保鸡丁要放糖。" }, ctx),
+      /已经在知识库里了/,
+    );
+  });
+
+  it("rejects oversized text", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s);
+    const tool = tools.find((t) => t.name === "knowledge_add_doc");
+    assert.ok(tool);
+    const big = "x".repeat(KB_MAX_DOC_CHARS + 1);
+    await assert.rejects(() => tool.run({ name: "big", text: big }, ctx), /太大了/);
+    assert.equal((await s.listDocs()).length, 0);
+  });
+
+  it("knowledge_add_file also dedups by name", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = createKnowledgeAddTools(s, {
+      getGroup: () => fakeGroup,
+      embed: toyEmbed,
+      readTextFile: async () => "文件内容",
+    });
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await tool.run({ uri: "file:///a.txt", name: "笔记" }, ctx);
+    await assert.rejects(
+      () => tool.run({ uri: "file:///b.txt", name: "笔记" }, ctx),
+      /已经在知识库里了|已经有一篇叫《笔记》/,
+    );
   });
 });

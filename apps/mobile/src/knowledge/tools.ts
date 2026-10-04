@@ -64,6 +64,48 @@ export const SEARCH_MIN_SCORE = 0.25;
 const DEFAULT_TOP_K = 5;
 const MAX_TOP_K = 10;
 
+/**
+ * Knowledge base guardrails (P2-6): no silent duplicates, no runaway size.
+ * - One document ≈ 500k chars max (~1MB of text — plenty for a phone KB).
+ * - 200 documents max (keeps search fast and embedding bills sane).
+ */
+export const KB_MAX_DOC_CHARS = 500_000;
+export const KB_MAX_DOCS = 200;
+
+/**
+ * Reject duplicate / oversized / over-count adds BEFORE anything is written.
+ * Throws ToolError with a message the AI can relay to her directly.
+ */
+async function guardKnowledgeAdd(
+  store: KnowledgeAddStore,
+  name: string,
+  text: string,
+): Promise<void> {
+  if (text.length > KB_MAX_DOC_CHARS) {
+    throw new ToolError(
+      `“${name}”太大了（约${Math.round(text.length / 1000)}千字，知识库单篇上限约${Math.round(KB_MAX_DOC_CHARS / 1000)}千字）。让她拆成几篇小的再存。`,
+    );
+  }
+  const docs = await store.listDocs();
+  if (docs.length >= KB_MAX_DOCS) {
+    throw new ToolError(
+      `知识库已经有${docs.length}篇文档（上限${KB_MAX_DOCS}篇）。让她删掉一些不用的再存新的。`,
+    );
+  }
+  const normName = name.trim().toLowerCase();
+  const sameName = docs.find((d) => d.name.trim().toLowerCase() === normName);
+  if (sameName) {
+    if (sameName.size === text.length) {
+      throw new ToolError(
+        `《${sameName.name}》已经在知识库里了（名字和大小都一样，应该是同一篇）。不用重复存；如果她想刷新索引，用 knowledge_reindex。`,
+      );
+    }
+    throw new ToolError(
+      `知识库里已经有一篇叫《${sameName.name}》的文档了。让她换个名字，或者先删掉旧的；如果想刷新它，用 knowledge_reindex。`,
+    );
+  }
+}
+
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
   return typeof v === "string" ? v : "";
@@ -252,6 +294,7 @@ export function createKnowledgeAddTools(
             "No API group configured — I need an API group with /v1/embeddings to index documents.",
           );
         }
+        await guardKnowledgeAdd(store, name, text);
         const doc = await store.addDoc(name, "md", text.length);
         try {
           const { indexDocument } = await import("./indexer.js");
@@ -389,6 +432,7 @@ export function createKnowledgeAddTools(
           throw new ToolError(`The file "${name}" looks empty — nothing to index. Tell her.`);
         }
         const kind = isPdf ? "pdf" : name.toLowerCase().endsWith(".md") ? "md" : "txt";
+        await guardKnowledgeAdd(store, name, text);
         const doc = await store.addDoc(name, kind, text.length);
         try {
           const { indexDocument } = await import("./indexer.js");

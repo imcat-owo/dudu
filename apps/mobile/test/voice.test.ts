@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { chunkText } from "../src/voice/edge-tts.js";
 import { createVoiceStore, type SecureBackend } from "../src/voice/store.js";
+import { friendlyPodcastError } from "../src/voice/tools.js";
 import {
   blankSttConfig,
   blankTtsConfig,
@@ -10,6 +11,7 @@ import {
   validateSttConfig,
   validateTtsConfig,
 } from "../src/voice/types.js";
+import { rewriteVoiceMessageUris } from "../src/voice/voice-message-files.js";
 
 function fakeSecure(): SecureBackend & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -169,5 +171,53 @@ describe("voice store", () => {
     await store.refresh();
     assert.equal(store.getSnapshot().tts.voice, "restored");
     assert.equal(store.getSnapshot().tts.customUrl, "https://new.example.com");
+  });
+});
+
+describe("friendlyPodcastError (P2-4)", () => {
+  it("translates custom TTS network failure", () => {
+    const msg = friendlyPodcastError(new Error("TTS request failed: fetch failed"));
+    assert.ok(msg.includes("播客没能生成"), `got: ${msg}`);
+    assert.ok(msg.includes("自定义"), `got: ${msg}`);
+    assert.ok(!msg.includes("fetch failed") || msg.includes("自定义"), `got: ${msg}`);
+  });
+
+  it("translates 401 into a key hint", () => {
+    const msg = friendlyPodcastError(new Error('TTS HTTP 401: {"error":"unauthorized"}'));
+    assert.ok(msg.includes("密钥不对或过期"), `got: ${msg}`);
+  });
+
+  it("translates non-MP3 into a voice hint", () => {
+    const msg = friendlyPodcastError(new Error("podcast needs MP3 segments but TTS returned .wav"));
+    assert.ok(msg.includes("MP3"), `got: ${msg}`);
+  });
+
+  it("never returns raw English technical text alone", () => {
+    const msg = friendlyPodcastError(new Error("TTS HTTP 500: internal error"));
+    assert.ok(msg.startsWith("播客没能生成"), `got: ${msg}`);
+  });
+});
+
+describe("voice message files (P2-5)", () => {
+  it("rewrites absolute URIs to the new device dir", () => {
+    const content = JSON.stringify({
+      type: "voice_message",
+      uri: "file:///var/mobile/Containers/Data/old/dudu-voice-messages/vm_abc.m4a",
+      duration: 5,
+    });
+    const fixed = rewriteVoiceMessageUris(
+      content,
+      "file:///var/mobile/Containers/Data/new/dudu-voice-messages/",
+    );
+    assert.ok(
+      fixed.includes("file:///var/mobile/Containers/Data/new/dudu-voice-messages/vm_abc.m4a"),
+      `got: ${fixed}`,
+    );
+    assert.ok(!fixed.includes("/old/"), `got: ${fixed}`);
+  });
+
+  it("leaves non-voice content untouched", () => {
+    const content = "hello world";
+    assert.equal(rewriteVoiceMessageUris(content, "file:///new/dudu-voice-messages/"), content);
   });
 });

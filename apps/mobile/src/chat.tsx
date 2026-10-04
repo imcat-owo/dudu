@@ -611,6 +611,14 @@ export function ChatScreen({
       }
       return;
     }
+    // P2-5: persist to stable storage first — the recorder's temp URI can be
+    // purged by the OS and is never backed up. Best-effort: sending never breaks.
+    try {
+      const { persistVoiceMessage } = await import("./voice/voice-message-files.js");
+      uri = await persistVoiceMessage(uri);
+    } catch {
+      // keep the original uri
+    }
     sendVoice(uri, duration);
   }
   const messages = agent.messages || [];

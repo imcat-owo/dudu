@@ -600,6 +600,40 @@ export function createLocalAgent(opts: {
             // applies on next launch.
             return requestThemeReload().catch(() => false);
           },
+          // P2-5: her voice message recordings ride along in the backup so
+          // old voice bubbles keep playing after a reinstall / new device.
+          collectVoiceFiles: async () => {
+            const { listVoiceMessageFiles, readVoiceMessageFile } = await import(
+              "../voice/voice-message-files.js"
+            );
+            const out: Record<string, string> = {};
+            for (const name of await listVoiceMessageFiles()) {
+              const b64 = await readVoiceMessageFile(name);
+              if (b64) out[name] = b64;
+            }
+            return out;
+          },
+          restoreVoiceFiles: async (files) => {
+            const { writeVoiceMessageFile, voiceMessageDir, rewriteVoiceMessageUris } =
+              await import("../voice/voice-message-files.js");
+            let restored = 0;
+            for (const [name, b64] of Object.entries(files)) {
+              if (await writeVoiceMessageFile(name, b64)) restored++;
+            }
+            if (restored === 0) return 0;
+            // Re-point voice-message URIs at this device's stable directory:
+            // backups store absolute file:// URIs, which change on reinstall.
+            const newDir = await voiceMessageDir();
+            const allKeys = await AsyncStorage.getAllKeys();
+            for (const key of allKeys) {
+              if (!key.startsWith("dudu.local-chat.") || !key.endsWith(".v1")) continue;
+              const raw = await AsyncStorage.getItem(key).catch(() => null);
+              if (!raw?.includes("dudu-voice-messages/")) continue;
+              const fixed = rewriteVoiceMessageUris(raw, newDir);
+              if (fixed !== raw) await AsyncStorage.setItem(key, fixed).catch(() => {});
+            }
+            return restored;
+          },
         }),
         ...createTtsVoiceTools(voiceStore),
         ...createDialogTools(),

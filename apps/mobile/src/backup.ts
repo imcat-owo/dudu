@@ -18,7 +18,8 @@
  *   re-enter them. We do NOT invent homebrew encryption.
  * - Incognito content. It is never persisted to storage, so it cannot
  *   end up in a backup (there is a test for this).
- * - Cached audio/images (regenerable, bulky).
+ * - Cached audio/images (regenerable, bulky) — EXCEPT her voice message
+ *   recordings, which are irreplaceable and ARE backed up (P2-5).
  *
  * Restore validates the whole file BEFORE writing anything. Corrupt files
  * fail with a human-readable error code — never half-apply.
@@ -155,6 +156,12 @@ export interface BackupFile {
   ourSpace?: Record<string, unknown>;
   /** Optional (newer backups): knowledge base snapshot. */
   knowledge?: BackupKnowledge;
+  /**
+   * Optional (newer backups): her voice message recordings, filename →
+   * base64 m4a. Restored into stable storage with message URIs rewritten,
+   * so old voice bubbles keep playing on a new device. (P2-5)
+   */
+  voiceMessages?: Record<string, string>;
 }
 
 export type BackupParseError =

@@ -15,7 +15,8 @@ What a backup contains:
   voice & vision configs (without custom keys), permission + AI-auth prefs,
   memories, skills, our-space (diary, timeline, tell-later, status, couple,
   feed, anniversaries, works, task cards), knowledge base docs + chunks
-  INCLUDING vectors (search keeps working after restore).
+  INCLUDING vectors (search keeps working after restore), and her voice
+  message recordings (so old voice bubbles keep playing on a new device).
 
 What is NEVER in a backup:
 - Secrets: API keys, custom TTS/STT keys, extra headers. They are stripped on
