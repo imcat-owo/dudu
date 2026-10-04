@@ -55,6 +55,8 @@ export type ThemeBundle = {
   wallpaper?: { uri: string; fit: "cover" | "contain"; dim: number };
   avatar?: { user?: string; assistant?: string; size?: number };
   css?: string;
+  /** App font-size option the AI set (cloud mode). Phone applies it on adopt. */
+  fontSize?: "system" | "small" | "standard" | "large";
   meta: { createdAt: string; updatedAt: string; label?: string };
 };
 
@@ -95,5 +97,13 @@ export function isThemeBundle(v: unknown): v is ThemeBundle {
   for (const id of SURFACE_IDS) {
     if (!isSurfaceTokens((v.surfaces as Record<string, unknown>)[id])) return false;
   }
+  if (
+    v.fontSize !== undefined &&
+    v.fontSize !== "system" &&
+    v.fontSize !== "small" &&
+    v.fontSize !== "standard" &&
+    v.fontSize !== "large"
+  )
+    return false;
   return true;
 }

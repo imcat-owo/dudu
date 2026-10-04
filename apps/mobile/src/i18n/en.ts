@@ -108,6 +108,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.garden.sprouting": "Sprouting",
   "space.garden.ask": "Ask her",
   "space.garden.askHint": "Things I want to ask you",
+  "space.garden.autoExtract": "Remember automatically",
+  "space.garden.autoExtractHint": "Plant memorable moments after chats",
   "space.tellLater.title": "Tell her later",
   "space.tellLater.empty":
     "Nothing queued. When something comes up, tell me and I will hold onto it.",

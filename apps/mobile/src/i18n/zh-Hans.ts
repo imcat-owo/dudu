@@ -109,6 +109,8 @@ const zhHans = {
   "space.garden.sprouting": "萌芽",
   "space.garden.ask": "想问她",
   "space.garden.askHint": "这些我想问你",
+  "space.garden.autoExtract": "自动记住",
+  "space.garden.autoExtractHint": "聊天后自动种下值得记住的事",
   "space.tellLater.title": "稍后告诉她",
   "space.tellLater.empty": "没什么要稍后说的。想到了告诉我，我记着。",
   "space.tellLater.pending": "等她看",

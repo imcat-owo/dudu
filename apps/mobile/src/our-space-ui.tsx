@@ -44,6 +44,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  Switch,
   TextInput,
   View,
 } from "react-native";
@@ -626,6 +627,7 @@ function GardenView() {
   const { tokens } = useTheme();
   const [items, setItems] = useState<MemoryRecord[]>([]);
   const [mv, setMv] = useState(0);
+  const [autoExtract, setAutoExtract] = useState(true);
 
   // Garden reads from the canonical memory backend (one truth source).
   // gardenStateOf maps confident->blooming, unsure->sprouting, question->ask.
@@ -633,12 +635,46 @@ function GardenView() {
   useEffect(() => {
     void memoryStore.listCurrent().then(setItems);
   }, [mv]);
+  useEffect(() => {
+    void memoryStore
+      .getAutoExtract()
+      .then(setAutoExtract)
+      .catch(() => {});
+  }, [mv]);
+
+  const toggleAutoExtract = (v: boolean) => {
+    setAutoExtract(v);
+    void memoryStore.setAutoExtract(v).catch(() => setAutoExtract(!v));
+  };
 
   if (items.length === 0) return <EmptyState text={t("space.garden.empty")} />;
 
   return (
     <FadeIn>
       <View style={{ gap: 24 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            backgroundColor: colors.card,
+            borderRadius: radii.lg,
+            borderWidth: 1,
+            borderColor: colors.line,
+            paddingVertical: 10,
+            paddingHorizontal: 14,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <TText style={{ color: colors.text, fontSize: 13.5, fontWeight: "600" }}>
+              {t("space.garden.autoExtract")}
+            </TText>
+            <TText style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+              {t("space.garden.autoExtractHint")}
+            </TText>
+          </View>
+          <Switch value={autoExtract} onValueChange={toggleAutoExtract} />
+        </View>
         {GARDEN_SECTIONS.map((sec) => {
           const list = items.filter((m) => gardenStateOf(m) === sec.confidence);
           if (list.length === 0) return null;
@@ -707,6 +743,7 @@ function GardenView() {
                       >
                         {m.content}
                       </TText>
+                      <DeleteEntryButton onDelete={() => memoryStore.deleteMemory(m.id)} />
                     </View>
                   </StaggerIn>
                 ))}

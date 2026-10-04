@@ -77,6 +77,11 @@ export type ThemeBundle = {
   avatar?: { user?: string; assistant?: string; size?: number };
   /** Restricted theme-CSS text (creative mode). */
   css?: string;
+  /**
+   * App font-size option set by the AI (cloud mode: arrives via server bundle).
+   * The phone applies it with setFontSizeOption on adopt.
+   */
+  fontSize?: "system" | "small" | "standard" | "large";
   meta: { createdAt: string; updatedAt: string; label?: string };
 };
 
@@ -142,13 +147,18 @@ export function isThemeBundle(v: unknown): v is ThemeBundle {
     if (!isObject(a)) return false;
     if (a.user !== undefined && typeof a.user !== "string") return false;
     if (a.assistant !== undefined && typeof a.assistant !== "string") return false;
-    if (
-      a.size !== undefined &&
-      (typeof a.size !== "number" || !(a.size >= 12 && a.size <= 96))
-    )
+    if (a.size !== undefined && (typeof a.size !== "number" || !(a.size >= 12 && a.size <= 96)))
       return false;
   }
   if (v.css !== undefined && typeof v.css !== "string") return false;
+  if (
+    v.fontSize !== undefined &&
+    v.fontSize !== "system" &&
+    v.fontSize !== "small" &&
+    v.fontSize !== "standard" &&
+    v.fontSize !== "large"
+  )
+    return false;
 
   if (!isObject(v.meta)) return false;
   if (!isNonEmptyString(v.meta.createdAt) || !isNonEmptyString(v.meta.updatedAt)) return false;

@@ -231,6 +231,22 @@ function steadyTools(ctx: Ctx) {
     }),
 
     defineTool({
+      name: "set_font_size",
+      description:
+        "Change the app's font size. Use when she says the text is too big/small. option is system (follow OS) | small (compact, default) | standard | large. Only stages a try-on preview.",
+      parameters: z.object({
+        option: z.enum(["system", "small", "standard", "large"]),
+        label: z.string().max(80).optional(),
+      }),
+      execute: async ({ option, label }) => {
+        const current = await baseBundle(ctx);
+        if (!current) return { error: "No theme exists yet" };
+        const bundle: StrictBundle = { ...current, fontSize: option };
+        return stage(ctx, bundle, label);
+      },
+    }),
+
+    defineTool({
       name: "apply_preset",
       description:
         "Try on one of the built-in theme presets by id (list_theme_presets shows them). Only stages a try-on preview.",

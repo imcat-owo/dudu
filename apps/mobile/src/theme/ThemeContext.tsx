@@ -27,6 +27,7 @@ import {
 } from "react";
 import { useColorScheme } from "react-native";
 import { API_URL } from "../api";
+import { type FontSizeOption, setFontSizeOption } from "../app-settings";
 import { applyCssOverrides } from "./css";
 import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { defaultPreset } from "./presets";
@@ -281,6 +282,19 @@ export function ThemeProvider({
   }, [apiToken]);
 
   // ---- try-on staging (defined before refreshFromServer, which stages AI try-ons) ----
+  /**
+   * A bundle adopted from the server (or a confirmed try-on) may carry a
+   * fontSize set by the cloud AI's set_font_size tool. Apply it to the
+   * local font-size setting so the phone actually changes size.
+   * No-op when the bundle has no fontSize field.
+   */
+  const maybeApplyBundleFontSize = useCallback((bundle: ThemeBundle): void => {
+    const fs = bundle.fontSize;
+    if (fs === "system" || fs === "small" || fs === "standard" || fs === "large") {
+      void setFontSizeOption(fs as FontSizeOption).catch(() => {});
+    }
+  }, []);
+
   const stageBundle = useCallback(
     (bundle: ThemeBundle): boolean => {
       if (!isThemeBundle(bundle)) return false;
@@ -314,6 +328,7 @@ export function ThemeProvider({
       bumpTransition();
       setStaged(null);
       setConfirmed(remote.bundle);
+      maybeApplyBundleFontSize(remote.bundle);
       await persistLocal(remote.bundle);
       return;
     }
@@ -326,8 +341,9 @@ export function ThemeProvider({
     setServerVersion(remote.version);
     bumpTransition();
     setConfirmed(remote.bundle);
+    maybeApplyBundleFontSize(remote.bundle);
     await persistLocal(remote.bundle);
-  }, [fetchRemote, bumpTransition, stageBundle]);
+  }, [fetchRemote, bumpTransition, stageBundle, maybeApplyBundleFontSize]);
 
   useEffect(() => {
     void refreshFromServer();
@@ -373,6 +389,7 @@ export function ThemeProvider({
       bumpTransition();
       setConfirmed(stamped);
       setStaged(null);
+      maybeApplyBundleFontSize(stamped);
       await persistLocal(stamped);
       if (!apiToken) return "ok"; // local mode: the cache is the whole truth
       try {
@@ -399,7 +416,7 @@ export function ThemeProvider({
         return "local-only";
       }
     },
-    [apiToken, archiveCurrent, bumpTransition],
+    [apiToken, archiveCurrent, bumpTransition, maybeApplyBundleFontSize],
   );
 
   // Wire the AI theme tools (set_theme, set_ai_avatar) to immediate apply.
@@ -434,7 +451,8 @@ export function ThemeProvider({
     bumpTransition();
     setStaged(null);
     setConfirmed(next);
-  }, [archiveCurrent, bumpTransition]);
+    maybeApplyBundleFontSize(next);
+  }, [archiveCurrent, bumpTransition, maybeApplyBundleFontSize]);
 
   // Wire post-restore theme reload for the backup flows (UI + AI tools).
   useEffect(() => {
