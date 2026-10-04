@@ -24,6 +24,26 @@ export interface KnowledgeToolDeps {
    * EmbeddingProvider (on-device when ready, else API).
    */
   embed?: (group: ApiGroup, texts: string[]) => Promise<EmbedResult>;
+  /**
+   * Read a plain-text file (txt/md) from a URI. Injected by local-agent
+   * (expo-file-system). Required by knowledge_add_file; when absent the
+   * tool reports honestly instead of failing silently.
+   */
+  readTextFile?: (uri: string) => Promise<string>;
+}
+
+/**
+ * PDF text extraction needs a hidden WebView (see knowledge/pdf-extract.tsx),
+ * which only the UI layer can mount. The UI registers its implementation
+ * here; the knowledge_add_file tool calls it for .pdf URIs.
+ */
+type PdfExtractHandler = (uri: string) => Promise<string>;
+
+let pdfExtractHandler: PdfExtractHandler | null = null;
+
+/** UI layer calls this once to wire PDF text extraction for the AI tool. */
+export function registerPdfExtractHandler(h: PdfExtractHandler): void {
+  pdfExtractHandler = h;
 }
 
 /**
@@ -299,6 +319,94 @@ export function createKnowledgeAddTools(
           return `Document “${doc.name}” re-indexed with ${result.embedModel}: ${result.chunkCount} chunks. knowledge_search works again.`;
         } catch (e) {
           throw new ToolError(e instanceof Error ? e.message : "re-indexing failed");
+        }
+      },
+    },
+    {
+      name: "knowledge_add_file",
+      description:
+        "Add a FILE she shared to her knowledge base (file cabinet) so it becomes searchable later. Use when she attaches a file in chat and says '把这个存进知识库' / '把这个PDF存起来'. Pass the file's uri exactly as it appears in her message attachment. Supports .txt, .md, and .pdf — the text is extracted automatically, then chunked, embedded, and indexed; knowledge_search can find it afterwards.",
+      parameters: {
+        type: "object",
+        properties: {
+          uri: {
+            type: "string",
+            description:
+              "File URI from her message attachment (e.g. the uri of the PDF she just sent).",
+          },
+          name: {
+            type: "string",
+            description:
+              "Document name, e.g. '宫保鸡丁菜谱'. Optional — defaults to the file's own name.",
+          },
+        },
+        required: ["uri"],
+        additionalProperties: false,
+      },
+      manualId: "knowledge",
+      run: async (args) => {
+        const uri = strArg(args, "uri").trim();
+        if (!uri) throw new ToolError("uri is required.");
+        let name = strArg(args, "name").trim();
+        if (!name) {
+          // Derive from the URI's last path segment.
+          const seg = uri.split("?")[0].split("/").pop() ?? "";
+          name = seg ? decodeURIComponent(seg) : `file-${Date.now()}`;
+        }
+        const lower = `${name} ${uri}`.toLowerCase();
+        const isPdf = lower.includes(".pdf");
+        const isText = /\.(txt|md|markdown)(\?|$)/.test(lower);
+        if (!isPdf && !isText) {
+          throw new ToolError(
+            `I can only index .txt, .md, and .pdf files — "${name}" isn't one of those. Tell her plainly.`,
+          );
+        }
+        const group = deps.getGroup();
+        if (!group) {
+          throw new ToolError(
+            "No API group configured — I need an API group with /v1/embeddings to index documents.",
+          );
+        }
+        let text: string;
+        try {
+          if (isPdf) {
+            if (!pdfExtractHandler) {
+              throw new Error(
+                "PDF extraction isn't available right now (the app view that extracts PDF text isn't mounted). Ask her to open the knowledge base screen and add the PDF there instead.",
+              );
+            }
+            text = await pdfExtractHandler(uri);
+          } else {
+            if (!deps.readTextFile) {
+              throw new Error("File reading isn't wired up in this build.");
+            }
+            text = await deps.readTextFile(uri);
+          }
+        } catch (e) {
+          throw new ToolError(e instanceof Error ? e.message : "reading the file failed");
+        }
+        if (!text.trim()) {
+          throw new ToolError(`The file "${name}" looks empty — nothing to index. Tell her.`);
+        }
+        const kind = isPdf ? "pdf" : name.toLowerCase().endsWith(".md") ? "md" : "txt";
+        const doc = await store.addDoc(name, kind, text.length);
+        try {
+          const { indexDocument } = await import("./indexer.js");
+          const result = await indexDocument(
+            store as unknown as import("./store.js").KnowledgeStore,
+            group,
+            doc.id,
+            text,
+            true,
+            { embed: deps.embed },
+          );
+          return `File “${name}” indexed: ${result.chunkCount} chunks. knowledge_search can find it now.`;
+        } catch (e) {
+          await store.updateDoc(doc.id, {
+            status: "failed",
+            error: e instanceof Error ? e.message : "index failed",
+          });
+          throw new ToolError(e instanceof Error ? e.message : "indexing failed");
         }
       },
     },

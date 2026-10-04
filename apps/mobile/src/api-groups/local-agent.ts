@@ -47,6 +47,7 @@ import { createFontSizeTools } from "../settings/tools.js";
 import { skillStore } from "../skills/instance.js";
 import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
+import { getAiThemeMode } from "../theme/ai-mode.js";
 import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
 import {
   describeImage,
@@ -300,7 +301,21 @@ export async function toWireUserMessage(
   cache: VisionCache,
 ): Promise<ChatMessage> {
   const parsed = parseUserMessageWithImages(content);
-  if (!parsed || parsed.images.length === 0) return { role: "user", content };
+  const files = parsed?.files ?? [];
+  if (!parsed || (parsed.images.length === 0 && files.length === 0)) {
+    return { role: "user", content };
+  }
+
+  // Document file attachments: surface name + uri as text so the AI can
+  // pass the uri to knowledge_add_file. Same for both vision paths.
+  const fileBlock =
+    files.length > 0
+      ? `[Attached files]\n${files
+          .map((f) => `- ${f.name} (file uri: ${f.uri})`)
+          .join(
+            "\n",
+          )}\nTo index one into her knowledge base, call knowledge_add_file with its exact file uri.`
+      : "";
 
   const vision = group.vision;
   if (!vision) {
@@ -321,6 +336,7 @@ export async function toWireUserMessage(
       }
       blocks.push({ type: "image_url", image_url: { url: dataUri } });
     }
+    if (fileBlock) blocks.push({ type: "text", text: fileBlock });
     return { role: "user", content: blocks };
   }
 
@@ -344,6 +360,7 @@ export async function toWireUserMessage(
     }
     parts.push(formatDescriptionBlock(img.name, description));
   }
+  if (fileBlock) parts.push(fileBlock);
   return { role: "user", content: parts.join("\n\n") };
 }
 
@@ -499,6 +516,15 @@ export function createLocalAgent(opts: {
       // Tool setup: registry + system prompt (built once per turn so a
       // changed tool set takes effect without recreating the agent).
       const memStore: MemoryStore = opts.memoryStore ?? memoryStore;
+      // AI 换肤 mode: when "off", the AI never sees the theme tools.
+      // Read per turn so a settings change takes effect immediately.
+      // Storage failure => default "stable" (fail open for theming, which
+      // is harmless and reversible).
+      const aiThemeMode = await getAiThemeMode(AsyncStorage).catch(() => "stable" as const);
+      const themeTools =
+        aiThemeMode === "off"
+          ? []
+          : [...createWallpaperTools(AsyncStorage), ...createThemeTools(AsyncStorage)];
       const tools = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
@@ -510,8 +536,7 @@ export function createLocalAgent(opts: {
           getLocale() === "en" ? "en" : "zh-Hans",
         ),
         ...createImageTools(),
-        ...createWallpaperTools(AsyncStorage),
-        ...createThemeTools(AsyncStorage),
+        ...themeTools,
         ...createFontSizeTools(AsyncStorage),
         ...createPetSkinTools(AsyncStorage),
         ...createBackupTools({
@@ -596,7 +621,13 @@ export function createLocalAgent(opts: {
         }),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
-        ...createKnowledgeAddTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
+        ...createKnowledgeAddTools(lazyKnowledgeStore, {
+          getGroup: () => activeGroup,
+          readTextFile: async (uri: string) => {
+            const FileSystem = await import("expo-file-system/legacy");
+            return FileSystem.readAsStringAsync(uri);
+          },
+        }),
         ...createBrowserTools(),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {

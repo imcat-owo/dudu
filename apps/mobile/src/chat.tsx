@@ -5,7 +5,16 @@ import {
   useRenderTool,
   useRenderToolCall,
 } from "@copilotkit/react-native/headless";
-import { ArrowDown, ArrowUp, EyeOff, FileText, Plus, RotateCcw, Square, X } from "lucide-react-native";
+import {
+  ArrowDown,
+  ArrowUp,
+  EyeOff,
+  FileText,
+  Plus,
+  RotateCcw,
+  Square,
+  X,
+} from "lucide-react-native";
 import {
   type ReactNode,
   useCallback,
@@ -62,6 +71,7 @@ import {
   useDropZone,
 } from "./pet/registry";
 import { petActivity } from "./pet/store";
+import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
@@ -71,6 +81,7 @@ import { type AgentMessage, loadLocalHistory, useChatAgent } from "./use-chat-ag
 import {
   encodeUserMessageWithImages,
   parseUserMessageWithImages,
+  type UserFileAttachment,
   type UserImageAttachment,
 } from "./vision/describe";
 import { SpeakButton } from "./voice/speak-button";
@@ -83,7 +94,6 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
-import { radii } from "./theme/radii";
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -305,6 +315,9 @@ export function ChatScreen({
   // Local-mode image attachments (vision): picked via expo-image-picker,
   // processed by the local agent at runTurn time.
   const [imageAttachments, setImageAttachments] = useState<UserImageAttachment[]>([]);
+  // Local-mode document attachments (txt/md/pdf): picked via expo-document-picker,
+  // surfaced to the AI as file URIs for knowledge_add_file.
+  const [fileAttachments, setFileAttachments] = useState<UserFileAttachment[]>([]);
   const [transcribing, setTranscribing] = useState(false);
   // Thinking drawer: track the message id (not a text snapshot) so the
   // drawer content live-updates while thinking is still streaming in.
@@ -501,7 +514,12 @@ export function ChatScreen({
   }
   function send() {
     const text = draft.trim();
-    if ((!text && imageAttachments.length === 0) || !isReady || !loaded) return;
+    if (
+      (!text && imageAttachments.length === 0 && fileAttachments.length === 0) ||
+      !isReady ||
+      !loaded
+    )
+      return;
     // A new submission can continue after Stop; held follow-ups still need explicit resume.
     if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
       queue.resume();
@@ -512,10 +530,10 @@ export function ChatScreen({
     let outgoing: string;
     if (imagePrompt) {
       outgoing = encodeImageMessage(buildImageUrl(imagePrompt), imagePrompt);
-    } else if (imageAttachments.length > 0) {
-      // Local-mode vision: text + images encoded; the local agent resolves
-      // them at runTurn (native image_url or describe pipeline).
-      outgoing = encodeUserMessageWithImages(text, imageAttachments);
+    } else if (imageAttachments.length > 0 || fileAttachments.length > 0) {
+      // Local-mode attachments: text + images encoded for vision, files
+      // surfaced as URIs; the local agent resolves them at runTurn.
+      outgoing = encodeUserMessageWithImages(text, imageAttachments, fileAttachments);
     } else {
       outgoing =
         text +
@@ -528,6 +546,7 @@ export function ChatScreen({
     setInputHeight(44);
     setAttachments([]);
     setImageAttachments([]);
+    setFileAttachments([]);
     setPicking(false);
   }
   function sendVoice(uri: string, duration: number) {
@@ -554,6 +573,24 @@ export function ChatScreen({
       setImageAttachments((prev) => [
         ...prev,
         { uri: asset.uri, name: asset.fileName ?? `image-${Date.now()}.jpg` },
+      ]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+  /** Local mode: pick a txt/md/pdf document to attach (for the knowledge base). */
+  async function pickDocument() {
+    try {
+      const DocumentPicker = await import("expo-document-picker");
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["text/plain", "text/markdown", "application/pdf"],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      setFileAttachments((prev) => [
+        ...prev,
+        { uri: asset.uri, name: asset.name ?? `file-${Date.now()}` },
       ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -1145,6 +1182,45 @@ export function ChatScreen({
             </Button>
           </Card>
         )}
+        {picking && mode === "local" && (
+          <Card style={{ marginBottom: 12, padding: 15 }}>
+            <TText style={s.heading}>{t("chat.addAttachment")}</TText>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              <Button
+                small
+                onPress={() => {
+                  setPicking(false);
+                  void pickImage();
+                }}
+              >
+                {t("chat.attachImage")}
+              </Button>
+              <Button
+                small
+                onPress={() => {
+                  setPicking(false);
+                  void pickDocument();
+                }}
+              >
+                {t("chat.attachDocument")}
+              </Button>
+            </View>
+            {(imageAttachments.length > 0 || fileAttachments.length > 0) && (
+              <View style={{ marginTop: 10, gap: 4 }}>
+                {imageAttachments.map((a) => (
+                  <TText key={`img-${a.uri}`} style={s.muted}>
+                    {a.name}
+                  </TText>
+                ))}
+                {fileAttachments.map((a) => (
+                  <TText key={`file-${a.uri}`} style={s.muted}>
+                    {a.name}
+                  </TText>
+                ))}
+              </View>
+            )}
+          </Card>
+        )}
         <GlassView
           intensity={56}
           edgeColor={focused ? colors.blue : undefined}
@@ -1226,19 +1302,20 @@ export function ChatScreen({
             </View>
           )}
           <View ref={inputBarZoneRef} style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
-            {/* Local mode: image attach for vision (no backend file store needed). */}
+            {/* Local mode: image + document attach (no backend file store needed). */}
             {mode === "local" ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("vision.attachImage")}
-                onPress={() => void pickImage()}
+                accessibilityState={{ expanded: picking }}
+                onPress={() => setPicking(!picking)}
                 style={({ pressed }) => ({
                   width: 44,
                   height: 44,
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: radii.xl,
-                  backgroundColor: pressed ? colors.sky : "transparent",
+                  backgroundColor: picking || pressed ? colors.sky : "transparent",
                 })}
               >
                 <Plus size={24} color={colors.text} />

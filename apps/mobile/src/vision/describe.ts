@@ -122,7 +122,11 @@ export async function describeImage(
   const url = `${group.baseUrl.trim().replace(/\/+$/, "")}/chat/completions`;
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers: visionHeaders(group), body: JSON.stringify(body) });
+    res = await fetch(url, {
+      method: "POST",
+      headers: visionHeaders(group),
+      body: JSON.stringify(body),
+    });
   } catch (e) {
     throw new VisionError(`识图请求失败：${e instanceof Error ? e.message : String(e)}`);
   }
@@ -184,9 +188,17 @@ export interface UserImageAttachment {
   name: string;
 }
 
+/** A document file attached in chat (local mode): txt/md/pdf for the knowledge base. */
+export interface UserFileAttachment {
+  uri: string;
+  name: string;
+}
+
 export interface UserMessageWithImages {
   text: string;
   images: UserImageAttachment[];
+  /** Optional document files (local mode). The AI reads their URIs to index them. */
+  files?: UserFileAttachment[];
 }
 
 /**
@@ -195,8 +207,26 @@ export interface UserMessageWithImages {
  * The local agent decodes this at runTurn time (vision processing) and
  * chat.tsx decodes it for rendering thumbnails.
  */
-export function encodeUserMessageWithImages(text: string, images: UserImageAttachment[]): string {
-  return JSON.stringify({ type: "user_message_with_images", text, images });
+export function encodeUserMessageWithImages(
+  text: string,
+  images: UserImageAttachment[],
+  files?: UserFileAttachment[],
+): string {
+  return JSON.stringify({
+    type: "user_message_with_images",
+    text,
+    images,
+    ...(files?.length ? { files } : {}),
+  });
+}
+
+function isAttachment(v: unknown): v is UserImageAttachment | UserFileAttachment {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as { uri?: unknown }).uri === "string" &&
+    typeof (v as { name?: unknown }).name === "string"
+  );
 }
 
 export function parseUserMessageWithImages(content: string): UserMessageWithImages | null {
@@ -211,15 +241,12 @@ export function parseUserMessageWithImages(content: string): UserMessageWithImag
       typeof (parsed as Record<string, unknown>).text === "string" &&
       Array.isArray((parsed as Record<string, unknown>).images)
     ) {
-      const p = parsed as { text: string; images: unknown[] };
-      const images = p.images.filter(
-        (img): img is UserImageAttachment =>
-          typeof img === "object" &&
-          img !== null &&
-          typeof (img as UserImageAttachment).uri === "string" &&
-          typeof (img as UserImageAttachment).name === "string",
-      );
-      return { text: p.text, images };
+      const p = parsed as { text: string; images: unknown[]; files?: unknown };
+      const images = p.images.filter((img): img is UserImageAttachment => isAttachment(img));
+      const files = Array.isArray(p.files)
+        ? p.files.filter((f): f is UserFileAttachment => isAttachment(f))
+        : undefined;
+      return { text: p.text, images, ...(files ? { files } : {}) };
     }
   } catch {
     // not JSON — not an image message

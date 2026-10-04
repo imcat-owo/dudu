@@ -36,7 +36,6 @@ import {
 } from "lucide-react-native";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "react-native";
-import { API_URL } from "./api";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { BackupSection } from "./backup-ui";
@@ -52,8 +51,10 @@ import { petStore } from "./pet/instance";
 import type { PetSkin } from "./pet/store";
 import { SandboxSheet } from "./sandbox/sandbox-ui";
 import { SkillsSheet } from "./skills-ui";
+import { type AiThemeMode, getAiThemeMode, setAiThemeMode } from "./theme/ai-mode";
 import { makeThemeBundle, normalizeHex } from "./theme/derive";
 import { PRESETS } from "./theme/presets";
+import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import {
   isThemeBundle,
@@ -64,7 +65,6 @@ import {
 } from "./theme/types";
 import { ShareSection } from "./theme-share-ui";
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
-import { radii } from "./theme/radii";
 
 type Tokens = Record<SurfaceId, SurfaceTokens>;
 
@@ -904,50 +904,37 @@ export function AppearanceScreen() {
   );
 }
 
-type AiThemeMode = "stable" | "creative" | "off";
-
-/** AI 换肤 mode switch (theme-design.md §5.6): stable / creative / off. */
+/** AI 换肤 mode switch (theme-design.md §3): stable / creative / off. */
 function AiThemeModeSection() {
-  const { apiToken, tokens } = useTheme();
+  const { tokens } = useTheme();
   const colors = useColors();
   const fg = colors.text;
   const accent = tokens.accent.accent;
   const [mode, setMode] = useState<AiThemeMode>("stable");
   const [saving, setSaving] = useState(false);
 
+  // Persisted locally — works in local mode, no server needed.
   useEffect(() => {
-    if (!apiToken) return;
     let cancelled = false;
     void (async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/theme/mode`, {
-          headers: { Authorization: `Bearer ${apiToken}` },
-        });
-        if (!res.ok || cancelled) return;
-        const payload = (await res.json()) as { mode?: unknown };
-        if (payload.mode === "creative" || payload.mode === "off" || payload.mode === "stable") {
-          setMode(payload.mode);
-        }
-      } catch {
-        // Offline: keep default.
-      }
+      const stored = await getAiThemeMode(AsyncStorage).catch(() => "stable" as const);
+      if (!cancelled) setMode(stored);
     })();
     return () => {
       cancelled = true;
     };
-  }, [apiToken]);
+  }, []);
 
   const choose = (next: AiThemeMode) => {
     if (next === mode || saving) return;
     setMode(next);
-    if (!apiToken) return;
     setSaving(true);
-    void fetch(`${API_URL}/api/theme/mode`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: next }),
-    })
-      .catch(() => {})
+    void setAiThemeMode(AsyncStorage, next)
+      .catch(() => {
+        // Storage failed: revert the optimistic update so the UI
+        // never shows a mode that isn't actually saved.
+        setMode(mode);
+      })
       .finally(() => setSaving(false));
   };
 
@@ -995,7 +982,12 @@ function AiThemeModeSection() {
               >
                 {selected ? (
                   <View
-                    style={{ width: 10, height: 10, borderRadius: radii.xs, backgroundColor: accent }}
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: radii.xs,
+                      backgroundColor: accent,
+                    }}
                   />
                 ) : null}
               </View>
@@ -1249,7 +1241,10 @@ function PetSkinSection() {
               "sora",
               skin.kind === "sora",
               t("pet.skin.sora"),
-              <Image source={soraSource()} style={{ width: 46, height: 46, borderRadius: radii.xl }} />,
+              <Image
+                source={soraSource()}
+                style={{ width: 46, height: 46, borderRadius: radii.xl }}
+              />,
               () => pick({ kind: "sora" }),
             )}
             {Array.from({ length: MASCOT_COUNT }, (_, i) =>

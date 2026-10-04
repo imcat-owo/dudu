@@ -38,16 +38,17 @@ import { FontProvider } from "./font";
 import { GlassView } from "./glass";
 import { t } from "./i18n";
 import { IncognitoProvider } from "./incognito";
+import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { OurSpaceScreen } from "./our-space-ui";
 import { useDropZone } from "./pet/registry";
 import { PetOverlay } from "./pet-ui";
 import { registerFontSizeHandler } from "./settings/tools";
+import { radii } from "./theme/radii";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
 import { useColors } from "./ui";
 import { WorkspaceContext } from "./workspace";
-import { radii } from "./theme/radii";
 
 type LocalSection = "chat" | "connections" | "appearance" | "space";
 
@@ -184,6 +185,9 @@ export function LocalApp() {
                     >
                       <AIBrowserView visible />
                     </View>
+                    {/* PDF text extraction bridge for the AI knowledge_add_file
+                        tool — hidden, mounts the pdf.js WebView on demand. */}
+                    <PdfExtractBridge />
                     <View style={{ flex: 1 }}>
                       <ErrorBoundary resetKey={section} label={section}>
                         {section === "chat" ? (

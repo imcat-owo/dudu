@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { newVisionCache, toWireUserMessage } from "../src/api-groups/local-agent.js";
 import {
   buildVisionPrompt,
   encodeUserMessageWithImages,
   formatDescriptionBlock,
 } from "../src/vision/describe.js";
-import {
-  newVisionCache,
-  toWireUserMessage,
-} from "../src/api-groups/local-agent.js";
 
 describe("buildVisionPrompt", () => {
   it("has the 4-part structure", () => {
@@ -46,7 +43,6 @@ describe("formatDescriptionBlock", () => {
 });
 
 describe("toWireUserMessage vision cache", () => {
-
   const group = {
     id: "g1",
     name: "test",
@@ -89,5 +85,44 @@ describe("toWireUserMessage vision cache", () => {
     );
     assert.ok(imgBlock, "image block present");
     assert.equal(imgBlock.image_url.url, "data:image/jpeg;base64,CACHED");
+  });
+});
+
+describe("file attachments in messages", () => {
+  it("encodes files alongside images", async () => {
+    const { parseUserMessageWithImages } = await import("../src/vision/describe.js");
+    const content = encodeUserMessageWithImages(
+      "存进知识库",
+      [{ uri: "file:///a.jpg", name: "a.jpg" }],
+      [{ uri: "file:///doc.pdf", name: "doc.pdf" }],
+    );
+    const parsed = parseUserMessageWithImages(content);
+    assert.ok(parsed);
+    assert.equal(parsed.text, "存进知识库");
+    assert.equal(parsed.images.length, 1);
+    assert.equal(parsed.files?.length, 1);
+    assert.equal(parsed.files?.[0].uri, "file:///doc.pdf");
+  });
+
+  it("encodes files without images", async () => {
+    const { parseUserMessageWithImages } = await import("../src/vision/describe.js");
+    const content = encodeUserMessageWithImages(
+      "存这个",
+      [],
+      [{ uri: "file:///notes.md", name: "notes.md" }],
+    );
+    const parsed = parseUserMessageWithImages(content);
+    assert.ok(parsed);
+    assert.equal(parsed.images.length, 0);
+    assert.equal(parsed.files?.length, 1);
+  });
+
+  it("omits files key when empty (backwards compatible)", async () => {
+    const { parseUserMessageWithImages } = await import("../src/vision/describe.js");
+    const content = encodeUserMessageWithImages("hi", [{ uri: "u", name: "n" }]);
+    assert.ok(!content.includes('"files"'));
+    const parsed = parseUserMessageWithImages(content);
+    assert.ok(parsed);
+    assert.equal(parsed.files, undefined);
   });
 });

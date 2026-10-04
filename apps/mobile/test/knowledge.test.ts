@@ -5,7 +5,11 @@ import type { ApiGroup } from "../src/api-groups/types.js";
 import { chunkDocument, chunkId, hashString } from "../src/knowledge/chunking.js";
 import { healInterruptedDocs, indexDocument, reindexDocument } from "../src/knowledge/indexer.js";
 import { type KnowledgeStorage, KnowledgeStore } from "../src/knowledge/store.js";
-import { createKnowledgeAddTools, createKnowledgeTools } from "../src/knowledge/tools.js";
+import {
+  createKnowledgeAddTools,
+  createKnowledgeTools,
+  registerPdfExtractHandler,
+} from "../src/knowledge/tools.js";
 import { cosineSimilarity, topKByCosine } from "../src/knowledge/vectors.js";
 
 function fakeStorage(): KnowledgeStorage {
@@ -247,7 +251,8 @@ describe("indexer failure honesty (P1-18)", () => {
     const doc = await s.addDoc("boom.md", "md", 50);
     const badEmbed = () => Promise.reject(new Error("embeddingAuth: nope"));
     await assert.rejects(
-      () => indexDocument(s, fakeGroup, doc.id, "# Boom\n\nSome text here.", true, { embed: badEmbed }),
+      () =>
+        indexDocument(s, fakeGroup, doc.id, "# Boom\n\nSome text here.", true, { embed: badEmbed }),
       /embeddingAuth/,
     );
     const updated = await s.getDoc(doc.id);
@@ -277,7 +282,9 @@ describe("indexer failure honesty (P1-18)", () => {
   it("reindexDocument re-embeds with the current model", async () => {
     const s = new KnowledgeStore(fakeStorage());
     const doc = await s.addDoc("pets.md", "md", 50);
-    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nI love my cat.", true, { embed: toyEmbed });
+    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nI love my cat.", true, {
+      embed: toyEmbed,
+    });
     const before = await s.listChunks(doc.id);
     assert.ok(before.every((c) => c.embedModel === "toy"));
 
@@ -294,7 +301,10 @@ describe("indexer failure honesty (P1-18)", () => {
   it("reindexDocument fails honestly on empty doc", async () => {
     const s = new KnowledgeStore(fakeStorage());
     const doc = await s.addDoc("empty.md", "md", 10);
-    await assert.rejects(() => reindexDocument(s, fakeGroup, doc.id, { embed: toyEmbed }), /emptyDocument/);
+    await assert.rejects(
+      () => reindexDocument(s, fakeGroup, doc.id, { embed: toyEmbed }),
+      /emptyDocument/,
+    );
     assert.equal((await s.getDoc(doc.id))?.status, "failed");
   });
 });
@@ -348,5 +358,103 @@ describe("knowledge_reindex tool", () => {
     const reindex = tools.find((t) => t.name === "knowledge_reindex");
     assert.ok(reindex);
     await assert.rejects(() => reindex.run({ name: "nope.md" }, ctx), /No document named/);
+  });
+});
+
+describe("knowledge_add_file", () => {
+  function addTools(s: KnowledgeStore, readTextFile?: (uri: string) => Promise<string>) {
+    return createKnowledgeAddTools(s, {
+      getGroup: () => fakeGroup,
+      embed: toyEmbed,
+      ...(readTextFile ? { readTextFile } : {}),
+    });
+  }
+
+  it("indexes a txt file from uri", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async (uri) => {
+      assert.equal(uri, "file:///docs/recipe.txt");
+      return "宫保鸡丁要放两勺糖。";
+    });
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    const out = await tool.run({ uri: "file:///docs/recipe.txt" }, ctx);
+    assert.ok(out.includes("indexed"), `got: ${out}`);
+    assert.ok(out.includes("recipe.txt"), `got: ${out}`);
+    const docs = await s.listDocs();
+    assert.equal(docs.length, 1);
+    assert.equal(docs[0].name, "recipe.txt");
+  });
+
+  it("uses explicit name when given", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async () => "some text content here");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    const out = await tool.run({ uri: "file:///x.md", name: "我的笔记" }, ctx);
+    assert.ok(out.includes("我的笔记"), `got: ${out}`);
+  });
+
+  it("rejects unsupported file types honestly", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async () => "x");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await assert.rejects(
+      () => tool.run({ uri: "file:///photo.jpg", name: "photo.jpg" }, ctx),
+      /only index .txt, .md, and .pdf/,
+    );
+  });
+
+  it("requires uri", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async () => "x");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await assert.rejects(() => tool.run({}, ctx), /uri is required/);
+  });
+
+  it("errors honestly when readTextFile is not wired", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s); // no readTextFile
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await assert.rejects(() => tool.run({ uri: "file:///a.txt" }, ctx), /isn't wired up/);
+  });
+
+  it("errors honestly on empty file", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async () => "   ");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await assert.rejects(() => tool.run({ uri: "file:///empty.txt" }, ctx), /looks empty/);
+  });
+
+  it("pdf without handler fails honestly", async () => {
+    // Note: this test must run before any test that registers a handler,
+    // since the handler is module-level state.
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = addTools(s, async () => "x");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    await assert.rejects(
+      () => tool.run({ uri: "file:///doc.pdf" }, ctx),
+      /PDF extraction isn't available/,
+    );
+  });
+
+  it("indexes a pdf via registered handler", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    registerPdfExtractHandler(async (uri) => {
+      assert.equal(uri, "file:///doc.pdf");
+      return "PDF extracted text about cats.";
+    });
+    const tools = addTools(s, async () => "x");
+    const tool = tools.find((t) => t.name === "knowledge_add_file");
+    assert.ok(tool);
+    const out = await tool.run({ uri: "file:///doc.pdf" }, ctx);
+    assert.ok(out.includes("indexed"), `got: ${out}`);
+    const docs = await s.listDocs();
+    assert.equal(docs[0].kind, "pdf");
   });
 });
