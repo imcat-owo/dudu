@@ -109,7 +109,7 @@ export function CapabilitySettingsSection() {
                     <TText
                       style={{
                         fontWeight: "700",
-                        color: selected ? "#fff" : colors.text,
+                        color: selected ? colors.onBlue : colors.text,
                         fontSize: 13,
                       }}
                     >

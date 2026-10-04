@@ -1444,15 +1444,15 @@ function FeedComposer({ onPosted }: { onPosted: () => void }) {
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
-              backgroundColor: tokens.accent.fg,
+              backgroundColor: tokens.accent.bg,
               borderRadius: 999,
               paddingHorizontal: 18,
               paddingVertical: 9,
               opacity: !text.trim() && !imageUri ? 0.45 : 1,
             }}
           >
-            <Send size={14} color="#fff" strokeWidth={2} />
-            <TText style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+            <Send size={14} color={tokens.accent.fg} strokeWidth={2} />
+            <TText style={{ color: tokens.accent.fg, fontSize: 13, fontWeight: "700" }}>
               {t("space.feed.post")}
             </TText>
           </View>
@@ -1609,12 +1609,12 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
                   width: 34,
                   height: 34,
                   borderRadius: radii.lg,
-                  backgroundColor: tokens.accent.fg,
+                  backgroundColor: tokens.accent.bg,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Send size={15} color="#fff" strokeWidth={2} />
+                <Send size={15} color={tokens.accent.fg} strokeWidth={2} />
               </View>
             </PressableScale>
           </View>
