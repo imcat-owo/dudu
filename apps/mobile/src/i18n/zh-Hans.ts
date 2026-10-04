@@ -1122,8 +1122,6 @@ const zhHans = {
   "apigroup.validation.apiKeyRequired": "请填写 API Key",
   "apigroup.validation.modelRequired": "请填写模型名",
   "apigroup.vendor.openai": "OpenAI 兼容",
-  "apigroup.vendor.anthropic": "Anthropic",
-  "apigroup.vendor.gemini": "Google",
   "apigroup.vendor.custom": "自定义",
   "adapt.toolsOff": "这个模型用不了工具调用，我先关掉再试一次。",
   "adapt.thinkingOff": "这个模型不支持思考过程显示，我先关掉再试一次。",

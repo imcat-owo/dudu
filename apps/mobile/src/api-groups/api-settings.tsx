@@ -78,7 +78,14 @@ function ModeSwitch() {
 function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: () => void }) {
   const colors = useColors();
   const s = useStyles();
-  const [vendor, setVendor] = useState<ApiVendor>(initial?.vendor ?? "openai");
+  // Legacy stored vendors ("anthropic"/"gemini") have no tab anymore (P1-7:
+  // native formats unsupported) — show them as "custom". Vendor is metadata
+  // only; the transport is always OpenAI-compatible.
+  const initialVendor: ApiVendor =
+    initial?.vendor === "anthropic" || initial?.vendor === "gemini"
+      ? "custom"
+      : (initial?.vendor ?? "openai");
+  const [vendor, setVendor] = useState<ApiVendor>(initialVendor);
   const [draft, setDraft] = useState<ApiGroup>(() => initial ?? blankGroup("openai"));
   const [error, setError] = useState("");
   const [testing, setTesting] = useState(false);

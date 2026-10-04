@@ -80,6 +80,24 @@ export interface ApiVendorPreset {
  * Kelivo-style vendor tabs: presets fill the form, they don't lock it.
  * The user can always edit the URL after picking a preset.
  */
+/**
+ * Vendor presets for the group editor tabs.
+ *
+ * Only OpenAI-compatible endpoints are offered (P1-7): the transport
+ * (direct-transport.ts) always speaks the OpenAI wire format
+ * (POST {baseUrl}/chat/completions, Authorization: Bearer). Native
+ * Anthropic/Gemini formats are deliberately deferred (see types.ts note),
+ * so offering those tabs let her paste a real key into a guaranteed
+ * failure — the tabs are removed until native formats land.
+ * The ApiVendor type still includes "anthropic"/"gemini" for stored groups.
+ */
+const CUSTOM_PRESET: ApiVendorPreset = {
+  vendor: "custom",
+  label: "自定义",
+  baseUrl: "",
+  placeholderModel: "model-name",
+};
+
 export const VENDOR_PRESETS: ApiVendorPreset[] = [
   {
     vendor: "openai",
@@ -87,24 +105,7 @@ export const VENDOR_PRESETS: ApiVendorPreset[] = [
     baseUrl: "https://api.openai.com/v1",
     placeholderModel: "gpt-4o-mini",
   },
-  {
-    vendor: "anthropic",
-    label: "Anthropic",
-    baseUrl: "https://api.anthropic.com",
-    placeholderModel: "claude-sonnet-4-20250514",
-  },
-  {
-    vendor: "gemini",
-    label: "Google",
-    baseUrl: "https://generativelanguage.googleapis.com",
-    placeholderModel: "gemini-2.0-flash",
-  },
-  {
-    vendor: "custom",
-    label: "自定义",
-    baseUrl: "",
-    placeholderModel: "model-name",
-  },
+  CUSTOM_PRESET,
 ];
 
 export function newApiGroupId(): string {
@@ -112,7 +113,7 @@ export function newApiGroupId(): string {
 }
 
 export function blankGroup(vendor: ApiVendor = "custom"): ApiGroup {
-  const preset = VENDOR_PRESETS.find((p) => p.vendor === vendor) ?? VENDOR_PRESETS[3];
+  const preset = VENDOR_PRESETS.find((p) => p.vendor === vendor) ?? CUSTOM_PRESET;
   return {
     id: newApiGroupId(),
     name: "",

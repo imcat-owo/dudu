@@ -1159,8 +1159,6 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.validation.apiKeyRequired": "API key is required",
   "apigroup.validation.modelRequired": "Model name is required",
   "apigroup.vendor.openai": "OpenAI-compatible",
-  "apigroup.vendor.anthropic": "Anthropic",
-  "apigroup.vendor.gemini": "Google",
   "apigroup.vendor.custom": "Custom",
   "adapt.toolsOff": "This model can't do tool calls, so I turned them off and retried.",
   "adapt.thinkingOff":
