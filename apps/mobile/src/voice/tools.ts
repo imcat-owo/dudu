@@ -139,3 +139,56 @@ export function createPodcastTools(
     },
   ];
 }
+
+/**
+ * Build the TTS voice tool set — let the AI change the voice on request.
+ */
+export function createTtsVoiceTools(voiceStore: import("./store.js").VoiceStore): LocalTool[] {
+  return [
+    {
+      name: "set_tts_voice",
+      description:
+        "Change the text-to-speech voice. Use when she says '换个声音' / '换个好听的声音' / '声音太快了'. voice is the voice id (e.g. 'zh-CN-XiaoxiaoNeural' for edge-tts, or a voice id from her custom provider). Leave voice empty to keep the current voice and only change speed.",
+      parameters: {
+        type: "object",
+        properties: {
+          voice: {
+            type: "string",
+            description:
+              "Voice id, e.g. 'zh-CN-XiaoxiaoNeural'. Empty string keeps the current voice.",
+          },
+          speed: {
+            type: "number",
+            description:
+              "Speech speed multiplier, 0.5 (slow) to 2.0 (fast). 1.0 is normal. Omit to keep current.",
+          },
+        },
+        additionalProperties: false,
+      },
+      manualId: "voice",
+      run: async (args) => {
+        const voice = strArg(args, "voice").trim();
+        const speedRaw = args.speed;
+        const speed =
+          typeof speedRaw === "number" && Number.isFinite(speedRaw)
+            ? Math.min(2.0, Math.max(0.5, speedRaw))
+            : null;
+        if (!voice && speed === null) {
+          throw new ToolError("provide a voice id, a speed, or both.");
+        }
+        const snap = voiceStore.getSnapshot();
+        const next: TtsConfig = { ...snap.tts };
+        if (voice) next.voice = voice;
+        // Speed lives on the config when the provider supports it.
+        if (speed !== null) {
+          (next as unknown as Record<string, unknown>).speed = speed;
+        }
+        await voiceStore.setTts(next);
+        const parts: string[] = [];
+        if (voice) parts.push(`voice → ${voice}`);
+        if (speed !== null) parts.push(`speed → ${speed}x`);
+        return `TTS updated: ${parts.join(", ")}.`;
+      },
+    },
+  ];
+}

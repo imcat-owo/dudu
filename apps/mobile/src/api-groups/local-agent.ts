@@ -20,7 +20,6 @@ import { createImageTools } from "../image/tools.js";
 import { createDialogTools } from "../chat/dialog-tools.js";
 import { createFontSizeTools } from "../settings/tools.js";
 import { createPetSkinTools } from "../pet/tools.js";
-import { knowledgeStore } from "../knowledge/instance.js";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
 import { buildManualIndex, manualNote } from "../manuals/index.js";
@@ -527,7 +526,7 @@ export function createLocalAgent(opts: {
         }),
         ...createMemoryTools(memStore),
         ...createKnowledgeTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
-        ...createKnowledgeAddTools(knowledgeStore, { getGroup: () => activeGroup }),
+        ...createKnowledgeAddTools(lazyKnowledgeStore, { getGroup: () => activeGroup }),
         ...createBrowserTools(),
         ...createSkillTools(opts.skillStore ?? skillStore),
         ...createMusicTools(opts.musicStore ?? musicStore, {
