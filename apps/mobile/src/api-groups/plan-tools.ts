@@ -18,12 +18,18 @@ function strArg(args: Record<string, unknown>, name: string): string {
   return typeof v === "string" ? v : "";
 }
 
-export function createPlanTools(threadId: string): LocalTool[] {
+export function createPlanTools(
+  threadId: string,
+  deps?: { isCoordinationEnabled?: () => boolean },
+): LocalTool[] {
+  // P3-9: the coordination master switch is real now. Default-open when no
+  // dep is injected (tests); local-agent always injects the real one.
+  const coordinationOn = () => deps?.isCoordinationEnabled?.() ?? true;
   return [
     {
       name: "propose_coordination_plan",
       description:
-        "多模型协作的唯一入口（开启原则）：当你判断单模型确实搞不定、必须多个模型分工时，先用这个工具把计划摆出来给她看。调用后她会在对话框里看到一张计划卡片，可以批准或叫停。在她拍板之前，绝对不要执行计划里的任何步骤——这是死规矩。计划要具体：标题、为什么必须多模型（单模型为什么不行）、每一步谁来做、做什么。等她决定期间，你可以先说句话告诉她计划已发出。",
+        "多模型协作的唯一入口（开启原则）：当你判断单模型确实搞不定、必须多个模型分工时，先用这个工具把计划摆出来给她看。调用后她会在对话框里看到一张计划卡片，可以批准或叫停。在她拍板之前，绝对不要执行计划里的任何步骤——这是死规矩。计划要具体：标题、为什么必须多模型（单模型为什么不行）、每一步谁来做、做什么。等她决定期间，你可以先说句话告诉她计划已发出。前提：能力分组设置里的「多模型协作」总开关必须开着，否则工具直接拒绝。",
       parameters: {
         type: "object",
         properties: {
@@ -51,6 +57,11 @@ export function createPlanTools(threadId: string): LocalTool[] {
       },
       manualId: "coordination",
       run: async (args) => {
+        if (!coordinationOn()) {
+          throw new ToolError(
+            "多模型协作的总开关没开（能力分组设置 → 多模型协作）。想用这个功能，先跟她说一声，让她打开开关——不要绕过。",
+          );
+        }
         const rawSteps = args.steps;
         const steps: Array<{ title: string; detail?: string }> = Array.isArray(rawSteps)
           ? rawSteps.map((s) => ({
@@ -122,6 +133,18 @@ export function createPlanTools(threadId: string): LocalTool[] {
             `计划"${plan.title}"已被同一对话里的新计划取代（superseded）——` +
             `不是她叫停的，是你后来又提了个新计划。看最新的计划卡片，` +
             `用 check_plan_status 查新计划的 id。不要执行这个旧计划。`
+          );
+        }
+        if (plan.status === "consumed") {
+          return (
+            `计划"${plan.title}"已经用过一次、开过一个会了（consumed）——` +
+            `一次批准只够开一次会。想再开会，重新提计划等她批准。`
+          );
+        }
+        if (plan.status === "revoked") {
+          return (
+            `计划"${plan.title}"的批准被她收回了（revoked）。` +
+            `不要执行这个计划；用单模型想别的办法，或问她想怎么做。`
           );
         }
         return (

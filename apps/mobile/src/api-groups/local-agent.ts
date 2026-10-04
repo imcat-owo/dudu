@@ -751,7 +751,11 @@ export function createLocalAgent(opts: {
         }),
         // Plan gate (开启原则): the only on-ramp to multi-model
         // coordination — plan-only before engaging, her call.
-        ...createPlanTools(opts.threadId),
+        ...createPlanTools(opts.threadId, {
+          // P3-9: the coordination master switch is real — default OFF (her
+          // 开启原则）. The AI can only propose when she flipped it on.
+          isCoordinationEnabled: () => capabilityStore.getSnapshot().coordinationEnabled,
+        }),
         ...themeTools,
         ...createFontSizeTools(AsyncStorage),
         ...createBackupTools({
@@ -896,6 +900,8 @@ export function createLocalAgent(opts: {
           listApiGroups: () => groupStore.getSnapshot().groups,
           generate: generateOneShot,
           isIncognito: incognito,
+          // P3-9: the coordination master switch — default OFF.
+          isCoordinationEnabled: () => capabilityStore.getSnapshot().coordinationEnabled,
           // P2-8: her_request is mechanically verified against her recent
           // words — the closure reads the live message array.
           recentUserTexts: () =>

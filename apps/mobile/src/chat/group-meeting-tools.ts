@@ -29,6 +29,7 @@ import { planGateStore } from "../api-groups/plan-gate-instance.js";
 import type { ApiGroup } from "../api-groups/types.js";
 import { type CrossDialogStorage, DEFAULT_PERSONA_ID, listDialogs } from "./cross-dialog.js";
 import type { CrossDialogTraceStore } from "./cross-dialog-trace.js";
+import { createWriteChain, type ExclusiveRunner } from "../util/write-chain.js";
 import {
   buildMemberPrompt,
   DEFAULT_MAX_ROUNDS,
@@ -61,6 +62,18 @@ export interface GroupMeetingToolDeps {
   generate: (group: ApiGroup, system: string, user: string) => Promise<string>;
   /** When true, the session promised no side effects: meetings refused. */
   isIncognito?: () => boolean;
+  /**
+   * P3-9: multi-model coordination master switch. When false, starting a
+   * meeting is refused — she flips it in capability settings. Defaults to
+   * true when not injected (tests); local-agent always injects the real one.
+   */
+  isCoordinationEnabled?: () => boolean;
+  /**
+   * Recent user message texts in this thread (newest last), for
+   * mechanically verifying her_request (P2-8). The AI must quote her
+   * actual words — a fabricated "she said" is refused.
+   */
+  recentUserTexts?: () => string[];
 }
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -115,6 +128,23 @@ async function traceFromName(
   return dialogs.find((d) => d.id === threadId)?.name ?? "当前对话";
 }
 
+// P2-11: per-meeting round serialization. Two concurrent run_meeting_round
+// calls used to read the same roundsCompleted, both compute round N+1 and
+// garble the transcript. Each meeting gets its own write chain (a SEPARATE
+// chain from the store's — nesting the store's exclusive chain would
+// deadlock, since the round body itself calls exclusive store methods).
+// Entries are dropped when the meeting ends; meetings are capped, so the
+// map stays tiny.
+const roundChains = new Map<string, ExclusiveRunner>();
+function roundChain(meetingId: string): ExclusiveRunner {
+  let c = roundChains.get(meetingId);
+  if (!c) {
+    c = createWriteChain();
+    roundChains.set(meetingId, c);
+  }
+  return c;
+}
+
 function checkPlanGate(planId: string | null): void {
   if (!planId) return;
   const plan = planGateStore.getPlan(planId);
@@ -136,9 +166,44 @@ function checkPlanGate(planId: string | null): void {
       `计划「${plan.title}」已被新计划取代（superseded）——不是她叫停的。用 check_plan_status 查最新计划的状态。`,
     );
   }
+  if (plan.status === "consumed") {
+    throw new ToolError(
+      `计划「${plan.title}」已经用过一次、开过一个会了（consumed）——一次批准只够开一次会。想再开会，重新用 propose_coordination_plan 提计划，等她批准。`,
+    );
+  }
+  if (plan.status === "revoked") {
+    throw new ToolError(
+      `计划「${plan.title}」的批准被她收回了（revoked）。不要再用这个计划开会。`,
+    );
+  }
   throw new ToolError(
     `计划「${plan.title}」她还没决定（proposed）。等她点了批准再开会，不要先斩后奏。`,
   );
+}
+
+/**
+ * Mechanical her_request check (code P2-8): the "she said discuss it"
+ * basis must be her actual words. The quoted text must appear in (or
+ * contain) a recent user message in this thread — a fabricated
+ * her_request is refused, and the AI is pointed at plan approval instead.
+ */
+function verifyHerRequest(herRequest: string, recentUserTexts: string[]): void {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+  const req = norm(herRequest);
+  if (req.length < 2) {
+    throw new ToolError(
+      "her_request 太短了，填她说「你们讨论一下」这类话的原话——要能在最近的消息里找到。",
+    );
+  }
+  const hit = recentUserTexts.some((t) => {
+    const u = norm(t);
+    return u.length > 0 && (u.includes(req) || req.includes(u));
+  });
+  if (!hit) {
+    throw new ToolError(
+      "her_request 里的话在她最近的消息里找不到——不要编造她说过的话。要么把她的原话准确填进来，要么走计划门：propose_coordination_plan 提计划、等她批准后再开会。",
+    );
+  }
 }
 
 export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[] {
@@ -162,6 +227,7 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       name: "start_group_meeting",
       description:
         "AI 自建群（vision feature 3）：你当主持人，拉几个模型开会讨论，吵出结果再汇报给她。\n" +
+        "前提：能力分组设置里的「多模型协作」总开关必须开着（默认关着，她的规矩），关着时工具直接拒绝——先请她打开。\n" +
         "开启原则（死规矩）：默认不开。只有两种情况能开——(1) 她明确说了「你们讨论一下」这类话，把她的原话填进 her_request；(2) 你走计划门：propose_coordination_plan 提出开会计划、她点了批准，把 plan_id 填进来。两种都没有就绝对不许开。\n" +
         "成员：2-4 个为宜，用 list_models 看到的 id 或名字指定；每人可设 talkativeness（0-1，0=除非被点名否则不开口，默认 0.5）。\n" +
         "strategy：pooled（默认，每人每轮都发言，适合开会）、natural（像真实聊天，有人插话有人沉默）、list（固定顺序挨个表态）。\n" +
@@ -196,7 +262,8 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
           plan_id: { type: "string", description: "已批准的协作计划 id（两种开会依据之一）" },
           her_request: {
             type: "string",
-            description: "她让你们讨论的原话（两种开会依据之一，如「你们讨论一下」）",
+            description:
+              "她让你们讨论的原话（两种开会依据之一，如「你们讨论一下」）。必须是她最近消息里的原话——系统会机械核验，编造会被拒绝；拿不准就走计划门。",
           },
         },
         required: ["topic", "reason", "members"],
@@ -209,6 +276,13 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
             "隐身会话承诺了无副作用，开会要花她的 API 钱、还要留痕——这里不许开。",
           );
         }
+        // P3-9: master switch. Off by default (her 开启原则) — she flips it
+        // in capability settings before any of this can happen.
+        if (deps.isCoordinationEnabled && !deps.isCoordinationEnabled()) {
+          throw new ToolError(
+            "多模型协作的总开关没开（能力分组设置 → 多模型协作）。想开会，先跟她说一声，让她打开开关——不要绕过。",
+          );
+        }
         const planId = strArg(args, "plan_id").trim() || null;
         const herRequest = strArg(args, "her_request").trim();
         if (!planId && !herRequest) {
@@ -217,6 +291,11 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
           );
         }
         if (planId) checkPlanGate(planId);
+        if (!planId) {
+          // P2-8: her_request must be her actual words — mechanically
+          // verified against recent user messages, never taken on trust.
+          verifyHerRequest(herRequest, deps.recentUserTexts?.() ?? []);
+        }
 
         // Normalize the wire format (api_group) to the internal shape
         // (apiGroupRef) before validation.
@@ -288,6 +367,11 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
           createdByThreadId: deps.threadId,
           ...(planId ? { planId } : {}),
         });
+        if (planId) {
+          // P2-9: one approval authorizes ONE meeting. Consume it now that
+          // the meeting exists — a second meeting needs a fresh approval.
+          planGateStore.consumePlan(planId);
+        }
 
         const name0 = await fromName();
         await deps.trace.append({
@@ -332,14 +416,18 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
         }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
-        const meeting = await deps.meetings.get(meetingId);
-        if (!meeting) throw new ToolError(`找不到会议 ${meetingId}。`);
-        if (meeting.status === "done") {
-          throw new ToolError(
-            `会议「${meeting.name}」已经结束了${meeting.conclusion ? "，结论已写" : ""}。想再聊就开个新会。`,
-          );
-        }
-        // 开启原则：每轮重查计划——她随时能叫停。
+        // P2-11: the whole round runs inside this meeting's exclusive
+        // chain — get → compute roundNo → append → completeRound is one
+        // atomic step, so concurrent rounds can't duplicate round numbers.
+        return roundChain(meetingId)(async () => {
+          const meeting = await deps.meetings.get(meetingId);
+          if (!meeting) throw new ToolError(`找不到会议 ${meetingId}。`);
+          if (meeting.status === "done") {
+            throw new ToolError(
+              `会议「${meeting.name}」已经结束了${meeting.conclusion ? "，结论已写" : ""}。想再聊就开个新会。`,
+            );
+          }
+          // 开启原则：每轮重查计划——她随时能叫停。
         checkPlanGate(meeting.planId ?? null);
 
         const groups = deps.listApiGroups();
@@ -399,7 +487,8 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
             `\n\n会议达到结束条件了——用 end_meeting 写四段式结论` +
             `（主题/各方观点/共识/未解决分歧），然后用你自己的话向她汇报。不要再开新轮。`;
         }
-        return out;
+          return out;
+        });
       },
     },
     {
@@ -462,6 +551,8 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
         if (meeting.status === "done") throw new ToolError(`会议「${meeting.name}」已经结束了。`);
 
         await deps.meetings.end(meeting.id, conclusion);
+        // P2-11: drop the round chain — the meeting is over, no more rounds.
+        roundChains.delete(meeting.id);
         const name0 = await fromName();
         await deps.trace.append({
           action: "meeting_end",

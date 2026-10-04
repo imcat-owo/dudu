@@ -29,7 +29,13 @@
  * rejection. check_plan_status reports this distinctly so the AI never
  * claims "she stopped it" when she simply got a newer plan.
  */
-export type CoordinationPlanStatus = "proposed" | "approved" | "rejected" | "superseded";
+export type CoordinationPlanStatus =
+  | "proposed"
+  | "approved"
+  | "rejected"
+  | "superseded"
+  | "consumed"
+  | "revoked";
 
 export interface CoordinationPlanStep {
   /** Stable key for the plan card (assigned at propose time). */
@@ -85,7 +91,9 @@ export function isValidPlan(p: unknown): p is CoordinationPlan {
     (v.status === "proposed" ||
       v.status === "approved" ||
       v.status === "rejected" ||
-      v.status === "superseded")
+      v.status === "superseded" ||
+      v.status === "consumed" ||
+      v.status === "revoked")
   );
 }
 
@@ -201,6 +209,35 @@ export function createPlanGateStore(initialPersistence?: PlanGatePersistence) {
       const p = plans.get(planId);
       if (p?.status !== "proposed") return false;
       plans.set(planId, { ...p, status: approved ? "approved" : "rejected" });
+      emit();
+      scheduleSave();
+      return true;
+    },
+
+    /**
+     * Consume an approved plan (P2-9): one approval authorizes ONE meeting.
+     * start_group_meeting calls this after the meeting is created, so a
+     * second meeting can't ride on the same approval. Returns false unless
+     * the plan was approved and unused.
+     */
+    consumePlan(planId: string): boolean {
+      const p = plans.get(planId);
+      if (p?.status !== "approved") return false;
+      plans.set(planId, { ...p, status: "consumed" });
+      emit();
+      scheduleSave();
+      return true;
+    },
+
+    /**
+     * She takes back an approval (P2-9). Only from "approved" — a consumed
+     * plan already ran, and proposed/rejected ones have their own paths.
+     * Returns false when the transition isn't allowed.
+     */
+    revokePlan(planId: string): boolean {
+      const p = plans.get(planId);
+      if (p?.status !== "approved") return false;
+      plans.set(planId, { ...p, status: "revoked" });
       emit();
       scheduleSave();
       return true;

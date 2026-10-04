@@ -21,7 +21,15 @@ function useActivePlan(threadId: string) {
     planGateStore.getSnapshot,
     planGateStore.getSnapshot,
   );
-  return snap.plans.find((p) => p.threadId === threadId && p.status === "proposed") ?? null;
+  // Proposed (awaiting her decision) or approved-but-unused (she can still
+  // take the approval back — P2-9 revoke surface). Consumed/revoked plans
+  // are history, not shown.
+  return (
+    snap.plans.find(
+      (p) =>
+        p.threadId === threadId && (p.status === "proposed" || p.status === "approved"),
+    ) ?? null
+  );
 }
 
 export function PlanGateCard({ threadId }: { threadId: string }) {
@@ -73,16 +81,31 @@ export function PlanGateCard({ threadId }: { threadId: string }) {
         ))}
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <View style={{ flex: 1 }}>
-          <Button small primary onPress={() => planGateStore.decide(plan.id, true)}>
-            {t("plangate.approve")}
-          </Button>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button small onPress={() => planGateStore.decide(plan.id, false)}>
-            {t("plangate.reject")}
-          </Button>
-        </View>
+        {plan.status === "proposed" ? (
+          <>
+            <View style={{ flex: 1 }}>
+              <Button small primary onPress={() => planGateStore.decide(plan.id, true)}>
+                {t("plangate.approve")}
+              </Button>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button small onPress={() => planGateStore.decide(plan.id, false)}>
+                {t("plangate.reject")}
+              </Button>
+            </View>
+          </>
+        ) : (
+          // Approved but unused: she approved, the meeting hasn't started
+          // yet — she can still take it back (P2-9).
+          <View style={{ flex: 1 }}>
+            <TText style={[s.small, { color: colors.muted, marginBottom: 8 }]}>
+              {t("plangate.approvedNote")}
+            </TText>
+            <Button small onPress={() => planGateStore.revokePlan(plan.id)}>
+              {t("plangate.revoke")}
+            </Button>
+          </View>
+        )}
       </View>
     </Card>
   );
