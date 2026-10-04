@@ -19,7 +19,7 @@ import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools.js";
 import { createDialogTools } from "../chat/dialog-tools.js";
 import { getLocale, type StringKey, t } from "../i18n";
-import { createImageTools } from "../image/tools.js";
+import { createImageTools, type ImageOutputBackend } from "../image/tools.js";
 import { getKnowledgeStore } from "../knowledge/instance.js";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
@@ -49,6 +49,7 @@ import { createSkillTools } from "../skills/tools.js";
 import { ambientVideoStore } from "../sora-ambient-video-instance.js";
 import { getAiThemeMode } from "../theme/ai-mode.js";
 import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
+import { createVideoTools, type VideoBackend } from "../video/tools.js";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -58,6 +59,7 @@ import {
 } from "../vision/describe";
 import { voiceStore } from "../voice/store.js";
 import { createPodcastTools, createTtsVoiceTools } from "../voice/tools.js";
+import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
 import {
   type ChatContentBlock,
@@ -67,7 +69,13 @@ import {
   streamChat,
 } from "./direct-transport";
 import { classifyError, type ErrorClass } from "./error-classifier";
-import { describeVia, planVision, type VisionPlan } from "./group-router";
+import {
+  describeVia,
+  findCapabilityGroup,
+  planVision,
+  resolveMembers,
+  type VisionPlan,
+} from "./group-router";
 import {
   createLocalTools,
   createToolRegistry,
@@ -593,6 +601,41 @@ export function createLocalAgent(opts: {
       // Tool setup: registry + system prompt (built once per turn so a
       // changed tool set takes effect without recreating the agent).
       const memStore: MemoryStore = opts.memoryStore ?? memoryStore;
+      // Output-type tool backends (vision doc §1): resolve her capability
+      // group members fresh every turn so group edits apply immediately.
+      const capSnap = capabilityStore.getSnapshot();
+      const allApiGroups = groupStore.getSnapshot().groups;
+      const resolveImageOutputBackends = (): ImageOutputBackend[] => {
+        const g = findCapabilityGroup(capSnap.groups, CAPABILITY_TAGS.IMAGE_OUTPUT);
+        if (!g) return [];
+        return resolveMembers(g, allApiGroups).map((m) => ({
+          name: m.apiGroup.name,
+          baseUrl: m.member.endpoint?.trim() || m.apiGroup.baseUrl,
+          apiKey: m.apiGroup.apiKey,
+          headers: m.apiGroup.headers,
+          model: m.model,
+        }));
+      };
+      const resolveVideoBackends = (): VideoBackend[] => {
+        const g = findCapabilityGroup(capSnap.groups, CAPABILITY_TAGS.VIDEO);
+        if (!g) return [];
+        // Video has no standard path — members without an explicit
+        // endpoint can't be called, so they're skipped (honest, not fake).
+        return resolveMembers(g, allApiGroups).flatMap((m) => {
+          const endpoint = m.member.endpoint?.trim();
+          if (!endpoint) return [];
+          return [
+            {
+              name: m.apiGroup.name,
+              endpoint,
+              pollEndpoint: m.member.pollEndpoint?.trim() || undefined,
+              apiKey: m.apiGroup.apiKey,
+              headers: m.apiGroup.headers,
+              model: m.model,
+            },
+          ];
+        });
+      };
       // AI 换肤 mode: when "off", the AI never sees the theme tools.
       // Read per turn so a settings change takes effect immediately.
       // Storage failure => default "stable" (fail open for theming, which
@@ -614,7 +657,11 @@ export function createLocalAgent(opts: {
           // Incognito: podcast audio goes to cache (temp), not documents.
           { isIncognito: incognito },
         ),
-        ...createImageTools(),
+        ...createImageTools({ resolveBackends: resolveImageOutputBackends }),
+        ...createVideoTools({
+          resolveBackends: resolveVideoBackends,
+          tasks: taskProgressStore,
+        }),
         ...themeTools,
         ...createFontSizeTools(AsyncStorage),
         ...createPetSkinTools(AsyncStorage),
@@ -954,9 +1001,14 @@ export function createLocalAgent(opts: {
       // attached images (current model fast path → image_input group →
       // honest failure). The plan is computed once per turn from the
       // capability store snapshot.
-      const capSnap = capabilityStore.getSnapshot();
+      const wireCapSnap = capabilityStore.getSnapshot();
       const visionPlanFor = (g: ApiGroup): VisionPlan =>
-        planVision(g, capSnap.groups, groupStore.getSnapshot().groups, capSnap.routingEnabled);
+        planVision(
+          g,
+          wireCapSnap.groups,
+          groupStore.getSnapshot().groups,
+          wireCapSnap.routingEnabled,
+        );
       const wire: ChatMessage[] = [];
       wire.push({ role: "system", content: systemPrompt });
       for (const m of messages) {

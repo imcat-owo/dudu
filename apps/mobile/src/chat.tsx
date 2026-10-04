@@ -659,7 +659,9 @@ export function ChatScreen({
   // Creative tools executing right now — the avatar plays its
   // "making something" clip instead of the generic working one.
   const makingSomething =
-    agent.activeToolName === "generate_image" || agent.activeToolName === "generate_podcast";
+    agent.activeToolName === "generate_image" ||
+    agent.activeToolName === "generate_podcast" ||
+    agent.activeToolName === "generate_video";
   // Milestone celebration: when a task card freshly reaches done, the avatar
   // plays the level-up clip for a few seconds, then falls back to the live
   // signals. Cards already done at mount are seeded silently — no confetti
