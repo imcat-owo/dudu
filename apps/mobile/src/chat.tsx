@@ -64,6 +64,7 @@ import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
+import { resolveAssistantText } from "./message-text";
 import {
   registerDropZone,
   setAiBubbleMessageId,
@@ -819,6 +820,8 @@ export function ChatScreen({
             // Voice / image envelopes are detected tolerantly (P2-27): the AI
             // may add its own words around the JSON — `rest` is the prose
             // with the envelope stripped, rendered as a text bubble above.
+            // A pure JSON envelope (no prose) renders no text bubble at all —
+            // it must never fall back to showing the raw JSON (P1 regression).
             // (User messages can also carry envelopes: recorded voice notes
             // and /img generations are encoded the same way.)
             const voiceHit =
@@ -829,7 +832,6 @@ export function ChatScreen({
                 ? extractImageMessage(message.content)
                 : null;
             const generatedImage = imageHit?.image ?? null;
-            const envelopeRest = voiceHit?.rest || imageHit?.rest || "";
             const text =
               typeof message.content === "string"
                 ? user
@@ -839,7 +841,7 @@ export function ChatScreen({
                         message.content,
                         messages.slice(0, messages.indexOf(message)),
                       )
-                  : envelopeRest || message.content
+                  : resolveAssistantText(message.content, voiceHit, imageHit)
                 : "";
             const userImages =
               user && typeof message.content === "string"
