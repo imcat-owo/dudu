@@ -11,10 +11,11 @@
  * never logs, never chat.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Switch, View } from "react-native";
 import { TText } from "../font";
-import { t } from "../i18n";
+import { getLocale, t } from "../i18n";
+import { radii } from "../theme/radii";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
 import { useVoiceConfig, voiceStore } from "./store";
 import { synthesizeSpeech } from "./tts";
@@ -26,7 +27,6 @@ import {
   validateSttConfig,
   validateTtsConfig,
 } from "./types";
-import { radii } from "../theme/radii";
 
 function ProviderTabs<T extends string>({
   options,
@@ -194,9 +194,7 @@ function TtsSection() {
           </>
         )}
         <View style={{ gap: 6 }}>
-          <TText style={{ fontWeight: "600", color: colors.muted }}>
-            {t("voice.ttsSpeed")}
-          </TText>
+          <TText style={{ fontWeight: "600", color: colors.muted }}>{t("voice.ttsSpeed")}</TText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((r) => {
               const active = (cfg.rate ?? 1.0) === r;
@@ -385,6 +383,76 @@ export function VoiceSettingsSection() {
       <TtsSection />
       <SttSection />
       <MicModeSection />
+      <CacheSection />
     </View>
   );
+}
+
+function CacheSection() {
+  const colors = useColors();
+  const s = useStyles();
+  const [size, setSize] = useState<number | null>(null);
+  const [cleaning, setCleaning] = useState(false);
+  const [doneMsg, setDoneMsg] = useState("");
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const m = await import("./cache-cleanup");
+        setSize(await m.getVoiceCacheSize());
+      } catch {
+        setSize(null);
+      }
+    })();
+  }, []);
+
+  async function onClean() {
+    setCleaning(true);
+    setDoneMsg("");
+    try {
+      const m = await import("./cache-cleanup");
+      const r = await m.cleanVoiceCache();
+      const zh = getLocale() === "zh-Hans";
+      setDoneMsg(
+        r.deleted === 0
+          ? t("voice.cache.nothing")
+          : t("voice.cache.cleaned", { n: r.deleted, size: m.formatBytes(r.freedBytes, zh) }),
+      );
+      setSize(await m.getVoiceCacheSize());
+    } catch {
+      setDoneMsg(t("voice.cache.failed"));
+    } finally {
+      setCleaning(false);
+    }
+  }
+
+  const zh = getLocale() === "zh-Hans";
+  return (
+    <Card>
+      <TText style={{ fontWeight: "700", marginBottom: 8 }}>{t("voice.cache.title")}</TText>
+      <TText style={[s.small, { color: colors.muted, marginBottom: 10 }]}>
+        {t("voice.cache.desc")}
+      </TText>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Button onPress={() => void onClean()} busy={cleaning}>
+            {t("voice.cache.clean")}
+          </Button>
+        </View>
+        {size !== null && (
+          <TText style={[s.small, { color: colors.muted }]}>{formatCacheSizeLabel(size, zh)}</TText>
+        )}
+      </View>
+      {!!doneMsg && (
+        <TText style={[s.small, { color: colors.muted, marginTop: 8 }]}>{doneMsg}</TText>
+      )}
+    </Card>
+  );
+}
+
+function formatCacheSizeLabel(bytes: number, zh: boolean): string {
+  if (bytes < 1024) return zh ? `${bytes} 字节` : `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
 }

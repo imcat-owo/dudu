@@ -50,16 +50,16 @@ import {
 } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
-import { type StringKey, t } from "./i18n";
+import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
 import type { MemoryRecord } from "./memory/types";
 import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
+import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
-import { daysTogether, resolveTogetherSince } from "./our-space/together";
 import type {
   AiStatus,
   Anniversary,
@@ -78,6 +78,7 @@ import type {
 } from "./our-space/store";
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
+import { daysTogether, resolveTogetherSince } from "./our-space/together";
 import { SoraAmbient } from "./sora-ambient";
 import { ambientVideoStore } from "./sora-ambient-video-instance";
 import { radii } from "./theme/radii";
@@ -1075,6 +1076,88 @@ const TAPE_ROTATION: Record<string, TapeColor> = {
   music: "blue",
 };
 
+// ---- Today card: a quiet daily briefing — anniversaries, on-this-day, her mood ----
+
+function TodayCard() {
+  const v = useOurSpaceVersion();
+  const colors = useColors();
+  const [rows, setRows] = useState<Array<{ key: string; icon: typeof Heart; text: string }>>([]);
+  const [dateLine, setDateLine] = useState("");
+
+  useEffect(() => {
+    const locale = getLocale() === "zh-Hans" ? "zh-CN" : "en-US";
+    setDateLine(
+      new Date().toLocaleDateString(locale, { month: "long", day: "numeric", weekday: "long" }),
+    );
+    void (async () => {
+      const [anniversaries, diary, timeline, mood] = await Promise.all([
+        ourSpaceStore.listAnniversaries(),
+        ourSpaceStore.listDiary(),
+        ourSpaceStore.listTimeline(),
+        ourSpaceStore.getHerMood(),
+      ]);
+      const next: Array<{ key: string; icon: typeof Heart; text: string }> = [];
+      for (const a of getUpcomingAnniversaries(anniversaries).slice(0, 2)) {
+        next.push({
+          key: `ann-${a.title}-${a.occurrence}`,
+          icon: CalendarHeart,
+          text:
+            a.daysUntil === 0
+              ? t("space.today.anniversaryToday", { title: a.title })
+              : t("space.today.anniversarySoon", { title: a.title, n: a.daysUntil }),
+        });
+      }
+      for (const item of getOnThisDay(diary, timeline, anniversaries).slice(0, 2)) {
+        next.push({
+          key: `otd-${item.kind}-${item.originalDate}-${item.title}`,
+          icon: History,
+          text: t("space.today.onThisDay", { title: item.title }),
+        });
+      }
+      if (mood) {
+        next.push({
+          key: `mood-${mood.updatedAt}`,
+          icon: Heart,
+          text: t("space.today.herMood", { mood: mood.mood }),
+        });
+      }
+      setRows(next);
+    })();
+  }, [v]);
+
+  return (
+    <View style={{ paddingTop: 14 }}>
+      <SoftCard tape="mint">
+        <View
+          style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}
+        >
+          <HandText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+            {t("space.today.title")}
+          </HandText>
+          <TText style={{ color: colors.muted, fontSize: 12 }}>{dateLine}</TText>
+        </View>
+        <View style={{ gap: 10, marginTop: 12 }}>
+          {rows.length === 0 ? (
+            <TText style={{ color: colors.muted, fontSize: 13.5, lineHeight: 22 }}>
+              {t("space.today.quiet")}
+            </TText>
+          ) : (
+            rows.map((r) => {
+              const Icon = r.icon;
+              return (
+                <View key={r.key} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Icon size={16} color={colors.muted} strokeWidth={1.8} />
+                  <TText style={{ color: colors.text, fontSize: 13.5, flex: 1 }}>{r.text}</TText>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </SoftCard>
+    </View>
+  );
+}
+
 function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
   const colors = useColors();
   return (
@@ -1927,6 +2010,9 @@ export function OurSpaceScreen() {
         <LeftNoteView />
         <FadeIn>
           <CoupleHeader />
+        </FadeIn>
+        <FadeIn>
+          <TodayCard />
         </FadeIn>
         <CardGrid onOpen={setPage} />
       </ScrollView>

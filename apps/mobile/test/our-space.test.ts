@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
 import { getManual } from "../src/manuals/index.js";
-import { buildAnniversarySection } from "../src/our-space/anniversary-section.js";
+import { buildAnniversarySection, getUpcomingAnniversaries } from "../src/our-space/anniversary-section.js";
 import { buildHerMoodSection } from "../src/our-space/her-mood-section.js";
 import { buildNicknameSection } from "../src/our-space/nickname-section.js";
 import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
@@ -548,6 +548,56 @@ describe("anniversary-section: buildAnniversarySection", () => {
   it("ignores malformed dates instead of crashing", () => {
     const s = buildAnniversarySection([ann("坏的", "not-a-date")], NOW);
     assert.equal(s, "");
+  });
+});
+
+describe("anniversary-section: getUpcomingAnniversaries", () => {
+  const NOW = new Date(2026, 9, 4, 12, 0, 0);
+
+  function ann(title: string, date: string) {
+    return { id: "x", title, date, description: "", createdAt: 0 };
+  }
+
+  it("returns structured rows for today and upcoming", () => {
+    const rows = getUpcomingAnniversaries(
+      [ann("相识纪念日", "2026-10-04"), ann("她的生日", "2020-10-09")],
+      NOW,
+    );
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].daysUntil, 0);
+    assert.equal(rows[0].title, "相识纪念日");
+    assert.equal(rows[1].daysUntil, 5);
+    assert.equal(rows[1].occurrence, "2026-10-09");
+  });
+
+  it("sorts soonest first and drops far ones", () => {
+    const rows = getUpcomingAnniversaries(
+      [ann("近的", "2026-10-06"), ann("今天的", "2026-10-04"), ann("远的", "2026-12-25")],
+      NOW,
+    );
+    assert.deepEqual(
+      rows.map((r) => r.title),
+      ["今天的", "近的"],
+    );
+  });
+
+  it("returns empty when nothing is near", () => {
+    assert.deepEqual(getUpcomingAnniversaries([ann("圣诞节", "2026-12-25")], NOW), []);
+  });
+
+  it("respects a custom window", () => {
+    const rows = getUpcomingAnniversaries([ann("她的生日", "2020-10-09")], NOW, 3);
+    assert.equal(rows.length, 0);
+  });
+
+  it("never emits emoji", () => {
+    const rows = getUpcomingAnniversaries(
+      [ann("相识纪念日", "2026-10-04"), ann("她的生日", "2020-10-09")],
+      NOW,
+    );
+    // eslint-disable-next-line no-control-regex
+    const emoji = /[\u{1F000}-\u{1FAFF}\u2600-\u{27BF}]/u;
+    for (const r of rows) assert.doesNotMatch(`${r.title}${r.occurrence}`, emoji);
   });
 });
 

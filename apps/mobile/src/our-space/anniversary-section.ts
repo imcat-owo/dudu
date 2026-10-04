@@ -42,6 +42,38 @@ function nextOccurrence(month: number, day: number, now: Date): Date {
   return occ;
 }
 
+export interface UpcomingAnniversary {
+  title: string;
+  /** Days until the occurrence: 0 means today. */
+  daysUntil: number;
+  /** YYYY-MM-DD of the upcoming occurrence (not the stored year). */
+  occurrence: string;
+}
+
+/**
+ * Anniversaries due today or within the warning window, soonest first.
+ * PURE — shared by the system-prompt injection and the "Today" card.
+ */
+export function getUpcomingAnniversaries(
+  anniversaries: Anniversary[],
+  now: Date = new Date(),
+  windowDays: number = ANNIVERSARY_WARNING_DAYS,
+): UpcomingAnniversary[] {
+  const today = atMidnight(now);
+  const out: UpcomingAnniversary[] = [];
+  for (const a of anniversaries) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a.date);
+    if (!m) continue;
+    const occ = nextOccurrence(Number(m[2]), Number(m[3]), now);
+    const daysUntil = Math.round((occ.getTime() - today.getTime()) / 86400000);
+    if (daysUntil >= 0 && daysUntil <= windowDays) {
+      out.push({ title: a.title, daysUntil, occurrence: fmt(occ) });
+    }
+  }
+  out.sort((x, y) => x.daysUntil - y.daysUntil);
+  return out;
+}
+
 /**
  * Build the anniversary awareness section for the system prompt.
  * One subtle line per relevant anniversary; "" when nothing is near.
@@ -50,20 +82,15 @@ export function buildAnniversarySection(
   anniversaries: Anniversary[],
   now: Date = new Date(),
 ): string {
-  const today = atMidnight(now);
   const lines: string[] = [];
-  for (const a of anniversaries) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a.date);
-    if (!m) continue;
-    const occ = nextOccurrence(Number(m[2]), Number(m[3]), now);
-    const diffDays = Math.round((occ.getTime() - today.getTime()) / 86400000);
-    if (diffDays === 0) {
+  for (const a of getUpcomingAnniversaries(anniversaries, now)) {
+    if (a.daysUntil === 0) {
       lines.push(
         `今天是「${a.title}」。她可能记得也可能没提——你先别声张，找个自然的时机提起，轻松一点。`,
       );
-    } else if (diffDays <= ANNIVERSARY_WARNING_DAYS) {
+    } else {
       lines.push(
-        `「${a.title}」还有 ${diffDays} 天（${fmt(occ)}）。可以悄悄准备个小惊喜，别提前说漏嘴。`,
+        `「${a.title}」还有 ${a.daysUntil} 天（${a.occurrence}）。可以悄悄准备个小惊喜，别提前说漏嘴。`,
       );
     }
   }

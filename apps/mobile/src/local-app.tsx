@@ -130,6 +130,11 @@ export function LocalApp() {
     });
   }, []);
 
+  // Quietly sweep stale synthesized-speech caches (P2-24). Never blocks startup.
+  useEffect(() => {
+    void import("./voice/cache-cleanup").then((m) => m.cleanVoiceCache()).catch(() => {});
+  }, []);
+
   const nav: { id: LocalSection; label: string; icon: LucideIcon }[] = [
     { id: "chat", label: t("tab.chat"), icon: MessageCircle },
     { id: "space", label: t("tab.space"), icon: Heart },
