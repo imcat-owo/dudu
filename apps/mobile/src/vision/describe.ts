@@ -95,6 +95,47 @@ function visionHeaders(group: ApiGroup): Record<string, string> {
   return { ...headers, ...group.headers };
 }
 
+/** Round-3 code P2-2: vision backend budget — a hung endpoint must not hang the whole chat turn. */
+const DESCRIBE_TIMEOUT_MS = 60_000;
+
+/**
+ * POST the vision request and read the raw response text, with a timeout
+ * budget. Separated from describeImage (which first reads the image file
+ * via expo-file-system — no node equivalent) so the timeout behavior is
+ * unit-testable.
+ */
+export async function postVisionRequest(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<{ status: number; ok: boolean; text: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const isAbort = (e: unknown) => (e as { name?: string } | null)?.name === "AbortError";
+  const timedOut = () =>
+    new VisionError(`识图请求超时（${timeoutMs / 1000} 秒无响应），请检查识图服务是否可用`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      signal: controller.signal,
+    });
+    const text = await res.text().catch((e: unknown) => {
+      if (isAbort(e)) throw timedOut();
+      throw e;
+    });
+    return { status: res.status, ok: res.ok, text };
+  } catch (e) {
+    if (e instanceof VisionError) throw e;
+    if (isAbort(e)) throw timedOut();
+    throw new VisionError(`识图请求失败：${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Describe one image with a vision model (non-streaming). Returns the
  * description text. Throws VisionError / GroupError loudly on failure.
@@ -107,7 +148,9 @@ export async function describeImage(
   imageUri: string,
   userQuestion: string,
   modelOverride?: string,
+  opts: { timeoutMs?: number } = {},
 ): Promise<string> {
+  const timeoutMs = opts.timeoutMs ?? DESCRIBE_TIMEOUT_MS;
   const model = modelOverride?.trim() || group.vision?.model?.trim() || group.model;
   const dataUri = await imageToDataUri(imageUri);
   const body: { model: string; messages: VisionChatMessage[]; stream: boolean } = {
@@ -124,18 +167,13 @@ export async function describeImage(
     ],
   };
   const url = `${group.baseUrl.trim().replace(/\/+$/, "")}/chat/completions`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: visionHeaders(group),
-      body: JSON.stringify(body),
-    });
-  } catch (e) {
-    throw new VisionError(`识图请求失败：${e instanceof Error ? e.message : String(e)}`);
-  }
-  const text = await res.text();
-  if (!res.ok) {
+  const { status, ok, text } = await postVisionRequest(
+    url,
+    visionHeaders(group),
+    JSON.stringify(body),
+    timeoutMs,
+  );
+  if (!ok) {
     let detail = text.slice(0, 300);
     try {
       const parsed = JSON.parse(text) as { error?: { message?: string } | string };
@@ -146,10 +184,10 @@ export async function describeImage(
     }
     // A 400/404 on image_url usually means "this model can't see images".
     const hint =
-      res.status === 400 || res.status === 404
+      status === 400 || status === 404
         ? "（该模型可能不支持识图：请检查分组设置里的识图模型）"
         : "";
-    throw new GroupError(group.name, `识图失败 HTTP ${res.status}: ${detail}${hint}`);
+    throw new GroupError(group.name, `识图失败 HTTP ${status}: ${detail}${hint}`);
   }
   try {
     const parsed = JSON.parse(text) as {

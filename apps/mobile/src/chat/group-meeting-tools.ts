@@ -185,26 +185,29 @@ function checkPlanGate(planId: string | null, meetingId?: string): void {
 }
 
 /**
- * Mechanical her_request check (code P2-8): the "she said discuss it"
- * basis must be her actual words. The quoted text must appear in (or
- * contain) a recent user message in this thread — a fabricated
- * her_request is refused, and the AI is pointed at plan approval instead.
+ * Mechanical her_request check (code P2-8, hardened in round 3 P2-7): the
+ * "she said discuss it" basis must be her actual words. The quoted text
+ * must appear VERBATIM in a recent user message in this thread (at least
+ * 4 normalized chars) — a fabricated her_request is refused, and the AI is
+ * pointed at plan approval instead. The old direction (quote CONTAINS her
+ * message) let a 2-char real message validate any padded fabrication.
  */
-function verifyHerRequest(herRequest: string, recentUserTexts: string[]): void {
+/** @internal — exported for unit tests. */
+export function verifyHerRequest(herRequest: string, recentUserTexts: string[]): void {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
   const req = norm(herRequest);
-  if (req.length < 2) {
+  if (req.length < 4) {
     throw new ToolError(
-      "her_request 太短了，填她说「你们讨论一下」这类话的原话——要能在最近的消息里找到。",
+      "her_request 太短了，填她说「你们讨论一下」这类话的原话——原话要在她最近的消息里原样出现（至少 4 个字）。",
     );
   }
   const hit = recentUserTexts.some((t) => {
     const u = norm(t);
-    return u.length > 0 && (u.includes(req) || req.includes(u));
+    return u.length > 0 && u.includes(req);
   });
   if (!hit) {
     throw new ToolError(
-      "her_request 里的话在她最近的消息里找不到——不要编造她说过的话。要么把她的原话准确填进来，要么走计划门：propose_coordination_plan 提计划、等她批准后再开会。",
+      "her_request 里的话在她最近的消息里找不到原样——不要编造她说过的话。要么把她的原话准确填进来，要么走计划门：propose_coordination_plan 提计划、等她批准后再开会。",
     );
   }
 }
@@ -577,16 +580,36 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
  * One-shot model call for a member turn. Non-streaming POST, same wire
  * shape as capability-probe (OpenAI-compatible /chat/completions).
  * Throws GroupError-labeled errors on failure — the tool reports them.
+ *
+ * Round-3 code P1-1: this is awaited inside the meeting's exclusive chain
+ * — a hung server would wedge the meeting forever. Per-speaker budget
+ * (~90s, overridable for tests); on timeout the caller records a
+ * per-speaker failure and the chain moves on.
  */
+const GENERATE_ONESHOT_TIMEOUT_MS = 90_000;
+
+function oneShotFailed(e: unknown, timeoutMs: number): Error {
+  if ((e as { name?: string } | null)?.name === "AbortError") {
+    return new Error(
+      `model call timed out after ${timeoutMs / 1000}s — the server hung, so this speaker was skipped`,
+    );
+  }
+  return new Error(`model call failed: ${e instanceof Error ? e.message : String(e)}`);
+}
+
 export async function generateOneShot(
   group: ApiGroup,
   system: string,
   user: string,
+  opts: { timeoutMs?: number } = {},
 ): Promise<string> {
+  const timeoutMs = opts.timeoutMs ?? GENERATE_ONESHOT_TIMEOUT_MS;
   const endpoint = `${group.baseUrl.trim().replace(/\/+$/, "")}/chat/completions`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const key = group.apiKey?.trim();
   if (key) headers.Authorization = `Bearer ${key}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(endpoint, {
@@ -602,19 +625,28 @@ export async function generateOneShot(
         // Meeting turns stay short: bounded cost, legible transcript.
         max_tokens: 600,
       }),
+      signal: controller.signal,
     });
   } catch (e) {
-    throw new Error(`model call failed: ${e instanceof Error ? e.message : String(e)}`);
+    clearTimeout(timer);
+    throw oneShotFailed(e, timeoutMs);
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    clearTimeout(timer);
     throw new Error(
       `model call failed: HTTP ${res.status}${body ? ` — ${body.slice(0, 120)}` : ""}`,
     );
   }
-  const data = (await res.json().catch(() => null)) as {
+  const data = (await res
+    .json()
+    .catch((e: unknown) => {
+      if ((e as { name?: string } | null)?.name === "AbortError") throw oneShotFailed(e, timeoutMs);
+      return null;
+    })) as {
     choices?: Array<{ message?: { content?: unknown } }>;
   } | null;
+  clearTimeout(timer);
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("model call failed: empty reply");

@@ -521,27 +521,63 @@ export function streamChat(
  * Test a group: minimal non-streaming request. Resolves with the list of
  * model ids the endpoint reports (may be empty — some endpoints don't
  * serve /models), or rejects with GroupError.
+ *
+ * Round-3 code P2-4 / user P1: both probes carry a 15s budget — the
+ * settings "test" button can never stick in "testing" forever. A timeout
+ * says "timed out" so classifyError() maps it to network_error.
  */
-export async function testConnection(group: ApiGroup): Promise<{ ok: true; models: string[] }> {
+const TEST_CONNECTION_TIMEOUT_MS = 15_000;
+
+export async function testConnection(
+  group: ApiGroup,
+  opts: { timeoutMs?: number } = {},
+): Promise<{ ok: true; models: string[] }> {
+  const timeoutMs = opts.timeoutMs ?? TEST_CONNECTION_TIMEOUT_MS;
+  function testSignal(): { signal: AbortSignal; done: () => void } {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), timeoutMs);
+    return { signal: c.signal, done: () => clearTimeout(t) };
+  }
   // 1. Try the models endpoint (lets the user pick a model, Kelivo-style).
   let models: string[] = [];
-  try {
-    const res = await fetch(`${normalizeBaseUrl(group.baseUrl)}/models`, {
-      headers: requestHeaders(group),
-    });
-    if (res.ok) {
-      const payload = (await res.json()) as { data?: Array<{ id?: string }> };
-      models = (payload.data ?? []).map((m) => m.id ?? "").filter(Boolean);
+  {
+    const t = testSignal();
+    try {
+      const res = await fetch(`${normalizeBaseUrl(group.baseUrl)}/models`, {
+        headers: requestHeaders(group),
+        signal: t.signal,
+      });
+      if (res.ok) {
+        const payload = (await res.json()) as { data?: Array<{ id?: string }> };
+        models = (payload.data ?? []).map((m) => m.id ?? "").filter(Boolean);
+      }
+    } catch {
+      // /models is optional — the chat probe below is the real test.
+    } finally {
+      t.done();
     }
-  } catch {
-    // /models is optional — the chat probe below is the real test.
   }
   // 2. Minimal chat probe.
-  const res = await fetch(endpointFor(group), {
-    method: "POST",
-    headers: requestHeaders(group),
-    body: requestBody(group, [{ role: "user", content: "ping" }], false),
-  });
+  const t = testSignal();
+  let res: Response;
+  try {
+    res = await fetch(endpointFor(group), {
+      method: "POST",
+      headers: requestHeaders(group),
+      body: requestBody(group, [{ role: "user", content: "ping" }], false),
+      signal: t.signal,
+    });
+  } catch (e) {
+    t.done();
+    if ((e as { name?: string } | null)?.name === "AbortError") {
+      throw new GroupError(
+        group.name,
+        `test probe timed out after ${timeoutMs / 1000}s — the server accepted the connection but never answered`,
+      );
+    }
+    throw e;
+  }
+  t.done();
   const text = await res.text();
   if (!res.ok) throw statusError(group, res.status, text);
   return { ok: true, models };

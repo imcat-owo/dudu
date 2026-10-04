@@ -291,9 +291,27 @@ export interface EdgeVoice {
   Locale: string;
 }
 
+/** Round-3 code P3-1: voice-list budget — a stalled endpoint must not hang the voice picker. */
+const VOICE_LIST_TIMEOUT_MS = 10_000;
+
 /** Fetch the service's voice list (for a future voice picker). Best-effort. */
-export async function fetchEdgeVoices(): Promise<EdgeVoice[]> {
-  const res = await fetch(VOICE_LIST_URL);
+export async function fetchEdgeVoices(
+  opts: { timeoutMs?: number } = {},
+): Promise<EdgeVoice[]> {
+  const timeoutMs = opts.timeoutMs ?? VOICE_LIST_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(VOICE_LIST_URL, { signal: controller.signal });
+  } catch (e) {
+    clearTimeout(timer);
+    if ((e as { name?: string } | null)?.name === "AbortError") {
+      throw new EdgeTtsError(`voice list timed out after ${timeoutMs / 1000}s`);
+    }
+    throw new EdgeTtsError(`voice list failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  clearTimeout(timer);
   if (!res.ok) throw new EdgeTtsError(`voice list HTTP ${res.status}`);
   const list = (await res.json()) as EdgeVoice[];
   return Array.isArray(list) ? list : [];

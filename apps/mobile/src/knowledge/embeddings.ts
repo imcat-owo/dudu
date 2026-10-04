@@ -41,7 +41,13 @@ export interface EmbedResult {
 /**
  * Embed a batch of texts. Throws EmbeddingError with a human-actionable
  * message on any failure (auth, 404 = no embeddings endpoint, rate limit…).
+ *
+ * Round-3 code P2-3: the production provider never passes a signal, so a
+ * hung endpoint stalled indexing/search forever. When the caller passes no
+ * signal, we arm our own 30s budget.
  */
+const EMBED_TIMEOUT_MS = 30_000;
+
 export async function embedTexts(
   group: ApiGroup,
   texts: string[],
@@ -51,17 +57,26 @@ export async function embedTexts(
   if (texts.length === 0) return { vectors: [], model: embeddingModelFor(group) };
   const model = embeddingModelFor(group);
   const url = `${normalizeBaseUrl(group.baseUrl)}/embeddings`;
+  const own = opts.signal ? null : new AbortController();
+  const timer = own ? setTimeout(() => own.abort(), EMBED_TIMEOUT_MS) : null;
   let res: Response;
   try {
     res = await fetch(url, {
       method: "POST",
       headers: embeddingHeaders(group),
       body: JSON.stringify({ model, input: texts }),
-      signal: opts.signal,
+      signal: opts.signal ?? own!.signal,
     });
   } catch (e) {
+    if (timer) clearTimeout(timer);
+    if ((e as { name?: string } | null)?.name === "AbortError") {
+      throw new EmbeddingError(
+        `embeddingTimeout: no response in ${EMBED_TIMEOUT_MS / 1000}s — the embeddings endpoint may be down.`,
+      );
+    }
     throw new EmbeddingError(`embeddingNetwork: ${e instanceof Error ? e.message : String(e)}`);
   }
+  if (timer) clearTimeout(timer);
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     if (res.status === 401 || res.status === 403) {
