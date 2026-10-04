@@ -1183,7 +1183,6 @@ const zhHans = {
   "capgroup.preset.voice_input": "语音输入",
   "capgroup.kind.input": "输入路由",
   "capgroup.kind.output": "输出后端",
-  "capgroup.kindDesc": "输入型=带该能力的消息会被路由到本组；输出型=生成工具调用本组的接口。",
   "capgroup.members": "{n} 个模型",
   "capgroup.primary": "首选",
   "capgroup.fallback": "备用",
@@ -1200,10 +1199,6 @@ const zhHans = {
   "capgroup.moveUp": "上移",
   "capgroup.moveDown": "下移",
   "capgroup.remove": "移除",
-  "capgroup.newGroup": "新建能力分组",
-  "capgroup.tag": "能力标签",
-  "capgroup.create": "创建",
-  "capgroup.duplicateTag": '标签"{tag}"的分组已存在。',
 
   // ---- thinking drawer ----
   "thinking.thinking": "想想…",

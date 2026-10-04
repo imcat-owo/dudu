@@ -1223,8 +1223,6 @@ export const enStrings: Record<StringKey, string> = {
   "capgroup.preset.voice_input": "Voice input",
   "capgroup.kind.input": "Input routing",
   "capgroup.kind.output": "Output backend",
-  "capgroup.kindDesc":
-    "Input = messages with this capability get routed to the group. Output = generation tools call the group's endpoint.",
   "capgroup.members": "{n} models",
   "capgroup.primary": "Primary",
   "capgroup.fallback": "Fallback",
@@ -1241,10 +1239,6 @@ export const enStrings: Record<StringKey, string> = {
   "capgroup.moveUp": "Move up",
   "capgroup.moveDown": "Move down",
   "capgroup.remove": "Remove",
-  "capgroup.newGroup": "New capability group",
-  "capgroup.tag": "Capability tag",
-  "capgroup.create": "Create",
-  "capgroup.duplicateTag": 'A group with the tag "{tag}" already exists.',
 
   // ---- thinking drawer ----
   "thinking.thinking": "Thinking…",

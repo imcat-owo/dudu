@@ -28,9 +28,9 @@
 export type CapabilityKind = "input" | "output";
 
 /**
- * Well-known capability tags. Any other string is a user-defined custom
- * tag — groups are extensible, the router only special-cases the four
- * presets below (and treats unknown tags as inert organizers).
+ * Well-known capability tags. These four are the complete set the router
+ * honors (P1-6): custom tags are inert organizers in the data model — the
+ * creation UI was removed so she is never promised routing that can't happen.
  */
 export const CAPABILITY_TAGS = {
   IMAGE_INPUT: "image_input",

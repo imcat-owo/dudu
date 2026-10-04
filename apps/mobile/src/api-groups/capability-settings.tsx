@@ -2,16 +2,19 @@
  * Capability-group settings UI (能力分组) — the ONE interface she sees.
  *
  * Two implementations underneath (vision doc §1):
- * - input-type groups (image_input, voice_input, custom input tags) = routing:
- *   messages carrying that capability are routed to the group's ordered
- *   members (primary first, then fallbacks).
- * - output-type groups (image_output, video, custom output tags) = tool
- *   backends: generate_image / generate_video call the group's endpoint.
+ * - input-type groups (image_input, voice_input) = routing: messages
+ *   carrying that capability are routed to the group's ordered members
+ *   (primary first, then fallbacks).
+ * - output-type groups (image_output, video) = tool backends:
+ *   generate_image / generate_video call the group's endpoint.
  *
- * She just sees "分组": a routing toggle, her groups with ordered members,
- * a model-ranking mode picker, and custom group creation. Presets ship
- * enabled-but-empty — she fills them; presets can't be deleted, only
- * disabled (safer).
+ * She just sees "分组": a routing toggle, her four groups with ordered
+ * members, and a model-ranking mode picker. Presets ship enabled-but-empty —
+ * she fills them; presets can't be deleted, only disabled (safer).
+ *
+ * Note (P1-6): custom group creation was removed — the router only honors
+ * the four preset tags, so custom tags could never route. The data model
+ * still supports them; only the creation UI is gone.
  */
 
 import { ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react-native";
@@ -28,7 +31,6 @@ import {
   type CapabilityKind,
   capabilityGroupDisplayName,
   moveMember,
-  newCapabilityGroupId,
 } from "./capability-groups";
 import { capabilityStore, useCapabilityGroups } from "./capability-store";
 import { RANKING_MODES, type RankingMode } from "./model-ranking";
@@ -50,7 +52,6 @@ export function CapabilitySettingsSection() {
   const { groups, routingEnabled, rankingMode, loaded } = useCapabilityGroups();
   const colors = useColors();
   const s = useStyles();
-  const [showNew, setShowNew] = useState(false);
 
   return (
     <View style={{ gap: 12 }}>
@@ -122,21 +123,17 @@ export function CapabilitySettingsSection() {
         </>
       )}
 
-      {/* Groups. */}
+      {/* Groups: the four built-in capability groups (image input/output,
+          video, voice input). Custom group creation was removed (P1-6):
+          the router only honors these four tags, so a custom tag could
+          never actually route — offering to create one was a lie. She
+          adds/reorders/disables members within each group instead. */}
       {!loaded ? null : (
         <View style={{ gap: 8 }}>
           {groups.map((g) => (
             <CapabilityGroupCard key={g.id} group={g} />
           ))}
         </View>
-      )}
-
-      {showNew ? (
-        <NewGroupForm onClose={() => setShowNew(false)} />
-      ) : (
-        <Button small icon={Plus} onPress={() => setShowNew(true)}>
-          {t("capgroup.newGroup")}
-        </Button>
       )}
     </View>
   );
@@ -391,92 +388,5 @@ function MemberRow({
         />
       ) : null}
     </View>
-  );
-}
-
-function NewGroupForm({ onClose }: { onClose: () => void }) {
-  const colors = useColors();
-  const s = useStyles();
-  const { groups } = useCapabilityGroups();
-  const [name, setName] = useState("");
-  const [tag, setTag] = useState("");
-  const [kind, setKind] = useState<CapabilityKind>("input");
-
-  const trimmedTag = tag.trim().toLowerCase();
-  const duplicateTag = trimmedTag !== "" && groups.some((g) => g.tag.toLowerCase() === trimmedTag);
-
-  const create = () => {
-    if (!trimmedTag || duplicateTag) return;
-    void capabilityStore.upsert({
-      id: newCapabilityGroupId(),
-      name: name.trim(),
-      tag: trimmedTag,
-      kind,
-      members: [],
-      enabled: true,
-      createdAt: Date.now(),
-    });
-    onClose();
-  };
-
-  return (
-    <Card>
-      <TText style={{ fontWeight: "700", marginBottom: 10 }}>{t("capgroup.newGroup")}</TText>
-      <View style={{ gap: 10 }}>
-        <Field label={t("capgroup.groupName")} value={name} onChangeText={setName} />
-        <Field
-          label={t("capgroup.tag")}
-          value={tag}
-          onChangeText={setTag}
-          placeholder="e.g. image_input"
-          autoCapitalize="none"
-        />
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {(["input", "output"] as CapabilityKind[]).map((k) => {
-            const selected = kind === k;
-            return (
-              <Pressable
-                key={k}
-                accessibilityRole="button"
-                onPress={() => setKind(k)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: radii.sm,
-                  borderWidth: 1,
-                  borderColor: selected ? colors.blueDark : colors.line,
-                  backgroundColor: colors.card,
-                  alignItems: "center",
-                }}
-              >
-                <TText
-                  style={{
-                    fontWeight: "700",
-                    fontSize: 13,
-                    color: selected ? colors.blueDark : colors.text,
-                  }}
-                >
-                  {kindLabel(k)}
-                </TText>
-              </Pressable>
-            );
-          })}
-        </View>
-        <TText style={[s.small, { color: colors.muted }]}>{t("capgroup.kindDesc")}</TText>
-        {duplicateTag ? (
-          <TText style={[s.small, { color: colors.muted }]}>
-            {t("capgroup.duplicateTag", { tag: trimmedTag })}
-          </TText>
-        ) : null}
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Button small primary onPress={create} disabled={!trimmedTag || duplicateTag}>
-            {t("capgroup.create")}
-          </Button>
-          <Button small onPress={onClose}>
-            {t("capgroup.cancel")}
-          </Button>
-        </View>
-      </View>
-    </Card>
   );
 }
