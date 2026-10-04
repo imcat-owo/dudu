@@ -61,6 +61,7 @@ import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
 import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
+import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
   AiStatus,
@@ -781,7 +782,17 @@ function TellLaterView() {
     void ourSpaceStore.listTellLater(true).then(setItems);
   }, [v]);
 
-  if (items.length === 0) return <EmptyState text={t("space.tellLater.empty")} />;
+  // Proactive outreach frequency sits above the queue — the queue is what
+  // outreach draws from, so the setting belongs here, always visible.
+  const freqSection = <OutreachFrequencySection />;
+
+  if (items.length === 0)
+    return (
+      <View style={{ gap: 12 }}>
+        {freqSection}
+        <EmptyState text={t("space.tellLater.empty")} />
+      </View>
+    );
 
   const pending = items.filter((i) => !i.done);
   const done = items.filter((i) => i.done);
@@ -840,6 +851,7 @@ function TellLaterView() {
   return (
     <FadeIn>
       <View style={{ gap: 20 }}>
+        {freqSection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

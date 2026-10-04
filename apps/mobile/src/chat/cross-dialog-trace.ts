@@ -23,7 +23,9 @@ export type CrossDialogAction =
   /** AI self-organized group chat (vision feature 3) — same trace, same law. */
   | "meeting_create"
   | "meeting_round"
-  | "meeting_end";
+  | "meeting_end"
+  /** Proactive outreach (主动触达) — every notification he sends her is logged here. */
+  | "proactive_send";
 
 export interface CrossDialogTraceEntry {
   /** Stable id, e.g. "cdt_...". */

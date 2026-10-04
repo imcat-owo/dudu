@@ -24,7 +24,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Dimensions, Pressable, Text, View } from "react-native";
+import { AppState, Dimensions, Pressable, Text, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
 import { MuseApi } from "./api";
@@ -38,7 +38,8 @@ import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
 import { ErrorBoundary } from "./error-boundary";
 import { FontProvider } from "./font";
 import { GlassView } from "./glass";
-import { t } from "./i18n";
+import { t, type StringKey } from "./i18n";
+import type { NotificationPort } from "./outreach/notify";
 import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
@@ -138,6 +139,81 @@ export function LocalApp() {
   // Quietly sweep stale synthesized-speech caches (P2-24). Never blocks startup.
   useEffect(() => {
     void import("./voice/cache-cleanup").then((m) => m.cleanVoiceCache()).catch(() => {});
+  }, []);
+
+  // Proactive outreach (主动触达) lifecycle — local-first.
+  // Foreground: cancel any scheduled nudge (she's here now), record presence.
+  // Background: evaluate triggers and schedule AT MOST ONE notification.
+  // No trigger = no message, ever. Never throws — lifecycle bookkeeping
+  // must never break the app.
+  useEffect(() => {
+    let alive = true;
+    void import("./outreach/instances").then((m) => {
+      if (alive) void m.outreachStore.markOpened().catch(() => {});
+    });
+    const sub = AppState.addEventListener("change", (state) => {
+      void (async () => {
+        try {
+          const [
+            { outreachStore },
+            { evaluateAndScheduleOutreach, cancelScheduledOutreach },
+            notificationsModule,
+            { crossDialogTraceStore },
+            { ourSpaceStore },
+          ] = await Promise.all([
+            import("./outreach/instances"),
+            import("./outreach/notify"),
+            import("expo-notifications"),
+            import("./chat/cross-dialog-instance"),
+            import("./our-space/instance"),
+          ]);
+          if (!alive) return;
+          // Adapter: expo-notifications module → NotificationPort. Keeps
+          // notify.ts free of native imports (unit-testable in node).
+          const notifPort: NotificationPort = {
+            getPermissionsAsync: () => notificationsModule.getPermissionsAsync(),
+            cancelScheduledNotificationAsync: (id: string) =>
+              notificationsModule.cancelScheduledNotificationAsync(id),
+            scheduleNotificationAsync: (req) =>
+              notificationsModule.scheduleNotificationAsync({
+                identifier: req.identifier,
+                content: req.content,
+                trigger: {
+                  type: notificationsModule.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                  seconds: req.trigger.seconds,
+                },
+              }),
+          };
+          if (state === "background") {
+            await evaluateAndScheduleOutreach({
+              store: outreachStore,
+              notifications: notifPort,
+              trace: crossDialogTraceStore,
+              data: {
+                listAnniversaries: () => ourSpaceStore.listAnniversaries(),
+                listPendingTellLater: async () =>
+                  (await ourSpaceStore.listTellLater(false))
+                    .filter((i) => !i.done)
+                    .map((i) => ({ id: i.id, text: i.text })),
+                countUnreadLoveLetters: async () =>
+                  (await ourSpaceStore.getUnseenLoveLetters()).length,
+              },
+              copy: (key, params) => t(key as StringKey, params),
+            });
+          } else if (state === "active") {
+            // She's back — the nudge is no longer needed.
+            await cancelScheduledOutreach(notifPort);
+            await outreachStore.markOpened();
+          }
+        } catch {
+          // Bookkeeping must never break the app lifecycle.
+        }
+      })();
+    });
+    return () => {
+      alive = false;
+      sub.remove();
+    };
   }, []);
 
   const nav: { id: LocalSection; label: string; icon: LucideIcon }[] = [

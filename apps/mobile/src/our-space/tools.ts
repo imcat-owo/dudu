@@ -368,7 +368,10 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
     {
       name: "tell_later_add",
       description:
-        "Queue something to tell her later (稍后告诉她). Use when there is something she should know but now is not the right moment — you will bring it up when she is around. She sees the queue and checks items off.",
+        "Queue something to tell her later (稍后告诉她). Use when there is something she should know but now is not the right moment — you will bring it up when she is around. She sees the queue and checks items off. " +
+        "Queued items may also reach her proactively: when the moment is right and she allows it (outreach frequency 积极/适度), a queued message can be sent to her as a notification — the queue entry itself becomes the message content. " +
+        "安静档 never sends notifications; items are only mentioned when she is in the app. " +
+        "Never queue empty pings like '在吗' — every queued item must carry something worth saying.",
       parameters: {
         type: "object",
         properties: {
