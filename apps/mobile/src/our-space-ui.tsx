@@ -392,7 +392,16 @@ function StatusView() {
     void ambientVideoStore.load().catch(() => null);
   }, []);
 
-  if (!status) return <EmptyState text={t("space.status.empty")} />;
+  // Task cards must not depend on the AI having set a status (P1-4):
+  // background work (e.g. knowledge indexing) reports progress even when
+  // no status exists yet.
+  if (!status)
+    return (
+      <>
+        <EmptyState text={t("space.status.empty")} />
+        <TaskCards />
+      </>
+    );
   return (
     <FadeIn>
       <SoftCard>
