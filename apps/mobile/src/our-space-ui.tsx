@@ -48,12 +48,14 @@ import {
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
+import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
 import type { MemoryRecord } from "./memory/types";
 import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
 import { ourSpaceStore } from "./our-space/instance";
+import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
   AiStatus,
   Anniversary,
@@ -70,15 +72,14 @@ import type {
   WorkItem,
   WorkType,
 } from "./our-space/store";
-import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import { TaskCards } from "./our-space/task-cards-ui";
 import { taskProgressStore } from "./our-space/task-progress-instance";
 import { SoraAmbient } from "./sora-ambient";
 import { ambientVideoStore } from "./sora-ambient-video-instance";
-import { useTheme } from "./theme/ThemeContext";
-import { useColors } from "./ui";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
+import { useTheme } from "./theme/ThemeContext";
+import { useColors } from "./ui";
 
 type SpaceTab = "status" | "diary" | "timeline" | "garden" | "tellLater";
 
@@ -241,7 +242,14 @@ function EmptyState({ text }: { text: string }) {
 }
 
 /** Hand-drawn card: soft asymmetric radii, hairline border, soft shadow. */
-export function SoftCard({ children }: { children: React.ReactNode }) {
+export function SoftCard({
+  children,
+  tape,
+}: {
+  children: React.ReactNode;
+  /** Optional washi tape color pinned to the card's top edge. */
+  tape?: TapeColor;
+}) {
   const colors = useColors();
   return (
     <View
@@ -253,9 +261,12 @@ export function SoftCard({ children }: { children: React.ReactNode }) {
         borderWidth: 1,
         borderColor: colors.line,
         padding: 18,
+        overflow: "hidden",
         ...shadows.card,
       }}
     >
+      <PaperGrain />
+      {tape ? <WashiTape color={tape} style={{ top: -9, left: 28 }} rotate={-7} /> : null}
       {children}
     </View>
   );
@@ -947,6 +958,17 @@ const CARDS: CardDef[] = [
   { page: "music", labelKey: "space.cards.music", icon: Headphones },
 ];
 
+const TAPE_ROTATION: Record<string, TapeColor> = {
+  feed: "pink",
+  anniversary: "lavender",
+  diary: "yellow",
+  garden: "mint",
+  status: "blue",
+  tellLater: "pink",
+  works: "yellow",
+  music: "blue",
+};
+
 function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
   const colors = useColors();
   return (
@@ -974,12 +996,20 @@ function CardGrid({ onOpen }: { onOpen: (p: SpacePage) => void }) {
                   gap: 8,
                   minHeight: 108,
                   justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
+                <PaperGrain />
+                <WashiTape
+                  color={TAPE_ROTATION[card.page] ?? "pink"}
+                  style={{ top: -8, right: 14 }}
+                  rotate={i % 2 === 0 ? 8 : -8}
+                  width={64}
+                />
                 <Icon size={26} color={colors.text} strokeWidth={1.5} />
-                <TText style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>
+                <HandText style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>
                   {t(card.labelKey)}
-                </TText>
+                </HandText>
               </View>
             </PressableScale>
           </StaggerIn>
@@ -1028,9 +1058,9 @@ function PageShell({
             <ChevronLeft size={20} color={colors.text} strokeWidth={1.8} />
           </View>
         </PressableScale>
-        <TText style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginLeft: 4 }}>
+        <HandText style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginLeft: 4 }}>
           {title}
-        </TText>
+        </HandText>
       </View>
       <ScrollView
         style={{ flex: 1 }}

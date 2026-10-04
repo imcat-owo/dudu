@@ -69,8 +69,9 @@ import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
 import { petActivity } from "./pet/store";
 import { SoraAmbient } from "./sora-ambient";
-import { useColors } from "./ui";
 import { radii } from "./theme/radii";
+import { useTheme } from "./theme/ThemeContext";
+import { useColors } from "./ui";
 
 /** Re-render whenever the music store changes (AI writes from dialog). */
 function useMusicVersion(): number {
@@ -394,7 +395,9 @@ function CoverArt({
 }) {
   const colors = useColors();
   const spin = useRef(new Animated.Value(0)).current;
+  const breathe = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
+  const breatheRef = useRef<Animated.CompositeAnimation | null>(null);
   useEffect(() => {
     if (spinning) {
       animRef.current = Animated.loop(
@@ -406,12 +409,36 @@ function CoverArt({
         }),
       );
       animRef.current.start();
+      // Gentle "breathing" swell while the music plays — the disc feels alive.
+      breatheRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(breathe, {
+            toValue: 1,
+            duration: 2300,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(breathe, {
+            toValue: 0,
+            duration: 2300,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      breatheRef.current.start();
     } else {
       animRef.current?.stop();
+      breatheRef.current?.stop();
+      breathe.setValue(0);
     }
-    return () => animRef.current?.stop();
-  }, [spinning, spin]);
+    return () => {
+      animRef.current?.stop();
+      breatheRef.current?.stop();
+    };
+  }, [spinning, spin, breathe]);
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  const breatheScale = breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] });
   const uri = track?.coverUri || track?.artworkUrl || "";
   return (
     <View style={{ alignItems: "center" }}>
@@ -420,7 +447,7 @@ function CoverArt({
           width: size,
           height: size,
           borderRadius: size / 2,
-          transform: [{ rotate }],
+          transform: [{ rotate }, { scale: breatheScale }],
           shadowColor: "#000",
           shadowOpacity: 0.18,
           shadowRadius: 24,
@@ -826,7 +853,9 @@ function TogetherBar({
             alignItems: together.active ? "flex-end" : "flex-start",
           }}
         >
-          <View style={{ width: 20, height: 20, borderRadius: radii.sm, backgroundColor: colors.card }} />
+          <View
+            style={{ width: 20, height: 20, borderRadius: radii.sm, backgroundColor: colors.card }}
+          />
         </View>
       </View>
     </PressableScale>
@@ -836,6 +865,67 @@ function TogetherBar({
 // ---------------------------------------------------------------------------
 // Now playing section
 // ---------------------------------------------------------------------------
+
+/**
+ * AlbumGlow — ambient blurred halo behind the now-playing card.
+ *
+ * Renders the current track's cover art scaled up and heavily blurred with a
+ * theme-aware dim veil, crossfading smoothly when the track changes. Pure
+ * atmosphere: it never carries information, so readability is untouched.
+ */
+function AlbumGlow({ track }: { track: Track | null }) {
+  const colors = useColors();
+  const { resolvedMode } = useTheme();
+  const uri = track?.coverUri || track?.artworkUrl || "";
+  const [shown, setShown] = useState(uri);
+  const fade = useRef(new Animated.Value(uri ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (uri === shown) return;
+    Animated.timing(fade, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => {
+      setShown(uri);
+      Animated.timing(fade, { toValue: 1, duration: 480, useNativeDriver: true }).start();
+    });
+  }, [uri, shown, fade]);
+
+  const dark = resolvedMode === "dark";
+  if (!shown) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: -28,
+        left: -28,
+        right: -28,
+        bottom: -28,
+        borderRadius: radii.xl + 28,
+        overflow: "hidden",
+        opacity: fade.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
+      }}
+    >
+      <Image
+        source={{ uri: shown }}
+        blurRadius={42}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        resizeMode="cover"
+      />
+      {/* Veil keeps the card readable over bright artwork. */}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: dark ? "rgba(0,0,0,0.42)" : colors.canvas,
+          opacity: dark ? 1 : 0.55,
+        }}
+      />
+    </Animated.View>
+  );
+}
 
 function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngine> }) {
   const colors = useColors();
@@ -849,76 +939,88 @@ function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngi
     }
   };
   return (
-    <SoftCard>
-      <View style={{ alignItems: "center", gap: 4 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <SoraAmbient
-            video={status.playing ? "making_something" : "idle"}
-            slot="music-dj"
-            size={34}
-          />
-          <TText style={{ color: colors.muted, fontSize: 11.5, letterSpacing: 1 }}>
-            {status.playing ? t("music.djWorking") : t("music.nowPlaying")}
+    <View style={{ position: "relative" }}>
+      <AlbumGlow track={nowPlaying} />
+      <SoftCard>
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <SoraAmbient
+              video={status.playing ? "making_something" : "idle"}
+              slot="music-dj"
+              size={34}
+            />
+            <TText style={{ color: colors.muted, fontSize: 11.5, letterSpacing: 1 }}>
+              {status.playing ? t("music.djWorking") : t("music.nowPlaying")}
+            </TText>
+          </View>
+          <View style={{ marginVertical: 10 }}>
+            <CoverArt track={nowPlaying} size={210} spinning={status.playing} />
+          </View>
+          <TText
+            style={{ color: colors.text, fontSize: 19, fontWeight: "800", textAlign: "center" }}
+          >
+            {nowPlaying?.title ?? t("music.nothingPlaying")}
           </TText>
-        </View>
-        <View style={{ marginVertical: 10 }}>
-          <CoverArt track={nowPlaying} size={210} spinning={status.playing} />
-        </View>
-        <TText style={{ color: colors.text, fontSize: 19, fontWeight: "800", textAlign: "center" }}>
-          {nowPlaying?.title ?? t("music.nothingPlaying")}
-        </TText>
-        {!!nowPlaying && (
-          <TText style={{ color: colors.muted, fontSize: 13.5, textAlign: "center" }}>
-            {nowPlaying.artist || t("music.source.local")}
-            {nowPlaying.source === "apple-music" ? " · Apple Music" : ""}
-          </TText>
-        )}
-      </View>
-      <View style={{ marginTop: 14 }}>
-        <ProgressBar
-          position={status.position}
-          duration={status.duration}
-          onSeek={(s) => void seek(s)}
-        />
-      </View>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 26,
-          marginTop: 10,
-        }}
-      >
-        <ControlButton onPress={() => void prev()} label={t("music.prev")}>
-          <SkipBack size={26} color={colors.text} strokeWidth={1.6} />
-        </ControlButton>
-        <ControlButton
-          onPress={() => void toggle()}
-          label={status.playing ? t("music.pause") : t("music.play")}
-          primary
-        >
-          {status.playing ? (
-            <Pause size={28} color={colors.card} fill={colors.card} strokeWidth={1.6} />
-          ) : (
-            <Play size={28} color={colors.card} fill={colors.card} strokeWidth={1.6} />
+          {!!nowPlaying && (
+            <TText style={{ color: colors.muted, fontSize: 13.5, textAlign: "center" }}>
+              {nowPlaying.artist || t("music.source.local")}
+              {nowPlaying.source === "apple-music" ? " · Apple Music" : ""}
+            </TText>
           )}
-        </ControlButton>
-        <ControlButton onPress={() => void advance()} label={t("music.skip")}>
-          <SkipForward size={26} color={colors.text} strokeWidth={1.6} />
-        </ControlButton>
-      </View>
-      {!!nowPlaying && (
-        <View style={{ marginTop: 16 }}>
-          <LyricsView track={nowPlaying} position={status.position} />
         </View>
-      )}
-      {!!error && (
-        <View style={{ marginTop: 12, padding: 10, borderRadius: radii.md, backgroundColor: colors.sky }}>
-          <TText style={{ color: colors.text, fontSize: 12.5 }}>{error}</TText>
+        <View style={{ marginTop: 14 }}>
+          <ProgressBar
+            position={status.position}
+            duration={status.duration}
+            onSeek={(s) => void seek(s)}
+          />
         </View>
-      )}
-    </SoftCard>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 26,
+            marginTop: 10,
+          }}
+        >
+          <ControlButton onPress={() => void prev()} label={t("music.prev")}>
+            <SkipBack size={26} color={colors.text} strokeWidth={1.6} />
+          </ControlButton>
+          <ControlButton
+            onPress={() => void toggle()}
+            label={status.playing ? t("music.pause") : t("music.play")}
+            primary
+          >
+            {status.playing ? (
+              <Pause size={28} color={colors.card} fill={colors.card} strokeWidth={1.6} />
+            ) : (
+              <Play size={28} color={colors.card} fill={colors.card} strokeWidth={1.6} />
+            )}
+          </ControlButton>
+          <ControlButton onPress={() => void advance()} label={t("music.skip")}>
+            <SkipForward size={26} color={colors.text} strokeWidth={1.6} />
+          </ControlButton>
+        </View>
+        {!!nowPlaying && (
+          <View style={{ marginTop: 16 }}>
+            <LyricsView track={nowPlaying} position={status.position} />
+          </View>
+        )}
+        {!!error && (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: radii.md,
+              backgroundColor: colors.sky,
+            }}
+          >
+            <TText style={{ color: colors.text, fontSize: 12.5 }}>{error}</TText>
+          </View>
+        )}
+      </SoftCard>
+    </View>
   );
 }
 
@@ -1026,7 +1128,10 @@ function SongRow({
             style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
           >
             {art ? (
-              <Image source={{ uri: art }} style={{ width: 44, height: 44, borderRadius: radii.sm }} />
+              <Image
+                source={{ uri: art }}
+                style={{ width: 44, height: 44, borderRadius: radii.sm }}
+              />
             ) : (
               <View
                 style={{
