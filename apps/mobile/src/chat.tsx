@@ -78,6 +78,7 @@ import {
   useDropZone,
 } from "./pet/registry";
 import { petActivity } from "./pet/store";
+import { supportsSection } from "./section-support";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-drawer";
@@ -296,7 +297,7 @@ export function ChatScreen({
   const { scale: fontScale } = useFontSizeSetting();
   const fs = (base: number): number => Math.round(base * fontScale * 10) / 10;
   const { tokens, bundle } = useTheme();
-  const { api, workspace: w, refresh, navigate } = useWorkspace();
+  const { api, workspace: w, refresh, navigate, supportedSections } = useWorkspace();
   const { data: agentWorkspace, refresh: refreshAgent } = useAgentWorkspace();
   const { enabled: threadsEnabled, mainId, claimPrompt } = useMuseThread();
   // Dual-mode: cloud → CopilotKit agent via backend; local → direct SSE agent.
@@ -910,7 +911,16 @@ export function ChatScreen({
                   text: t("chat.suggest.summarize"),
                   action: () => enqueue(t("chat.suggest.summarize")),
                 },
-                { text: t("chat.suggest.watch"), action: () => navigate("goals") },
+                // "goals" has no screen in local mode — offering the button
+                // there would be a dead button (P1-1).
+                ...(supportsSection(supportedSections, "goals")
+                  ? [
+                      {
+                        text: t("chat.suggest.watch"),
+                        action: () => navigate("goals"),
+                      },
+                    ]
+                  : []),
               ].map((item) => (
                 <Button key={item.text} onPress={item.action}>
                   {item.text}

@@ -155,6 +155,9 @@ export function LocalApp() {
         if (next === "chat" || next === "connections" || next === "appearance" || next === "space")
           setSection(next as LocalSection);
       },
+      // Local shell has no goals/apps/activity screens — keep dead-button
+      // suggestions out of the chat welcome card (P1-1).
+      supportedSections: ["chat", "space", "connections", "appearance"] as Section[],
       refresh: () => Promise.resolve(),
       open: () => {},
       close: () => {},

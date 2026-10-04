@@ -29,6 +29,13 @@ export interface WorkspaceContextValue {
   api: MuseApi;
   section: Section;
   navigate: (section: Section) => void;
+  /**
+   * Sections the current app shell can actually render. Local mode only
+   * hosts chat/space/connections/appearance — "goals" has no screen there,
+   * so callers must not offer navigation to it (no dead buttons).
+   * Undefined = every section is supported (cloud shell).
+   */
+  supportedSections?: Section[];
   refresh: () => Promise<void>;
   open: (detail: Detail) => void;
   close: () => void;
