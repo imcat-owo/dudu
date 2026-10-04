@@ -11,7 +11,7 @@
  * Storage is injectable (AsyncStorage in production, Map-backed fake in tests).
  */
 
-export type AmbientVideoSlot = "ourspace" | "music-dj" | "knowledge";
+export type AmbientVideoSlot = "ourspace" | "music-dj" | "knowledge" | "skills" | "threads";
 
 export type AmbientVideoOverrides = Record<AmbientVideoSlot, string | null>;
 
@@ -26,12 +26,16 @@ export const AMBIENT_VIDEO_SLOTS: readonly AmbientVideoSlot[] = [
   "ourspace",
   "music-dj",
   "knowledge",
+  "skills",
+  "threads",
 ];
 
 const EMPTY: AmbientVideoOverrides = {
   ourspace: null,
   "music-dj": null,
   knowledge: null,
+  skills: null,
+  threads: null,
 };
 
 export class AmbientVideoStore {

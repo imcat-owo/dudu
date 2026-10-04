@@ -12,21 +12,13 @@
 import * as ImagePicker from "expo-image-picker";
 import { Image as ImageIcon, Sparkles, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  Easing,
-  ImageBackground,
-  Modal,
-  Pressable,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Animated, ImageBackground, Modal, Pressable, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { GlassView } from "../glass";
 import { type StringKey, t } from "../i18n";
 import { buildImageUrl } from "../image-generation";
-import { DUR, EASE, SPRING, STAGGER } from "../motion";
+import { SPRING, STAGGER } from "../motion";
+import { ProgressBar } from "../progress-bar";
 import { useColors } from "../ui";
 import type { BackgroundTask, TaskStatus } from "./task-progress";
 import { taskProgressStore } from "./task-progress-instance";
@@ -48,113 +40,6 @@ function statusLabel(status: TaskStatus): StringKey {
     default:
       return "space.tasks.status.running";
   }
-}
-
-/** Animated progress bar: smooth easing + shimmer sweep + cute blob tip. */
-function ProgressBar({ progress, active }: { progress: number; active: boolean }) {
-  const colors = useColors();
-  const width = useRef(new Animated.Value(0)).current;
-  const shimmer = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(width, {
-      toValue: progress,
-      duration: DUR.normal,
-      easing: Easing.bezier(...EASE.out),
-      useNativeDriver: false,
-    }).start();
-  }, [progress, width]);
-
-  useEffect(() => {
-    if (!active) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => {
-      loop.stop();
-      shimmer.setValue(0);
-    };
-  }, [active, shimmer]);
-
-  const shimmerX = shimmer.interpolate({ inputRange: [0, 1], outputRange: [-70, 240] });
-
-  return (
-    <View
-      style={{
-        height: 10,
-        borderRadius: radii.xs,
-        backgroundColor: colors.line,
-      }}
-    >
-      <Animated.View
-        style={{
-          height: "100%",
-          borderRadius: radii.xs,
-          backgroundColor: colors.blue,
-          width: width.interpolate({ inputRange: [0, 1], outputRange: ["2%", "100%"] }),
-          overflow: "visible",
-        }}
-      >
-        {active && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              borderRadius: radii.xs,
-              overflow: "hidden",
-            }}
-          >
-            <Animated.View
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                width: 70,
-                backgroundColor: colors.onBlue,
-                opacity: 0.32,
-                transform: [{ translateX: shimmerX }],
-              }}
-            />
-          </View>
-        )}
-        {/* cute round blob riding the fill tip */}
-        <Animated.View
-          style={{
-            position: "absolute",
-            right: -7,
-            top: -2,
-            width: 14,
-            height: 14,
-            borderRadius: radii.xs,
-            backgroundColor: colors.blue,
-            borderWidth: 2.5,
-            borderColor: colors.onBlue,
-            opacity: width.interpolate({ inputRange: [0, 0.03], outputRange: [0, 1] }),
-            transform: [
-              { scale: width.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
-            ],
-          }}
-        />
-      </Animated.View>
-    </View>
-  );
 }
 
 function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {

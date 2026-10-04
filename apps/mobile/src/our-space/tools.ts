@@ -12,6 +12,7 @@
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import { getOnThisDay } from "./on-this-day.js";
 import type { OurSpaceStore, TimelineKind } from "./store.js";
+import { daysTogether, resolveTogetherSince } from "./together.js";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -153,6 +154,53 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const p = await store.setNickname(who, name || null);
         const label = who === "her" ? p.herNickname : p.aiNickname;
         return label ? `Nickname set: ${label}` : "Nickname cleared.";
+      },
+    },
+
+    // ---- Days together ----
+    {
+      name: "together_since_read",
+      description:
+        "Read the together-since date in Our Space (the day you two got together) and how many days that is. Use when she asks 'we've been together how long?' or to celebrate naturally.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "our-space",
+      run: async () => {
+        const p = await store.getCoupleProfile();
+        const anniversaries = await store.listAnniversaries();
+        const since = resolveTogetherSince(p, anniversaries);
+        if (!since) {
+          return "No together-since date set yet, and no anniversaries to guess from. Use together_since_set when she tells you the date (e.g. '我们是10月1日在一起的').";
+        }
+        const n = daysTogether(since, new Date());
+        return `Together since: ${since} — ${n} days together.`;
+      },
+    },
+    {
+      name: "together_since_set",
+      description:
+        "Set the together-since date in Our Space (the day you two got together, YYYY-MM-DD). Use when she tells you the date. Pass an empty date to clear.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "The date in YYYY-MM-DD, e.g. 2024-10-01. Empty string clears it.",
+          },
+        },
+        required: ["date"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const date = strArg(args, "date");
+        try {
+          const p = await store.setTogetherSince(date || null);
+          if (!p.togetherSince) return "Together-since date cleared.";
+          const n = daysTogether(p.togetherSince, new Date());
+          return `Together-since set to ${p.togetherSince} — ${n} days together.`;
+        } catch (e) {
+          throw new ToolError(e instanceof Error ? e.message : "Invalid date.");
+        }
       },
     },
 
@@ -833,13 +881,14 @@ export function createAmbientVideoTools(
     {
       name: "ambient_video_set",
       description:
-        "Set a custom ambient Sora video for a slot. Slots: ourspace (empty states in Our Space), music-dj (the DJ buddy in the music room), knowledge (knowledge base empty state). uri is a video URI she gave you (e.g. from her uploads); empty string resets to the bundled Sora default.",
+        "Set a custom ambient Sora video for a slot. Slots: ourspace (empty states in Our Space), music-dj (the DJ buddy in the music room), knowledge (knowledge base empty state), skills (skills empty state), threads (dialog list empty state). uri is a video URI she gave you (e.g. from her uploads); empty string resets to the bundled Sora default.",
       parameters: {
         type: "object",
         properties: {
           slot: {
             type: "string",
-            description: "ourspace | music-dj | knowledge — which spot this video plays in.",
+            description:
+              "ourspace | music-dj | knowledge | skills | threads — which spot this video plays in.",
           },
           uri: {
             type: "string",
@@ -852,8 +901,14 @@ export function createAmbientVideoTools(
       manualId: "our-space",
       run: async (args) => {
         const raw = strArg(args, "slot").toLowerCase();
-        if (raw !== "ourspace" && raw !== "music-dj" && raw !== "knowledge") {
-          throw new ToolError('slot must be "ourspace", "music-dj", or "knowledge".');
+        if (
+          raw !== "ourspace" &&
+          raw !== "music-dj" &&
+          raw !== "knowledge" &&
+          raw !== "skills" &&
+          raw !== "threads"
+        ) {
+          throw new ToolError('slot must be "ourspace", "music-dj", "knowledge", "skills", or "threads".');
         }
         const uri = strArg(args, "uri");
         await videoStore.set(raw, uri || null);

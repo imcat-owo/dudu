@@ -8,6 +8,7 @@ import { buildNicknameSection } from "../src/our-space/nickname-section.js";
 import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
 import { createOurSpaceTools } from "../src/our-space/tools.js";
 import { getOnThisDay } from "../src/our-space/on-this-day.js";
+import { daysTogether, resolveTogetherSince } from "../src/our-space/together.js";
 
 function fakeStorage(): OurSpaceStorage {
   const map = new Map<string, string>();
@@ -112,9 +113,9 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 32 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 34 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 32);
+    assert.equal(tools.length, 34);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
@@ -328,6 +329,7 @@ describe("nickname-section: buildNicknameSection", () => {
         aiAvatarUri: null,
         herNickname: null,
         aiNickname: null,
+        togetherSince: null,
         updatedAt: 0,
       }),
       "",
@@ -340,6 +342,7 @@ describe("nickname-section: buildNicknameSection", () => {
       aiAvatarUri: null,
       herNickname: "宝宝",
       aiNickname: "老公",
+      togetherSince: null,
       updatedAt: 0,
     });
     assert.ok(line.includes("宝宝"));
@@ -352,6 +355,7 @@ describe("nickname-section: buildNicknameSection", () => {
       aiAvatarUri: null,
       herNickname: "宝宝",
       aiNickname: null,
+      togetherSince: null,
       updatedAt: 0,
     });
     assert.ok(line.includes("宝宝"));
@@ -645,5 +649,77 @@ describe("left notes", () => {
     // Note: tool uses real current date, so we just check it runs without error
     const out = await tool.run({}, ctx);
     assert.equal(typeof out, "string");
+  });
+});
+
+describe("together: resolveTogetherSince + daysTogether", () => {
+  const profile = (togetherSince: string | null) => ({
+    herAvatarUri: null,
+    aiAvatarUri: null,
+    herNickname: null,
+    aiNickname: null,
+    togetherSince,
+    updatedAt: 0,
+  });
+
+  it("prefers the explicit together-since date", () => {
+    const since = resolveTogetherSince(profile("2024-10-01"), [
+      { id: "a", title: "相遇", date: "2023-05-01", description: "", createdAt: 0 },
+    ]);
+    assert.equal(since, "2024-10-01");
+  });
+
+  it("falls back to the earliest anniversary", () => {
+    const since = resolveTogetherSince(profile(null), [
+      { id: "a", title: "生日", date: "2025-03-02", description: "", createdAt: 0 },
+      { id: "b", title: "相遇", date: "2023-05-01", description: "", createdAt: 0 },
+    ]);
+    assert.equal(since, "2023-05-01");
+  });
+
+  it("returns null when nothing set and no anniversaries", () => {
+    assert.equal(resolveTogetherSince(profile(null), []), null);
+    assert.equal(resolveTogetherSince(null, []), null);
+  });
+
+  it("counts day 1 on the together day itself", () => {
+    const now = new Date(2026, 9, 4, 15, 0, 0);
+    assert.equal(daysTogether("2026-10-04", now), 1);
+    assert.equal(daysTogether("2026-10-03", now), 2);
+    assert.equal(daysTogether("2025-10-04", now), 366);
+  });
+
+  it("returns null for bad or future dates", () => {
+    const now = new Date(2026, 9, 4);
+    assert.equal(daysTogether("not-a-date", now), null);
+    assert.equal(daysTogether("2026-02-30", now), null);
+    assert.equal(daysTogether("2027-01-01", now), null);
+    assert.equal(daysTogether(null, now), null);
+  });
+
+  it("setTogetherSince stores, validates, and clears", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const p = await s.setTogetherSince("2024-10-01");
+    assert.equal(p.togetherSince, "2024-10-01");
+    await assert.rejects(() => s.setTogetherSince("10/01/2024"), /YYYY-MM-DD/);
+    const cleared = await s.setTogetherSince("");
+    assert.equal(cleared.togetherSince, null);
+  });
+
+  it("together_since tools round-trip", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const tools = createOurSpaceTools(s);
+    const read = tools.find((t) => t.name === "together_since_read")!;
+    const set = tools.find((t) => t.name === "together_since_set")!;
+    assert.match(await read.run({}, ctx), /No together-since date/);
+    const out = await set.run({ date: "2024-10-01" }, ctx);
+    assert.match(out, /2024-10-01/);
+    assert.match(out, /days together/);
+    assert.match(await read.run({}, ctx), /2024-10-01/);
+    await assert.rejects(() => set.run({ date: "昨天" }, ctx), /YYYY-MM-DD/);
+  });
+
+  it("zero emoji in together strings", () => {
+    assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test("在一起"));
   });
 });

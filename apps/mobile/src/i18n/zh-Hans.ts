@@ -191,6 +191,7 @@ const zhHans = {
   "space.couple.herAvatar": "她的头像",
   "space.couple.aiAvatar": "我的头像",
   "space.couple.changeAvatar": "换头像",
+  "space.couple.daysTogether": "在一起 {n} 天",
   "space.feed.title": "动态",
   "space.feed.empty": "一条动态都没有。发第一条吧——跟我说，我来发；你自己写也行。",
   "space.feed.postHint": "此刻，想说什么…",

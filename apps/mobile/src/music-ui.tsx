@@ -1428,11 +1428,12 @@ function PlaylistSection({
         </View>
       )}
       {songs.length === 0 ? (
-        <TText
-          style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 16 }}
-        >
-          {t("music.songs.empty")}
-        </TText>
+        <View style={{ alignItems: "center", paddingVertical: 24 }}>
+          <SoraAmbient video="idle" slot="music-dj" size={64} />
+          <TText style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 14 }}>
+            {t("music.songs.empty")}
+          </TText>
+        </View>
       ) : (
         songs.map((tr, i) => (
           <SongRow
@@ -1486,9 +1487,12 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
         {t("music.comments")}
       </TText>
       {comments.length === 0 ? (
-        <TText style={{ color: colors.muted, fontSize: 13, paddingVertical: 8 }}>
-          {t("music.comments.empty")}
-        </TText>
+        <View style={{ alignItems: "center", paddingVertical: 12 }}>
+          <SoraAmbient video="idle" slot="music-dj" size={48} />
+          <TText style={{ color: colors.muted, fontSize: 13, marginTop: 10 }}>
+            {t("music.comments.empty")}
+          </TText>
+        </View>
       ) : (
         comments.map((c) => (
           <View key={c.id} style={{ flexDirection: "row", gap: 10, paddingVertical: 8 }}>

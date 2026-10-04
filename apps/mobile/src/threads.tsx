@@ -14,6 +14,7 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { registerNewDialogHandler, registerRenameDialogHandler } from "./chat/dialog-tools";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { SoraAmbient } from "./sora-ambient";
 import { Button, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
 
@@ -321,9 +322,12 @@ export function ThreadsSheet({ onClose }: { onClose: () => void }) {
               !threads.threads.some(
                 (thread) => thread.id !== mainId && thread.archived === archived,
               ) && (
-                <TText style={s.muted}>
-                  {archived ? t("threads.noArchived") : t("threads.emptyHint")}
-                </TText>
+                <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                  <SoraAmbient video="idle" slot="threads" size={56} />
+                  <TText style={[s.muted, { marginTop: 12, textAlign: "center" }]}>
+                    {archived ? t("threads.noArchived") : t("threads.emptyHint")}
+                  </TText>
+                </View>
               )}
             <ErrorNotice error={threads.fetchMoreError?.message} />
             {threads.hasMoreThreads && (

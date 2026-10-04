@@ -79,6 +79,8 @@ export interface CoupleProfile {
   herNickname: string | null;
   /** What she calls him, e.g. "老公". Null = not set. */
   aiNickname: string | null;
+  /** The day they got together, YYYY-MM-DD. Null = not set. */
+  togetherSince: string | null;
   updatedAt: number;
 }
 
@@ -468,6 +470,7 @@ export class OurSpaceStore {
         aiAvatarUri: null,
         herNickname: null,
         aiNickname: null,
+        togetherSince: null,
         updatedAt: 0,
       };
       const next: CoupleProfile = {
@@ -493,6 +496,7 @@ export class OurSpaceStore {
         aiAvatarUri: null,
         herNickname: null,
         aiNickname: null,
+        togetherSince: null,
         updatedAt: 0,
       };
       const trimmed = name?.trim() || null;
@@ -500,6 +504,35 @@ export class OurSpaceStore {
         ...cur,
         herNickname: who === "her" ? trimmed : cur.herNickname,
         aiNickname: who === "ai" ? trimmed : cur.aiNickname,
+        updatedAt: Date.now(),
+      };
+      await writeJson(this.storage, KEYS.couple, next);
+      this.emit();
+      return next;
+    });
+  }
+
+  /**
+   * Set the together-since date (YYYY-MM-DD) — the day they got together.
+   * Pass null or empty to clear. Throws on invalid format.
+   */
+  async setTogetherSince(date: string | null): Promise<CoupleProfile> {
+    const trimmed = date?.trim() || null;
+    if (trimmed && !/^(\d{4})-(\d{2})-(\d{2})$/.test(trimmed)) {
+      throw new Error(`Invalid date "${trimmed}" — use YYYY-MM-DD.`);
+    }
+    return this.exclusive(async () => {
+      const cur = (await this.getCoupleProfile()) ?? {
+        herAvatarUri: null,
+        aiAvatarUri: null,
+        herNickname: null,
+        aiNickname: null,
+        togetherSince: null,
+        updatedAt: 0,
+      };
+      const next: CoupleProfile = {
+        ...cur,
+        togetherSince: trimmed,
         updatedAt: Date.now(),
       };
       await writeJson(this.storage, KEYS.couple, next);

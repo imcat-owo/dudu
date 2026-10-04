@@ -59,6 +59,7 @@ import { DUR, EASE, exitDuration, STAGGER } from "./motion";
 import { MusicRoomPage } from "./music-ui";
 import { ourSpaceStore } from "./our-space/instance";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
+import { daysTogether, resolveTogetherSince } from "./our-space/together";
 import type {
   AiStatus,
   Anniversary,
@@ -884,9 +885,16 @@ function CoupleHeader() {
   const v = useOurSpaceVersion();
   const colors = useColors();
   const [profile, setProfile] = useState<CoupleProfile | null>(null);
+  const [togetherDays, setTogetherDays] = useState<number | null>(null);
 
   useEffect(() => {
-    void ourSpaceStore.getCoupleProfile().then(setProfile);
+    void (async () => {
+      const p = await ourSpaceStore.getCoupleProfile();
+      setProfile(p);
+      const anniversaries = await ourSpaceStore.listAnniversaries();
+      const since = resolveTogetherSince(p, anniversaries);
+      setTogetherDays(daysTogether(since));
+    })();
   }, [v]);
 
   const pickAvatar = async (who: "her" | "ai") => {
@@ -1008,6 +1016,32 @@ function CoupleHeader() {
       <TText style={{ color: colors.muted, fontSize: 12.5, marginTop: 3 }}>
         {t("space.subtitle")} · {todayLine()}
       </TText>
+      {togetherDays !== null && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginTop: 8,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: radii.lg,
+            backgroundColor: colors.sky,
+          }}
+        >
+          <Heart size={13} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
+          <TText
+            style={{
+              color: colors.text,
+              fontSize: 13,
+              fontWeight: "700",
+              marginLeft: 6,
+              letterSpacing: 0.3,
+            }}
+          >
+            {t("space.couple.daysTogether", { n: togetherDays })}
+          </TText>
+        </View>
+      )}
     </View>
   );
 }

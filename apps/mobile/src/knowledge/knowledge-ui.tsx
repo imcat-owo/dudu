@@ -19,11 +19,12 @@ import {
   TriangleAlert,
 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { useApiGroups } from "../api-groups/store";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { taskProgressStore } from "../our-space/task-progress-instance";
+import { ProgressBar } from "../progress-bar";
 import { SoraAmbient } from "../sora-ambient";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
 import { healInterruptedDocs, type IndexProgress, indexDocument, reindexDocument } from "./indexer";
@@ -382,8 +383,8 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
         </View>
       )}
       {busy && progress && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <ActivityIndicator size="small" color={colors.blueDark} />
+        <View style={{ gap: 8, marginBottom: 12 }}>
+          <ProgressBar progress={progress.total > 0 ? progress.done / progress.total : 0} active />
           <TText style={s.small}>
             {progress.phase === "chunking"
               ? t("kb.progress.chunking")

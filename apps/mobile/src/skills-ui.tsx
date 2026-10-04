@@ -16,6 +16,7 @@ import { TText } from "./font";
 import { t } from "./i18n";
 import { skillStore } from "./skills/instance";
 import type { Skill } from "./skills/store";
+import { SoraAmbient } from "./sora-ambient";
 import { Button, Sheet, useColors, useStyles } from "./ui";
 
 function IconBtn({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
@@ -190,7 +191,12 @@ export function SkillsSheet({ onClose }: { onClose: () => void }) {
         <View style={{ gap: 4 }}>
           <TText style={[s.small, { marginBottom: 8 }]}>{t("skill.intro")}</TText>
           {skills.length === 0 && (
-            <TText style={[s.small, { marginBottom: 8 }]}>{t("skill.empty")}</TText>
+            <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <SoraAmbient video="idle" slot="skills" size={64} />
+              <TText style={[s.small, { marginTop: 12, textAlign: "center" }]}>
+                {t("skill.empty")}
+              </TText>
+            </View>
           )}
           {skills.map((sk) => (
             <SkillRow

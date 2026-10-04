@@ -193,6 +193,7 @@ export const enStrings: Record<StringKey, string> = {
   "space.couple.herAvatar": "Her avatar",
   "space.couple.aiAvatar": "My avatar",
   "space.couple.changeAvatar": "Change avatar",
+  "space.couple.daysTogether": "Together for {n} days",
   "space.feed.title": "Moments",
   "space.feed.empty":
     "No moments yet. Post the first one — tell me and I will post it, or write it yourself.",
