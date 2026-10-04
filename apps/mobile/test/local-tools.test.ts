@@ -209,6 +209,27 @@ describe("buildLocalSystemPrompt", () => {
     assert.ok(prompt.includes("[perm.aiDesc.photos]"));
   });
 
+  it("opens with the identity block (P1-1: 小梦, boyfriend, 嘟嘟腔)", () => {
+    const tools = createLocalTools({ now: () => new Date() });
+    const prompt = buildLocalSystemPrompt(tools, (k) => `[${k}]`);
+    assert.ok(prompt.includes("小梦"), "identity names him 小梦");
+    assert.ok(prompt.includes("boyfriend"), "identity states the relationship");
+    assert.ok(prompt.includes("嘟嘟"), "identity names the app");
+    assert.ok(
+      prompt.indexOf("Who you are") < prompt.indexOf("Your tools:"),
+      "identity comes before the tool list",
+    );
+  });
+
+  it("includes the incognito section when incognito (P1-4)", () => {
+    const prompt = buildLocalSystemPrompt([], (k) => `[${k}]`, undefined, undefined, {
+      isIncognito: true,
+    });
+    assert.ok(prompt.includes("Incognito session"));
+    const normal = buildLocalSystemPrompt([], (k) => `[${k}]`);
+    assert.ok(!normal.includes("Incognito session"));
+  });
+
   it("works with zero tools", () => {
     const prompt = buildLocalSystemPrompt([], (k) => `[${k}]`);
     assert.ok(prompt.includes("[perm.kind.bluetooth]"));
