@@ -1348,6 +1348,7 @@ export const enStrings: Record<StringKey, string> = {
   "kb.indexingTask": "Indexing knowledge base",
   "kb.indexingStage": "Memorizing… {done}/{total}",
   "kb.indexingDone": "All read and memorized",
+  "kb.reindex": "Re-index",
   "space.tasks.status.running": "Working",
   "space.tasks.status.stuck": "Stuck",
   "space.tasks.status.done": "Done",

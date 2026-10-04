@@ -13,7 +13,7 @@
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
 import type { ApiGroup } from "../api-groups/types.js";
 import type { EmbedResult } from "./embeddings.js";
-import { selectEmbeddingProvider } from "./embeddings-local.js";
+import { embedWithRealModel } from "./embeddings-local.js";
 import { topKByCosine } from "./vectors.js";
 
 export interface KnowledgeToolDeps {
@@ -28,17 +28,15 @@ export interface KnowledgeToolDeps {
 
 /**
  * Default embedding path: resolve the best provider and adapt it to the
- * EmbedResult shape. In Phase 2 the on-device provider is never ready, so
- * this behaves exactly like embedTexts — but the provider abstraction is
- * now the real default, not dead code.
+ * EmbedResult shape. Reports the REAL model name (e.g. "text-embedding-3-small",
+ * not the generic provider name) so a later model change can be detected
+ * instead of silently breaking search.
  */
 export async function defaultEmbed(
   getGroup: () => ApiGroup | null,
   texts: string[],
 ): Promise<EmbedResult> {
-  const provider = await selectEmbeddingProvider(getGroup);
-  const vectors = await provider.embed(texts);
-  return { vectors, model: provider.name };
+  return embedWithRealModel(getGroup, texts);
 }
 
 /** Similarity floor: below this, a chunk is noise, not an answer. */
@@ -121,9 +119,11 @@ export function createKnowledgeTools(
         }
 
         let queryVec: number[];
+        let queryModel: string;
         try {
           const res = await doEmbed(group, [query]);
           queryVec = res.vectors[0];
+          queryModel = res.model;
         } catch (e) {
           throw new ToolError(
             `Couldn't embed the search query: ${e instanceof Error ? e.message : String(e)}`,
@@ -132,12 +132,28 @@ export function createKnowledgeTools(
 
         const chunks = await store.listChunks();
         const docs = await store.listDocs();
+        // Embedding-model change detection: if she switched the embedding
+        // model, old vectors have different dimensions and cosine search
+        // would silently find nothing. Say so honestly and offer re-index.
+        const withVectors = chunks.filter((c) => c.vector.length > 0);
+        const compatible = withVectors.filter((c) => c.vector.length === queryVec.length);
+        if (withVectors.length > 0 && compatible.length === 0) {
+          const oldModels = [
+            ...new Set(withVectors.map((c) => c.embedModel || "an older model")),
+          ].join(", ");
+          return (
+            `I can't search her documents right now: they were indexed with ${oldModels} ` +
+            `(${withVectors[0].vector.length} dimensions), but the current embedding model is ` +
+            `${queryModel} (${queryVec.length} dimensions) — the vectors are incompatible. ` +
+            `Tell her honestly what happened and offer to re-index the documents with the ` +
+            `knowledge_reindex tool (or the "re-index" button in the knowledge base). ` +
+            `Don't pretend the documents contain nothing.`
+          );
+        }
         const docNames = new Map(docs.map((d) => [d.id, d.name]));
         const hits = topKByCosine(
           queryVec,
-          chunks
-            .filter((c) => c.vector.length > 0 && c.vector.length === queryVec.length)
-            .map((c) => ({ item: c, vector: c.vector })),
+          compatible.map((c) => ({ item: c, vector: c.vector })),
           topK,
           SEARCH_MIN_SCORE,
         );
@@ -160,12 +176,17 @@ export function createKnowledgeTools(
 }
 
 /**
- * Minimal store interface needed by knowledge_add_doc (structural typing).
- * Compatible with KnowledgeStore, SqliteKnowledgeStore, and the lazy wrapper.
+ * Minimal store interface needed by knowledge_add_doc / knowledge_reindex
+ * (structural typing). Compatible with KnowledgeStore, SqliteKnowledgeStore,
+ * and the lazy wrapper.
  */
 export interface KnowledgeAddStore {
   addDoc(name: string, kind: string, size: number): Promise<import("./store.js").KbDoc>;
   updateDoc(id: string, patch: Partial<import("./store.js").KbDoc>): Promise<unknown>;
+  getDoc(id: string): Promise<import("./store.js").KbDoc | null>;
+  listDocs(): Promise<import("./store.js").KbDoc[]>;
+  listChunks(docId?: string): Promise<import("./store.js").KbChunkRecord[]>;
+  putChunks(records: import("./store.js").KbChunkRecord[]): Promise<unknown>;
 }
 
 /**
@@ -229,6 +250,55 @@ export function createKnowledgeAddTools(
             error: e instanceof Error ? e.message : "index failed",
           });
           throw new ToolError(e instanceof Error ? e.message : "indexing failed");
+        }
+      },
+    },
+    {
+      name: "knowledge_reindex",
+      description:
+        "Re-index one of her knowledge base documents with the CURRENT embedding model. Use when knowledge_search reports that documents were indexed with a different (incompatible) embedding model, or when she asks to refresh a document's index. Finds the document by name (fuzzy) or id, re-embeds its existing paragraphs, and marks it ready again. The original upload isn't needed — paragraph texts are preserved.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Document name or id to re-index, e.g. '宫保鸡丁菜谱'.",
+          },
+        },
+        required: ["name"],
+        additionalProperties: false,
+      },
+      manualId: "knowledge",
+      run: async (args) => {
+        const name = strArg(args, "name").trim();
+        if (!name) throw new ToolError("name is required.");
+        const group = deps.getGroup();
+        if (!group) {
+          throw new ToolError(
+            "No API group configured — I need an API group with /v1/embeddings to re-index.",
+          );
+        }
+        const docs = await store.listDocs();
+        const doc =
+          docs.find((d) => d.id === name) ??
+          docs.find((d) => d.name === name) ??
+          docs.find((d) => d.name.toLowerCase().includes(name.toLowerCase()));
+        if (!doc) {
+          throw new ToolError(
+            `No document named "${name}" in the knowledge base. Ask her which one she means.`,
+          );
+        }
+        try {
+          const { reindexDocument } = await import("./indexer.js");
+          const result = await reindexDocument(
+            store as unknown as import("./store.js").KnowledgeStore,
+            group,
+            doc.id,
+            { embed: deps.embed },
+          );
+          return `Document “${doc.name}” re-indexed with ${result.embedModel}: ${result.chunkCount} chunks. knowledge_search works again.`;
+        } catch (e) {
+          throw new ToolError(e instanceof Error ? e.message : "re-indexing failed");
         }
       },
     },

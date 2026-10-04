@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import type { ToolContext } from "../src/api-groups/local-tools.js";
 import type { ApiGroup } from "../src/api-groups/types.js";
 import { chunkDocument, chunkId, hashString } from "../src/knowledge/chunking.js";
-import { indexDocument } from "../src/knowledge/indexer.js";
+import { healInterruptedDocs, indexDocument, reindexDocument } from "../src/knowledge/indexer.js";
 import { type KnowledgeStorage, KnowledgeStore } from "../src/knowledge/store.js";
-import { createKnowledgeTools } from "../src/knowledge/tools.js";
+import { createKnowledgeAddTools, createKnowledgeTools } from "../src/knowledge/tools.js";
 import { cosineSimilarity, topKByCosine } from "../src/knowledge/vectors.js";
 
 function fakeStorage(): KnowledgeStorage {
@@ -238,5 +238,115 @@ describe("knowledge_search tool", () => {
     assert.equal(tool.name, "knowledge_search");
     assert.equal(tool.manualId, "knowledge");
     assert.ok(!("capability" in tool) || tool.capability === undefined);
+  });
+});
+
+describe("indexer failure honesty (P1-18)", () => {
+  it("embedding error marks doc failed, not zombie indexing", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("boom.md", "md", 50);
+    const badEmbed = () => Promise.reject(new Error("embeddingAuth: nope"));
+    await assert.rejects(
+      () => indexDocument(s, fakeGroup, doc.id, "# Boom\n\nSome text here.", true, { embed: badEmbed }),
+      /embeddingAuth/,
+    );
+    const updated = await s.getDoc(doc.id);
+    assert.equal(updated?.status, "failed");
+    assert.ok(updated?.error?.includes("embeddingAuth"));
+  });
+
+  it("healInterruptedDocs heals stale indexing docs, leaves fresh ones", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const stale = await s.addDoc("old.md", "md", 10);
+    // Simulate a crash from long ago by backdating createdAt.
+    const docs = await s.listDocs();
+    const raw = docs.map((d) =>
+      d.id === stale.id ? { ...d, createdAt: Date.now() - 60 * 60 * 1000 } : d,
+    );
+    const storage = (s as unknown as { storage: KnowledgeStorage }).storage;
+    await storage.setItem("dudu.kb.v1.docs", JSON.stringify(raw));
+    const fresh = await s.addDoc("new.md", "md", 10);
+
+    const healed = await healInterruptedDocs(s);
+    assert.equal(healed, 1);
+    assert.equal((await s.getDoc(stale.id))?.status, "failed");
+    assert.equal((await s.getDoc(stale.id))?.error, "interrupted");
+    assert.equal((await s.getDoc(fresh.id))?.status, "indexing");
+  });
+
+  it("reindexDocument re-embeds with the current model", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("pets.md", "md", 50);
+    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nI love my cat.", true, { embed: toyEmbed });
+    const before = await s.listChunks(doc.id);
+    assert.ok(before.every((c) => c.embedModel === "toy"));
+
+    const newEmbed = (_g: ApiGroup, texts: string[]) =>
+      Promise.resolve({ vectors: texts.map(() => [0.1, 0.2, 0.3, 0.4]), model: "toy-v2" });
+    const res = await reindexDocument(s, fakeGroup, doc.id, { embed: newEmbed });
+    assert.equal(res.embedModel, "toy-v2");
+    const after = await s.listChunks(doc.id);
+    assert.equal(after.length, before.length);
+    assert.ok(after.every((c) => c.vector.length === 4 && c.embedModel === "toy-v2"));
+    assert.equal((await s.getDoc(doc.id))?.status, "ready");
+  });
+
+  it("reindexDocument fails honestly on empty doc", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("empty.md", "md", 10);
+    await assert.rejects(() => reindexDocument(s, fakeGroup, doc.id, { embed: toyEmbed }), /emptyDocument/);
+    assert.equal((await s.getDoc(doc.id))?.status, "failed");
+  });
+});
+
+describe("knowledge_search model-change honesty (P1-19)", () => {
+  it("says plainly when docs were indexed with another model", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("pets.md", "md", 50);
+    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nMy cat naps.", true, { embed: toyEmbed });
+    // New model with different dimensions.
+    const v2Embed = (_g: ApiGroup, texts: string[]) =>
+      Promise.resolve({ vectors: texts.map(() => [1, 2, 3, 4, 5]), model: "bigger-model" });
+    const [tool] = createKnowledgeTools(s, { getGroup: () => fakeGroup, embed: v2Embed });
+    const out = await tool.run({ query: "cat" }, ctx);
+    assert.ok(out.includes("were indexed with"), `got: ${out}`);
+    assert.ok(out.includes("incompatible"), `got: ${out}`);
+    assert.ok(out.includes("knowledge_reindex"), `got: ${out}`);
+    assert.ok(!out.includes("No relevant passages"), `must not pretend empty, got: ${out}`);
+  });
+
+  it("search still works when models match", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("pets.md", "md", 50);
+    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nMy cat naps.", true, { embed: toyEmbed });
+    const [tool] = createKnowledgeTools(s, { getGroup: () => fakeGroup, embed: toyEmbed });
+    const out = await tool.run({ query: "cat" }, ctx);
+    assert.ok(out.includes("pets.md"));
+  });
+});
+
+describe("knowledge_reindex tool", () => {
+  it("re-indexes a doc by name", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const doc = await s.addDoc("pets.md", "md", 50);
+    await indexDocument(s, fakeGroup, doc.id, "# Pets\n\nMy cat naps.", true, { embed: toyEmbed });
+    const newEmbed = (_g: ApiGroup, texts: string[]) =>
+      Promise.resolve({ vectors: texts.map(() => [9, 9, 9]), model: "toy-v2" });
+    const tools = createKnowledgeAddTools(s, { getGroup: () => fakeGroup, embed: newEmbed });
+    const reindex = tools.find((t) => t.name === "knowledge_reindex");
+    assert.ok(reindex);
+    const out = await reindex.run({ name: "pets.md" }, ctx);
+    assert.ok(out.includes("re-indexed"), `got: ${out}`);
+    assert.ok(out.includes("toy-v2"), `got: ${out}`);
+    const chunks = await s.listChunks(doc.id);
+    assert.ok(chunks.every((c) => c.embedModel === "toy-v2"));
+  });
+
+  it("errors honestly on unknown doc", async () => {
+    const s = new KnowledgeStore(fakeStorage());
+    const tools = createKnowledgeAddTools(s, { getGroup: () => fakeGroup, embed: toyEmbed });
+    const reindex = tools.find((t) => t.name === "knowledge_reindex");
+    assert.ok(reindex);
+    await assert.rejects(() => reindex.run({ name: "nope.md" }, ctx), /No document named/);
   });
 });

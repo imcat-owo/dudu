@@ -31,6 +31,9 @@ export interface EmbeddingProvider {
   embed(texts: string[]): Promise<number[][]>;
 }
 
+/** Name of the API-backed provider (its `name` is generic — resolve the real model separately). */
+export const API_EMBEDDING_PROVIDER_NAME = "api-embeddings";
+
 /**
  * API-based provider (Phase 1, always available).
  * Wraps embedTexts() to match the EmbeddingProvider interface.
@@ -41,7 +44,7 @@ export function createApiEmbeddingProvider(
 ): EmbeddingProvider {
   // Lazy import to avoid cycles; resolved at call time.
   return {
-    name: "api-embeddings",
+    name: API_EMBEDDING_PROVIDER_NAME,
     dimensions: 1536, // text-embedding-3-small; actual dim from API response
     async isReady(): Promise<boolean> {
       return getGroup() !== null;
@@ -98,4 +101,29 @@ export async function selectEmbeddingProvider(
   const onDevice = createOnDeviceEmbeddingProvider();
   if (await onDevice.isReady()) return onDevice;
   return createApiEmbeddingProvider(getGroup);
+}
+
+/**
+ * Embed via the best provider, reporting the REAL model name.
+ *
+ * `EmbeddingProvider.name` is generic for the API path ("api-embeddings"),
+ * but chunks record the actual model (e.g. "text-embedding-3-small") so a
+ * later model change can be detected instead of silently breaking search.
+ * Returns { vectors, model } in the EmbedResult shape.
+ */
+export async function embedWithRealModel(
+  getGroup: () => import("../api-groups/types.js").ApiGroup | null,
+  texts: string[],
+): Promise<import("./embeddings.js").EmbedResult> {
+  const provider = await selectEmbeddingProvider(getGroup);
+  const vectors = await provider.embed(texts);
+  let model = provider.name;
+  if (provider.name === API_EMBEDDING_PROVIDER_NAME) {
+    const group = getGroup();
+    if (group) {
+      const { embeddingModelFor } = await import("./embeddings.js");
+      model = embeddingModelFor(group);
+    }
+  }
+  return { vectors, model };
 }

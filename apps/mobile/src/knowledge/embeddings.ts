@@ -21,7 +21,7 @@ export class EmbeddingError extends Error {
   }
 }
 
-function embeddingModelFor(group: ApiGroup): string {
+export function embeddingModelFor(group: ApiGroup): string {
   return group.embeddingModel?.trim() || DEFAULT_EMBEDDING_MODEL;
 }
 

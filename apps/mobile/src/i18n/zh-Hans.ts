@@ -1303,6 +1303,7 @@ const zhHans = {
   "kb.indexingTask": "知识库索引",
   "kb.indexingStage": "正在记住… {done}/{total}",
   "kb.indexingDone": "读完了，都记下了",
+  "kb.reindex": "重新索引",
   "space.tasks.status.running": "正在忙",
   "space.tasks.status.stuck": "卡住了",
   "space.tasks.status.done": "做完了",

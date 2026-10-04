@@ -9,7 +9,15 @@
 
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { BookOpen, FileText, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react-native";
+import {
+  BookOpen,
+  FileText,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { useApiGroups } from "../api-groups/store";
@@ -18,7 +26,7 @@ import { t } from "../i18n";
 import { taskProgressStore } from "../our-space/task-progress-instance";
 import { SoraAmbient } from "../sora-ambient";
 import { Button, Empty, Sheet, useColors, useStyles } from "../ui";
-import { type IndexProgress, indexDocument } from "./indexer";
+import { healInterruptedDocs, type IndexProgress, indexDocument, reindexDocument } from "./indexer";
 import { getKnowledgeStore } from "./instance";
 import { PdfTextExtractor } from "./pdf-extract";
 import type { KbDoc } from "./store";
@@ -67,6 +75,12 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
     void getKnowledgeStore().then((s) => {
       if (cancelled) return;
       setStore(s);
+      // Self-healing: docs left "indexing" by a crashed session would spin
+      // forever — mark the stale ones failed (recent ones might still be
+      // indexing right now, so those are left alone).
+      void healInterruptedDocs(s).then((healed) => {
+        if (healed > 0) void s.listDocs().then(setDocs);
+      });
       unsub = s.subscribe(() => {
         void s.listDocs().then(setDocs);
       });
@@ -161,21 +175,38 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
         backgroundUri: null,
       });
       await taskProgressStore.saveIndex();
-      await indexDocument(s, active, doc.id, text, kind === "md", {
-        onProgress: (p) => {
-          setProgress(p);
-          const total = Math.max(1, p.total);
-          const pct = p.phase === "chunking" ? 0.1 : 0.1 + 0.9 * (p.done / total);
-          void taskProgressStore.upsert({
-            id: taskId,
-            name: t("kb.indexingTask"),
-            progress: pct,
-            stage: t("kb.indexingStage", { done: p.done, total: p.total }),
-            status: "running",
-            backgroundUri: null,
-          });
-        },
-      });
+      try {
+        await indexDocument(s, active, doc.id, text, kind === "md", {
+          onProgress: (p) => {
+            setProgress(p);
+            const total = Math.max(1, p.total);
+            const pct = p.phase === "chunking" ? 0.1 : 0.1 + 0.9 * (p.done / total);
+            void taskProgressStore.upsert({
+              id: taskId,
+              name: t("kb.indexingTask"),
+              progress: pct,
+              stage: t("kb.indexingStage", { done: p.done, total: p.total }),
+              status: "running",
+              backgroundUri: null,
+            });
+          },
+        });
+      } catch (e) {
+        // Embedding/storage failed mid-index: the doc is already marked
+        // failed by indexDocument — make sure the task card doesn't stay
+        // "running" forever either.
+        const msg = e instanceof Error ? e.message : String(e);
+        await taskProgressStore.upsert({
+          id: taskId,
+          name: t("kb.indexingTask"),
+          progress: 0,
+          stage: msg,
+          status: "stuck",
+          backgroundUri: null,
+        });
+        await taskProgressStore.saveIndex();
+        throw e;
+      }
       await taskProgressStore.upsert({
         id: taskId,
         name: t("kb.indexingTask"),
@@ -221,7 +252,7 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
   );
 
   const handlePdfError = useCallback(
-    (message: string) => {
+    (message: string, taskId?: string) => {
       setPdfJob(null);
       setBusy(false);
       const reason =
@@ -231,6 +262,20 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
             ? t("kb.pdfJsLoadTimeout")
             : message;
       setError(t("kb.pdfExtractFailed", { reason }));
+      // PDF extraction failed before indexing even started: don't leave
+      // the task card spinning "running" forever.
+      if (taskId) {
+        void taskProgressStore
+          .upsert({
+            id: taskId,
+            name: t("kb.indexingTask"),
+            progress: 0,
+            stage: reason,
+            status: "stuck",
+            backgroundUri: null,
+          })
+          .then(() => taskProgressStore.saveIndex());
+      }
       void refresh();
     },
     [refresh],
@@ -254,6 +299,70 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
     [refresh],
   );
 
+  /** Re-embed a doc's paragraphs with the current embedding model. */
+  const reindexDoc = useCallback(
+    async (doc: KbDoc) => {
+      if (!active) {
+        setError(t("kb.noApiGroup"));
+        return;
+      }
+      const taskId = `kb-reindex-${Date.now()}`;
+      setBusy(true);
+      setError(null);
+      try {
+        const s = await getKnowledgeStore();
+        await taskProgressStore.upsert({
+          id: taskId,
+          name: t("kb.indexingTask"),
+          progress: 0,
+          stage: "",
+          status: "running",
+          backgroundUri: null,
+        });
+        await taskProgressStore.saveIndex();
+        await reindexDocument(s, active, doc.id, {
+          onProgress: (p) => {
+            const total = Math.max(1, p.total);
+            void taskProgressStore.upsert({
+              id: taskId,
+              name: t("kb.indexingTask"),
+              progress: p.done / total,
+              stage: t("kb.indexingStage", { done: p.done, total: p.total }),
+              status: "running",
+              backgroundUri: null,
+            });
+          },
+        });
+        await taskProgressStore.upsert({
+          id: taskId,
+          name: t("kb.indexingTask"),
+          progress: 1,
+          stage: t("kb.indexingDone"),
+          status: "done",
+          backgroundUri: null,
+        });
+        await taskProgressStore.saveIndex();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await taskProgressStore.upsert({
+          id: taskId,
+          name: t("kb.indexingTask"),
+          progress: 0,
+          stage: msg,
+          status: "stuck",
+          backgroundUri: null,
+        });
+        await taskProgressStore.saveIndex();
+        setError(t("kb.indexFailed", { reason: msg }));
+      } finally {
+        setBusy(false);
+        setProgress(null);
+        void refresh();
+      }
+    },
+    [active, refresh],
+  );
+
   return (
     <Sheet title={t("kb.title")} subtitle={t("kb.subtitle")} onClose={onClose}>
       {pdfJob && (
@@ -262,7 +371,9 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
           onDone={(text) => {
             void handlePdfDone(text);
           }}
-          onError={handlePdfError}
+          onError={(message) => {
+            void handlePdfError(message, pdfJob.taskId);
+          }}
         />
       )}
       {error && (
@@ -323,6 +434,17 @@ export function KnowledgeSheet({ onClose }: { onClose: () => void }) {
                   </TText>
                 </View>
               </View>
+              <Pressable
+                onPress={() => void reindexDoc(doc)}
+                hitSlop={12}
+                accessibilityLabel={t("kb.reindex")}
+                disabled={busy || doc.status === "indexing"}
+              >
+                <RefreshCw
+                  size={16}
+                  color={busy || doc.status === "indexing" ? colors.line : colors.muted}
+                />
+              </Pressable>
               <Pressable
                 onPress={() => removeDoc(doc)}
                 hitSlop={12}
