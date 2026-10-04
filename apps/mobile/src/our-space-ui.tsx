@@ -33,9 +33,11 @@ import {
   MoonStar,
   Send,
   Sprout,
+  Trash2,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   Image,
@@ -241,6 +243,33 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+/**
+ * Small trash button with a confirm dialog. Every deletable entry in
+ * Our Space uses this — she can remove anything, anywhere.
+ */
+function DeleteEntryButton({ onDelete }: { onDelete: () => Promise<unknown> }) {
+  const colors = useColors();
+  const confirm = () => {
+    Alert.alert(t("space.entry.deleteTitle") as string, t("space.entry.deleteBody") as string, [
+      { text: t("common.cancel") as string, style: "cancel" },
+      {
+        text: t("common.delete") as string,
+        style: "destructive",
+        onPress: () => void onDelete(),
+      },
+    ]);
+  };
+  return (
+    <PressableScale
+      onPress={confirm}
+      accessibilityRole="button"
+      accessibilityLabel={t("common.delete") as string}
+    >
+      <Trash2 size={15} color={colors.muted} strokeWidth={1.7} />
+    </PressableScale>
+  );
+}
+
 /** Hand-drawn card: soft asymmetric radii, hairline border, soft shadow. */
 export function SoftCard({
   children,
@@ -420,7 +449,7 @@ function DiaryView() {
           <StaggerIn key={e.id} index={i}>
             <View>
               <View
-                style={{ flexDirection: "row", alignItems: "baseline", gap: 10, marginBottom: 8 }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}
               >
                 <TText
                   style={{
@@ -433,6 +462,7 @@ function DiaryView() {
                   {e.date}
                 </TText>
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+                <DeleteEntryButton onDelete={() => ourSpaceStore.deleteDiary(e.id)} />
               </View>
               <TText
                 style={{
@@ -534,18 +564,22 @@ function TimelineView() {
                         )}
                       </View>
                       <View style={{ flex: 1, paddingBottom: 20 }}>
-                        <TText
-                          style={{
-                            color: colors.text,
-                            fontSize: isMilestone ? 15.5 : 14,
-                            fontWeight: isMilestone ? "700" : "600",
-                            lineHeight: 22,
-                            letterSpacing: 0.2,
-                            marginBottom: 3,
-                          }}
-                        >
-                          {e.title}
-                        </TText>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                          <TText
+                            style={{
+                              color: colors.text,
+                              fontSize: isMilestone ? 15.5 : 14,
+                              fontWeight: isMilestone ? "700" : "600",
+                              lineHeight: 22,
+                              letterSpacing: 0.2,
+                              marginBottom: 3,
+                              flex: 1,
+                            }}
+                          >
+                            {e.title}
+                          </TText>
+                          <DeleteEntryButton onDelete={() => ourSpaceStore.deleteTimeline(e.id)} />
+                        </View>
                         {!!e.description && (
                           <TText style={{ color: colors.muted, fontSize: 13, lineHeight: 21 }}>
                             {e.description}
@@ -747,6 +781,7 @@ function TellLaterView() {
             {timeAgo(item.createdAt, Date.now())}
           </TText>
         </View>
+        <DeleteEntryButton onDelete={() => ourSpaceStore.deleteTellLater(item.id)} />
       </Pressable>
     </StaggerIn>
   );
@@ -1227,6 +1262,12 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
               {timeAgo(post.createdAt, now)}
             </TText>
           </View>
+          <DeleteEntryButton
+            onDelete={async () => {
+              await ourSpaceStore.deleteFeedPost(post.id);
+              onChanged();
+            }}
+          />
         </View>
 
         {post.text ? (
@@ -1250,11 +1291,18 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
             }}
           >
             {replies.map((r) => (
-              <View key={r.id} style={{ flexDirection: "row", gap: 6 }}>
+              <View key={r.id} style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
                 <TText style={{ color: tokens.accent.fg, fontSize: 12.5, fontWeight: "700" }}>
                   {r.author === "ai" ? t("space.couple.aiAvatar") : t("space.couple.herAvatar")}:
                 </TText>
                 <TText style={{ color: colors.text, fontSize: 12.5, flex: 1 }}>{r.text}</TText>
+                <DeleteEntryButton
+                  onDelete={async () => {
+                    await ourSpaceStore.deleteReply(r.id);
+                    const updated = await ourSpaceStore.listReplies(post.id);
+                    setReplies(updated);
+                  }}
+                />
               </View>
             ))}
           </View>
@@ -1483,6 +1531,34 @@ function WorksPage() {
               >
                 {viewer.title}
               </TText>
+              <View style={{ alignItems: "center", marginTop: 12 }}>
+                <PressableScale
+                  onPress={() => {
+                    Alert.alert(
+                      t("space.entry.deleteTitle") as string,
+                      t("space.entry.deleteBody") as string,
+                      [
+                        { text: t("common.cancel") as string, style: "cancel" },
+                        {
+                          text: t("common.delete") as string,
+                          style: "destructive",
+                          onPress: () =>
+                            void ourSpaceStore.deleteWork(viewer.id).then(() => setViewer(null)),
+                        },
+                      ],
+                    );
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.delete") as string}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Trash2 size={15} color="rgba(255,255,255,0.75)" strokeWidth={1.7} />
+                    <TText style={{ color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
+                      {t("common.delete")}
+                    </TText>
+                  </View>
+                </PressableScale>
+              </View>
             </View>
           )}
         </Pressable>
@@ -1631,6 +1707,7 @@ function AnniversaryPage() {
                   >
                     {dc.label}
                   </TText>
+                  <DeleteEntryButton onDelete={() => ourSpaceStore.deleteAnniversary(a.id)} />
                 </View>
               </SoftCard>
             </StaggerIn>

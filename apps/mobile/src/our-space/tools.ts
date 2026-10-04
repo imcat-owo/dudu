@@ -199,6 +199,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         return entries.map((e) => `— ${e.date} · ${e.title}\n${e.content}`).join("\n\n");
       },
     },
+    {
+      name: "diary_delete",
+      description:
+        "Delete a diary entry from Our Space by id (get the id from diary_read). Use when she asks to remove an entry.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The diary entry id (from diary_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteDiary(id);
+        if (!ok) throw new ToolError(`No diary entry with id "${id}".`);
+        return "Diary entry deleted.";
+      },
+    },
 
     // ---- Timeline ----
     {
@@ -248,6 +269,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
               `— ${fmtDate(e.timestamp)} [${e.kind}] ${e.title}${e.description ? `\n  ${e.description}` : ""}`,
           )
           .join("\n");
+      },
+    },
+    {
+      name: "timeline_delete",
+      description:
+        "Delete a timeline moment from Our Space by id. Use when she asks to remove a moment.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The timeline event id." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteTimeline(id);
+        if (!ok) throw new ToolError(`No timeline event with id "${id}".`);
+        return "Timeline moment deleted.";
       },
     },
     {
@@ -339,6 +381,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         return "Checked off.";
       },
     },
+    {
+      name: "tell_later_delete",
+      description:
+        "Delete a tell-later item from Our Space by id. Use when she asks to remove an item from the queue.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The item id (from tell_later_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteTellLater(id);
+        if (!ok) throw new ToolError(`No tell-later item with id "${id}".`);
+        return "Tell-later item deleted.";
+      },
+    },
 
     // ---- Notes he left for her ----
     {
@@ -376,6 +439,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
               `— [${n.seen ? "seen" : "unseen"}] ${n.text}\n  Left: ${fmtDate(n.createdAt)}${n.seenAt ? ` · Seen: ${fmtDate(n.seenAt)}` : ""} (id: ${n.id})`,
           )
           .join("\n");
+      },
+    },
+    {
+      name: "left_note_delete",
+      description:
+        "Delete a note you left for her by id (get the id from left_note_read). Use when she asks to remove one.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The note id (from left_note_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteLeftNote(id);
+        if (!ok) throw new ToolError(`No left note with id "${id}".`);
+        return "Note deleted.";
       },
     },
 
@@ -430,10 +514,33 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
           );
           const replies = await store.listReplies(p.id);
           for (const r of replies) {
-            lines.push(`    ↳ [${r.author === "ai" ? "you" : "her"}] ${r.text}`);
+            lines.push(
+              `    ↳ [${r.author === "ai" ? "you" : "her"}] ${r.text} (reply id: ${r.id})`,
+            );
           }
         }
         return lines.join("\n");
+      },
+    },
+    {
+      name: "feed_post_delete",
+      description:
+        "Delete a feed post from Our Space by id (get the id from feed_read). Deleting a post also removes its replies. Use when she asks to remove a post.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The post id (from feed_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteFeedPost(id);
+        if (!ok) throw new ToolError(`No feed post with id "${id}".`);
+        return "Feed post deleted.";
       },
     },
     {
@@ -457,6 +564,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         if (!text) throw new ToolError("Missing required argument: text.");
         await store.addReply(postId, "ai", text);
         return "Reply posted.";
+      },
+    },
+    {
+      name: "feed_reply_delete",
+      description:
+        "Delete a feed reply by its reply id (get the id from feed_read). Use when she asks to remove a reply.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The reply id (from feed_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteReply(id);
+        if (!ok) throw new ToolError(`No feed reply with id "${id}".`);
+        return "Reply deleted.";
       },
     },
     {
@@ -515,8 +643,32 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const items = await store.listAnniversaries();
         if (items.length === 0) return "No anniversaries yet.";
         return items
-          .map((a) => `— ${a.title} (${a.date})${a.description ? ` — ${a.description}` : ""}`)
+          .map(
+            (a) =>
+              `— ${a.title} (${a.date})${a.description ? ` — ${a.description}` : ""} (id: ${a.id})`,
+          )
           .join("\n");
+      },
+    },
+    {
+      name: "anniversary_delete",
+      description:
+        "Delete an anniversary from Our Space by id (get the id from anniversary_read). Use when she asks to remove one.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The anniversary id (from anniversary_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteAnniversary(id);
+        if (!ok) throw new ToolError(`No anniversary with id "${id}".`);
+        return "Anniversary deleted.";
       },
     },
 
@@ -565,6 +717,27 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         const items = await store.listWorks();
         if (items.length === 0) return "The works drawer is empty.";
         return items.map((w) => `— [${w.type}] ${w.title} (id: ${w.id})`).join("\n");
+      },
+    },
+    {
+      name: "work_delete",
+      description:
+        "Delete an item from the works drawer by id (get the id from work_read). Use when she asks to remove something you made.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The work item id (from work_read)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const ok = await store.deleteWork(id);
+        if (!ok) throw new ToolError(`No work item with id "${id}".`);
+        return "Work item deleted.";
       },
     },
   ];

@@ -94,6 +94,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.herMood.title": "Her mood",
   "space.herMood.empty":
     "She hasn't shared her mood yet. Chat with her — I will remember when she tells me.",
+  "space.entry.deleteTitle": "Delete this?",
+  "space.entry.deleteBody": "This can't be undone. Delete it?",
   "space.diary.title": "My diary",
   "space.diary.empty": "The diary is empty. Tell me to remember today and I will write it.",
   "space.diary.hint": "Say the word, I will write it",

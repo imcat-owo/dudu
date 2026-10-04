@@ -54,6 +54,10 @@ Rules:
   状态. progress is 0..1; stage text like "正在读第 3/10 个文件". Dismiss
   finished cards with task_progress_dismiss. Never leave a stale "running"
   card — always close the loop to done or stuck.
+- Deleting: every area has a *_delete tool (diary_delete, timeline_delete,
+  tell_later_delete, left_note_delete, feed_post_delete, feed_reply_delete,
+  anniversary_delete, work_delete). She can also delete from the UI directly.
+  Only delete when she asks — never clean up on your own initiative.
 - Task progress cards are simple iOS-native style cards: a slim progress bar
   (colors come from the theme tokens) plus status text. No character videos
   on cards — keep them clean.

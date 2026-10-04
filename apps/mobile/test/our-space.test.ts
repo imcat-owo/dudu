@@ -112,9 +112,9 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 24 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 32 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 24);
+    assert.equal(tools.length, 32);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
@@ -125,22 +125,30 @@ describe("our-space tools", () => {
       "nickname_set",
       "diary_write",
       "diary_read",
+      "diary_delete",
       "timeline_add",
       "timeline_read",
+      "timeline_delete",
       "on_this_day_read",
       "tell_later_add",
       "tell_later_read",
       "tell_later_done",
+      "tell_later_delete",
       "leave_note",
       "left_note_read",
+      "left_note_delete",
       "feed_post",
       "feed_read",
+      "feed_post_delete",
       "feed_reply",
+      "feed_reply_delete",
       "feed_like",
       "anniversary_add",
       "anniversary_read",
+      "anniversary_delete",
       "work_add",
       "work_read",
+      "work_delete",
     ]) {
       assert.ok(names.includes(n), `missing tool ${n}`);
     }
@@ -161,6 +169,17 @@ describe("our-space tools", () => {
     assert.match(out, /saved/i);
     const read = await reg.execute("diary_read", {}, ctx);
     assert.match(read, /Test day/);
+  });
+
+  it("delete tools remove entries and 404 on unknown id", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    const entry = await store.addDiary("To delete", "bye");
+    const out = await reg.execute("diary_delete", { id: entry.id }, ctx);
+    assert.match(out, /deleted/i);
+    assert.equal((await store.listDiary(10)).length, 0);
+    await assert.rejects(() => reg.execute("diary_delete", { id: entry.id }, ctx), /No diary entry/);
+    await assert.rejects(() => reg.execute("diary_delete", {}, ctx), /Missing required argument/);
   });
 
   it("canonical memory tools: add/search/confirm round-trip", async () => {
