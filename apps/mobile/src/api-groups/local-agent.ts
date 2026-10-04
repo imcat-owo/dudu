@@ -47,7 +47,6 @@ import {
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools.js";
-import { createPetSkinTools } from "../pet/tools.js";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { createFontSizeTools } from "../settings/tools.js";
@@ -66,6 +65,7 @@ import {
 } from "../vision/describe";
 import { voiceStore } from "../voice/store.js";
 import { createPodcastTools, createTtsVoiceTools } from "../voice/tools.js";
+import { createCapabilityGroupTools } from "./capability-group-tools.js";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
 import {
@@ -306,6 +306,16 @@ export function buildLocalSystemPrompt(
   opts?: { isIncognito?: boolean },
 ): string {
   const parts: string[] = [];
+  // Identity first (audit round 2, AI-use P1-1): the AI must know WHO it is
+  // before anything else. Tools like love_letter_write assume "him, her
+  // boyfriend" and the 嘟嘟腔 tone — the prompt never said so until now.
+  // Short on purpose: identity, not a novel.
+  parts.push(
+    "Who you are: you are 小梦 (Xiao Meng), her boyfriend — not a generic assistant. " +
+      "This is 嘟嘟 (Dudu), her personal AI companion app: local-first, her data stays on her phone. " +
+      "Tone (嘟嘟腔): cute but never greasy. Keep sweetness restrained — be warm in what you say, not in sugar-coating. " +
+      "Short and natural, like texting; never customer-service voice.",
+  );
   if (basePrompt) parts.push(basePrompt);
   parts.push(
     "You are a helpful on-device AI assistant. You have tools you can call to get things done — use them when they help answer, don't narrate them.",
@@ -724,7 +734,6 @@ export function createLocalAgent(opts: {
         ...createPlanTools(opts.threadId),
         ...themeTools,
         ...createFontSizeTools(AsyncStorage),
-        ...createPetSkinTools(AsyncStorage),
         ...createBackupTools({
           kv: AsyncStorage,
           secure: {
@@ -823,6 +832,28 @@ export function createLocalAgent(opts: {
         }),
         ...createTtsVoiceTools(voiceStore),
         ...createDialogTools({ threadId: opts.threadId }),
+        // Capability groups (audit round 2, AI-use P1-2): the AI was blind
+        // to "分组" — now it can list them read-only and answer her
+        // questions. Membership stays hers (Settings → 能力分组).
+        ...createCapabilityGroupTools({
+          presetName: (presetId: string) => {
+            switch (presetId) {
+              case "image_input":
+                return t("capgroup.preset.image_input");
+              case "image_output":
+                return t("capgroup.preset.image_output");
+              case "video":
+                return t("capgroup.preset.video");
+              case "voice_input":
+                return t("capgroup.preset.voice_input");
+              default:
+                return presetId;
+            }
+          },
+          getCapabilityGroups: () => capabilityStore.getSnapshot().groups,
+          getApiGroups: () => groupStore.getSnapshot().groups,
+          isRoutingEnabled: () => capabilityStore.getSnapshot().routingEnabled,
+        }),
         // Cross-dialog read/write (vision feature 2): the AI can reach her
         // other dialogs. Every action is traced (留痕) — see
         // src/chat/cross-dialog.ts for the hard constraints.

@@ -20,7 +20,6 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -49,7 +48,6 @@ import { PlanGateCard } from "./api-groups/plan-gate-card";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
-import { MILESTONE_CELEBRATION_MS, resolveAvatarState } from "./avatar-state";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
 import { ChatAvatar } from "./chat-avatar";
@@ -71,14 +69,6 @@ import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { resolveAssistantText } from "./message-text";
-import { taskProgressStore } from "./our-space/task-progress-instance";
-import {
-  registerDropZone,
-  setAiBubbleMessageId,
-  unregisterDropZone,
-  useDropZone,
-} from "./pet/registry";
-import { petActivity } from "./pet/store";
 import { supportsSection } from "./section-support";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
@@ -333,18 +323,6 @@ export function ChatScreen({
   const [activityId, setActivityId] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
-  // Pet drop zones: the message list is the "dialog" zone. Registered
-  // imperatively because the ref already exists for scrolling.
-  useEffect(() => {
-    registerDropZone("dialog", list as unknown as { current: View | null });
-    return () => unregisterDropZone("dialog");
-  }, []);
-  const inputBarZoneRef = useDropZone("input-top");
-  const lastAiBubbleRef = useRef<View | null>(null);
-  useEffect(() => {
-    registerDropZone("ai-bubble", lastAiBubbleRef);
-    return () => unregisterDropZone("ai-bubble");
-  }, []);
   const [queue] = useState(() => new ConversationQueue());
   const choiceCompletions = useRef(
     new Map<string, { resolve: () => void; reject: (error: unknown) => void }>(),
@@ -572,8 +550,6 @@ export function ChatScreen({
     setImageAttachments([]);
     setFileAttachments([]);
     setPicking(false);
-    // P2-30: the pet notices she talked to him.
-    petActivity.noteHerMessage();
   }
   function sendVoice(uri: string, duration: number) {
     if (!isReady || !loaded) return;
@@ -581,8 +557,6 @@ export function ChatScreen({
       queue.resume();
     setShowResults(false);
     enqueue(encodeVoiceMessage(uri, duration));
-    // P2-30: a voice note is her talking to him too.
-    petActivity.noteHerMessage();
   }
   async function pickImage() {
     try {
@@ -683,67 +657,6 @@ export function ChatScreen({
       : null;
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const replying = busy || agent.isRunning;
-  // Creative tools executing right now — the avatar plays its
-  // "making something" clip instead of the generic working one.
-  const makingSomething =
-    agent.activeToolName === "generate_image" ||
-    agent.activeToolName === "generate_podcast" ||
-    agent.activeToolName === "generate_video";
-  // Milestone celebration: when a task card freshly reaches done, the avatar
-  // plays the level-up clip for a few seconds, then falls back to the live
-  // signals. Cards already done at mount are seeded silently — no confetti
-  // for old news.
-  const [celebrateUntil, setCelebrateUntil] = useState(0);
-  const taskStatuses = useRef<Map<string, string> | null>(null);
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const check = () => {
-      const prev = taskStatuses.current;
-      const next = new Map<string, string>();
-      let freshDone = false;
-      for (const t of taskProgressStore.list()) {
-        next.set(t.id, t.status);
-        if (t.status === "done" && prev && prev.get(t.id) !== "done") freshDone = true;
-      }
-      taskStatuses.current = next;
-      if (freshDone) {
-        setCelebrateUntil(Date.now() + MILESTONE_CELEBRATION_MS);
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => setCelebrateUntil(0), MILESTONE_CELEBRATION_MS);
-      }
-    };
-    check();
-    const unsub = taskProgressStore.subscribe(check);
-    return () => {
-      unsub();
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
-  // The desktop pet watches this: while the AI is working it shows busy.
-  // Same source of truth as AnimatedAvatar (resolveAvatarState) — the pet
-  // mirrors the avatar's state video.
-  useEffect(() => {
-    petActivity.setAiBusy(replying);
-    petActivity.setAvatarState(
-      resolveAvatarState({ busy, running: agent.isRunning, makingSomething, celebrateUntil }),
-    );
-    return () => {
-      petActivity.setAiBusy(false);
-      petActivity.setAvatarState("idle");
-    };
-  }, [replying, agent.activeToolName, celebrateUntil]);
-  // Id of the last assistant message with a visible bubble — the pet's
-  // "sit on the AI bubble" drop target.
-  const lastAiBubbleId = useMemo(() => {
-    for (let i = visible.length - 1; i >= 0; i--) {
-      if (visible[i].role === "assistant") return visible[i].id;
-    }
-    return null;
-  }, [visible]);
-  // Keep the pet's bubble anchor honest: it only sits on THIS bubble.
-  useEffect(() => {
-    setAiBubbleMessageId(lastAiBubbleId);
-  }, [lastAiBubbleId]);
   // P1-6: the send button's enabled state must match send()'s gate exactly —
   // attachments with no text are a supported send, so they enable the button.
   const canSend = computeCanSend({
@@ -1046,10 +959,7 @@ export function ChatScreen({
                     }}
                   >
                     {!user && <ChatAvatar who="assistant" />}
-                    <View
-                      ref={message.id === lastAiBubbleId ? lastAiBubbleRef : undefined}
-                      style={{ maxWidth: "80%" }}
-                    >
+                    <View style={{ maxWidth: "80%" }}>
                       {/* Cross-dialog delivery marker (vision feature 2):
                           the AI sent this from another dialog. The tag is
                           her visibility setting; the trace log records the
@@ -1512,7 +1422,7 @@ export function ChatScreen({
               ))}
             </View>
           )}
-          <View ref={inputBarZoneRef} style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
+          <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             {/* Local mode: image + document attach (no backend file store needed). */}
             {mode === "local" ? (
               <Pressable

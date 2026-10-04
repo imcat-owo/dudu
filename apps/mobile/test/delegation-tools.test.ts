@@ -1,12 +1,11 @@
 /**
- * 7 new AI delegation tool tests — PURE modules, no React Native needed.
+ * 10 new AI delegation tool tests — PURE modules, no React Native needed.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createDialogTools, registerRenameDialogHandler } from "../src/chat/dialog-tools.js";
 import { createKnowledgeAddTools } from "../src/knowledge/tools.js";
-import { createPetSkinTools } from "../src/pet/tools.js";
 import { createFontSizeTools } from "../src/settings/tools.js";
 import { createThemeTools } from "../src/theme/tools.js";
 import { createTtsVoiceTools } from "../src/voice/tools.js";
@@ -65,25 +64,6 @@ test("set_font_size rejects bad option", async () => {
   const s = memStorage();
   const [tool] = createFontSizeTools(s);
   await assert.rejects(() => tool.run({ option: "huge" }, ctx));
-});
-
-test("set_pet_skin handles sora/devil/custom", async () => {
-  const s = memStorage();
-  const [tool] = createPetSkinTools(s);
-  assert.equal(tool.name, "set_pet_skin");
-  await tool.run({ skin: "devil:3" }, ctx);
-  let state = JSON.parse(s._map.get("dudu.pet.v1.state")!);
-  assert.deepEqual(state.skin, { kind: "devil", index: 3 });
-  await tool.run({ skin: "sora" }, ctx);
-  state = JSON.parse(s._map.get("dudu.pet.v1.state")!);
-  assert.deepEqual(state.skin, { kind: "sora" });
-});
-
-test("set_pet_skin rejects bad index", async () => {
-  const s = memStorage();
-  const [tool] = createPetSkinTools(s);
-  await assert.rejects(() => tool.run({ skin: "devil:99" }, ctx));
-  await assert.rejects(() => tool.run({ skin: "dragon" }, ctx));
 });
 
 test("set_tts_voice updates voice and speed", async () => {

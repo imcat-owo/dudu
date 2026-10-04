@@ -36,7 +36,6 @@ import { MUSIC_ROOM_MANUAL } from "./music-room.js";
 import { NATIVE_APPS_MANUAL } from "./native-apps.js";
 import { OUR_SPACE_MANUAL } from "./our-space.js";
 import { PERMISSIONS_MANUAL } from "./permissions.js";
-import { PET_MANUAL } from "./pet.js";
 import { SANDBOX_MANUAL } from "./sandbox.js";
 import { SKILLS_MANUAL } from "./skills.js";
 import { THEMES_MANUAL } from "./themes.js";
@@ -78,7 +77,6 @@ export const MANUALS: ManualEntry[] = [
   SKILLS_MANUAL,
   KNOWLEDGE_MANUAL,
   MEDIA_MANUAL,
-  PET_MANUAL,
   BACKUP_MANUAL,
 ];
 

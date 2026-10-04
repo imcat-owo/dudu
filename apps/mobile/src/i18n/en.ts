@@ -76,11 +76,6 @@ export const enStrings: Record<StringKey, string> = {
 
   // ---- our space ----
   "space.title": "Our Space",
-  "pet.settingsTitle": "Desktop Pet",
-  "pet.settingsHint": "How Xiaomeng looks. Drag it around the chat.",
-  "pet.skin.sora": "Sora",
-  "pet.skin.devil": "Little devil {n}",
-  "pet.a11y.pet": "Xiaomeng, drag me around",
   "space.subtitle": "Our little place",
   "space.tabs.status": "Status",
   "space.tabs.diary": "Diary",
@@ -127,7 +122,8 @@ export const enStrings: Record<StringKey, string> = {
   "music.nowPlaying": "Now playing",
   "music.djWorking": "Dudu is DJing",
   "music.nothingPlaying": "Quiet in here. Pick a song, or tell me to play one.",
-  "music.noAudio": "This song has no audio attached yet. Open the song menu, tap \"Edit\", and add audio to play it.",
+  "music.noAudio":
+    'This song has no audio attached yet. Open the song menu, tap "Edit", and add audio to play it.',
   "music.queue": "Coming up",
   "music.queue.empty": "The queue is empty. Pick one and let's listen together.",
   "music.playlists": "Playlists",

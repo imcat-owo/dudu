@@ -68,7 +68,6 @@ import {
 } from "./music/store";
 import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
-import { petActivity } from "./pet/store";
 import { SoraAmbient } from "./sora-ambient";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
@@ -2188,10 +2187,6 @@ export function MusicRoomPage() {
   const engine = usePlayerEngine();
   const [addVisible, setAddVisible] = useState(false);
   const [addTab, setAddTab] = useState<"local" | "apple">("local");
-  // The desktop pet bops while music plays.
-  useEffect(() => {
-    petActivity.setMusicPlaying(engine.status.playing);
-  }, [engine.status.playing]);
   return (
     <View style={{ gap: 14 }}>
       <FadeIn>

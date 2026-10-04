@@ -43,8 +43,6 @@ import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
 import { OurSpaceScreen } from "./our-space-ui";
-import { useDropZone } from "./pet/registry";
-import { PetOverlay } from "./pet-ui";
 import { registerFontSizeHandler } from "./settings/tools";
 import { radii } from "./theme/radii";
 import { ThemeProvider } from "./theme/ThemeContext";
@@ -56,25 +54,21 @@ import { WorkspaceContext } from "./workspace";
 
 type LocalSection = "chat" | "connections" | "appearance" | "space";
 
-/** Bottom tab button — the chat/space tabs double as pet drop portals. */
+/** Bottom tab button. */
 function TabButton({
-  id,
   label,
   icon: Icon,
   active,
   onPress,
 }: {
-  id: LocalSection;
   label: string;
   icon: LucideIcon;
   active: boolean;
   onPress: () => void;
 }) {
   const colors = useColors();
-  const zoneRef = useDropZone(id === "space" ? "tab-space" : id === "chat" ? "tab-chat" : null);
   return (
     <Pressable
-      ref={zoneRef}
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
@@ -268,7 +262,6 @@ export function LocalApp() {
                         {nav.map((item) => (
                           <TabButton
                             key={item.id}
-                            id={item.id}
                             label={item.label}
                             icon={item.icon}
                             active={section === item.id}
@@ -277,7 +270,6 @@ export function LocalApp() {
                         ))}
                       </GlassView>
                     </View>
-                    <PetOverlay section={section} onNavigate={(next) => setSection(next)} />
                     {detail?.type === "crossDialogTrace" && <CrossDialogTraceSheet />}
                   </View>
                 </ThemeTransition>
