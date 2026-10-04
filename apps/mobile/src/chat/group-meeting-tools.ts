@@ -319,6 +319,11 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       },
       manualId: "group-meeting",
       run: async (args) => {
+        if (incognito()) {
+          throw new ToolError(
+            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
+          );
+        }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
         const meeting = await deps.meetings.get(meetingId);
@@ -404,6 +409,11 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       },
       manualId: "group-meeting",
       run: async (args) => {
+        if (incognito()) {
+          throw new ToolError(
+            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
+          );
+        }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
         const meeting = await deps.meetings.get(meetingId);
@@ -432,6 +442,11 @@ export function createGroupMeetingTools(deps: GroupMeetingToolDeps): LocalTool[]
       },
       manualId: "group-meeting",
       run: async (args) => {
+        if (incognito()) {
+          throw new ToolError(
+            "隐身会话承诺了无副作用——开会要花她的 API 钱，这里不许推进轮次。",
+          );
+        }
         const meetingId = strArg(args, "meeting_id").trim();
         if (!meetingId) throw new ToolError("meeting_id is required.");
         const conclusion = strArg(args, "conclusion").trim();

@@ -470,7 +470,7 @@ describe("group meeting tools", () => {
     planGateStore.__resetForTests();
   });
 
-  it("registers the four tools", () => {
+  it("registers the five tools", () => {
     const { tools } = toolsFor();
     for (const n of [
       "list_models",
@@ -589,6 +589,22 @@ describe("group meeting tools", () => {
     assert.ok(
       entries.some((e) => e.action === "meeting_round"),
       "round is traced",
+    );
+  });
+
+  it("run_meeting_round refuses in incognito (spends her API budget)", async () => {
+    const normal = toolsFor();
+    const out = await startMeeting(normal.tools);
+    const id = out.match(/id: (gm_\w+)/)?.[1];
+    assert.ok(id);
+    // Same meeting id, but from an incognito session -> refused.
+    const incog = toolsFor({ isIncognito: () => true });
+    // Share the meeting store so the meeting exists for the incognito tools.
+    (incog.deps as { meetings: unknown }).meetings = normal.meetings;
+    const incogTools = createGroupMeetingTools(incog.deps as never) as TestTool[];
+    await assert.rejects(
+      toolByName(incogTools, "run_meeting_round").run({ meeting_id: id }, ctx),
+      /隐身/,
     );
   });
 
