@@ -357,9 +357,10 @@ export function buildLocalSystemPrompt(
     }
   }
   // Current time — the AI sees "now" like a person does, no permission needed.
+  // Includes the weekday (design doc §5: he must know what day of the week it is).
   const now = new Date();
   parts.push(
-    `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })} (Asia/Shanghai).`,
+    `Current time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", weekday: "long" })} (Asia/Shanghai).`,
   );
   return parts.join("\n");
 }
