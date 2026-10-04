@@ -224,7 +224,7 @@ function ScanSheet({
     return (
       <Sheet title={t("appearance.shareScanQr")} onClose={onClose}>
         <View style={{ padding: 20 }}>
-          <TText style={{ color: colors.text }}>…</TText>
+          <TText style={{ color: colors.text }}>{t("appearance.shareRequestingCamera")}</TText>
         </View>
       </Sheet>
     );

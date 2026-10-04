@@ -1522,7 +1522,7 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
             }}
           >
             <TText style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-              {post.author === "ai" ? "AI" : "她"}
+              {post.author === "ai" ? "AI" : t("space.feed.authorHer")}
             </TText>
           </View>
           <View style={{ flex: 1 }}>

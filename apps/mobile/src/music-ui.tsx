@@ -297,6 +297,8 @@ function usePlayerEngine() {
         // Nothing loaded: play the first song of the shared playlist.
         const tracks = await musicStore.listPlaylistTracks(SHARED_PLAYLIST_ID);
         if (tracks[0]) await playTrack(tracks[0], SHARED_PLAYLIST_ID);
+        // P2-5: empty playlist used to do nothing at all — tell her what to do.
+        else setError(t("music.songs.empty"));
         return;
       }
       if (status.playing) await src.pause();
@@ -371,6 +373,31 @@ function usePlayerEngine() {
     setTogether(s);
   }, [together.active]);
 
+  // P2-10: "上一首" is a real previous-track button now. Standard behavior:
+  // if we're more than 3s into the song, restart it; otherwise step back to
+  // the previous song in the context playlist (restart when at the start).
+  const goPrev = useCallback(async () => {
+    setError("");
+    try {
+      const { getMusicSource } = await import("./music/sources");
+      if ((status.position ?? 0) > 3) {
+        await getMusicSource(nowPlaying?.source ?? "local").seekTo(0);
+        return;
+      }
+      if (contextPlaylist.current && nowPlaying) {
+        const tracks = await musicStore.listPlaylistTracks(contextPlaylist.current);
+        const i = tracks.findIndex((x) => x.id === nowPlaying.id);
+        if (i > 0) {
+          await playTrack(tracks[i - 1], contextPlaylist.current);
+          return;
+        }
+      }
+      await getMusicSource(nowPlaying?.source ?? "local").seekTo(0);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Playback failed.");
+    }
+  }, [nowPlaying, status.position, playTrack]);
+
   return {
     nowPlaying,
     status,
@@ -382,6 +409,7 @@ function usePlayerEngine() {
     toggle,
     seek,
     advance,
+    goPrev,
     contextPlaylist,
   };
 }
@@ -721,13 +749,11 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
     badge: string | null,
     badgeOk: boolean,
     onPress: () => void,
-  ) => (
-    <PressableScale
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      style={{ flex: 1 }}
-    >
+    pressable = true,
+  ) => {
+    // P2-6: the local card is status, not a button — rendering it pressable
+    // was a dead button. Non-pressable cards have no press affordance.
+    const body = (
       <View
         style={{
           backgroundColor: colors.card,
@@ -736,6 +762,7 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
           borderColor: colors.line,
           padding: 14,
           gap: 6,
+          opacity: pressable ? 1 : 0.85,
         }}
       >
         <TText style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>{title}</TText>
@@ -758,15 +785,28 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
           </View>
         )}
       </View>
-    </PressableScale>
-  );
+    );
+    if (!pressable) {
+      return <View style={{ flex: 1 }}>{body}</View>;
+    }
+    return (
+      <PressableScale
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        style={{ flex: 1 }}
+      >
+        {body}
+      </PressableScale>
+    );
+  };
 
   const appleOk = appleState === "authorized";
   return (
     <View style={{ gap: 8 }}>
       <TText style={{ color: colors.muted, fontSize: 12 }}>{t("music.source.title")}</TText>
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {card(t("music.source.local"), t("music.source.local"), null, false, () => {})}
+        {card(t("music.source.local"), t("music.source.localDefault"), null, false, () => {}, false)}
         {card(
           t("music.source.appleMusic"),
           appleOk ? t("music.source.addFromApple") : t("music.auth.needAuth"),
@@ -784,7 +824,7 @@ function SourcePicker({ onAppleSearch }: { onAppleSearch: () => void }) {
         </TText>
       )}
       {(appleState === "unavailable" || appleState === "not-configured") && (
-        <TText style={{ color: colors.muted, fontSize: 11.5 }}>{t("music.auth.setupHint")}</TText>
+        <TText style={{ color: colors.muted, fontSize: 11.5 }}>{t("music.auth.setupHintUser")}</TText>
       )}
     </View>
   );
@@ -935,14 +975,9 @@ function AlbumGlow({ track }: { track: Track | null }) {
 
 function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngine> }) {
   const colors = useColors();
-  const { nowPlaying, status, error, toggle, seek, advance } = engine;
+  const { nowPlaying, status, error, toggle, seek, advance, goPrev } = engine;
   const prev = async () => {
-    try {
-      const { getMusicSource } = await import("./music/sources");
-      await getMusicSource(nowPlaying?.source ?? "local").seekTo(0);
-    } catch {
-      // best effort
-    }
+    await goPrev();
   };
   return (
     <View style={{ position: "relative" }}>
@@ -1163,7 +1198,7 @@ function SongRow({
                 {track.artist}
                 {track.source === "apple-music" ? " · Apple Music" : ""}
                 {!track.audioUri && track.source === "local"
-                  ? ` · ${t("music.noAudio").slice(0, 6)}…`
+                  ? ` · ${t("music.noAudioShort")}`
                   : ""}
                 {listenLabel ? ` · ${listenLabel}` : ""}
               </TText>
@@ -1519,9 +1554,26 @@ function CommentsSection({ trackId }: { trackId: string | null }) {
               </TText>
             </View>
             <View style={{ flex: 1 }}>
-              <TText style={{ color: colors.muted, fontSize: 11.5 }}>
-                {c.author === "ai" ? t("space.couple.aiAvatar") : t("space.couple.herAvatar")}
-              </TText>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <TText style={{ color: colors.muted, fontSize: 11.5, flex: 1 }}>
+                  {c.author === "ai" ? t("space.couple.aiAvatar") : t("space.couple.herAvatar")}
+                </TText>
+                {/* P3-6: her own comments can be deleted, like everywhere else. */}
+                {c.author === "her" && (
+                  <PressableScale
+                    onPress={() =>
+                      void (async () => {
+                        await musicStore.deleteComment(c.id);
+                        setComments(await musicStore.listComments(trackId));
+                      })()
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={t("common.delete") as string}
+                  >
+                    <Trash2 size={14} color={colors.muted} strokeWidth={1.7} />
+                  </PressableScale>
+                )}
+              </View>
               <TText style={{ color: colors.text, fontSize: 14, marginTop: 2 }}>{c.text}</TText>
             </View>
           </View>

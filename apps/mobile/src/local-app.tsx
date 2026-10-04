@@ -77,14 +77,19 @@ function TabButton({
       onPress={onPress}
       style={{
         flex: 1,
-        height: 47,
+        height: 58,
         alignItems: "center",
         justifyContent: "center",
+        gap: 2,
         backgroundColor: active ? colors.sky : "transparent",
         borderRadius: radii.xl,
       }}
     >
-      <Icon size={23} strokeWidth={1.8} color={colors.text} />
+      <Icon size={22} strokeWidth={1.8} color={colors.text} />
+      {/* P2-3: icons alone are guesswork — every tab gets a small label. */}
+      <Text style={{ fontSize: 10, lineHeight: 12, color: colors.text }} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
