@@ -317,6 +317,27 @@ describe("cross-dialog tools", () => {
     );
   });
 
+  it("fail-closed: if the trace can't be written, the send never happens", async () => {
+    const base = fakeStorage();
+    seedHistory(base, "aaa", []);
+    await setDialogName(base, "aaa", "旅行计划");
+    const s: FakeStorage = {
+      ...base,
+      setItem: async (k, v) => {
+        if (k === "dudu.cross-dialog-trace.v1") throw new Error("disk full");
+        return base.setItem(k, v);
+      },
+    };
+    const { tools } = toolsFor(s, "current");
+    await assert.rejects(
+      run(tools, "send_to_dialog", { dialog: "aaa", message: "hi", reason: "her request" }),
+      /disk full/,
+    );
+    // The message must NOT have landed in the target dialog.
+    const raw = JSON.parse((s.__map.get("dudu.local-chat.aaa.v1") ?? "[]") as string);
+    assert.equal(raw.length, 0, "send happened without a trace — forbidden");
+  });
+
   it("denies cross-persona targets", async () => {
     const s = fakeStorage();
     seedHistory(s, "aaa", []);

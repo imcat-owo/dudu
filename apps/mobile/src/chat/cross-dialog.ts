@@ -486,6 +486,22 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
           );
         }
         const fromName = await traceFromName();
+        const summary =
+          message.trim().length > 120 ? `${message.trim().slice(0, 120)}…` : message.trim();
+        // Trace FIRST, then send: if trace storage fails, the send never
+        // happens — there is no path where a message lands in another
+        // dialog without a trace entry. (If the send itself fails after,
+        // the entry stands as an auditable attempted send with its reason.)
+        await opts.trace.append({
+          action: "send",
+          fromThreadId: opts.threadId,
+          fromName,
+          toThreadId: dialog.id,
+          toName: dialog.name,
+          summary,
+          reason,
+          personaId,
+        });
         const { tagVisible } = await sendToDialog(
           storage,
           dialog.id,
@@ -493,17 +509,6 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
           { fromThreadId: opts.threadId, fromName, at: Date.now() },
           (id) => opts.visibility.isSendTagVisible(id),
         );
-        await opts.trace.append({
-          action: "send",
-          fromThreadId: opts.threadId,
-          fromName,
-          toThreadId: dialog.id,
-          toName: dialog.name,
-          summary:
-            message.trim().length > 120 ? `${message.trim().slice(0, 120)}…` : message.trim(),
-          reason,
-          personaId,
-        });
         return tagVisible
           ? `Delivered to "${dialog.name}" — it shows there tagged as coming from "${fromName}", and the send is in her trace log.`
           : `Delivered to "${dialog.name}" — she turned off the in-dialog source tag for it, so it lands quietly, but the send is still recorded in her trace log.`;
