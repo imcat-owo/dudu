@@ -76,6 +76,39 @@ export interface MusicSource {
 
 const IDLE: SourceStatus = { playing: false, position: 0, duration: null, trackId: null };
 
+/**
+ * P1-5: Apple Music end-of-track synthesis (pure, testable).
+ *
+ * On natural finish, MusicKit reports playing=false at the finished position
+ * (duration) instead of position 0. The UI auto-advance (music-ui.tsx) watches
+ * for playing:false + position:0 — the signal LocalMusicSource emits on
+ * didJustFinish. Without this translation the queue stalls after the first
+ * Apple Music track.
+ *
+ * `mirrored` is the raw MusicKit state translated 1:1; `prev` is the last
+ * known status. The song-id match guards against stale MusicKit state right
+ * after load() (a shorter newly loaded track must not inherit the old
+ * track's finish).
+ *
+ * Tradeoff: pausing within the tolerance window of the track end looks like
+ * a finish and advances. Rare, and advancing is the sane outcome there.
+ */
+export const APPLE_END_TOLERANCE_S = 1.5;
+
+export function applyAppleEndOfTrack(prev: SourceStatus, mirrored: SourceStatus): SourceStatus {
+  const songId = mirrored.trackId;
+  const duration = prev.duration;
+  const ended =
+    !mirrored.playing &&
+    songId !== null &&
+    songId === prev.trackId &&
+    typeof duration === "number" &&
+    duration > 0 &&
+    mirrored.position >= duration - APPLE_END_TOLERANCE_S;
+  if (!ended) return mirrored;
+  return { ...mirrored, playing: false, position: 0 };
+}
+
 class LocalMusicSource implements MusicSource {
   readonly id: MusicSourceId = "local";
   readonly label = "Local";
@@ -343,12 +376,16 @@ class AppleMusicSource implements MusicSource {
     try {
       const st = await bridge.Player.getCurrentState();
       const playing = st.playbackStatus === "playing";
-      this.status = {
+      const songId = st.currentSong ? st.currentSong.id : null;
+      const mirrored: SourceStatus = {
         playing,
         position: typeof st.playbackTime === "number" ? st.playbackTime : this.status.position,
         duration: this.status.duration,
-        trackId: st.currentSong ? st.currentSong.id : this.status.trackId,
+        trackId: songId ?? this.status.trackId,
       };
+      // P1-5: synthesize the local source's end-of-track signal so the
+      // queue auto-advances for Apple Music tracks too.
+      this.status = applyAppleEndOfTrack(this.status, mirrored);
     } catch {
       // keep last known status when the native call fails
     }
