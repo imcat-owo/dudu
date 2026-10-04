@@ -58,6 +58,7 @@ import {
 } from "../vision/describe";
 import { voiceStore } from "../voice/store.js";
 import { createPodcastTools, createTtsVoiceTools } from "../voice/tools.js";
+import { capabilityStore } from "./capability-store";
 import {
   type ChatContentBlock,
   type ChatMessage,
@@ -66,6 +67,7 @@ import {
   streamChat,
 } from "./direct-transport";
 import { classifyError, type ErrorClass } from "./error-classifier";
+import { describeVia, planVision, type VisionPlan } from "./group-router";
 import {
   createLocalTools,
   createToolRegistry,
@@ -302,13 +304,18 @@ export function buildLocalSystemPrompt(
  * - Native vision: text + image_url content blocks in one request.
  * - Describe pipeline: each image → 4-part description → appended as
  *   structured blocks the text model can read.
- * - No vision config: throw loudly — never silently drop the image.
+ * - Capability routing: when the group itself can't see images, an optional
+ *   visionPlan (see ./group-router.ts planVision) borrows a model from the
+ *   image_input capability group — ordered candidates, first success wins.
+ * - No vision config and no route: throw loudly — never silently drop the
+ *   image.
  */
 /** Exported for testing the vision cache behavior. */
 export async function toWireUserMessage(
   group: ApiGroup,
   content: string,
   cache: VisionCache,
+  visionPlan?: VisionPlan,
 ): Promise<ChatMessage> {
   const parsed = parseUserMessageWithImages(content);
   const files = parsed?.files ?? [];
@@ -328,14 +335,20 @@ export async function toWireUserMessage(
       : "";
 
   const vision = group.vision;
-  if (!vision) {
+  // Capability routing: the plan (computed by the caller from
+  // group-router.ts planVision) decides which connection actually sees
+  // the images. Absent plan = legacy behavior (group's own vision config).
+  const plan = visionPlan ?? legacyVisionPlan(vision);
+  if (plan.mode === "unavailable") {
     throw new GroupError(
       group.name,
-      "没有配置识图：请在分组设置里打开“聊天模型直接看图”或填写识图模型",
+      plan.reason === "routing-disabled"
+        ? "没有配置识图：请在分组设置里打开“聊天模型直接看图”或填写识图模型"
+        : "没有配置识图：请在分组设置里打开“聊天模型直接看图”、填写识图模型，或在「能力分组 → 图片输入」里添加识图模型",
     );
   }
 
-  if (vision.native) {
+  if (plan.mode === "native") {
     const blocks: ChatContentBlock[] = [];
     if (parsed.text.trim()) blocks.push({ type: "text", text: parsed.text });
     for (const img of parsed.images) {
@@ -351,27 +364,75 @@ export async function toWireUserMessage(
   }
 
   // Describe pipeline: vision model describes, chat model reads text.
+  // Routed mode walks the capability group's ordered candidates
+  // (primary first, then fallbacks) — first success wins.
   const parts: string[] = [];
   if (parsed.text.trim()) parts.push(parsed.text);
+  const via = plan.mode === "routed" ? describeVia(plan.decision) : null;
   for (const img of parsed.images) {
     let description = cache.describe.get(img.uri);
     if (description === undefined) {
-      try {
-        description = await describeImage(group, img.uri, parsed.text);
-      } catch (e) {
-        // Loud, per-image — the user knows exactly which image failed and why.
-        throw e instanceof VisionError || e instanceof GroupError
-          ? e
-          : new VisionError(
-              `识图失败 (${img.name})：${e instanceof Error ? e.message : String(e)}`,
-            );
-      }
+      description = await describeWithPlan(group, plan, img.uri, img.name, parsed.text);
       cache.describe.set(img.uri, description);
     }
-    parts.push(formatDescriptionBlock(img.name, description));
+    parts.push(formatDescriptionBlock(img.name, description, via));
   }
   if (fileBlock) parts.push(fileBlock);
   return { role: "user", content: parts.join("\n\n") };
+}
+
+/**
+ * Legacy plan from the group's own vision config (pre-routing behavior).
+ * Used when the caller passes no capability plan.
+ */
+function legacyVisionPlan(vision: ApiGroup["vision"]): VisionPlan {
+  if (!vision) return { mode: "unavailable", reason: "no-vision-config" };
+  if (vision.native) return { mode: "native", decision: { routed: false, via: "native" } };
+  return { mode: "describe-current", decision: { routed: false, via: "current-describe" } };
+}
+
+/**
+ * Describe one image following the vision plan. Routed mode tries each
+ * candidate in order; transient failures move to the next candidate,
+ * auth errors abort the chain loudly (a bad key won't heal on retry).
+ */
+async function describeWithPlan(
+  group: ApiGroup,
+  plan: Exclude<VisionPlan, { mode: "unavailable" } | { mode: "native" }>,
+  imageUri: string,
+  imageName: string,
+  userText: string,
+): Promise<string> {
+  if (plan.mode === "describe-current") {
+    try {
+      return await describeImage(group, imageUri, userText);
+    } catch (e) {
+      throw e instanceof VisionError || e instanceof GroupError
+        ? e
+        : new VisionError(`识图失败 (${imageName})：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  // Routed: ordered candidate chain (LiteLLM-style fallback).
+  const errors: string[] = [];
+  for (const c of plan.candidates) {
+    try {
+      return await describeImage(c.apiGroup, imageUri, userText, c.model);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`${c.model}：${msg}`);
+      if (classifyError(e) === "auth_error") {
+        throw new GroupError(
+          group.name,
+          `识图路由失败：${c.model} 鉴权失败（请检查该分组的 Key），未继续尝试后续模型。${errors.join("；")}`,
+        );
+      }
+      // Transient — try the next candidate.
+    }
+  }
+  throw new GroupError(
+    group.name,
+    `识图路由失败：分组内模型均不可用（${errors.join("；")}）。请检查「能力分组 → 图片输入」的成员配置。`,
+  );
 }
 
 /**
@@ -889,11 +950,25 @@ export function createLocalAgent(opts: {
 
       // Build the wire messages, resolving image attachments via vision.
       // History tool calls/results ride along so multi-turn tool use works.
+      // Capability routing: planVision decides which model actually sees
+      // attached images (current model fast path → image_input group →
+      // honest failure). The plan is computed once per turn from the
+      // capability store snapshot.
+      const capSnap = capabilityStore.getSnapshot();
+      const visionPlanFor = (g: ApiGroup): VisionPlan =>
+        planVision(g, capSnap.groups, groupStore.getSnapshot().groups, capSnap.routingEnabled);
       const wire: ChatMessage[] = [];
       wire.push({ role: "system", content: systemPrompt });
       for (const m of messages) {
         if (m.role === "user") {
-          wire.push(await toWireUserMessage(group, contentToText(m.content), visionCache));
+          wire.push(
+            await toWireUserMessage(
+              group,
+              contentToText(m.content),
+              visionCache,
+              visionPlanFor(group),
+            ),
+          );
         } else if (m.role === "assistant") {
           const entry: ChatMessage = { role: "assistant", content: contentToText(m.content) };
           if (m.toolCalls && m.toolCalls.length > 0) {

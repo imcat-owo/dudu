@@ -98,13 +98,17 @@ function visionHeaders(group: ApiGroup): Record<string, string> {
 /**
  * Describe one image with a vision model (non-streaming). Returns the
  * description text. Throws VisionError / GroupError loudly on failure.
+ *
+ * modelOverride: capability routing borrows another connection and may
+ * pin a different model than the group's own vision config.
  */
 export async function describeImage(
   group: ApiGroup,
   imageUri: string,
   userQuestion: string,
+  modelOverride?: string,
 ): Promise<string> {
-  const model = group.vision?.model?.trim() || group.model;
+  const model = modelOverride?.trim() || group.vision?.model?.trim() || group.model;
   const dataUri = await imageToDataUri(imageUri);
   const body: { model: string; messages: VisionChatMessage[]; stream: boolean } = {
     model,
@@ -178,9 +182,17 @@ export async function nativeImageBlock(
 /**
  * Format a describe-pipeline result as the structured block fed back to
  * the chat model (research §4.4 — identifiable, traceable).
+ *
+ * via: routing trace, e.g. "经模型 gpt-4o（分组「图片输入」）识图" —
+ * automatic routing is never a black box (HF RouterMetadata analog).
  */
-export function formatDescriptionBlock(imageName: string, description: string): string {
-  return `[图片描述 | ${imageName}]\n${description}`;
+export function formatDescriptionBlock(
+  imageName: string,
+  description: string,
+  via?: string | null,
+): string {
+  const trace = via ? `\n[${via}]` : "";
+  return `[图片描述 | ${imageName}]${trace}\n${description}`;
 }
 
 export interface UserImageAttachment {

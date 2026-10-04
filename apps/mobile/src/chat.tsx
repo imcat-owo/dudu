@@ -40,8 +40,10 @@ import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
 import { AnimatedAvatar } from "./animated-avatar";
 import { ActiveGroupChip } from "./api-groups/api-settings";
+import { capabilityStore } from "./api-groups/capability-store";
+import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
-import { useApiGroups } from "./api-groups/store";
+import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
 import { MILESTONE_CELEBRATION_MS, resolveAvatarState } from "./avatar-state";
@@ -88,7 +90,7 @@ import {
 } from "./vision/describe";
 import { SpeakButton } from "./voice/speak-button";
 import { useVoiceConfig } from "./voice/store";
-import { transcribeAudio } from "./voice/stt";
+import { transcribeAudioWithCandidates } from "./voice/stt";
 import {
   encodeVoiceMessage,
   extractVoiceMessage,
@@ -608,7 +610,17 @@ export function ChatScreen({
     if (voiceSettings.micMode === "transcribe") {
       setTranscribing(true);
       try {
-        const text = await transcribeAudio(uri, activeGroup, sttConfig);
+        // Voice-input capability routing: dialog group first, then the
+        // voice_input capability group members in order, then her
+        // dedicated STT endpoint. First success wins.
+        const capSnap = capabilityStore.getSnapshot();
+        const candidates = planVoiceInput(
+          activeGroup,
+          capSnap.groups,
+          groupStore.getSnapshot().groups,
+          capSnap.routingEnabled,
+        );
+        const text = await transcribeAudioWithCandidates(uri, candidates, sttConfig);
         setDraft((d) => (d.trim() ? `${d.trim()} ${text}` : text));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));

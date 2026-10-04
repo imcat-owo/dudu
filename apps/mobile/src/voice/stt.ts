@@ -85,13 +85,25 @@ export async function transcribeAudio(
   group: ApiGroup | null,
   stt: SttConfig,
 ): Promise<string> {
+  return transcribeAudioWithCandidates(audioUri, group ? [group] : [], stt);
+}
+
+/**
+ * Transcribe with an ordered candidate chain (capability routing for
+ * voice_input): the dialog's own group first, then voice_input capability
+ * group members in order, then the dedicated STT endpoint config.
+ * First success wins; all fail → loud SttError with the full chain.
+ */
+export async function transcribeAudioWithCandidates(
+  audioUri: string,
+  candidates: ApiGroup[],
+  stt: SttConfig,
+): Promise<string> {
   const errors: string[] = [];
 
-  // 1. Active API group's audio endpoint.
-  if (group) {
+  for (const group of candidates) {
     try {
       // Whisper-style model default when the chat model isn't an STT model.
-      // The user can point a dedicated STT config at anything instead.
       return await postTranscription(
         group.baseUrl,
         group.apiKey,
@@ -101,13 +113,11 @@ export async function transcribeAudio(
       );
     } catch (e) {
       errors.push(e instanceof Error ? e.message : String(e));
-      // A 404 means "this endpoint doesn't do transcription" — try the
-      // dedicated STT config instead of giving up. Anything else is also
-      // worth one fallback attempt before failing loudly.
+      // Try the next candidate before giving up.
     }
   }
 
-  // 2. Dedicated STT endpoint.
+  // Dedicated STT endpoint.
   const customUrl = (stt.customUrl ?? "").trim();
   if (stt.provider === "custom" && customUrl) {
     try {
