@@ -251,6 +251,18 @@ function useSafeRenderToolCall(): (args: { toolCall: unknown; toolMessage: unkno
   }) => ReactNode;
 }
 
+/**
+ * Time-of-day bucket for the welcome message: morning (5–11),
+ * afternoon (11–18), evening (18–23), night (23–5).
+ */
+function welcomeTimeBucket(date = new Date()): "morning" | "afternoon" | "evening" | "night" {
+  const h = date.getHours();
+  if (h >= 5 && h < 11) return "morning";
+  if (h >= 11 && h < 18) return "afternoon";
+  if (h >= 18 && h < 23) return "evening";
+  return "night";
+}
+
 export function ChatScreen({
   prompt,
   thread,
@@ -719,10 +731,10 @@ export function ChatScreen({
                 maxWidth: 350,
               }}
             >
-              {t("chat.welcomeTitle")}
+              {t(`chat.welcomeTitle.${welcomeTimeBucket()}` as const)}
             </TText>
             <TText style={[s.muted, { maxWidth: 320, textAlign: "center", lineHeight: 23 }]}>
-              {t("chat.welcomeBody")}
+              {t(`chat.welcomeBody.${welcomeTimeBucket()}` as const)}
             </TText>
             <View style={{ width: "100%", maxWidth: 360, marginTop: 14, gap: 8 }}>
               {[

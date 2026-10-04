@@ -305,8 +305,14 @@ const zhHans = {
   "a11y.browserPreview": "浏览器预览：{title}",
 
   // ---- chat (chat.tsx) ----
-  "chat.welcomeTitle": "搭把手，生活宽很多。",
-  "chat.welcomeBody": "说说在想什么。做计划、管应用，或者让我用电脑帮你跑腿，都行。",
+  "chat.welcomeTitle.morning": "早。",
+  "chat.welcomeBody.morning": "新的一天开始了，跟我说说今天想做点什么。",
+  "chat.welcomeTitle.afternoon": "下午好。",
+  "chat.welcomeBody.afternoon": "歇一会儿？跟我说说话，或者把事情丢给我去办。",
+  "chat.welcomeTitle.evening": "晚上好。",
+  "chat.welcomeBody.evening": "今天辛苦了。来跟我说说话，放松一下。",
+  "chat.welcomeTitle.night": "还没睡？",
+  "chat.welcomeBody.night": "我陪你。想聊什么，或者想让我做点什么，都行。",
   "chat.retryLoad": "重新加载对话",
   "chat.retrySave": "重新保存对话",
   "chat.retryReply": "重试回复",

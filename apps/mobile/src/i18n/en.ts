@@ -312,9 +312,14 @@ export const enStrings: Record<StringKey, string> = {
   "a11y.browserPreview": "Browser preview: {title}",
 
   // ---- chat (chat.tsx) ----
-  "chat.welcomeTitle": "A little help, a lot more room for life.",
-  "chat.welcomeBody":
-    "Tell me what's on your mind. I can make plans, manage your apps, and use my computer to help.",
+  "chat.welcomeTitle.morning": "Morning.",
+  "chat.welcomeBody.morning": "A new day. Tell me what you'd like to do today.",
+  "chat.welcomeTitle.afternoon": "Afternoon.",
+  "chat.welcomeBody.afternoon": "Take a breather? Talk to me, or hand things off to me.",
+  "chat.welcomeTitle.evening": "Evening.",
+  "chat.welcomeBody.evening": "Long day? Come talk to me and unwind a little.",
+  "chat.welcomeTitle.night": "Still up?",
+  "chat.welcomeBody.night": "I'm here with you. Talk, or let me take care of something.",
   "chat.retryLoad": "Retry loading conversation",
   "chat.retrySave": "Retry saving conversation",
   "chat.retryReply": "Retry reply",
