@@ -7,12 +7,12 @@ Builder: subagent df931e58. One commit per perspective group on `main`.
 | 1 | code P3-1 biome drift | fixed | 59 errors+35 warns -> 1 error+33 warns; --write format; removed unused Text import, unused param, fixed noArrayIndexKey w/ stable key; remaining 14 noNonNullAssertion (13 test) + 6 noExplicitAny (test) = pre-existing style drift, risky to rewrite test assertions | d2d2931 |
 | 2 | code P3-2 local-agent silent catch | fixed | documented silent-loss pitfall in catch (no logger exists in codebase) | d2d2931 |
 | 3 | code P3-3 useChatAgent hook-order comment | already-fixed / verified | comments intact in-code (header + per-call biome-ignore); NOT refactored per task. FINDING: caller local-app.tsx:203 renders ChatScreen WITHOUT key={mode} -- documented discipline NOT enforced; flipping mode in Settings while chat mounted risks hook-order crash. Flagged for parent to escalate (needs AGENTS.md note, which I must not edit). | - |
-| 4 | ui P3-1 drag handle cuter | TODO | | |
-| 5 | ui P3-2 typing dots livelier | TODO | | |
-| 6 | ui P3-3 music time font 12px | TODO | | |
-| 7 | xiaomeng P3-1 empty copy voice | TODO | | |
-| 8 | xiaomeng P3-2 today card verify | TODO | | |
-| 9 | xiaomeng P3-3 couple avatar play | TODO | | |
+| 4 | ui P3-1 drag handle cuter | fixed | thinking-drawer.tsx: paw-print style grabber, 38x4 hit area kept | 5d31237 |
+| 5 | ui P3-2 typing dots livelier | fixed | chat.tsx: brand-color pulsing "thinking halo" replaces opacity blink | 5d31237 |
+| 6 | ui P3-3 music time font 12px | fixed | music-ui.tsx: time text bumped 11.5px -> 12px | 5d31237 |
+| 7 | xiaomeng P3-1 empty copy voice | fixed | EmptyState copy rewritten in his voice (restrained, non-oily, zh+en), our-space empty states | ebd55e7 |
+| 8 | xiaomeng P3-2 today card verify | fixed | Our Space home "Today" card shows days-together / countdown / last-year-today | ebd55e7 |
+| 9 | xiaomeng P3-3 couple avatar play | fixed | couple-avatar card "use in chat" button (our-space-ui.tsx), applies couple avatar as chat avatar | ebd55e7 |
 | 10 | ai dead-code createPetInteractionVideoTools | already-fixed | zero matches repo-wide; removed earlier (pet/tools.ts clean) | - |
 | 11 | ai dead-code pet/interactions.ts | already-fixed | file deleted in 3d8edc4 (P2-13/14/15 dead code); nothing imports it | - |
 | 12 | ai dead-code logInteraction calls | already-fixed | zero matches in pet-ui.tsx (audit listed 4; removed by sibling work) | - |

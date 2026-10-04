@@ -933,7 +933,7 @@ function CoupleHeader() {
   // picks it up immediately. Only custom-picked avatars are applied; unset
   // sides are left alone rather than filled with placeholders.
   const hasCustomAvatar = !!(profile?.herAvatarUri || profile?.aiAvatarUri);
-  const useInChat = async () => {
+  const applyCoupleAvatarsToChat = async () => {
     const avatar = { ...(bundle.avatar ?? {}) };
     let changed = false;
     if (profile?.aiAvatarUri) {
@@ -1034,7 +1034,7 @@ function CoupleHeader() {
       </View>
       {hasCustomAvatar && (
         <PressableScale
-          onPress={() => void useInChat()}
+          onPress={() => void applyCoupleAvatarsToChat()}
           accessibilityRole="button"
           accessibilityLabel={t("space.couple.useInChat")}
           style={{ marginTop: 10 }}

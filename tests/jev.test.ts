@@ -7,7 +7,12 @@ import {
   LiveJevAdapter,
   rankJevOptions,
 } from "../apps/server/src/jev/adapter.ts";
-import { encodeJevAction, jevActionPrefix, jevPanelSchema, parseJevAction } from "../packages/domain/src/jev.ts";
+import {
+  encodeJevAction,
+  jevActionPrefix,
+  jevPanelSchema,
+  parseJevAction,
+} from "../packages/domain/src/jev.ts";
 
 const option = (id: string) => ({
   id,
