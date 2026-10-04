@@ -10,7 +10,8 @@
  */
 
 import { type LocalTool, ToolError } from "./local-tools.js";
-import { planGateStore, validatePlanInput } from "./plan-gate.js";
+import { planGateStore } from "./plan-gate-instance.js";
+import { validatePlanInput } from "./plan-gate.js";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

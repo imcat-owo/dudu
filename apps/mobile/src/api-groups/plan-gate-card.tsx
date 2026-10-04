@@ -13,7 +13,7 @@ import { TText } from "../font";
 import { t } from "../i18n";
 import { radii } from "../theme/radii";
 import { Button, Card, useColors, useStyles } from "../ui";
-import { planGateStore } from "./plan-gate";
+import { planGateStore } from "./plan-gate-instance";
 
 function useActivePlan(threadId: string) {
   const snap = useSyncExternalStore(

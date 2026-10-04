@@ -13,12 +13,15 @@
  *  3. AI calls check_plan_status before doing any multi-model step.
  *     "approved" -> execute; anything else -> do NOT execute.
  *
- * Plans are per-thread and in-memory (a proposed plan is an ephemeral
- * conversational artifact; it dies with the app session — documented, not
- * hidden). Proposing a new plan supersedes an older proposed one in the
- * same thread.
+ * Plans are per-thread. Approved plans (and still-pending proposals) are
+ * persisted so an in-flight meeting survives an app restart: the plan gate
+ * re-checks the plan before every round, and a missing plan used to brick
+ * the meeting with a confusing error (P1-9). Proposed plans are conversational
+ * cards — persisting them also lets her still approve/decline after a restart.
+ * Proposing a new plan supersedes an older proposed one in the same thread.
  *
- * PURE module: no React Native / expo imports.
+ * PURE module: no React Native / expo imports. Persistence is injected
+ * (AsyncStorage in production via plan-gate-instance.ts, fake in tests).
  */
 
 /**
@@ -69,10 +72,55 @@ export function validatePlanInput(input: {
   return null;
 }
 
-export function createPlanGateStore() {
+/** Shape guard for plans loaded from storage — corrupt rows are dropped, never crash. */
+export function isValidPlan(p: unknown): p is CoordinationPlan {
+  if (typeof p !== "object" || p === null) return false;
+  const v = p as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.threadId === "string" &&
+    typeof v.title === "string" &&
+    typeof v.createdAt === "number" &&
+    Array.isArray(v.steps) &&
+    (v.status === "proposed" ||
+      v.status === "approved" ||
+      v.status === "rejected" ||
+      v.status === "superseded")
+  );
+}
+
+/** Persistence surface for plan records. AsyncStorage in production, fake in tests. */
+export interface PlanGatePersistence {
+  load(): Promise<CoordinationPlan[]>;
+  save(plans: CoordinationPlan[]): Promise<void>;
+}
+
+export function createPlanGateStore(initialPersistence?: PlanGatePersistence) {
   const plans = new Map<string, CoordinationPlan>();
   const listeners = new Set<() => void>();
+  let persistence: PlanGatePersistence | undefined = initialPersistence;
+  // Save chain: mutations are synchronous, saves are async — serialize them
+  // so a slow save can't land out of order and resurrect an older state.
+  let saveChain: Promise<void> = Promise.resolve();
+  let lastSaveFailed = false;
 
+  function scheduleSave(): void {
+    const p = persistence;
+    if (!p) return;
+    const snapshot = [...plans.values()];
+    saveChain = saveChain
+      .then(() => p.save(snapshot))
+      .then(
+        () => {
+          lastSaveFailed = false;
+        },
+        () => {
+          // Best-effort: a failed plan save must not break the chain or the
+          // UI. The flag is readable via saveFailed() so future UI can surface it.
+          lastSaveFailed = true;
+        },
+      );
+  }
   // getSnapshot() MUST return a stable reference: useSyncExternalStore
   // force-rerenders whenever Object.is(getSnapshot(), prev) is false, so a
   // fresh object literal here spins an infinite render loop.
@@ -144,6 +192,7 @@ export function createPlanGateStore() {
         }
       }
       emit();
+      scheduleSave();
       return plan;
     },
 
@@ -153,13 +202,45 @@ export function createPlanGateStore() {
       if (p?.status !== "proposed") return false;
       plans.set(planId, { ...p, status: approved ? "approved" : "rejected" });
       emit();
+      scheduleSave();
       return true;
+    },
+
+    /**
+     * Load persisted plans (call once at app start). Invalid rows are
+     * dropped. Safe to call again — it replaces the in-memory map, so only
+     * call it before any session activity, not mid-conversation.
+     */
+    async hydrate(): Promise<void> {
+      const p = persistence;
+      if (!p) return;
+      const loaded = await p.load().catch(() => [] as CoordinationPlan[]);
+      plans.clear();
+      for (const p of loaded) {
+        if (isValidPlan(p)) plans.set(p.id, p);
+      }
+      emit();
+    },
+
+    /** True when the most recent persistence write failed. */
+    saveFailed(): boolean {
+      return lastSaveFailed;
+    },
+
+    /**
+     * Attach (or replace) persistence after creation. Used by the app
+     * singleton (plan-gate-instance.ts) so tests keep the PURE module's
+     * unpersisted singleton while UI and AI tools share the persisted one.
+     */
+    attachPersistence(p: PlanGatePersistence): void {
+      persistence = p;
     },
 
     /** Test hook. */
     __resetForTests(): void {
       plans.clear();
       emit();
+      scheduleSave();
     },
   };
 }

@@ -25,7 +25,7 @@
  */
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { planGateStore } from "../api-groups/plan-gate.js";
+import { planGateStore } from "../api-groups/plan-gate-instance.js";
 import type { ApiGroup } from "../api-groups/types.js";
 import { type CrossDialogStorage, DEFAULT_PERSONA_ID, listDialogs } from "./cross-dialog.js";
 import type { CrossDialogTraceStore } from "./cross-dialog-trace.js";
@@ -118,7 +118,13 @@ async function traceFromName(
 function checkPlanGate(planId: string | null): void {
   if (!planId) return;
   const plan = planGateStore.getPlan(planId);
-  if (!plan) throw new ToolError(`找不到计划 ${planId}。`);
+  if (!plan) {
+    // Approved plans are persisted, but storage can still be wiped or fail.
+    // Don't brick: tell the AI how to recover honestly.
+    throw new ToolError(
+      `找不到计划 ${planId}——可能是 App 重启后计划记录没能恢复。不要编造批准：重新用 propose_coordination_plan 提一个计划，等她点了批准再继续这个会。`,
+    );
+  }
   if (plan.status === "approved") return;
   if (plan.status === "rejected") {
     throw new ToolError(
