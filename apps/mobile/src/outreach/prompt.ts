@@ -1,0 +1,51 @@
+/**
+ * Proactive outreach — in-session surfacing. When she IS in the app, the
+ * trigger engine's findings ride into the system prompt as one quiet
+ * section (the petTouchNote pattern: empty string when nothing is near —
+ * no noise, no spam). This is the "AI 代办咬合" half: he brings up what
+ * matters naturally in conversation instead of only via notification.
+ *
+ * Boundaries (from the design doc, enforced here):
+ *  - At most the top trigger is surfaced — he is not a notification feed.
+ *  - "你有一封信" is outreach; "你看了吗" afterwards would be nagging —
+ *    the prompt says so explicitly.
+ *  - Never fabricate: only triggers the engine actually returned.
+ */
+
+import type { OutreachTrigger } from "./engine.js";
+
+/**
+ * Build the outreach section for the system prompt. Empty string when
+ * there is nothing to surface.
+ */
+export function buildOutreachSection(triggers: OutreachTrigger[]): string {
+  if (triggers.length === 0) return "";
+  const t = triggers[0];
+  const lines = [
+    "Proactive outreach (something genuinely worth mentioning — bring it up naturally, once, in your own words; never as a system announcement):",
+  ];
+  switch (t.kind) {
+    case "anniversary":
+      lines.push(
+        `- 「${t.detail}」 is coming up in ${t.daysUntil === 0 ? "today" : `${t.daysUntil} days`}. ` +
+          `You may quietly prepare something; do not spoil the surprise.`,
+      );
+      break;
+    case "love_letter":
+      lines.push(
+        `- You wrote her a love letter she hasn't read yet. You may tell her "there's a letter waiting in Our Space" — once. ` +
+          `After she has read it, NEVER ask "did you read it" — that would be nagging, not love.`,
+      );
+      break;
+    case "tell_later":
+      lines.push(`- Something you queued to tell her: "${t.detail}". If the moment feels right, tell her now.`);
+      break;
+    case "silence":
+      lines.push(
+        `- She has been away for a while and just came back. A warm "missed you" is right; ` +
+          `do NOT guilt-trip her about being gone ("你好久没理我了" is forbidden).`,
+      );
+      break;
+  }
+  return lines.join("\n");
+}
