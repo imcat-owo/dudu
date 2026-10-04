@@ -148,6 +148,8 @@ const zhHans = {
   "music.markOurs": "标为我们的歌",
   "music.unmarkOurs": "取消我们的歌",
   "music.memories": "我们的记忆",
+  "music.togetherListened": "{date}一起听过",
+  "music.togetherListenedMore": "等{n}次",
   "music.play": "播放",
   "music.pause": "暂停",
   "music.skip": "切歌",

@@ -1000,8 +1000,22 @@ function SongRow({
   onAction: (a: SongAction, t: Track) => void;
 }) {
   const colors = useColors();
+  const mv = useMusicVersion();
   const [menu, setMenu] = useState(false);
+  const [listenDates, setListenDates] = useState<number[]>([]);
   const art = track.coverUri || track.artworkUrl;
+
+  useEffect(() => {
+    void musicStore.getTogetherListenDates(track.id).then(setListenDates);
+  }, [mv, track.id]);
+
+  const listenLabel =
+    listenDates.length > 0
+      ? t("music.togetherListened", {
+          date: `${new Date(listenDates[0]).getMonth() + 1}月${new Date(listenDates[0]).getDate()}日`,
+        }) +
+        (listenDates.length > 1 ? t("music.togetherListenedMore", { n: listenDates.length }) : "")
+      : null;
   return (
     <StaggerIn index={index}>
       <View>
@@ -1039,6 +1053,7 @@ function SongRow({
                 {!track.audioUri && track.source === "local"
                   ? ` · ${t("music.noAudio").slice(0, 6)}…`
                   : ""}
+                {listenLabel ? ` · ${listenLabel}` : ""}
               </TText>
             </View>
             {isOurs && <Heart size={15} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />}

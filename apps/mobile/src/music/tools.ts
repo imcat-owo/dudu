@@ -36,6 +36,20 @@ function fmtTrack(t: Track): string {
   return `- ${t.title} — ${t.artist || "unknown artist"} [${t.id}] (${audio}, plays: ${t.playCount})`;
 }
 
+/** "10月3日" style date for together-listen history (AI-facing). */
+function fmtDay(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+async function fmtTogetherHistory(store: MusicStore, trackId: string): Promise<string> {
+  const dates = await store.getTogetherListenDates(trackId);
+  if (dates.length === 0) return "";
+  const recent = dates.slice(0, 5).map(fmtDay).join("、");
+  const more = dates.length > 5 ? `（共${dates.length}次）` : "";
+  return ` 一起听过：${recent}${more}。`;
+}
+
 export interface SourceSearchHit {
   id: string;
   title: string;
@@ -195,7 +209,11 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
         const plId = strArg(args, "playlistId");
         const tracks = plId ? await store.listPlaylistTracks(plId) : await store.listTracks();
         if (tracks.length === 0) return "The library is empty. Add songs with music_track_add.";
-        return tracks.slice(0, 30).map(fmtTrack).join("\n");
+        const lines: string[] = [];
+        for (const t of tracks.slice(0, 30)) {
+          lines.push(fmtTrack(t) + (await fmtTogetherHistory(store, t.id)));
+        }
+        return lines.join("\n");
       },
     },
     {
@@ -294,7 +312,7 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
     {
       name: "dj_play",
       description:
-        "DJ: play a song (or resume). Give a track id or a title/artist to search; omit to resume the current song. Writes a playback intent — the music room UI actually starts the audio. If the song has no audio attached, the room will say so honestly instead of playing silence.",
+        "DJ: play a song (or resume). Give a track id or a title/artist to search; omit to resume the current song. Writes a playback intent — the music room UI actually starts the audio. If together-listening mode is ON, the play is automatically recorded as a 'we listened together' date on the song (she sees “X月X日一起听过” in the room). If the song has no audio attached, the room will say so honestly instead of playing silence.",
       parameters: {
         type: "object",
         properties: {
@@ -422,6 +440,8 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           lines.push("Nothing is playing right now.");
         } else {
           lines.push(`Now playing: ${now.title} — ${now.artist || "unknown artist"} [${now.id}]`);
+          const hist = await fmtTogetherHistory(store, now.id);
+          lines.push(hist ? hist.trim() : "还没有一起听过的记录。");
           if (now.lyrics.length > 0) {
             lines.push(`Lyrics (${now.lyrics.length} timed lines):`);
             lines.push(now.lyrics.map((l) => `[${l.time.toFixed(1)}s] ${l.text}`).join("\n"));

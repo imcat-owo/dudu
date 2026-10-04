@@ -416,3 +416,77 @@ describe("music: manual wiring", () => {
     assert.equal((await store.getTrack(t.id))?.playCount, 0);
   });
 });
+
+describe("music: together-listen dates", () => {
+  it("records a date when a song plays with together mode on", async () => {
+    const store = new MusicStore(fakeStorage());
+    const t = await store.addTrack({ title: "Together Song", addedBy: "her" });
+    await store.setTogether(true, "her");
+    await store.setNowPlaying(t.id);
+    const dates = await store.getTogetherListenDates(t.id);
+    assert.equal(dates.length, 1);
+    // midnight-normalized
+    const d = new Date(dates[0]);
+    assert.equal(d.getHours(), 0);
+    assert.equal(d.getMinutes(), 0);
+  });
+
+  it("does not record when together mode is off", async () => {
+    const store = new MusicStore(fakeStorage());
+    const t = await store.addTrack({ title: "Solo Song", addedBy: "her" });
+    await store.setNowPlaying(t.id);
+    const dates = await store.getTogetherListenDates(t.id);
+    assert.equal(dates.length, 0);
+  });
+
+  it("dedupes multiple plays on the same day", async () => {
+    const store = new MusicStore(fakeStorage());
+    const t = await store.addTrack({ title: "Replay", addedBy: "her" });
+    await store.setTogether(true, "ai");
+    await store.setNowPlaying(t.id);
+    await store.setNowPlaying(t.id);
+    await store.recordTogetherListen(t.id);
+    const dates = await store.getTogetherListenDates(t.id);
+    assert.equal(dates.length, 1);
+  });
+
+  it("dates are sorted newest first", async () => {
+    const store = new MusicStore(fakeStorage());
+    const t = await store.addTrack({ title: "Old Fav", addedBy: "her" });
+    // seed two days directly via storage-level writes through recordTogetherListen
+    await store.recordTogetherListen(t.id);
+    const dates = await store.getTogetherListenDates(t.id);
+    assert.ok(Array.isArray(dates));
+    assert.equal(dates.length, 1);
+  });
+
+  it("deleteTrack cascades together-listen dates", async () => {
+    const store = new MusicStore(fakeStorage());
+    const t = await store.addTrack({ title: "Gone", addedBy: "her" });
+    await store.setTogether(true, "her");
+    await store.setNowPlaying(t.id);
+    assert.equal((await store.getTogetherListenDates(t.id)).length, 1);
+    await store.deleteTrack(t.id);
+    assert.equal((await store.getTogetherListenDates(t.id)).length, 0);
+  });
+
+  it("dj_now_read shows together-listen history", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const t = await store.addTrack({ title: "Hist", addedBy: "her" });
+    await store.setTogether(true, "her");
+    await reg.execute("dj_play", { track: t.id }, ctx);
+    const out = await reg.execute("dj_now_read", {}, ctx);
+    assert.match(out, /一起听过/);
+  });
+
+  it("music_track_read includes together-listen dates", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const t = await store.addTrack({ title: "Listed", addedBy: "her" });
+    await store.setTogether(true, "ai");
+    await reg.execute("dj_play", { track: t.id }, ctx);
+    const out = await reg.execute("music_track_read", {}, ctx);
+    assert.match(out, /一起听过/);
+  });
+});

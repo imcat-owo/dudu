@@ -148,6 +148,8 @@ export const enStrings: Record<StringKey, string> = {
   "music.markOurs": "Mark as our song",
   "music.unmarkOurs": "Unmark our song",
   "music.memories": "Our memories",
+  "music.togetherListened": "Listened together on {date}",
+  "music.togetherListenedMore": " ({n} times)",
   "music.play": "Play",
   "music.pause": "Pause",
   "music.skip": "Next",

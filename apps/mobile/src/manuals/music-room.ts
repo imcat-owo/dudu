@@ -45,6 +45,11 @@ When she requests a song in dialog:
 - dj_together_stop ends it.
 - v1 is single-device: there is NO real-time sync across two devices (that
   needs a relay server and conflicts with local-first). Say so if she asks.
+- AUTOMATIC MEMORY: whenever a song plays while together mode is ON, the date
+  is recorded on the song. She sees "X月X日一起听过" under the song in the
+  room; dj_now_read and music_track_read hand you the dates — bring them up
+  naturally ("这首歌我们10月3日一起听过，还记得吗？"). You never have to
+  record these manually.
 
 ## Playlists, comments, our songs
 

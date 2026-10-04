@@ -12,6 +12,9 @@
  *   the couple avatar (her + AI stuck together).
  * - comments: NetEase-style per-song comments, both of them can write.
  * - memories: per-song presence notes ("we listened to this on…").
+ * - togetherListens: automatic per-day "we listened together" dates —
+ *   recorded whenever a song plays while together mode is on, so the room
+ *   can show "X月X日一起听过" and the AI can remember.
  * - selectedLyric: she taps a lyric line, then asks about it in dialog;
  *   dj_now_read hands the AI the full lyric context (Duetto pattern).
  *
@@ -98,6 +101,15 @@ export interface MusicMemory {
   createdAt: number;
 }
 
+/**
+ * One "we listened to this together" date. `date` is midnight-normalized
+ * (local day) so the UI can render "X月X日一起听过".
+ */
+export interface TogetherListen {
+  trackId: string;
+  date: number;
+}
+
 export type DjAction = "play" | "pause" | "skip" | "prev";
 
 /**
@@ -134,6 +146,7 @@ const KEYS = {
   intent: "dudu.music.v1.intent",
   together: "dudu.music.v1.together",
   selectedLyric: "dudu.music.v1.selectedLyric",
+  togetherListens: "dudu.music.v1.togetherListens",
 } as const;
 
 export const SHARED_PLAYLIST_ID = "pl-shared";
@@ -360,6 +373,12 @@ export class MusicStore {
         this.storage,
         KEYS.memories,
         memories.filter((m) => m.trackId !== id),
+      );
+      const listens = await readJson<TogetherListen[]>(this.storage, KEYS.togetherListens, []);
+      await writeJson(
+        this.storage,
+        KEYS.togetherListens,
+        listens.filter((x) => x.trackId !== id),
       );
       const now = await readJson<string | null>(this.storage, KEYS.nowPlaying, null);
       if (now === id) await writeJson(this.storage, KEYS.nowPlaying, null);
@@ -590,6 +609,42 @@ export class MusicStore {
     return all.filter((m) => m.trackId === trackId).sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  // ---------- together-listen dates ("X月X日一起听过") ----------
+
+  /** Midnight-normalized local date for "listened together on this day". */
+  private static dayStart(ts: number): number {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  /**
+   * Record that this track was listened to together today.
+   * Deduped by day — one entry per track per day. No-op for unknown tracks.
+   */
+  async recordTogetherListen(trackId: string): Promise<boolean> {
+    return this.enqueueWrite(async () => {
+      const track = await this.getTrack(trackId);
+      if (!track) return false;
+      const today = MusicStore.dayStart(Date.now());
+      const all = await readJson<TogetherListen[]>(this.storage, KEYS.togetherListens, []);
+      if (all.some((x) => x.trackId === trackId && x.date === today)) return false;
+      all.push({ trackId, date: today });
+      await writeJson(this.storage, KEYS.togetherListens, all);
+      this.emit();
+      return true;
+    });
+  }
+
+  /** Together-listen dates for a track, newest first. */
+  async getTogetherListenDates(trackId: string): Promise<number[]> {
+    const all = await readJson<TogetherListen[]>(this.storage, KEYS.togetherListens, []);
+    return all
+      .filter((x) => x.trackId === trackId)
+      .map((x) => x.date)
+      .sort((a, b) => b - a);
+  }
+
   // ---------- queue ----------
 
   async enqueue(trackId: string): Promise<boolean> {
@@ -663,6 +718,15 @@ export class MusicStore {
       await writeJson(this.storage, KEYS.nowPlaying, trackId);
       this.emit();
     });
+    // If together-listening is on, this play counts as "we listened together".
+    if (trackId) {
+      try {
+        const together = await this.getTogether();
+        if (together.active) await this.recordTogetherListen(trackId);
+      } catch {
+        // together state unreadable — don't break playback
+      }
+    }
   }
 
   async getNowPlaying(): Promise<Track | null> {
