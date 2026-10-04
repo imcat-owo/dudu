@@ -56,6 +56,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 }
 
 function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void }) {
+  // Deliberately NOT using the theme provider: this is the last-resort crash
+  // screen — if the theme system itself is what crashed, depending on it
+  // would blank the fallback too. useColorScheme() alone is safe.
   const dark = useColorScheme() === "dark";
   const bg = dark ? "#1C1C1E" : "#F6F4F1";
   const fg = dark ? "#F5F2EC" : "#2B2620";
