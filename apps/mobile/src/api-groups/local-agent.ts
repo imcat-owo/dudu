@@ -76,6 +76,7 @@ import {
   resolveMembers,
   type VisionPlan,
 } from "./group-router";
+import { buildRankingSlip } from "./model-ranking";
 import {
   createLocalTools,
   createToolRegistry,
@@ -990,6 +991,9 @@ export function createLocalAgent(opts: {
         anniversarySection,
         herMoodSection,
         nicknameSection,
+        // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
+        // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
+        buildRankingSlip(capSnap.rankingMode),
       ]);
       const allWireTools = registry.definitions();
       // wireTools is mutable: auto-fallback may clear it on retry.

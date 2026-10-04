@@ -21,10 +21,12 @@ import {
   newCapabilityGroupId,
   seedCapabilityGroups,
 } from "./capability-groups";
+import type { RankingMode } from "./model-ranking";
 
 const GROUPS_KEY = "dudu.capability-groups.v1";
 const ROUTING_KEY = "dudu.capability-routing-enabled.v1";
 const COORDINATION_KEY = "dudu.multi-model-coordination.v1";
+const RANKING_MODE_KEY = "dudu.ranking-mode.v1";
 
 export interface CapabilityBackend {
   getItem(key: string): Promise<string | null>;
@@ -78,6 +80,7 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
   let groups: CapabilityGroup[] | null = null;
   let routingEnabled = true;
   let coordinationEnabled = false;
+  let rankingMode: RankingMode = "balanced";
   let loadDone = false;
   const listeners = new Set<() => void>();
 
@@ -114,6 +117,12 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
         } catch {
           coordinationEnabled = false;
         }
+        try {
+          const m = await b.getItem(RANKING_MODE_KEY);
+          rankingMode = m === "smart" || m === "fast" || m === "balanced" ? m : "balanced";
+        } catch {
+          rankingMode = "balanced";
+        }
         loadDone = true;
         emit();
       })();
@@ -142,12 +151,14 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
       groups: CapabilityGroup[];
       routingEnabled: boolean;
       coordinationEnabled: boolean;
+      rankingMode: RankingMode;
       loaded: boolean;
     } {
       return {
         groups: groups ?? [],
         routingEnabled,
         coordinationEnabled,
+        rankingMode,
         loaded: loadDone,
       };
     },
@@ -209,11 +220,23 @@ export function createCapabilityStore(backend?: CapabilityBackend) {
       emit();
     },
 
+    async setRankingMode(mode: RankingMode): Promise<void> {
+      await ensureLoaded();
+      rankingMode = mode;
+      try {
+        await (await impl()).setItem(RANKING_MODE_KEY, mode);
+      } catch {
+        // ignore
+      }
+      emit();
+    },
+
     /** Test hook. */
     async __resetForTests(): Promise<void> {
       groups = seedCapabilityGroups();
       routingEnabled = true;
       coordinationEnabled = false;
+      rankingMode = "balanced";
       loadDone = true;
       emit();
     },
@@ -229,6 +252,7 @@ export function useCapabilityGroups(): {
   groups: CapabilityGroup[];
   routingEnabled: boolean;
   coordinationEnabled: boolean;
+  rankingMode: RankingMode;
   loaded: boolean;
 } {
   const snap = useSyncExternalStore(
@@ -240,6 +264,7 @@ export function useCapabilityGroups(): {
     groups: snap.groups,
     routingEnabled: snap.routingEnabled,
     coordinationEnabled: snap.coordinationEnabled,
+    rankingMode: snap.rankingMode,
     loaded: snap.loaded,
   };
 }
