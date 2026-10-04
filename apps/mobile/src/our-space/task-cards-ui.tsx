@@ -238,11 +238,9 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
         <Pressable onPress={() => setMenuOpen(true)} hitSlop={8}>
           <ImageIcon size={16} color={colors.muted} />
         </Pressable>
-        {task.status === "done" && (
-          <Pressable onPress={dismissTask} hitSlop={8}>
-            <X size={16} color={colors.muted} />
-          </Pressable>
-        )}
+        <Pressable onPress={dismissTask} hitSlop={8}>
+          <X size={16} color={colors.muted} />
+        </Pressable>
       </View>
       <ProgressBar progress={task.progress} active={task.status === "running"} />
       {!!task.stage && (
