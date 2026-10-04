@@ -6,9 +6,12 @@
  * impossible by construction — every trigger carries a concrete reason.
  *
  * Design (audit round 2, xiaomeng P1-1; Dede et al. 2026 friendbot watershed):
- *  - 有由头才发. Valid triggers: anniversary approaching, tell_later item
- *    whose moment has come, unread love letter, long silence (real absence),
- *    diary nudge (no diary entry for a while + a real anchor — xiaomeng P2-1).
+ *  - 有由头才发. Valid triggers: anniversary approaching, unread love
+ *    letter (capped at 3 fires until read — nagging by repetition is
+ *    forbidden), tell_later item whose moment has come, on-this-day memory
+ *    ("去年今日", round 3 xiaomeng P1-1), diary nudge (no diary entry for a
+ *    while + a real anchor — xiaomeng P2-1; suppressed when her mood is
+ *    freshly negative — round 3 xiaomeng P2-4), long silence (real absence).
  *  - Frequency gate: 积极 / 适度 / 安静 (default 适度). 安静 = in-session
  *    only, the engine returns nothing.
  *  - Per-kind cooldown (24h): the same kind of nudge never fires twice
@@ -17,7 +20,13 @@
 
 export type OutreachFrequency = "active" | "moderate" | "quiet";
 
-export type OutreachTriggerKind = "anniversary" | "tell_later" | "love_letter" | "silence" | "diary_nudge";
+export type OutreachTriggerKind =
+  | "anniversary"
+  | "tell_later"
+  | "love_letter"
+  | "silence"
+  | "diary_nudge"
+  | "on_this_day";
 
 export interface OutreachTrigger {
   kind: OutreachTriggerKind;
@@ -25,12 +34,15 @@ export interface OutreachTrigger {
   priority: number;
   /**
    * Concrete detail for copy composition — anniversary title, the
-   * tell_later text, "" for love_letter/silence. Never empty for
-   * anniversary/tell_later: a trigger without content is a bug.
+   * tell_later text, the on-this-day memory title, "" for love_letter/silence.
+   * Never empty for anniversary/tell_later/on_this_day: a trigger without
+   * content is a bug.
    */
   detail: string;
   /** Anniversary only: days until the occurrence. */
   daysUntil?: number;
+  /** on_this_day only: how many years ago the memory is from. */
+  yearsAgo?: number;
 }
 
 export interface OutreachEvalInput {
@@ -49,6 +61,28 @@ export interface OutreachEvalInput {
    * Absent = the caller has no diary data → this trigger stays off.
    */
   diaryNudge?: { lastEntryAt: number | null; anchor: string };
+  /**
+   * On-this-day input (round 3, xiaomeng P1-1): the single most poignant
+   * memory from this month-day in a previous year, or absent/null when
+   * there is none. A boyfriend remembers "一年前的今天".
+   */
+  onThisDay?: { title: string; yearsAgo: number } | null;
+  /**
+   * Mood sensitivity (round 3, xiaomeng P2-4): true when she recently told
+   * him she feels bad (within the mood section's freshness window). When
+   * true, diary_nudge is suppressed — nudging her to write on top of a
+   * fresh "难过" is tone-deaf. Real commitments (anniversary, tell_later)
+   * still fire. Absent = the caller has no mood data → no suppression.
+   */
+  recentMoodNegative?: boolean;
+  /**
+   * Unread-letter nudge fire count (round 3, xiaomeng P2-3): how many times
+   * the love_letter nudge has already fired without her reading the letter.
+   * At LOVE_LETTER_NUDGE_CAP the trigger is suppressed — "你有一封信" five
+   * times is nagging, and the prompt already forbids him from nagging.
+   * Absent = the caller doesn't track it → no cap (legacy behavior).
+   */
+  loveLetterNudgeCount?: number;
 }
 
 /** Same kind of nudge never fires twice within this window. */
@@ -72,11 +106,68 @@ export const ANNIVERSARY_WINDOW_DAYS: Record<Exclude<OutreachFrequency, "quiet">
   moderate: 3,
 };
 
+/**
+ * Unread-letter nudge cap (round 3, xiaomeng P2-3). After this many fires
+ * without her reading the letter, the trigger is suppressed until she
+ * reads it. Repetition is nagging, not love.
+ */
+export const LOVE_LETTER_NUDGE_CAP = 3;
+
 const DAY_MS = 86_400_000;
+
+/**
+ * Heuristic: is this mood word negative? Her moods are her own short words
+ * ("累", "开心", "烦躁" — see her_mood_update). This is deliberately a
+ * keyword check, not a sentiment model: false negatives just mean "no
+ * suppression" (today's behavior), and a false positive only skips one
+ * diary nudge — every real trigger still fires. Negative is checked
+ * before positive so "不开心" (contains 开心) still counts as negative.
+ */
+const NEGATIVE_MOOD_WORDS = [
+  "累", "疲惫", "疲倦", "难过", "伤心", "心痛", "心累", "烦", "烦躁", "焦虑",
+  "紧张", "压力", "崩溃", "委屈", "生气", "愤怒", "丧", "抑郁", "郁闷",
+  "想哭", "哭", "孤独", "孤单", "害怕", "恐惧", "失眠", "头疼", "头痛",
+  "不舒服", "难受", "不开心", "不爽", "低落", "沮丧", "失望", "无助",
+  "迷茫", "空虚", "糟糕", "痛苦", "tired", "exhausted", "sad", "upset",
+  "anxious", "stressed", "angry", "lonely", "scared", "depressed", "crying",
+  "hurt", "sick", "bad", "down", "disappointed", "frustrated", "worried",
+  "overwhelmed",
+];
+const POSITIVE_MOOD_WORDS = [
+  "开心", "快乐", "幸福", "甜", "满足", "平静", "放松", "期待", "兴奋",
+  "感动", "温暖", "happy", "good", "great", "calm", "relaxed", "excited",
+];
+
+export function isNegativeMoodWord(mood: string): boolean {
+  const w = mood.toLowerCase().replace(/\s+/g, "");
+  if (w.length === 0) return false;
+  if (NEGATIVE_MOOD_WORDS.some((k) => w.includes(k))) return true;
+  if (POSITIVE_MOOD_WORDS.some((k) => w.includes(k))) return false;
+  // Unknown word: don't guess. No suppression on ambiguity.
+  return false;
+}
+
+import { HER_MOOD_FRESH_DAYS } from "../our-space/her-mood-section.js";
 
 function cooledDown(kind: OutreachTriggerKind, now: number, last: Partial<Record<OutreachTriggerKind, number>>): boolean {
   const at = last[kind];
   return typeof at === "number" && now - at < OUTREACH_COOLDOWN_MS;
+}
+
+/**
+ * Mood gate for the engine (round 3, xiaomeng P2-4): true when she told
+ * him she feels bad within the same freshness window the mood prompt
+ * section uses (HER_MOOD_FRESH_DAYS). Her own words are the signal —
+ * no sentiment model, no guessing.
+ */
+export function isRecentNegativeMood(
+  mood: { mood: string; updatedAt: number } | null | undefined,
+  now: number,
+): boolean {
+  if (!mood || !mood.mood) return false;
+  const ageMs = now - mood.updatedAt;
+  if (!(ageMs >= 0) || ageMs > HER_MOOD_FRESH_DAYS * DAY_MS) return false;
+  return isNegativeMoodWord(mood.mood);
 }
 
 /**
@@ -103,7 +194,13 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
 
   // 2. Unread love letter — a letter waiting is a reason by itself.
   // (P2-4: "你有一封信" is outreach; "你看了吗" afterwards would be nagging.)
-  if (input.unreadLoveLetters > 0 && !cooledDown("love_letter", now, input.lastOutreachAt)) {
+  // Round 3, xiaomeng P2-3: the nudge never gives up by itself — cap it.
+  const nudgeCount = input.loveLetterNudgeCount ?? 0;
+  if (
+    input.unreadLoveLetters > 0 &&
+    nudgeCount < LOVE_LETTER_NUDGE_CAP &&
+    !cooledDown("love_letter", now, input.lastOutreachAt)
+  ) {
     out.push({ kind: "love_letter", priority: 1, detail: "" });
   }
 
@@ -114,10 +211,30 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
     out.push({ kind: "tell_later", priority: 2, detail: pending.text.trim().slice(0, 200) });
   }
 
+  // 3b. On this day (round 3, xiaomeng P1-1) — "一年前的今天，我们…".
+  // The single most poignant trigger a companion has. Priority between
+  // tell_later (a real commitment) and diary_nudge (softer). The old
+  // title rides in `detail` so the copy always says WHAT he remembered.
+  const otd = input.onThisDay;
+  if (
+    otd &&
+    otd.title.trim().length > 0 &&
+    !cooledDown("on_this_day", now, input.lastOutreachAt)
+  ) {
+    out.push({
+      kind: "on_this_day",
+      priority: 3,
+      detail: otd.title.trim().slice(0, 200),
+      yearsAgo: otd.yearsAgo,
+    });
+  }
+
   // 4. Diary nudge (xiaomeng P2-1) — only when BOTH hold: no diary entry
   // for a while AND a real anchor from recent days exists. Never random,
   // never "该写日记了". The anchor rides in `detail` so the copy always
-  // says WHAT made him think of it.
+  // says WHAT made him think of it. Round 3, xiaomeng P2-4: suppressed
+  // when her mood is freshly negative — don't nudge writing on top of
+  // a fresh "难过".
   const dn = input.diaryNudge;
   if (dn) {
     const anchor = dn.anchor.trim();
@@ -125,9 +242,10 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
     if (
       anchor.length > 0 &&
       gap >= DIARY_NUDGE_GAP_MS[frequency] &&
+      !input.recentMoodNegative &&
       !cooledDown("diary_nudge", now, input.lastOutreachAt)
     ) {
-      out.push({ kind: "diary_nudge", priority: 3, detail: anchor.slice(0, 200) });
+      out.push({ kind: "diary_nudge", priority: 4, detail: anchor.slice(0, 200) });
     }
   }
 
@@ -137,7 +255,7 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
   if (input.lastOpenedAt !== null) {
     const gap = now - input.lastOpenedAt;
     if (gap >= SILENCE_THRESHOLD_MS[frequency] && !cooledDown("silence", now, input.lastOutreachAt)) {
-      out.push({ kind: "silence", priority: 4, detail: "" });
+      out.push({ kind: "silence", priority: 5, detail: "" });
     }
   }
 

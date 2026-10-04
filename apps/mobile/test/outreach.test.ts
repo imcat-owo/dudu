@@ -12,14 +12,19 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   evaluateOutreachTriggers,
+  isNegativeMoodWord,
   isOutreachFrequency,
+  isRecentNegativeMood,
+  LOVE_LETTER_NUDGE_CAP,
   OUTREACH_COOLDOWN_MS,
   type OutreachEvalInput,
 } from "../src/outreach/engine.js";
 import { buildOutreachSection } from "../src/outreach/prompt.js";
 import { DEFAULT_FREQUENCY, OutreachStore } from "../src/outreach/store.js";
 import {
+  clampFireOutOfSleepWindow,
   evaluateAndScheduleOutreach,
+  notificationDeepLink,
   OUTREACH_NOTIFICATION_ID,
 } from "../src/outreach/notify.js";
 import type { OutreachFrequency } from "../src/outreach/engine.js";
@@ -253,7 +258,13 @@ describe("evaluateAndScheduleOutreach", () => {
   function deps(over: Record<string, unknown> = {}) {
     const storage = memStorage();
     const store = new OutreachStore(storage);
-    const scheduled: { identifier: string; title: string; body: string; seconds: number }[] = [];
+    const scheduled: {
+      identifier: string;
+      title: string;
+      body: string;
+      data?: Record<string, string>;
+      seconds: number;
+    }[] = [];
     const cancelled: string[] = [];
     const traces: unknown[] = [];
     const d = {
@@ -265,13 +276,14 @@ describe("evaluateAndScheduleOutreach", () => {
         },
         scheduleNotificationAsync: async (req: {
           identifier: string;
-          content: { title: string; body: string };
+          content: { title: string; body: string; data?: Record<string, string> };
           trigger: { seconds: number };
         }) => {
           scheduled.push({
             identifier: req.identifier,
             title: req.content.title,
             body: req.content.body,
+            data: req.content.data,
             seconds: req.trigger.seconds,
           });
           return req.identifier;
@@ -421,5 +433,382 @@ describe("evaluateAndScheduleOutreach", () => {
     assert.equal(r.scheduled, true);
     assert.equal(r.trigger, "anniversary");
     assert.equal(scheduled.length, 1);
+  });
+
+describe("notificationDeepLink (user P2-1)", () => {
+  it("routes every trigger kind to a real screen", () => {
+    assert.deepEqual(notificationDeepLink("love_letter"), {
+      section: "space",
+      page: "loveLetters",
+    });
+    assert.deepEqual(notificationDeepLink("diary_nudge"), {
+      section: "space",
+      page: "diary",
+      compose: true,
+    });
+    assert.deepEqual(notificationDeepLink("anniversary"), {
+      section: "space",
+      page: "anniversary",
+    });
+    assert.deepEqual(notificationDeepLink("tell_later"), {
+      section: "space",
+      page: "tellLater",
+    });
+    assert.deepEqual(notificationDeepLink("silence"), { section: "chat" });
+    assert.deepEqual(notificationDeepLink("on_this_day"), {
+      section: "space",
+      page: "anniversary",
+    });
+  });
+
+  it("carries the trigger kind in the notification data payload", async () => {
+    const { d, scheduled } = deps({
+      data: {
+        listAnniversaries: async () => [] as { title: string; date: string }[],
+        listPendingTellLater: async () => [] as { id: string; text: string }[],
+        countUnreadLoveLetters: async () => 1,
+      },
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(r.trigger, "love_letter");
+    assert.equal(scheduled.length, 1);
+    assert.equal(scheduled[0].data?.kind, "love_letter");
+  });
+});
+});
+
+/**
+ * Standalone deps builder for the round-3 integration tests (the shared
+ * `deps` helper lives inside the evaluateAndScheduleOutreach describe).
+ */
+function schedDeps(over: {
+  now?: number;
+  unread?: number;
+  tellLater?: { id: string; text: string }[];
+  anniversaries?: { title: string; date: string }[];
+  onThisDay?: { title: string; subtitle: string; yearsAgo: number }[];
+  mood?: { mood: string; updatedAt: number } | null;
+  withMood?: boolean;
+  diaryNudge?: { lastEntryAt: number | null; anchor: string } | null;
+  copy?: (key: string, params?: Record<string, string | number>) => string;
+  storage?: ReturnType<typeof memStorage>;
+}) {
+  const storage = over.storage ?? memStorage();
+  const store = new OutreachStore(storage);
+  const scheduled: {
+    identifier: string;
+    title: string;
+    body: string;
+    seconds: number;
+    data?: { kind: string };
+  }[] = [];
+  const defaultCopy = (key: string, params?: Record<string, string | number>) => {
+    let s = key;
+    for (const [k, v] of Object.entries(params ?? {})) s = s.replaceAll(`{${k}}`, String(v));
+    return s;
+  };
+  const d = {
+    store,
+    notifications: {
+      getPermissionsAsync: async () => ({ status: "granted" }),
+      cancelScheduledNotificationAsync: async (_id: string) => {},
+      scheduleNotificationAsync: async (req: {
+        identifier: string;
+        content: { title: string; body: string; data?: { kind: string } };
+        trigger: { seconds: number };
+      }) => {
+        scheduled.push({
+          identifier: req.identifier,
+          title: req.content.title,
+          body: req.content.body,
+          seconds: req.trigger.seconds,
+          data: req.content.data,
+        });
+        return req.identifier;
+      },
+    },
+    trace: { append: async (e: unknown) => e },
+    data: {
+      listAnniversaries: async () => over.anniversaries ?? [],
+      listPendingTellLater: async () => over.tellLater ?? [],
+      countUnreadLoveLetters: async () => over.unread ?? 0,
+      listOnThisDay: async () => over.onThisDay ?? [],
+      getHerMood: async () => (over.withMood ? (over.mood ?? null) : null),
+      ...(over.diaryNudge === null
+        ? {}
+        : {
+            getDiaryNudgeInput: async () =>
+              over.diaryNudge ?? {
+                lastEntryAt: NOW - 30 * 86_400_000,
+                anchor: "一起看的第一场电影",
+              },
+          }),
+    },
+    copy: over.copy ?? defaultCopy,
+    now: over.now ?? NOW,
+  };
+  return { d, store, scheduled };
+}
+
+describe("on_this_day (round 3, xiaomeng P1-1)", () => {
+  it("fires when a same-day memory exists and carries the old title", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({ onThisDay: { title: "第一次去海边", yearsAgo: 1 } }),
+    );
+    assert.equal(triggers.length, 1);
+    assert.equal(triggers[0].kind, "on_this_day");
+    assert.equal(triggers[0].detail, "第一次去海边");
+    assert.equal(triggers[0].yearsAgo, 1);
+  });
+
+  it("stays silent with an empty title — never an empty ping", () => {
+    assert.deepEqual(
+      evaluateOutreachTriggers(baseInput({ onThisDay: { title: "   ", yearsAgo: 2 } })),
+      [],
+    );
+    assert.deepEqual(evaluateOutreachTriggers(baseInput({ onThisDay: null })), []);
+  });
+
+  it("priority sits between tell_later and diary_nudge", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({
+        unreadLoveLetters: 1,
+        pendingTellLater: [{ id: "t1", text: "记得买牛奶" }],
+        onThisDay: { title: "第一次去海边", yearsAgo: 1 },
+        diaryNudge: { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" },
+      }),
+    );
+    assert.deepEqual(
+      triggers.map((t) => t.kind),
+      ["love_letter", "tell_later", "on_this_day", "diary_nudge"],
+    );
+  });
+
+  it("yields to anniversary but beats silence", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({
+        anniversaries: [{ title: "相识纪念日", daysUntil: 1 }],
+        onThisDay: { title: "第一次去海边", yearsAgo: 1 },
+        lastOpenedAt: NOW - 30 * 86_400_000,
+      }),
+    );
+    assert.deepEqual(
+      triggers.map((t) => t.kind),
+      ["anniversary", "on_this_day", "silence"],
+    );
+  });
+
+  it("cools down for 24h like every other kind", () => {
+    const otd = { title: "第一次去海边", yearsAgo: 1 };
+    assert.equal(
+      evaluateOutreachTriggers(baseInput({ onThisDay: otd }))[0].kind,
+      "on_this_day",
+    );
+    assert.deepEqual(
+      evaluateOutreachTriggers(baseInput({ onThisDay: otd, lastOutreachAt: { on_this_day: NOW - 1000 } })),
+      [],
+    );
+  });
+
+  it("the deep link lands on the anniversary page (where 去年今日 lives)", () => {
+    assert.deepEqual(notificationDeepLink("on_this_day"), {
+      section: "space",
+      page: "anniversary",
+    });
+  });
+
+  it("notify schedules it with copy carrying the old title", async () => {
+    const { d, scheduled } = schedDeps({
+      onThisDay: [{ title: "第一次去海边", subtitle: "…", yearsAgo: 1 }],
+      diaryNudge: null,
+      copy: (key: string, params?: Record<string, string | number>) =>
+        `${key}:${params?.title ?? ""}:${params?.years ?? ""}`,
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(r.trigger, "on_this_day");
+    assert.ok(scheduled[0].title.includes("outreach.notif.onThisDay.title"));
+    assert.ok(scheduled[0].body.includes("第一次去海边"));
+  });
+});
+
+describe("mood sensitivity (round 3, xiaomeng P2-4)", () => {
+  it("isNegativeMoodWord reads her own words", () => {
+    assert.equal(isNegativeMoodWord("累"), true);
+    assert.equal(isNegativeMoodWord("难过"), true);
+    assert.equal(isNegativeMoodWord("好累"), true);
+    // "不开心" contains "开心" — negative is checked first.
+    assert.equal(isNegativeMoodWord("不开心"), true);
+    assert.equal(isNegativeMoodWord("开心"), false);
+    assert.equal(isNegativeMoodWord("平静"), false);
+    assert.equal(isNegativeMoodWord("tired"), true);
+    assert.equal(isNegativeMoodWord("calm"), false);
+    // Unknown word: no guessing, no suppression.
+    assert.equal(isNegativeMoodWord("还行"), false);
+    assert.equal(isNegativeMoodWord(""), false);
+  });
+
+  it("isRecentNegativeMood respects the 3-day freshness window", () => {
+    assert.equal(
+      isRecentNegativeMood({ mood: "累", updatedAt: NOW - 2 * 86_400_000 }, NOW),
+      true,
+    );
+    assert.equal(
+      isRecentNegativeMood({ mood: "累", updatedAt: NOW - 4 * 86_400_000 }, NOW),
+      false,
+    );
+    assert.equal(isRecentNegativeMood({ mood: "开心", updatedAt: NOW - 1000 }, NOW), false);
+    assert.equal(isRecentNegativeMood(null, NOW), false);
+  });
+
+  it("diary_nudge is suppressed when her mood is freshly negative", () => {
+    const dn = { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" };
+    assert.deepEqual(
+      evaluateOutreachTriggers(baseInput({ diaryNudge: dn, recentMoodNegative: true })),
+      [],
+    );
+    // Absent input = today's behavior (no suppression).
+    assert.equal(
+      evaluateOutreachTriggers(baseInput({ diaryNudge: dn }))[0].kind,
+      "diary_nudge",
+    );
+  });
+
+  it("real commitments still fire when her mood is bad", () => {
+    const triggers = evaluateOutreachTriggers(
+      baseInput({
+        pendingTellLater: [{ id: "t1", text: "记得买牛奶" }],
+        diaryNudge: { lastEntryAt: NOW - 30 * 86_400_000, anchor: "一起看的第一场电影" },
+        recentMoodNegative: true,
+      }),
+    );
+    assert.deepEqual(
+      triggers.map((t) => t.kind),
+      ["tell_later"],
+    );
+  });
+
+  it("notify derives suppression from her recorded mood", async () => {
+    const mk = (mood: string | null) =>
+      schedDeps({
+        withMood: true,
+        mood: mood ? { mood, updatedAt: NOW - 86_400_000 } : null,
+      });
+    const sad = mk("难过");
+    const r1 = await evaluateAndScheduleOutreach(sad.d as never);
+    assert.equal(r1.scheduled, false);
+    assert.equal(r1.reason, "no-trigger");
+    const happy = mk("开心");
+    const r2 = await evaluateAndScheduleOutreach(happy.d as never);
+    assert.equal(r2.scheduled, true);
+    assert.equal(r2.trigger, "diary_nudge");
+  });
+});
+
+describe("love letter nudge cap (round 3, xiaomeng P2-3)", () => {
+  it("the cap is 3", () => {
+    assert.equal(LOVE_LETTER_NUDGE_CAP, 3);
+  });
+
+  it("engine suppresses the love_letter trigger at the cap", () => {
+    assert.equal(
+      evaluateOutreachTriggers(baseInput({ unreadLoveLetters: 1, loveLetterNudgeCount: 2 }))[0]
+        .kind,
+      "love_letter",
+    );
+    assert.deepEqual(
+      evaluateOutreachTriggers(baseInput({ unreadLoveLetters: 1, loveLetterNudgeCount: 3 })),
+      [],
+    );
+  });
+
+  it("store counts fires and restarts the episode on reset", async () => {
+    const store = new OutreachStore(memStorage());
+    assert.equal(await store.getLoveLetterNudgeCount(), 0);
+    await store.recordLoveLetterNudge();
+    await store.recordLoveLetterNudge();
+    assert.equal(await store.getLoveLetterNudgeCount(), 2);
+    await store.resetLoveLetterNudgeCount();
+    assert.equal(await store.getLoveLetterNudgeCount(), 0);
+  });
+
+  it("notify stops nudging after 3 fires until she reads the letter", async () => {
+    // 22:00 Shanghai each round — awake, so the sleep check never interferes.
+    const base = Date.UTC(2026, 9, 5, 14, 0, 0);
+    const shared = memStorage();
+    const mk = (now: number, unread: number) =>
+      schedDeps({
+        now,
+        unread,
+        diaryNudge: null,
+        storage: shared,
+      });
+    for (let i = 0; i < 3; i++) {
+      const { d } = mk(base + i * (OUTREACH_COOLDOWN_MS + 3600_000), 1);
+      const r = await evaluateAndScheduleOutreach(d as never);
+      assert.equal(r.scheduled, true, `fire ${i + 1} should schedule`);
+      assert.equal(r.trigger, "love_letter");
+    }
+    const probe = new OutreachStore(shared);
+    assert.equal(await probe.getLoveLetterNudgeCount(), 3);
+    // 4th round: capped — no notification, no nagging.
+    const capped = mk(base + 3 * (OUTREACH_COOLDOWN_MS + 3600_000), 1);
+    const r4 = await evaluateAndScheduleOutreach(capped.d as never);
+    assert.equal(r4.scheduled, false);
+    assert.equal(r4.reason, "no-trigger");
+    // She reads the letter → the episode restarts.
+    const read = mk(base + 4 * (OUTREACH_COOLDOWN_MS + 3600_000), 0);
+    const r5 = await evaluateAndScheduleOutreach(read.d as never);
+    assert.equal(r5.scheduled, false);
+    assert.equal(await probe.getLoveLetterNudgeCount(), 0);
+  });
+});
+
+describe("sleep-window clamp (round 3, code P2-1)", () => {
+  // 22:00 Shanghai 2026-10-05.
+  const evening = Date.UTC(2026, 9, 5, 14, 0, 0);
+
+  it("pushes a fire time inside 06:00-16:00 Shanghai to 16:00", () => {
+    // 22:00 + 12h = 10:00 next day (asleep) → 16:00 next day = +18h.
+    assert.equal(clampFireOutOfSleepWindow(evening, 12 * 3600), 18 * 3600);
+  });
+
+  it("leaves awake fire times alone", () => {
+    assert.equal(clampFireOutOfSleepWindow(evening, 6 * 3600), 6 * 3600); // 04:00 — awake
+    assert.equal(clampFireOutOfSleepWindow(evening, 3600), 3600); // 23:00 — awake
+  });
+
+  it("clamps at the window edges", () => {
+    // Fire exactly at 06:00 → pushed to 16:00 same day (now was 05:00, +11h).
+    const fire6 = Date.UTC(2026, 9, 5, 22, 0, 0); // 06:00 Shanghai 2026-10-06
+    const now = fire6 - 3600_000;
+    assert.equal(clampFireOutOfSleepWindow(now, 3600), 11 * 3600);
+    // Fire at 15:59 → pushed to 16:00 (+1 min).
+    const fire1559 = Date.UTC(2026, 9, 5, 7, 59, 0);
+    assert.equal(clampFireOutOfSleepWindow(fire1559 - 60_000, 60), 60 + 60);
+  });
+
+  it("notify clamps the scheduled delay past her sleep window", async () => {
+    const { d, scheduled } = schedDeps({
+      now: evening,
+      tellLater: [{ id: "t1", text: "记得买牛奶" }],
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(r.trigger, "tell_later");
+    // 22:00 + 18h = 16:00 next day — never inside 06:00–16:00.
+    assert.equal(scheduled[0].seconds, 18 * 3600);
+  });
+
+  it("anniversary keeps the raw delay (she approved those)", async () => {
+    const { d, scheduled } = schedDeps({
+      now: evening,
+      anniversaries: [{ title: "相识纪念日", date: "2026-10-06" }],
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(r.trigger, "anniversary");
+    assert.equal(scheduled[0].seconds, 12 * 3600);
   });
 });

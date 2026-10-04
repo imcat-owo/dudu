@@ -20,6 +20,12 @@ const KEYS = {
   frequency: "dudu.outreach.v1.frequency",
   lastOpened: "dudu.outreach.v1.lastOpened",
   lastOutreach: "dudu.outreach.v1.lastOutreach",
+  /**
+   * Unread-letter nudge fire count (round 3, xiaomeng P2-3). JSON:
+   * { count: number }. Reset when she reads the letter (unread count
+   * drops to 0) — the cap is per unread-letter episode, not forever.
+   */
+  loveLetterNudges: "dudu.outreach.v1.loveLetterNudges",
 } as const;
 
 export const DEFAULT_FREQUENCY: OutreachFrequency = "moderate";
@@ -85,7 +91,7 @@ export class OutreachStore {
       const parsed: unknown = JSON.parse(raw);
       if (typeof parsed !== "object" || parsed === null) return {};
       const out: Partial<Record<OutreachTriggerKind, number>> = {};
-      for (const k of ["anniversary", "tell_later", "love_letter", "silence", "diary_nudge"] as const) {
+      for (const k of ["anniversary", "tell_later", "love_letter", "silence", "diary_nudge", "on_this_day"] as const) {
         const v = (parsed as Record<string, unknown>)[k];
         if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
       }
@@ -113,6 +119,46 @@ export class OutreachStore {
       await this.storage.setItem(KEYS.frequency, DEFAULT_FREQUENCY);
       await this.storage.setItem(KEYS.lastOpened, "");
       await this.storage.setItem(KEYS.lastOutreach, "{}");
+      await this.storage.setItem(KEYS.loveLetterNudges, JSON.stringify({ count: 0 }));
+    });
+  }
+
+  /**
+   * How many times the unread-letter nudge has fired in the current
+   * episode (round 3, xiaomeng P2-3). Never throws; junk → 0.
+   */
+  async getLoveLetterNudgeCount(): Promise<number> {
+    try {
+      const raw = await this.storage.getItem(KEYS.loveLetterNudges);
+      if (!raw) return 0;
+      const parsed: unknown = JSON.parse(raw);
+      const n = (parsed as { count?: unknown } | null)?.count;
+      return typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Record that one unread-letter nudge was actually scheduled. Never throws. */
+  async recordLoveLetterNudge(): Promise<void> {
+    return this.exclusive(async () => {
+      try {
+        const count = await this.getLoveLetterNudgeCount();
+        await this.storage.setItem(KEYS.loveLetterNudges, JSON.stringify({ count: count + 1 }));
+      } catch {
+        // Bookkeeping must never break the app.
+      }
+    });
+  }
+
+  /** She read the letter — the episode is over, the counter restarts. Never throws. */
+  async resetLoveLetterNudgeCount(): Promise<void> {
+    return this.exclusive(async () => {
+      try {
+        await this.storage.setItem(KEYS.loveLetterNudges, JSON.stringify({ count: 0 }));
+      } catch {
+        // Bookkeeping must never break the app.
+      }
     });
   }
 }
