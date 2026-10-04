@@ -23,6 +23,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { TText } from "../font";
 import { type StringKey, t } from "../i18n";
 import { radii } from "../theme/radii";
+import { BRAND_OCHRE } from "../theme/brand";
 import {
   Button,
   Card,
@@ -50,7 +51,7 @@ function StatusDot({ state }: { state: SandboxConnectionState }) {
       : state === "connecting"
         ? "#C99A3C"
         : state === "error"
-          ? "#C15F3C"
+          ? BRAND_OCHRE
           : colors.muted;
   return <View style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: color }} />;
 }

@@ -86,6 +86,7 @@ import { daysTogether, resolveTogetherSince } from "./our-space/together";
 import { SoraAmbient } from "./sora-ambient";
 import { ambientVideoStore } from "./sora-ambient-video-instance";
 import { radii } from "./theme/radii";
+import { BRAND_OCHRE } from "./theme/brand";
 import { shadows } from "./theme/shadows";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
@@ -1036,7 +1037,7 @@ function CoupleHeader() {
               justifyContent: "center",
             }}
           >
-            <Heart size={16} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
+            <Heart size={16} color={BRAND_OCHRE} fill={BRAND_OCHRE} strokeWidth={1.8} />
           </View>
         </View>
         <View style={{ alignItems: "center" }}>
@@ -1117,7 +1118,7 @@ function CoupleHeader() {
             backgroundColor: colors.sky,
           }}
         >
-          <Heart size={13} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
+          <Heart size={13} color={BRAND_OCHRE} fill={BRAND_OCHRE} strokeWidth={1.8} />
           <TText
             style={{
               color: colors.text,
@@ -1566,8 +1567,8 @@ function FeedPostCard({ post, onChanged }: { post: FeedPost; onChanged: () => vo
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
               <Heart
                 size={17}
-                color={post.likedByHer ? "#C15F3C" : colors.muted}
-                fill={post.likedByHer ? "#C15F3C" : "transparent"}
+                color={post.likedByHer ? BRAND_OCHRE : colors.muted}
+                fill={post.likedByHer ? BRAND_OCHRE : "transparent"}
                 strokeWidth={1.7}
               />
               <TText style={{ color: colors.muted, fontSize: 12 }}>

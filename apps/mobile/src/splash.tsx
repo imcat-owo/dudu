@@ -23,12 +23,15 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Image, View } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { DUR, EASE, SPRING, STAGGER } from "./motion";
+import { BRAND_OCHRE } from "./theme/brand";
 import { radii } from "./theme/radii";
 
 const CANVAS = "#FAF9F6";
 const INK = "#3D3A33";
 const MUTED = "#8A8578";
-const ACCENT = "#C15F3C";
+// Launch palette: theme provider isn't mounted yet at splash time, so the
+// brand color comes from the theme-independent brand constant.
+const ACCENT = BRAND_OCHRE;
 
 export function Splash({ onDone }: { onDone: () => void }) {
   const bloom = useRef(new Animated.Value(0)).current; // 0→1 avatar bloom

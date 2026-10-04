@@ -70,6 +70,7 @@ import { ourSpaceStore } from "./our-space/instance";
 import { FadeIn, PressableScale, SoftCard, StaggerIn, useOurSpaceVersion } from "./our-space-ui";
 import { SoraAmbient } from "./sora-ambient";
 import { radii } from "./theme/radii";
+import { BRAND_OCHRE } from "./theme/brand";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
 
@@ -144,7 +145,7 @@ function CoupleAvatarMini({ size = 44 }: { size?: number }) {
             justifyContent: "center",
           }}
         >
-          <Heart size={size * 0.3} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />
+          <Heart size={size * 0.3} color={BRAND_OCHRE} fill={BRAND_OCHRE} strokeWidth={1.8} />
         </View>
       </View>
       {one(aiSource, <Heart size={size * 0.4} color={colors.muted} strokeWidth={1.5} />)}
@@ -1165,7 +1166,7 @@ function SongRow({
                 {listenLabel ? ` · ${listenLabel}` : ""}
               </TText>
             </View>
-            {isOurs && <Heart size={15} color="#C15F3C" fill="#C15F3C" strokeWidth={1.8} />}
+            {isOurs && <Heart size={15} color={BRAND_OCHRE} fill={BRAND_OCHRE} strokeWidth={1.8} />}
           </Pressable>
           <PressableScale
             onPress={() => setMenu(true)}
@@ -1230,12 +1231,12 @@ function SongRow({
                     }}
                   >
                     {a === "delete" ? (
-                      <Trash2 size={17} color="#C15F3C" strokeWidth={1.6} />
+                      <Trash2 size={17} color={BRAND_OCHRE} strokeWidth={1.6} />
                     ) : a === "ours" ? (
                       <Heart
                         size={17}
-                        color={isOurs ? "#C15F3C" : colors.muted}
-                        fill={isOurs ? "#C15F3C" : "none"}
+                        color={isOurs ? BRAND_OCHRE : colors.muted}
+                        fill={isOurs ? BRAND_OCHRE : "none"}
                         strokeWidth={1.6}
                       />
                     ) : a === "queue" ? (
@@ -1244,7 +1245,7 @@ function SongRow({
                       <Play size={17} color={colors.muted} strokeWidth={1.6} />
                     )}
                     <TText
-                      style={{ color: a === "delete" ? "#C15F3C" : colors.text, fontSize: 14.5 }}
+                      style={{ color: a === "delete" ? BRAND_OCHRE : colors.text, fontSize: 14.5 }}
                     >
                       {label}
                     </TText>
