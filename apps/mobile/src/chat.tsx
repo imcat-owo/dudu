@@ -39,8 +39,9 @@ import { messageToolActions } from "./activity-drawer-model";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
 import { AnimatedAvatar } from "./animated-avatar";
-import { ActiveGroupChip } from "./api-groups/api-settings";
 import { capabilityStore } from "./api-groups/capability-store";
+import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
+import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
 import { groupStore, useApiGroups } from "./api-groups/store";
@@ -612,10 +613,17 @@ export function ChatScreen({
       try {
         // Voice-input capability routing: dialog group first, then the
         // voice_input capability group members in order, then her
-        // dedicated STT endpoint. First success wins.
+        // dedicated STT endpoint. First success wins. The dialog group
+        // honors her per-dialog model override (chip in the header) —
+        // local mode only, mirroring the chip.
         const capSnap = capabilityStore.getSnapshot();
+        const dialogGroup =
+          mode === "local"
+            ? (dialogModelOverrideStore.resolveGroup(threadId, groupStore.getSnapshot().groups) ??
+              activeGroup)
+            : activeGroup;
         const candidates = planVoiceInput(
-          activeGroup,
+          dialogGroup,
           capSnap.groups,
           groupStore.getSnapshot().groups,
           capSnap.routingEnabled,
@@ -741,8 +749,10 @@ export function ChatScreen({
       <View
         style={[s.row, { justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8 }]}
       >
-        {/* Dual-mode: which group/model is answering — subtle, compact. */}
-        <ActiveGroupChip />
+        {/* Dual-mode: which group/model is answering — subtle, compact.
+            One tap switches the model for THIS dialog only (per-dialog
+            override); the dot means an override is active. */}
+        <DialogModelChip threadId={threadId} />
         <Pressable
           accessibilityRole="switch"
           accessibilityLabel={t("a11y.incognito")}

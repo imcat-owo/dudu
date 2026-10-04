@@ -1186,6 +1186,12 @@ export const enStrings: Record<StringKey, string> = {
   "chatmode.cloudDesc": "Via backend CopilotKit — needs a deployed backend",
   "chat.activeGroup": "{name} · {model}",
 
+  // ---- per-dialog model switching ----
+  "dialogmodel.title": "Choose a model for this chat",
+  "dialogmodel.subtitle": "Only affects this conversation — no need to open Settings.",
+  "dialogmodel.useDefault": "Back to default ({name})",
+  "dialogmodel.close": "Close",
+
   // ---- thinking drawer ----
   "thinking.thinking": "Thinking…",
   "thinking.dragHandle": "Drag to resize",

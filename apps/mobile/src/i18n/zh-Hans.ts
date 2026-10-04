@@ -1149,6 +1149,12 @@ const zhHans = {
   "chatmode.cloudDesc": "经后端 CopilotKit，需后端已部署",
   "chat.activeGroup": "{name} · {model}",
 
+  // ---- 对话框内切换模型 ----
+  "dialogmodel.title": "给这个对话选模型",
+  "dialogmodel.subtitle": "只对当前对话生效，不用进设置。",
+  "dialogmodel.useDefault": "恢复默认（{name}）",
+  "dialogmodel.close": "关闭",
+
   // ---- thinking drawer ----
   "thinking.thinking": "想想…",
   "thinking.dragHandle": "拖动调整大小",

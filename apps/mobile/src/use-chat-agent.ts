@@ -21,6 +21,7 @@ import {
 } from "@copilotkit/react-native/headless";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import { requestAiAuthorization } from "./ai-authorization";
+import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
 import {
   createLocalAgent,
   type LocalChatMessage,
@@ -162,9 +163,14 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
   if (!ref.current) {
     const local = createLocalAgent({
       threadId,
-      getGroup: () =>
-        groupStore.getSnapshot().groups.find((g) => g.id === groupStore.getSnapshot().activeId) ??
-        null,
+      getGroup: () => {
+        const snap = groupStore.getSnapshot();
+        // Per-dialog override wins over the global active group —
+        // she picks it with one tap on the model chip in the header.
+        const override = dialogModelOverrideStore.resolveGroup(threadId, snap.groups);
+        if (override) return override;
+        return snap.groups.find((g) => g.id === snap.activeId) ?? null;
+      },
       isIncognito: () => incognitoRef.current,
       // Real device-backed tools: in-app tools need no auth; capability
       // tools go through her authorization gate (fail closed).
