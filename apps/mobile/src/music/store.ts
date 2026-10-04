@@ -110,11 +110,14 @@ export interface TogetherListen {
   date: number;
 }
 
-export type DjAction = "play" | "pause" | "skip" | "prev";
+export type DjAction = "play" | "pause" | "skip" | "restart";
 
 /**
  * Playback intent written by AI tools, consumed by the UI.
- * The UI applies intents with `at` newer than what it already applied.
+ * The UI applies intents with `at` newer than what it already applied,
+ * and ignores intents older than STALE_INTENT_MS (see isIntentStale) —
+ * a stale intent (e.g. written before the app was backgrounded) must
+ * never suddenly start music.
  */
 export interface DjIntent {
   action: DjAction;
@@ -122,6 +125,14 @@ export interface DjIntent {
   trackId?: string;
   at: number;
   by: MusicAuthor;
+}
+
+/** Intents older than this are never executed (see P2-9). */
+export const STALE_INTENT_MS = 5 * 60 * 1000;
+
+/** Pure: true when the intent is too old to execute. */
+export function isIntentStale(intent: DjIntent, now: number = Date.now()): boolean {
+  return now - intent.at > STALE_INTENT_MS;
 }
 
 /** "拉我一起听" — shared listening session. */

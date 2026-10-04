@@ -30,8 +30,10 @@ When she requests a song in dialog:
 
 ## DJ tools — what writes where
 
-- dj_play / dj_pause / dj_skip / dj_prev: write a PLAYBACK INTENT, not audio.
+- dj_play / dj_pause / dj_skip / dj_restart: write a PLAYBACK INTENT, not audio.
   The room UI actually starts the sound. You never touch audio directly.
+  (dj_restart restarts the current song from the beginning — it does not
+  go back to the previous song.)
 - dj_queue_add / dj_queue_read: the coming-up-next queue.
 - dj_now_read: full context — now playing, queue, together-listening state,
   the lyric line she tapped, comments. Call it when she asks "这句什么意思"

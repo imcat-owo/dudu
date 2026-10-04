@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
 import {
+  type DjIntent,
+  isIntentStale,
   lyricIndexAt,
   type MusicStorage,
   MusicStore,
@@ -9,6 +11,7 @@ import {
   OURS_PLAYLIST_ID,
   parseLrc,
   SHARED_PLAYLIST_ID,
+  STALE_INTENT_MS,
   type Track,
 } from "../src/music/store.js";
 import { createMusicTools } from "../src/music/tools.js";
@@ -242,7 +245,7 @@ describe("music tools", () => {
       "dj_play",
       "dj_pause",
       "dj_skip",
-      "dj_prev",
+      "dj_restart",
       "dj_queue_add",
       "dj_queue_read",
       "dj_now_read",
@@ -488,5 +491,46 @@ describe("music: together-listen dates", () => {
     await reg.execute("dj_play", { track: t.id }, ctx);
     const out = await reg.execute("music_track_read", {}, ctx);
     assert.match(out, /一起听过/);
+  });
+});
+
+describe("music: P2-7/8/9 fixes", () => {
+  it("dj_play never bumps play count — the UI counts when audio starts (no double count)", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const t = await store.addTrack({ title: "Loud", artist: "A", audioUri: "file:///x", addedBy: "her" });
+    await reg.execute("dj_play", { track: t.id }, ctx);
+    await reg.execute("dj_play", { track: t.id }, ctx);
+    // Tool writes intent + nowPlaying only; count stays 0 until the UI plays audio.
+    assert.equal((await store.getTrack(t.id))?.playCount, 0);
+  });
+
+  it("dj_skip never bumps play count either", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const a = await store.addTrack({ title: "QA", audioUri: "file:///a", addedBy: "her" });
+    const b = await store.addTrack({ title: "QB", audioUri: "file:///b", addedBy: "her" });
+    await store.enqueue(b.id);
+    await store.setNowPlaying(a.id);
+    await reg.execute("dj_skip", {}, ctx);
+    assert.equal((await store.getTrack(b.id))?.playCount, 0);
+  });
+
+  it("dj_restart sends a restart intent (honest name for seek-to-start)", async () => {
+    const store = new MusicStore(fakeStorage());
+    const reg = createToolRegistry(createMusicTools(store));
+    const out = await reg.execute("dj_restart", {}, ctx);
+    assert.match(out, /Restarting/);
+    const intent = await store.getIntent();
+    assert.equal(intent?.action, "restart");
+  });
+
+  it("isIntentStale: fresh intent runs, old intent is dropped", () => {
+    const fresh: DjIntent = { action: "play", at: Date.now(), by: "ai" };
+    assert.equal(isIntentStale(fresh), false);
+    const old: DjIntent = { action: "play", at: Date.now() - STALE_INTENT_MS - 1000, by: "ai" };
+    assert.equal(isIntentStale(old), true);
+    const boundary: DjIntent = { action: "play", at: Date.now() - STALE_INTENT_MS + 60_000, by: "ai" };
+    assert.equal(isIntentStale(boundary), false);
   });
 });

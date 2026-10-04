@@ -58,6 +58,7 @@ import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
 import { musicStore } from "./music/instance";
 import {
+  isIntentStale,
   lyricIndexAt,
   OURS_PLAYLIST_ID,
   type Playlist,
@@ -321,6 +322,9 @@ function usePlayerEngine() {
       const intent = await musicStore.getIntent();
       if (!intent || intent.at <= appliedIntentAt.current) return;
       appliedIntentAt.current = intent.at;
+      // Stale intents (e.g. written before the app was backgrounded) must
+      // never suddenly start music — consume and ignore them.
+      if (isIntentStale(intent)) return;
       setError("");
       try {
         if (intent.action === "play") {
@@ -340,7 +344,7 @@ function usePlayerEngine() {
           await getMusicSource(activeSourceId.current).pause();
         } else if (intent.action === "skip") {
           await advance();
-        } else if (intent.action === "prev") {
+        } else if (intent.action === "restart") {
           const { getMusicSource } = await import("./music/sources");
           await getMusicSource(activeSourceId.current).seekTo(0);
         }

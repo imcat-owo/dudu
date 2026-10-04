@@ -337,12 +337,11 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           return `I couldn't find "${ref}" in the library. Add it first with music_track_add.`;
         await store.setNowPlaying(t.id);
         await store.sendIntent("play", ai, t.id);
-        // Only count real plays: no play count for tracks with nothing to play
-        // (same playability rule as the UI: apple-music needs sourceRef,
-        // local needs audioUri).
+        // Play count is incremented by the UI when audio actually starts
+        // (music-ui playTrack) — the tool must not bump it too, or every
+        // AI play would count double.
         const playable =
           t.source === "apple-music" ? t.sourceRef.trim().length > 0 : t.audioUri.trim().length > 0;
-        if (playable) await store.bumpPlayCount(t.id);
         const audioNote = playable
           ? ""
           : " (Note: this song has no audio attached yet — the room will say so.)";
@@ -371,7 +370,7 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
           const t = await store.getTrack(nextId);
           await store.setNowPlaying(nextId);
           await store.sendIntent("play", ai, nextId);
-          if (t) await store.bumpPlayCount(nextId);
+          // No bumpPlayCount here either — the UI counts it when audio starts.
           return t ? `Skipped. Now playing: ${t.title} — ${t.artist}.` : "Skipped.";
         }
         await store.sendIntent("skip", ai);
@@ -379,13 +378,13 @@ export function createMusicTools(store: MusicStore, hooks: MusicToolHooks = {}):
       },
     },
     {
-      name: "dj_prev",
-      description: "DJ: go back to the previous song.",
+      name: "dj_restart",
+      description: "DJ: restart the current song from the beginning.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "music-room",
       run: async () => {
-        await store.sendIntent("prev", ai);
-        return "Going back to the previous song.";
+        await store.sendIntent("restart", ai);
+        return "Restarting the current song from the beginning.";
       },
     },
     {
