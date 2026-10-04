@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
+import { radii } from "../theme/radii";
 import { Button, Card, Chip, Field, useColors, useStyles } from "../ui";
 import { VoiceSettingsSection } from "../voice/voice-settings";
 import { testConnection } from "./direct-transport";
@@ -30,7 +31,6 @@ import {
   VENDOR_PRESETS,
   validateGroup,
 } from "./types";
-import { radii } from "../theme/radii";
 
 function ModeSwitch() {
   const mode = useChatMode();

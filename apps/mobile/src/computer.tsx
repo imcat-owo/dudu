@@ -13,11 +13,11 @@ import type { BrowserSession } from "../../../packages/domain/src";
 import { browserAddress } from "./browser-address";
 import { useComputerDraft } from "./computer-drafts";
 import { LinuxWorkspace } from "./computer-workspace";
+import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import { Button, Card, ErrorNotice, Field, LinkRow, Sheet, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
 export function ComputerEntry() {
   const colors = useColors();
@@ -175,7 +175,10 @@ export function ComputerSheet() {
       <View style={{ gap: 20 }}>
         {tab === "Browser" && (
           <View
-            style={[s.row, { gap: 12, padding: 18, borderRadius: radii.lg, backgroundColor: colors.sky }]}
+            style={[
+              s.row,
+              { gap: 12, padding: 18, borderRadius: radii.lg, backgroundColor: colors.sky },
+            ]}
           >
             <Monitor size={28} color={colors.blueDark} />
             <View style={{ flex: 1 }}>

@@ -214,7 +214,8 @@ export const enStrings: Record<StringKey, string> = {
   "space.today.anniversarySoon": "{title} in {n} days",
   "space.today.onThisDay": "This day last year · {title}",
   "space.today.herMood": "Her mood lately: {mood}",
-  "space.today.quiet": "Nothing special on the calendar today. Having you here makes it special anyway.",
+  "space.today.quiet":
+    "Nothing special on the calendar today. Having you here makes it special anyway.",
   "space.onThisDay.title": "On This Day",
   "space.onThisDay.yearsAgo": "{n} year(s) ago today",
   "space.leftNote.title": "A note from him",
@@ -340,8 +341,7 @@ export const enStrings: Record<StringKey, string> = {
   "browser.takeControl": "Take control",
   "browser.addressLabel": "Website address",
   "browser.openSession": "Open a browser session",
-  "browser.emptyHint":
-    "Empty here. Tell me to open a page and I'll go look.",
+  "browser.emptyHint": "Empty here. Tell me to open a page and I'll go look.",
   "browser.takeoverHint":
     "Browsing sessions have their own logins and downloads. Open one to take over, then return to your conversation.",
   "a11y.computerEntry": "Agent computer — take control",
@@ -1025,7 +1025,8 @@ export const enStrings: Record<StringKey, string> = {
   "threads.saveName": "Save name",
   "threads.rename": "Rename",
   "threads.noArchived": "No archived conversations.",
-  "threads.emptyHint": "Something else on your mind? Start it here — our main chat will be waiting.",
+  "threads.emptyHint":
+    "Something else on your mind? Start it here — our main chat will be waiting.",
   "threads.savedInWorkspace": "Saved in this workspace",
   "threads.planSummary": "A plan, document, or spending summary",
   "threads.browserDetail": "Browser, sessions and documents",

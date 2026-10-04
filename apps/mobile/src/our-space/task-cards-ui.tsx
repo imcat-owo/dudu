@@ -19,11 +19,11 @@ import { type StringKey, t } from "../i18n";
 import { buildImageUrl } from "../image-generation";
 import { SPRING, STAGGER } from "../motion";
 import { ProgressBar } from "../progress-bar";
+import { radii } from "../theme/radii";
+import { shadows } from "../theme/shadows";
 import { useColors } from "../ui";
 import type { BackgroundTask, TaskStatus } from "./task-progress";
 import { taskProgressStore } from "./task-progress-instance";
-import { radii } from "../theme/radii";
-import { shadows } from "../theme/shadows";
 
 function useTaskVersion(): number {
   const [v, setV] = useState(0);
@@ -187,14 +187,21 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
             }}
             onPress={() => setMenuOpen(false)}
           >
-            <GlassView intensity={64} style={{ borderRadius: radii.lg, padding: 20, gap: 12, ...shadows.modal }}>
+            <GlassView
+              intensity={64}
+              style={{ borderRadius: radii.lg, padding: 20, gap: 12, ...shadows.modal }}
+            >
               <Pressable onPress={(e) => e.stopPropagation()}>
                 <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
                   {t("space.tasks.bgTitle")}
                 </TText>
                 <Pressable
                   onPress={pickBackground}
-                  style={{ backgroundColor: colors.secondaryBg, borderRadius: radii.md, padding: 14 }}
+                  style={{
+                    backgroundColor: colors.secondaryBg,
+                    borderRadius: radii.md,
+                    padding: 14,
+                  }}
                 >
                   <TText style={{ color: colors.text, fontSize: 14 }}>
                     {t("space.tasks.bgUpload")}

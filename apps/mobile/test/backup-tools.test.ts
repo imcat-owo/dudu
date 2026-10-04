@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  createBackupTools,
-  type BackupToolDeps,
-} from "../src/backup-tools.js";
-import type { KeyValueStore, SecureKV, KnowledgeBackupTarget } from "../src/backup.js";
-import { serializeBackup, type BackupFile } from "../src/backup.js";
+import type { KeyValueStore, KnowledgeBackupTarget, SecureKV } from "../src/backup.js";
+import { type BackupFile, serializeBackup } from "../src/backup.js";
+import { type BackupToolDeps, createBackupTools } from "../src/backup-tools.js";
 
 function fakeKV(seed: Record<string, string> = {}): KeyValueStore {
   const map = new Map(Object.entries(seed));

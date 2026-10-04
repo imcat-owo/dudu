@@ -1,8 +1,8 @@
 import { View } from "react-native";
-import { t } from "./i18n";
-import { useColors, useStyles } from "./ui";
 import { TText } from "./font";
+import { t } from "./i18n";
 import { radii } from "./theme/radii";
+import { useColors, useStyles } from "./ui";
 
 interface DateFieldsProps {
   label: string;

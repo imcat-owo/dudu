@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import DateFields from "./DateFields";
 import { isCompleteInstant, localDateTime, zonedInstant } from "./date-time";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { useColors, useStyles } from "./ui";
-import { TText } from "./font";
 export default function DateTimeEditor({
   label,
   value,

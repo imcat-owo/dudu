@@ -44,9 +44,9 @@ import {
 import type { DrawerActionStatus, DrawerToolAction } from "./activity-drawer-model";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
-import { radii } from "./theme/radii";
 
 const SCREEN = Dimensions.get("window");
 /** Default half height — a "small drawer", not a takeover. */

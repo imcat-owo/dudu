@@ -2,6 +2,7 @@ import { Check, ExternalLink } from "lucide-react-native";
 import { createContext, useContext, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, View } from "react-native";
 import type { JevOption, JevPanel } from "../../../packages/domain/src/jev";
+import { TText } from "./font";
 import { t } from "./i18n";
 import {
   choiceAvailability,
@@ -9,9 +10,8 @@ import {
   retryChoiceAvailable,
   selectionText,
 } from "./jev-actions";
-import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
-import { TText } from "./font";
 import { radii } from "./theme/radii";
+import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 
 type JevInteraction = {
   threadId: string | null;

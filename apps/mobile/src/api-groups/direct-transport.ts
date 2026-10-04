@@ -263,16 +263,18 @@ export function accumulateToolCalls(): {
       if (delta.argumentsChunk) acc.args += delta.argumentsChunk;
     },
     complete() {
-      return [...byIndex.entries()]
-        .sort(([a], [b]) => a - b)
-        .map(([, acc], i) => ({
-          // Some proxies omit ids; synthesize a stable one so pairing works.
-          id: acc.id || `tool_${i}`,
-          name: acc.name,
-          arguments: acc.args,
-        }))
-        // Drop empty frames (no name = not a real call).
-        .filter((c) => c.name);
+      return (
+        [...byIndex.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, acc], i) => ({
+            // Some proxies omit ids; synthesize a stable one so pairing works.
+            id: acc.id || `tool_${i}`,
+            name: acc.name,
+            arguments: acc.args,
+          }))
+          // Drop empty frames (no name = not a real call).
+          .filter((c) => c.name)
+      );
     },
   };
 }
@@ -301,11 +303,8 @@ export function streamChat(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const toolAcc = accumulateToolCalls();
-    const parser = createSseParser(
-      group.name,
-      callbacks.onToken,
-      callbacks.onThinking,
-      (d) => toolAcc.push(d),
+    const parser = createSseParser(group.name, callbacks.onToken, callbacks.onThinking, (d) =>
+      toolAcc.push(d),
     );
     const xhr = new XMLHttpRequest();
     let settled = false;

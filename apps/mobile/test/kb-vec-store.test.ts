@@ -3,10 +3,10 @@
  * Uses an in-memory fake KbDatabase (no native deps).
  */
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { SqliteKnowledgeStore, type KbDatabase } from "../src/knowledge/vec-store.js";
+import { describe, it } from "node:test";
 import type { KbChunkRecord, KbDoc } from "../src/knowledge/store.js";
+import { type KbDatabase, SqliteKnowledgeStore } from "../src/knowledge/vec-store.js";
 
 /** Minimal in-memory SQL fake: supports the subset we use. */
 function makeFakeDb(): KbDatabase {
@@ -62,8 +62,13 @@ function makeFakeDb(): KbDatabase {
         return [...docs.values()]
           .sort((a, b) => (b.created_at as number) - (a.created_at as number))
           .map((d) => ({
-            id: d.id, name: d.name, kind: d.kind, size: d.size,
-            chunk_count: d.chunk_count, status: d.status, error: d.error,
+            id: d.id,
+            name: d.name,
+            kind: d.kind,
+            size: d.size,
+            chunk_count: d.chunk_count,
+            status: d.status,
+            error: d.error,
             created_at: d.created_at,
           })) as T[];
       }
@@ -78,9 +83,7 @@ function makeFakeDb(): KbDatabase {
         return [...chunks.values()].map(mapChunk) as T[];
       }
       if (q.includes("from kb_chunks where vector !=")) {
-        return [...chunks.values()]
-          .filter((c) => c.vector !== "[]")
-          .map(mapChunk) as T[];
+        return [...chunks.values()].filter((c) => c.vector !== "[]").map(mapChunk) as T[];
       }
       throw new Error(`unhandled SQL: ${sql}`);
     },
@@ -90,8 +93,13 @@ function makeFakeDb(): KbDatabase {
         const d = docs.get(params[0] as string);
         if (!d) return null;
         return {
-          id: d.id, name: d.name, kind: d.kind, size: d.size,
-          chunk_count: d.chunk_count, status: d.status, error: d.error,
+          id: d.id,
+          name: d.name,
+          kind: d.kind,
+          size: d.size,
+          chunk_count: d.chunk_count,
+          status: d.status,
+          error: d.error,
           created_at: d.created_at,
         } as T;
       }
@@ -114,8 +122,13 @@ function makeFakeDb(): KbDatabase {
 
 function mapChunk(c: Record<string, unknown>) {
   return {
-    id: c.id, doc_id: c.doc_id, idx: c.idx, text: c.text,
-    heading_path: c.heading_path, vector: c.vector, embed_model: c.embed_model,
+    id: c.id,
+    doc_id: c.doc_id,
+    idx: c.idx,
+    text: c.text,
+    heading_path: c.heading_path,
+    vector: c.vector,
+    embed_model: c.embed_model,
   };
 }
 
@@ -143,8 +156,24 @@ describe("SqliteKnowledgeStore", () => {
     const s = new SqliteKnowledgeStore(makeFakeDb());
     const doc = await s.addDoc("d.md", "md", 50);
     const chunks: KbChunkRecord[] = [
-      { id: "c1", docId: doc.id, index: 0, text: "cats are cute", headingPath: "", vector: [1, 0, 0], embedModel: "m" },
-      { id: "c2", docId: doc.id, index: 1, text: "dogs are loyal", headingPath: "", vector: [0, 1, 0], embedModel: "m" },
+      {
+        id: "c1",
+        docId: doc.id,
+        index: 0,
+        text: "cats are cute",
+        headingPath: "",
+        vector: [1, 0, 0],
+        embedModel: "m",
+      },
+      {
+        id: "c2",
+        docId: doc.id,
+        index: 1,
+        text: "dogs are loyal",
+        headingPath: "",
+        vector: [0, 1, 0],
+        embedModel: "m",
+      },
     ];
     await s.putChunks(chunks);
     assert.equal(await s.chunkCount(), 2);
@@ -158,7 +187,15 @@ describe("SqliteKnowledgeStore", () => {
     const s = new SqliteKnowledgeStore(makeFakeDb());
     const doc = await s.addDoc("d.md", "md", 50);
     await s.putChunks([
-      { id: "c1", docId: doc.id, index: 0, text: "x", headingPath: "", vector: [1, 0], embedModel: "m" },
+      {
+        id: "c1",
+        docId: doc.id,
+        index: 0,
+        text: "x",
+        headingPath: "",
+        vector: [1, 0],
+        embedModel: "m",
+      },
     ]);
     const hits = await s.searchChunks([0, 1], 5, 0.9);
     assert.equal(hits.length, 0);
@@ -168,7 +205,15 @@ describe("SqliteKnowledgeStore", () => {
     const s = new SqliteKnowledgeStore(makeFakeDb());
     const doc = await s.addDoc("d.md", "md", 50);
     await s.putChunks([
-      { id: "c1", docId: doc.id, index: 0, text: "x", headingPath: "", vector: [1], embedModel: "m" },
+      {
+        id: "c1",
+        docId: doc.id,
+        index: 0,
+        text: "x",
+        headingPath: "",
+        vector: [1],
+        embedModel: "m",
+      },
     ]);
     await s.deleteDoc(doc.id);
     assert.equal(await s.chunkCount(), 0);

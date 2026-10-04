@@ -307,7 +307,9 @@ describe("memory integration fixes", () => {
     const map = new Map<string, string>();
     const fake = {
       getItem: async (k: string) => map.get(k) ?? null,
-      setItem: async (k: string, v: string) => { map.set(k, v); },
+      setItem: async (k: string, v: string) => {
+        map.set(k, v);
+      },
     };
     const all = [
       ...createLocalTools({}),

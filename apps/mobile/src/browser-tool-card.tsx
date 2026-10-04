@@ -3,11 +3,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Image, View } from "react-native";
 import { z } from "zod";
 import type { BrowserSession } from "../../../packages/domain/src";
+import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
 export const BrowserRunContext = createContext({ running: false, active: false });
 
@@ -136,7 +136,9 @@ export function BrowserToolCard({
           onError={() => setPreviewFailed(true)}
         />
       ) : (
-        <View style={{ backgroundColor: colors.card, borderRadius: radii.md, padding: 21, gap: 12 }}>
+        <View
+          style={{ backgroundColor: colors.card, borderRadius: radii.md, padding: 21, gap: 12 }}
+        >
           <TText numberOfLines={2} style={[s.text, { fontSize: 14 }]}>
             {visited?.title || siteLabel(url)}
           </TText>

@@ -25,8 +25,8 @@ import { CAPABILITIES, CAPABILITY_ORDER, type DeviceCapabilityId } from "./capab
 import { checkers, type PermissionStatus, requesters } from "./device-permissions";
 import { TText } from "./font";
 import { t } from "./i18n";
-import { Button, Sheet, useColors, useStyles } from "./ui";
 import { radii } from "./theme/radii";
+import { Button, Sheet, useColors, useStyles } from "./ui";
 
 const ICONS: Record<DeviceCapabilityId, typeof Camera> = {
   bluetooth: Bluetooth,

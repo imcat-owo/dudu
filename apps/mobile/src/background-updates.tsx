@@ -2,10 +2,10 @@ import { ArrowRight, Bell, X } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useAgentWorkspace } from "./agent-workspace";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, resultSummary, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
 
 export function BackgroundUpdates() {
   const colors = useColors();

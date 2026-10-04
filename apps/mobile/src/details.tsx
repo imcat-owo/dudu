@@ -38,6 +38,7 @@ import { browserAddress, browserSite } from "./browser-address";
 import { ComputerSheet } from "./computer";
 import DateTimeEditor from "./DateTimeEditor";
 import { localDateTime, zonedInstant } from "./date-time";
+import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
 import PdfReader from "./PdfReader";
 import {
@@ -58,7 +59,6 @@ import {
   useStyles,
 } from "./ui";
 import { type Detail, useWorkspace } from "./workspace";
-import { TText } from "./font";
 export function Details({ detail }: { detail: Detail }) {
   const { close, navigate } = useWorkspace();
   if (detail.type === "computer") return <ComputerSheet />;

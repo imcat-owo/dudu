@@ -17,6 +17,7 @@ import { Pressable, Share, TextInput, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import {
   bundleFitsQr,
   exportBundleJson,
@@ -27,7 +28,6 @@ import {
 import { useTheme } from "./theme/ThemeContext";
 import type { ThemeBundle } from "./theme/types";
 import { Button, Card, SectionHeading, Sheet, useColors } from "./ui";
-import { radii } from "./theme/radii";
 
 function importErrorText(code: ImportErrorCode): string {
   switch (code) {

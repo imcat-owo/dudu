@@ -1169,7 +1169,8 @@ const zhHans = {
   "voice.ttsVoice": "音色",
   "voice.ttsSpeed": "语速",
   "voice.cache.title": "语音缓存",
-  "voice.cache.desc": "合成过的语音和播客会留在这里占地方。30 天没碰过的，开 App 时我会悄悄清掉；你也可以现在动手清。",
+  "voice.cache.desc":
+    "合成过的语音和播客会留在这里占地方。30 天没碰过的，开 App 时我会悄悄清掉；你也可以现在动手清。",
   "voice.cache.clean": "清理缓存",
   "voice.cache.cleaned": "清掉了 {n} 个文件，腾出 {size}。",
   "voice.cache.nothing": "已经很干净了，没什么可清的。",

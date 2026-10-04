@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { TText } from "../font";
 import { type StringKey, t } from "../i18n";
+import { radii } from "../theme/radii";
 import {
   Button,
   Card,
@@ -40,7 +41,6 @@ import type {
   SandboxEnvironment,
   SshConfig,
 } from "./types";
-import { radii } from "../theme/radii";
 
 function StatusDot({ state }: { state: SandboxConnectionState }) {
   const colors = useColors();
@@ -107,7 +107,9 @@ function BackendCard({
         })()}
       </View>
       {active ? (
-        <View style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: colors.blueDark }} />
+        <View
+          style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: colors.blueDark }}
+        />
       ) : null}
     </Pressable>
   );

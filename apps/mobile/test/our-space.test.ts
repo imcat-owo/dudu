@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createToolRegistry, type ToolContext } from "../src/api-groups/local-tools.js";
 import { getManual } from "../src/manuals/index.js";
-import { buildAnniversarySection, getUpcomingAnniversaries } from "../src/our-space/anniversary-section.js";
+import {
+  buildAnniversarySection,
+  getUpcomingAnniversaries,
+} from "../src/our-space/anniversary-section.js";
 import { buildHerMoodSection } from "../src/our-space/her-mood-section.js";
 import { buildNicknameSection } from "../src/our-space/nickname-section.js";
-import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
-import { createOurSpaceTools } from "../src/our-space/tools.js";
 import { getOnThisDay } from "../src/our-space/on-this-day.js";
+import { type OurSpaceStorage, OurSpaceStore } from "../src/our-space/store.js";
 import { daysTogether, resolveTogetherSince } from "../src/our-space/together.js";
+import { createOurSpaceTools } from "../src/our-space/tools.js";
 
 function fakeStorage(): OurSpaceStorage {
   const map = new Map<string, string>();
@@ -179,7 +182,10 @@ describe("our-space tools", () => {
     const out = await reg.execute("diary_delete", { id: entry.id }, ctx);
     assert.match(out, /deleted/i);
     assert.equal((await store.listDiary(10)).length, 0);
-    await assert.rejects(() => reg.execute("diary_delete", { id: entry.id }, ctx), /No diary entry/);
+    await assert.rejects(
+      () => reg.execute("diary_delete", { id: entry.id }, ctx),
+      /No diary entry/,
+    );
     await assert.rejects(() => reg.execute("diary_delete", {}, ctx), /Missing required argument/);
   });
 
@@ -537,10 +543,7 @@ describe("anniversary-section: buildAnniversarySection", () => {
 
   it("wraps to next year when this year's occurrence has passed", () => {
     const newYearEve = new Date(2026, 11, 30, 12, 0, 0);
-    const s = buildAnniversarySection(
-      [ann("元旦", "2020-01-02")],
-      newYearEve,
-    );
+    const s = buildAnniversarySection([ann("元旦", "2020-01-02")], newYearEve);
     assert.match(s, /「元旦」还有 3 天/);
     assert.match(s, /2027-01-02/);
   });

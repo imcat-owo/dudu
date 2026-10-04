@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
-import { t } from "./i18n";
-import { Button, useStyles } from "./ui";
 import { TText } from "./font";
+import { t } from "./i18n";
 import { radii } from "./theme/radii";
+import { Button, useStyles } from "./ui";
 
 interface PdfReaderProps {
   url: string;
@@ -48,7 +48,13 @@ export default function PdfReader({ url, pageCount }: PdfReaderProps) {
         key={`${page}:${zoom}`}
         title={t("web.pdfTitle")}
         src={`${url}#page=${page}&zoom=${zoom}`}
-        style={{ height: 570, width: "100%", border: 0, borderRadius: radii.md, background: "#e7e9e3" }}
+        style={{
+          height: 570,
+          width: "100%",
+          border: 0,
+          borderRadius: radii.md,
+          background: "#e7e9e3",
+        }}
       />
       <TText style={s.small}>用阅读器工具栏下载或打印。</TText>
     </View>

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseDockerPsLine, shellEscape, SshDockerBackend } from "../src/sandbox/backend-ssh-docker.js";
 import { IshSandboxBackend } from "../src/sandbox/backend-ish.js";
+import {
+  parseDockerPsLine,
+  SshDockerBackend,
+  shellEscape,
+} from "../src/sandbox/backend-ssh-docker.js";
 import { SandboxManager } from "../src/sandbox/manager.js";
-import { UnavailableSshTransport, type SshTransport } from "../src/sandbox/transport.js";
-import type {
-  SandboxCommandResult,
-  SandboxOutputChunk,
-  SshConfig,
-} from "../src/sandbox/types.js";
+import { type SshTransport, UnavailableSshTransport } from "../src/sandbox/transport.js";
+import type { SandboxCommandResult, SandboxOutputChunk, SshConfig } from "../src/sandbox/types.js";
 
 /** Fake SSH transport with scripted responses. */
 function fakeTransport(script: Record<string, SandboxCommandResult>): SshTransport {
@@ -42,11 +42,18 @@ function fakeTransport(script: Record<string, SandboxCommandResult>): SshTranspo
   };
 }
 
-const ok = (stdout: string): SandboxCommandResult => ({ stdout, stderr: "", exitCode: 0, durationMs: 5 });
+const ok = (stdout: string): SandboxCommandResult => ({
+  stdout,
+  stderr: "",
+  exitCode: 0,
+  durationMs: 5,
+});
 
 describe("parseDockerPsLine", () => {
   it("parses a docker ps json line", () => {
-    const env = parseDockerPsLine('{"ID":"abc123","Names":"web","State":"running","Image":"nginx"}');
+    const env = parseDockerPsLine(
+      '{"ID":"abc123","Names":"web","State":"running","Image":"nginx"}',
+    );
     assert.deepEqual(env, { id: "abc123", name: "web", status: "running", image: "nginx" });
   });
   it("returns null for blank / malformed lines", () => {
@@ -109,7 +116,9 @@ describe("SshDockerBackend", () => {
     const b = new SshDockerBackend(
       fakeTransport({
         "docker info": ok('"24.0"'),
-        "docker ps": ok('{"ID":"c1","Names":"web","State":"running","Image":"nginx"}\n{"ID":"c2","Names":"db","State":"exited","Image":"postgres"}\n'),
+        "docker ps": ok(
+          '{"ID":"c1","Names":"web","State":"running","Image":"nginx"}\n{"ID":"c2","Names":"db","State":"exited","Image":"postgres"}\n',
+        ),
       }),
     );
     b.setConfig(config);

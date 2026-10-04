@@ -498,7 +498,12 @@ describe("music: P2-7/8/9 fixes", () => {
   it("dj_play never bumps play count — the UI counts when audio starts (no double count)", async () => {
     const store = new MusicStore(fakeStorage());
     const reg = createToolRegistry(createMusicTools(store));
-    const t = await store.addTrack({ title: "Loud", artist: "A", audioUri: "file:///x", addedBy: "her" });
+    const t = await store.addTrack({
+      title: "Loud",
+      artist: "A",
+      audioUri: "file:///x",
+      addedBy: "her",
+    });
     await reg.execute("dj_play", { track: t.id }, ctx);
     await reg.execute("dj_play", { track: t.id }, ctx);
     // Tool writes intent + nowPlaying only; count stays 0 until the UI plays audio.
@@ -530,7 +535,11 @@ describe("music: P2-7/8/9 fixes", () => {
     assert.equal(isIntentStale(fresh), false);
     const old: DjIntent = { action: "play", at: Date.now() - STALE_INTENT_MS - 1000, by: "ai" };
     assert.equal(isIntentStale(old), true);
-    const boundary: DjIntent = { action: "play", at: Date.now() - STALE_INTENT_MS + 60_000, by: "ai" };
+    const boundary: DjIntent = {
+      action: "play",
+      at: Date.now() - STALE_INTENT_MS + 60_000,
+      by: "ai",
+    };
     assert.equal(isIntentStale(boundary), false);
   });
 });

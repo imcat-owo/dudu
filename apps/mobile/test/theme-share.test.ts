@@ -27,7 +27,10 @@ test("exportBundleJson round-trips through parseImportBundle", () => {
 
 test("parseImportBundle rejects empty / non-JSON / wrong-kind loudly", () => {
   assert.equal(parseImportBundle("   ").ok, false);
-  assert.equal(parseImportBundle("   ") && (parseImportBundle("   ") as { code: string }).code, "empty");
+  assert.equal(
+    parseImportBundle("   ") && (parseImportBundle("   ") as { code: string }).code,
+    "empty",
+  );
   const notJson = parseImportBundle("{oops");
   assert.equal(notJson.ok, false);
   assert.equal((notJson as { code: string }).code, "not-json");

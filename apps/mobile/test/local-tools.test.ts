@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { messageToolActions } from "../src/activity-drawer-model.js";
-import {
-  accumulateToolCalls,
-  parseSseToolCallDeltas,
-} from "../src/api-groups/direct-transport.js";
+import { accumulateToolCalls, parseSseToolCallDeltas } from "../src/api-groups/direct-transport.js";
 import {
   buildLocalSystemPrompt,
   MAX_TOOL_ITERATIONS,
@@ -13,8 +10,8 @@ import {
 import {
   createLocalTools,
   createToolRegistry,
-  ToolError,
   type ToolContext,
+  ToolError,
 } from "../src/api-groups/local-tools.js";
 
 const allowAll: ToolContext = {
@@ -160,9 +157,7 @@ describe("SSE tool-call parsing", () => {
       choices: [
         {
           delta: {
-            tool_calls: [
-              { index: 0, id: "call_1", function: { name: "get_time", arguments: "" } },
-            ],
+            tool_calls: [{ index: 0, id: "call_1", function: { name: "get_time", arguments: "" } }],
           },
         },
       ],

@@ -3,10 +3,10 @@ import { useContext } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { z } from "zod";
 import { BrowserRunContext } from "./browser-tool-card";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
 
 const messageSchema = z.object({
   id: z.string(),

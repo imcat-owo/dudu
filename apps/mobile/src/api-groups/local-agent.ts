@@ -206,6 +206,9 @@ async function saveLocalHistory(
     await store.setItem(historyKey(threadId), JSON.stringify(capped));
   } catch {
     // History persistence is best-effort; the session keeps working.
+    // Known gap: if storage is full/corrupt, history is lost silently here.
+    // No logger exists in this codebase yet — when one lands, log the error
+    // (with the threadId, never message content) so silent loss becomes visible.
   }
 }
 

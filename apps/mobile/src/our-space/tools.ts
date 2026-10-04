@@ -968,7 +968,9 @@ export function createAmbientVideoTools(
           raw !== "skills" &&
           raw !== "threads"
         ) {
-          throw new ToolError('slot must be "ourspace", "music-dj", "knowledge", "skills", or "threads".');
+          throw new ToolError(
+            'slot must be "ourspace", "music-dj", "knowledge", "skills", or "threads".',
+          );
         }
         const uri = strArg(args, "uri");
         await videoStore.set(raw, uri || null);

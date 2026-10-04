@@ -20,6 +20,7 @@ import {
   useCopilotKit,
 } from "@copilotkit/react-native/headless";
 import { useEffect, useMemo, useReducer, useRef } from "react";
+import { requestAiAuthorization } from "./ai-authorization";
 import {
   createLocalAgent,
   type LocalChatMessage,
@@ -27,7 +28,6 @@ import {
 } from "./api-groups/local-agent";
 import { useChatMode } from "./api-groups/mode";
 import { groupStore } from "./api-groups/store";
-import { requestAiAuthorization } from "./ai-authorization";
 import { runConversationTurn } from "./conversation-run";
 import {
   readClipboard,

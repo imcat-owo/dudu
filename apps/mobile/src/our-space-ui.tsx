@@ -1767,7 +1767,7 @@ function OnThisDayView() {
         {t("space.onThisDay.title")}
       </TText>
       {items.map((item, i) => (
-        <StaggerIn key={`${item.kind}-${item.originalDate}-${i}`} index={i}>
+        <StaggerIn key={`${item.kind}-${item.originalDate}-${item.title}`} index={i}>
           <SoftCard>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View

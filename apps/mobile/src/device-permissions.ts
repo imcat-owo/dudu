@@ -141,7 +141,7 @@ export async function checkBluetoothAvailable(): Promise<boolean> {
   return false;
 }
 
-export async function scanBluetoothDevices(timeoutMs = 8000): Promise<BleDevice[]> {
+export async function scanBluetoothDevices(): Promise<BleDevice[]> {
   throw new Error(t("perm.bluetoothUnavailable"));
 }
 
@@ -167,4 +167,3 @@ export const checkers: Record<PermissionKind, () => Promise<PermissionStatus>> =
       ok ? ("undetermined" as PermissionStatus) : ("unavailable" as PermissionStatus),
     ),
 };
-

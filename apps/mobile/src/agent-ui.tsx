@@ -39,8 +39,10 @@ import type {
   RunEvent,
 } from "../../../packages/domain/src/agent";
 import { useAgentWorkspace } from "./agent-workspace";
+import { TText } from "./font";
 import { type StringKey, t } from "./i18n";
 import { ActivityScreen, ConnectionsScreen } from "./screens";
+import { radii } from "./theme/radii";
 import {
   Button,
   Card,
@@ -58,8 +60,6 @@ import {
   useStyles,
 } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
 const STATUS_KEYS: Record<string, StringKey> = {
   queued: "agent.status.queued",
@@ -903,7 +903,9 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                 </View>
               ) : null;
             })}
-          {expanded && transactions.length > 100 && <TText style={s.small}>{t("fin.top100")}</TText>}
+          {expanded && transactions.length > 100 && (
+            <TText style={s.small}>{t("fin.top100")}</TText>
+          )}
         </View>
       )}
     </Card>

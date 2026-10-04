@@ -22,10 +22,10 @@ import { t } from "./i18n";
 import { DEFAULT_MASCOT_INDEX } from "./mascot";
 import { mascotSource } from "./mascot-assets";
 import { clampFg, type ResolvedMode } from "./theme/derive";
-import { useTheme } from "./theme/ThemeContext";
-import type { SurfaceId, SurfaceTokens } from "./theme/types";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
+import { useTheme } from "./theme/ThemeContext";
+import type { SurfaceId, SurfaceTokens } from "./theme/types";
 
 /**
  * Legacy palette shape, now derived live from theme tokens.

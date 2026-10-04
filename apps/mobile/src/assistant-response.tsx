@@ -3,10 +3,10 @@ import { Linking, type TextStyle } from "react-native";
 import Markdown, { type MarkdownStyles, type RenderRules } from "react-native-markdown-renderer";
 import { useFontSizeSetting } from "./app-settings";
 import { assistantMarkdown, isSafeAssistantUrl } from "./assistant-markdown";
+import { TText } from "./font";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { ErrorNotice, useColors } from "./ui";
-import { TText } from "./font";
 
 const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles) => (
   <TText key={node.key} selectable style={styles.codeBlock as TextStyle}>

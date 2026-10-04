@@ -49,8 +49,7 @@ export function createContextTools(ctx: ContextManager): LocalTool[] {
         additionalProperties: false,
       },
       run: async (args) => {
-        const summary =
-          typeof args.summary === "string" ? args.summary.trim() : "";
+        const summary = typeof args.summary === "string" ? args.summary.trim() : "";
         if (!summary) throw new ToolError("summary is required.");
         ctx.setMessages([
           {

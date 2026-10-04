@@ -4,9 +4,14 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SKILLS_MANUAL } from "../src/manuals/skills.js";
 import { getManual } from "../src/manuals/index.js";
-import { normalizeSkill, seedExampleSkills, SkillStore, type SkillStorage } from "../src/skills/store.js";
+import { SKILLS_MANUAL } from "../src/manuals/skills.js";
+import {
+  normalizeSkill,
+  type SkillStorage,
+  SkillStore,
+  seedExampleSkills,
+} from "../src/skills/store.js";
 import { createSkillTools } from "../src/skills/tools.js";
 
 function fakeStorage(): SkillStorage {
@@ -98,7 +103,13 @@ describe("skill tools", () => {
   it("all 5 tool names are registered once", () => {
     const tools = createSkillTools(new SkillStore(fakeStorage()));
     const names = tools.map((t) => t.name).sort();
-    assert.deepEqual(names, ["skill_create", "skill_delete", "skill_list", "skill_read", "skill_update"]);
+    assert.deepEqual(names, [
+      "skill_create",
+      "skill_delete",
+      "skill_list",
+      "skill_read",
+      "skill_update",
+    ]);
   });
 
   it("create → list → read → delete roundtrip via tools", async () => {
@@ -142,7 +153,10 @@ describe("skill tools", () => {
     for (const tool of tools) {
       assert.ok(tool.manualId, `${tool.name} missing manualId`);
       const manualId: string | undefined = tool.manualId;
-      assert.ok(manualId && getManual(manualId), `${tool.name}: manual ${tool.manualId} not registered`);
+      assert.ok(
+        manualId && getManual(manualId),
+        `${tool.name}: manual ${tool.manualId} not registered`,
+      );
     }
   });
 });

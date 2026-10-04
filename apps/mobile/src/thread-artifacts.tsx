@@ -5,11 +5,11 @@ import type { Artifact, BrowserSession } from "../../../packages/domain/src";
 import type { AgentArtifact, AgentTask } from "../../../packages/domain/src/agent";
 import { ArtifactCard, TaskCard } from "./agent-ui";
 import { BrowserThreadCard } from "./computer";
+import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import { Button, Card, ErrorNotice, useColors, useStyles } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
 export function FileThreadCard({ file }: { file: Artifact }) {
   const colors = useColors();
@@ -23,7 +23,9 @@ export function FileThreadCard({ file }: { file: Artifact }) {
       style={{ width: "100%", maxWidth: 440 }}
     >
       <Card style={{ padding: 18, backgroundColor: colors.line, gap: 18 }}>
-        <View style={{ borderRadius: radii.md, padding: 22, backgroundColor: colors.card, gap: 14 }}>
+        <View
+          style={{ borderRadius: radii.md, padding: 22, backgroundColor: colors.card, gap: 14 }}
+        >
           <TText style={[s.heading, { fontSize: 18 }]}>{file.name.replace(/\.pdf$/i, "")}</TText>
           {file.fields?.length ? (
             file.fields.slice(0, 4).map((field) => (

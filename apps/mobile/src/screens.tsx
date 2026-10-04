@@ -1,6 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import AIBrowserView from "./browser/AIBrowserView";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -28,7 +27,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -40,8 +38,11 @@ import type {
   EmailDraft,
 } from "../../../packages/domain/src";
 import { API_URL } from "./api";
+import AIBrowserView from "./browser/AIBrowserView";
 import { localDateTime, zonedInstant } from "./date-time";
+import { TText } from "./font";
 import { t } from "./i18n";
+import { radii } from "./theme/radii";
 import {
   Button,
   Card,
@@ -61,8 +62,6 @@ import {
   useStyles,
 } from "./ui";
 import { useWorkspace } from "./workspace";
-import { TText } from "./font";
-import { radii } from "./theme/radii";
 
 function todayDate() {
   return localDateTime(new Date().toISOString(), Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -311,7 +310,12 @@ export function TodayScreen() {
                 </View>
                 {m.unread && (
                   <View
-                    style={{ width: 5, height: 5, borderRadius: radii.xs, backgroundColor: "#78ABD0" }}
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: radii.xs,
+                      backgroundColor: "#78ABD0",
+                    }}
                   />
                 )}
               </Pressable>
@@ -547,7 +551,9 @@ export function MailScreen() {
               <Avatar name={m.sender} index={i} />
               <View style={{ flex: 1, gap: 5 }}>
                 <View style={s.between}>
-                  <TText style={[s.text, { fontWeight: m.unread ? "600" : "400" }]}>{m.sender}</TText>
+                  <TText style={[s.text, { fontWeight: m.unread ? "600" : "400" }]}>
+                    {m.sender}
+                  </TText>
                   <TText style={s.small}>{dateLabel(m.date)}</TText>
                 </View>
                 <TText style={[s.text, { fontWeight: "500", fontSize: 13 }]}>{m.subject}</TText>
@@ -565,7 +571,12 @@ export function MailScreen() {
               </View>
               {m.unread && (
                 <View
-                  style={{ width: 6, height: 6, borderRadius: radii.xs, backgroundColor: "#83B5D3" }}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: radii.xs,
+                    backgroundColor: "#83B5D3",
+                  }}
                 />
               )}
             </Pressable>
@@ -740,7 +751,9 @@ export function CalendarScreen() {
                   backgroundColor: key === date ? colors.sky : "transparent",
                 }}
               >
-                <TText style={s.small}>{day.toLocaleDateString("en-US", { weekday: "short" })}</TText>
+                <TText style={s.small}>
+                  {day.toLocaleDateString("en-US", { weekday: "short" })}
+                </TText>
                 <TText
                   style={[
                     s.title,
@@ -1259,7 +1272,13 @@ export function ConnectionsScreen({ query = "" }: { query?: string }) {
                   : t("conn.connected")
                 : t("conn.available")}
             </TText>
-            <View style={{ paddingHorizontal: 16, borderRadius: radii.xl, backgroundColor: colors.line }}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                borderRadius: radii.xl,
+                backgroundColor: colors.line,
+              }}
+            >
               {group.map((row, index) => (
                 <Pressable
                   key={row.id}
