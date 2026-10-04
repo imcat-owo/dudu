@@ -215,7 +215,10 @@ describe("selectSpeakers (ST NATURAL port)", () => {
       ],
     });
     const picked = selectSpeakers(m, { random: scriptedRandom(0.99, 0.99) });
-    assert.ok(picked.some((p) => p.id === "m2"), "bare CJK mention must respond");
+    assert.ok(
+      picked.some((p) => p.id === "m2"),
+      "bare CJK mention must respond",
+    );
   });
 
   it("@mention does not fire inside ASCII words", () => {
