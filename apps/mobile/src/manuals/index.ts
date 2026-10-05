@@ -28,6 +28,7 @@ import { COORDINATION_MANUAL } from "./coordination";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
 import { GROUP_MEETING_MANUAL } from "./group-meeting";
 import { INCOGNITO_MANUAL } from "./incognito";
+import { INITIATIVE_MANUAL } from "./initiative";
 import { KNOWLEDGE_MANUAL } from "./knowledge";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools";
 import { MEDIA_MANUAL } from "./media";
@@ -73,6 +74,7 @@ export const MANUALS: ManualEntry[] = [
   SANDBOX_MANUAL,
   OUR_SPACE_MANUAL,
   OUTREACH_MANUAL,
+  INITIATIVE_MANUAL,
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,

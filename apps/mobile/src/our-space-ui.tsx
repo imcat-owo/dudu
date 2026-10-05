@@ -86,6 +86,7 @@ import { MusicRoomPage } from "./music-ui";
 import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
 import { OutreachFrequencySection } from "./outreach/outreach-ui";
+import { InitiativeSection } from "./initiative/initiative-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
   AiStatus,
@@ -1024,12 +1025,16 @@ function TellLaterView() {
 
   // Proactive outreach frequency sits above the queue — the queue is what
   // outreach draws from, so the setting belongs here, always visible.
+  // Proactive initiative （主动约定） sits here too: it shares the same
+  // "AI reaches her" channel and daily cap.
   const freqSection = <OutreachFrequencySection />;
+  const initiativeSection = <InitiativeSection />;
 
   if (items.length === 0)
     return (
       <View style={{ gap: 12 }}>
         {freqSection}
+        {initiativeSection}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1092,6 +1097,7 @@ function TellLaterView() {
     <FadeIn>
       <View style={{ gap: 20 }}>
         {freqSection}
+        {initiativeSection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

@@ -161,6 +161,12 @@ const EXTENSION_KEYS = [
   "dudu.outreach.v1.lastOutreach",
   "dudu.outreach.v1.loveLetterNudges",
   "dudu.outreach.v1.feedNudges",
+  // Proactive initiative （主动约定）: her scheduled promises + daily cap +
+  // fired-slot ledger + daily sends. Plain JSON, no secrets.
+  "dudu.initiative.v1.rules",
+  "dudu.initiative.v1.fired",
+  "dudu.initiative.v1.sends",
+  "dudu.initiative.v1.dailyCap",
   "dudu.sandbox.activeBackend.v1",
   "dudu.ambientvideo.v1.overrides",
   "dudu.theme.aiMode.v1",

@@ -80,6 +80,7 @@ import {
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools";
+import { createProductionInitiativeTools } from "../initiative/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
@@ -1073,6 +1074,7 @@ export function createLocalAgent(opts: {
       let tools: LocalTool[] = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
+        ...createProductionInitiativeTools(),
         ...createTaskProgressTools(taskProgressStore),
         ...createAmbientVideoTools(ambientVideoStore),
         ...createPodcastTools(

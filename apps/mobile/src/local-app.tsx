@@ -207,6 +207,29 @@ export function LocalApp() {
           setSection(link.section);
           return;
         }
+        // Aru-gap P0 (initiative): tapping a proactive-initiative template
+        // notification opens chat and triggers the ONE promised AI
+        // generation for that slot (not an auto-retry — the delivery).
+        if (kind === "initiative") {
+          const d = (data ?? {}) as Record<string, unknown>;
+          const ruleId = typeof d.ruleId === "string" ? d.ruleId : "";
+          const slotTime =
+            typeof d.slotTime === "string"
+              ? Number(d.slotTime)
+              : typeof d.slotTime === "number"
+                ? d.slotTime
+                : 0;
+          if (ruleId && slotTime > 0) {
+            void Promise.all([import("./initiative/instances"), import("./initiative/scheduler")])
+              .then(async ([im, sm]) => {
+                const deps = await im.buildInitiativeDeps();
+                await sm.handleInitiativeTap(deps, ruleId, slotTime);
+              })
+              .catch(() => {});
+          }
+          setSection("chat");
+          return;
+        }
         const known =
           kind === "anniversary" ||
           kind === "tell_later" ||
@@ -243,6 +266,28 @@ export function LocalApp() {
     return () => {
       alive = false;
       sub?.remove();
+    };
+  }, []);
+
+  // Proactive initiative （主动约定）: foreground tick (30s + every
+  // foreground event). Due rules cancel their pre-scheduled notification
+  // and run the AI path directly. Never blocks startup, never throws.
+  useEffect(() => {
+    let alive = true;
+    let stop: (() => void) | null = null;
+    void Promise.all([import("./initiative/instances"), import("./initiative/foreground-loop")])
+      .then(([im, sm]) => {
+        if (!alive) return;
+        stop = sm.startInitiativeForegroundLoop(() => im.buildInitiativeDeps());
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      try {
+        stop?.();
+      } catch {
+        // ignore
+      }
     };
   }, []);
 
