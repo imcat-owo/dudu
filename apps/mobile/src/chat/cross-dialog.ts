@@ -341,15 +341,9 @@ export async function resolveDialog(
     if (!id) continue;
     const entryPersona = registry[id]?.personaId ?? DEFAULT_PERSONA_ID;
     const name = registry[id]?.name ?? `未命名对话 ${shortId(id)}`;
-    // Persona isolation, explicit and first: the dialog exists but belongs to
-    // a different persona — the AI must not touch it, and must say so plainly.
-    if (id === needle || name.toLowerCase() === lower) {
-      if (entryPersona !== personaId) {
-        throw new ToolError(
-          "That dialog belongs to a different persona — I can't read it or send to it. Persona data never crosses over.",
-        );
-      }
-    }
+    // Persona isolation, fail closed (B5-followup): a dialog owned by another
+    // persona is simply invisible here, so the refusal below is IDENTICAL to
+    // an unknown ref — no existence or content leak.
     if (entryPersona !== personaId) continue;
     own.push({
       id,
@@ -511,6 +505,13 @@ export interface CrossDialogToolOpts {
   /** The dialog the AI is currently talking in. */
   threadId: string;
   personaId?: string;
+  /**
+   * Lazy current-persona reader (B5-followup): resolved on EVERY tool
+   * invocation — never captured at construction — so a persona switch
+   * mid-session takes effect immediately. Takes precedence over the static
+   * `personaId` when provided. Same pattern as createIsolatedDuduDeps.
+   */
+  getPersonaId?: () => Promise<string>;
   storage: CrossDialogStorage;
   trace: CrossDialogTraceStore;
   visibility: CrossDialogVisibilityStore;
@@ -559,11 +560,26 @@ function verifyCitedPlan(reason: string): void {
 }
 
 export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
-  const personaId = opts.personaId ?? DEFAULT_PERSONA_ID;
   const storage = opts.storage;
   const incognito = () => opts.isIncognito?.() === true;
 
-  async function traceFromName(): Promise<string> {
+  /**
+   * B5-followup: the persona id is resolved lazily on every invocation —
+   * never captured at construction — so a persona switch mid-session takes
+   * effect immediately. Falls back to the static opt, then the default
+   * persona, if the reader is absent or hiccups. Mirrors
+   * createIsolatedDuduDeps' getPersonaId contract.
+   */
+  async function resolvePersonaId(): Promise<string> {
+    try {
+      if (opts.getPersonaId) return await opts.getPersonaId();
+    } catch {
+      // Storage hiccup: fall through to the static/default value.
+    }
+    return opts.personaId ?? DEFAULT_PERSONA_ID;
+  }
+
+  async function traceFromName(personaId: string): Promise<string> {
     const dialogs = await listDialogs(storage, personaId);
     return dialogs.find((d) => d.id === opts.threadId)?.name ?? `对话 ${shortId(opts.threadId)}`;
   }
@@ -576,8 +592,9 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "cross-dialog",
       run: async () => {
+        const personaId = await resolvePersonaId();
         const dialogs = await listDialogs(storage, personaId);
-        const fromName = await traceFromName();
+        const fromName = await traceFromName(personaId);
         await opts.trace.append({
           action: "list",
           fromThreadId: opts.threadId,
@@ -614,11 +631,12 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
       },
       manualId: "cross-dialog",
       run: async (args) => {
+        const personaId = await resolvePersonaId();
         const ref = strArg(args, "dialog");
         const limit = numArg(args, "limit", 20);
         const dialog = await resolveDialog(storage, ref, personaId);
         const messages = await readDialog(storage, dialog.id, limit);
-        const fromName = await traceFromName();
+        const fromName = await traceFromName(personaId);
         await opts.trace.append({
           action: "read",
           fromThreadId: opts.threadId,
@@ -650,6 +668,7 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
       },
       manualId: "cross-dialog",
       run: async (args) => {
+        const personaId = await resolvePersonaId();
         const limit = Math.min(Math.max(Math.floor(numArg(args, "limit", 20)), 1), 100);
         const entries = await opts.trace.list(limit);
         const mine = entries.filter((e) => e.personaId === personaId);
@@ -691,6 +710,7 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
       },
       manualId: "cross-dialog",
       run: async (args) => {
+        const personaId = await resolvePersonaId();
         if (incognito()) {
           throw new ToolError(
             "This session is incognito — it promised no side effects, so I can't deliver messages into other dialogs from here.",
@@ -713,7 +733,7 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
             "That's the dialog you're already talking in — just reply to her directly.",
           );
         }
-        const fromName = await traceFromName();
+        const fromName = await traceFromName(personaId);
         const summary =
           message.trim().length > 120 ? `${message.trim().slice(0, 120)}…` : message.trim();
         // Trace FIRST, then send: if trace storage fails, the send never

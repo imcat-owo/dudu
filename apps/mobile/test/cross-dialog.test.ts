@@ -60,6 +60,16 @@ function toolOpts(storage: CrossDialogStorage, threadId = "current") {
   };
 }
 
+/** Capture a rejection's message (assert.rejects returns void). */
+async function rejectMessage(p: Promise<unknown>): Promise<string> {
+  try {
+    await p;
+  } catch (e) {
+    return String((e as Error)?.message ?? e);
+  }
+  throw new Error("expected rejection, got success");
+}
+
 describe("listDialogs", () => {
   it("returns empty when no dialogs exist", async () => {
     assert.deepEqual(await listDialogs(fakeStorage()), []);
@@ -140,11 +150,17 @@ describe("resolveDialog", () => {
     await assert.rejects(() => resolveDialog(s, "nope"), /No dialog matches/);
   });
 
-  it("denies cross-persona access explicitly", async () => {
+  it("hides cross-persona dialogs: refusal is identical to an unknown ref", async () => {
     const s = fakeStorage();
     seedHistory(s, "aaa", []);
     await setDialogName(s, "aaa", "B 的", "persona-b");
-    await assert.rejects(() => resolveDialog(s, "aaa", DEFAULT_PERSONA_ID), /different persona/);
+    // Fail closed (B5-followup): no existence leak — the foreign id must look
+    // exactly like a ref that matches nothing.
+    const foreignMsg = await rejectMessage(resolveDialog(s, "aaa", DEFAULT_PERSONA_ID));
+    const unknownMsg = await rejectMessage(resolveDialog(s, "zzz", DEFAULT_PERSONA_ID));
+    assert.equal(foreignMsg, unknownMsg);
+    assert.match(foreignMsg, /No dialog matches|no other dialogs yet/);
+    assert.ok(!foreignMsg.includes("persona"), "must not mention personas at all");
   });
 });
 
@@ -341,12 +357,88 @@ describe("cross-dialog tools", () => {
     assert.equal(raw.length, 0, "send happened without a trace — forbidden");
   });
 
-  it("denies cross-persona targets", async () => {
+  it("read_dialog/send_to_dialog on a foreign dialog fail exactly like unknown ids", async () => {
     const s = fakeStorage();
-    seedHistory(s, "aaa", []);
+    seedHistory(s, "aaa", [{ role: "user", content: "B secret" }]);
     await setDialogName(s, "aaa", "B 的", "persona-b");
     const { tools } = toolsFor(s);
-    await assert.rejects(run(tools, "read_dialog", { dialog: "aaa" }), /different persona/);
+    const foreignRead = await rejectMessage(run(tools, "read_dialog", { dialog: "aaa" }));
+    const unknownRead = await rejectMessage(run(tools, "read_dialog", { dialog: "zzz" }));
+    assert.equal(foreignRead, unknownRead, "read refusal must be identical to unknown id");
+    assert.ok(!foreignRead.includes("B secret"), "no content leak");
+    const foreignSend = await rejectMessage(
+      run(tools, "send_to_dialog", { dialog: "aaa", message: "hi", reason: "her request" }),
+    );
+    const unknownSend = await rejectMessage(
+      run(tools, "send_to_dialog", { dialog: "zzz", message: "hi", reason: "her request" }),
+    );
+    assert.equal(foreignSend, unknownSend, "send refusal must be identical to unknown id");
+    // The message must NOT have landed in the foreign dialog (still 1 seeded msg).
+    const raw = JSON.parse((s.__map.get("dudu.local-chat.aaa.v1") ?? "[]") as string);
+    assert.equal(raw.length, 1, "send happened into a foreign dialog — forbidden");
+  });
+
+  it("list_dialogs with getPersonaId lists only the current persona's dialogs", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "a1", [{ role: "user", content: "A 的问题" }]);
+    await setDialogName(s, "a1", "A 秘密", "persona-a");
+    seedHistory(s, "b1", [{ role: "user", content: "B 的问题" }]);
+    await setDialogName(s, "b1", "B 工作", "persona-b");
+    const o = { ...toolOpts(s), getPersonaId: async () => "persona-b" };
+    const tools = createCrossDialogTools(o);
+    const out = await run(tools, "list_dialogs", {});
+    assert.ok(out.includes("B 工作"), out);
+    assert.ok(!out.includes("A 秘密") && !out.includes("a1"), `leaked A's dialog: ${out}`);
+    const entries = await o.trace.list();
+    assert.equal(entries[0].personaId, "persona-b");
+  });
+
+  it("getPersonaId takes precedence over the static personaId opt", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "a1", [{ role: "user", content: "A" }]);
+    await setDialogName(s, "a1", "A 秘密", "persona-a");
+    const o = {
+      ...toolOpts(s),
+      personaId: "persona-a",
+      getPersonaId: async () => "persona-b",
+    };
+    const tools = createCrossDialogTools(o);
+    const out = await run(tools, "list_dialogs", {});
+    assert.ok(out.includes("No dialogs yet"), `lazy reader must win: ${out}`);
+  });
+
+  it("a persona switch mid-session takes effect immediately (lazy resolution)", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "a1", [{ role: "user", content: "A" }]);
+    await setDialogName(s, "a1", "A 秘密", "persona-a");
+    seedHistory(s, "b1", [{ role: "user", content: "B" }]);
+    await setDialogName(s, "b1", "B 工作", "persona-b");
+    let current = "persona-b";
+    const o = { ...toolOpts(s), getPersonaId: async () => current };
+    const tools = createCrossDialogTools(o); // built once, persona switches after
+    let out = await run(tools, "list_dialogs", {});
+    assert.ok(out.includes("B 工作") && !out.includes("A 秘密"), `before switch: ${out}`);
+    current = "persona-a";
+    out = await run(tools, "list_dialogs", {});
+    assert.ok(out.includes("A 秘密") && !out.includes("B 工作"), `after switch: ${out}`);
+    // trace_read follows the switch too: only persona-a's own entry is visible.
+    const traceOut = await run(tools, "trace_read", {});
+    assert.ok(traceOut.includes("newest first, 1"), `trace must be per-persona: ${traceOut}`);
+  });
+
+  it("getPersonaId failure falls back to the static/default persona", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "d0", [{ role: "user", content: "默认" }]);
+    await setDialogName(s, "d0", "默认对话"); // DEFAULT_PERSONA_ID
+    const o = {
+      ...toolOpts(s),
+      getPersonaId: async () => {
+        throw new Error("storage hiccup");
+      },
+    };
+    const tools = createCrossDialogTools(o);
+    const out = await run(tools, "list_dialogs", {});
+    assert.ok(out.includes("默认对话"), `fallback broken: ${out}`);
   });
 });
 

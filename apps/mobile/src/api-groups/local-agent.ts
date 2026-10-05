@@ -1162,8 +1162,12 @@ export function createLocalAgent(opts: {
         // Cross-dialog read/write (vision feature 2): the AI can reach her
         // other dialogs. Every action is traced (留痕) — see
         // src/chat/cross-dialog.ts for the hard constraints.
+        // B5-followup: the current persona is resolved lazily per tool call
+        // (same pattern as createIsolatedDuduDeps), so the cross-dialog
+        // tools never see another persona's dialogs.
         ...createCrossDialogTools({
           threadId: opts.threadId,
+          getPersonaId: currentPersonaId,
           storage: AsyncStorage,
           trace: crossDialogTraceStore,
           visibility: crossDialogVisibilityStore,
