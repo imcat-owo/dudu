@@ -98,6 +98,8 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "dj_queue_add",
   // Device writes
   "write_clipboard",
+  // Secrets
+  "ask_env_form", // D15: persists a secret into envStore — a real write
 ]);
 
 /** True when this tool must be refused in an incognito session. */

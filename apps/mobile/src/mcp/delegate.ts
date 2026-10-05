@@ -38,8 +38,10 @@ let seq = 0;
  * - ask_user: dialog-scoped to the parent's thread (D17) — a sub-agent's
  *   question would pop up in her dialog without the parent's context.
  *   Questions ride back through the subtask result instead.
+ * - ask_env_form: same as ask_user, plus secrets — a sub-agent must never
+ *   pop a secret form in her dialog on its own; the parent asks instead.
  */
-const SUBAGENT_DEFAULT_DENYLIST = new Set(["delegate_task", "ask_user"]);
+const SUBAGENT_DEFAULT_DENYLIST = new Set(["delegate_task", "ask_user", "ask_env_form"]);
 
 /**
  * Resolve which tools a sub-agent actually receives (D25).
@@ -85,7 +87,7 @@ export function createDelegateTools(deps: DelegateDeps): LocalTool[] {
             type: "array",
             items: { type: "string" },
             description:
-              "Tool names the sub-agent may use (optional). Omit for the default set: all your tools except delegate_task (no recursive delegation by default) and ask_user (its questions would pop up in her dialog without your context — have it return questions in its result instead).",
+              "Tool names the sub-agent may use (optional). Omit for the default set: all your tools except delegate_task (no recursive delegation by default), ask_user (its questions would pop up in her dialog without your context — have it return questions in its result instead), and ask_env_form (same — never let a sub-agent pop a secret form on its own).",
           },
         },
         required: ["task"],

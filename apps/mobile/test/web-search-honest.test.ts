@@ -120,8 +120,8 @@ describe("D36 — web_search provenance", () => {
   });
 });
 
-describe("D37 — failure message points nowhere that doesn't exist", () => {
-  it("all-failed error lists per-provider reasons and admits there is no settings page", async () => {
+describe("D37 — failure message points at the real settings page (D15)", () => {
+  it("all-failed error lists per-provider reasons and points at the env section", async () => {
     const restoreEnv = withEnv({});
     const restoreFetch = withFetch(async () => {
       throw new Error("fetch should not be called with no keys");
@@ -142,8 +142,8 @@ describe("D37 — failure message points nowhere that doesn't exist", () => {
         `stale pointer still present: ${msg}`,
       );
       assert.ok(
-        msg.includes("no in-app settings page"),
-        `must admit the page doesn't exist: ${msg}`,
+        msg.includes("environment variables section"),
+        `must point at the D15 env settings page: ${msg}`,
       );
     } finally {
       restoreFetch();

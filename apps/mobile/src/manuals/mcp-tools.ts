@@ -23,5 +23,12 @@ Rules:
   SSE) ARE implemented (mcp/transports.ts) and wired through the MCP client
   — she adds servers in Settings, tools appear as mcp__<server>__<tool>.
   stdio is NOT available (a phone app can't spawn subprocesses).
-  Never claim stdio works.`,
+  Never claim stdio works.
+
+Secrets: when you need an API key you don't have, use ask_env_form —
+  she fills a form card (variable name / account / secret / note, URL
+  optional) and the secret lands in envStore (SecureStore). You never see
+  the value. She can also manage variables herself in the connections
+  settings tab, environment variables section (names only, never values).
+  Never ask for secrets in plain chat text.`,
 };

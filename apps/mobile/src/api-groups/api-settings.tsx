@@ -22,6 +22,7 @@ import QRCode from "react-native-qrcode-svg";
 import { TText } from "../font";
 import { t } from "../i18n";
 import McpSettings from "../mcp/mcp-settings";
+import { EnvVarsSection } from "../mcp/env-settings";
 import { radii } from "../theme/radii";
 import { Button, Card, Chip, Field, Sheet, useColors, useStyles } from "../ui";
 import { VoiceSettingsSection } from "../voice/voice-settings";
@@ -761,6 +762,9 @@ export function ApiSettingsScreen() {
         <TText style={[s.small, { fontWeight: "700" }]}>{t("mcp.title")}</TText>
         <McpSettings />
       </View>
+
+      {/* D15: environment variables — names only, values stay in SecureStore. */}
+      <EnvVarsSection />
 
       <Modal
         visible={editing !== null}

@@ -16,6 +16,13 @@ import { useSyncExternalStore } from "react";
 const NAMES_KEY = "dudu.env-vars.v1"; // names only, not values
 const VALUE_PREFIX = "dudu.env-value.";
 
+export interface EnvMeta {
+  account: string;
+  note: string;
+  url?: string;
+  updatedAt: number;
+}
+
 export interface SecureBackend {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
@@ -138,11 +145,14 @@ export function createEnvStore(secure?: SecureBackend) {
     async remove(name: string): Promise<void> {
       await ensureLoaded();
       try {
-        await (await secureBackend()).deleteItem(VALUE_PREFIX + name);
+        const sb = await secureBackend();
+        await sb.deleteItem(VALUE_PREFIX + name);
+        // Companion metadata must not outlive the variable itself.
+        await sb.deleteItem(`${VALUE_PREFIX}${name}__META`);
       } catch {
         // ignore
       }
-      names = (names ?? []).filter((n) => n !== name);
+      names = (names ?? []).filter((n) => n !== name && n !== `${name}__META`);
       try {
         await AsyncStorage.setItem(NAMES_KEY, JSON.stringify(names));
       } catch {
@@ -155,6 +165,29 @@ export function createEnvStore(secure?: SecureBackend) {
     /** All values — for ${VAR} expansion. Callers must redact before display. */
     async getValues(): Promise<Record<string, string>> {
       return loadValues();
+    },
+
+    /**
+     * Companion metadata for a variable (account / note / url) — never the
+     * secret itself. Stored by ask_env_form as <NAME>__META. Null when absent
+     * or unparseable.
+     */
+    async getMeta(name: string): Promise<EnvMeta | null> {
+      await ensureLoaded();
+      try {
+        const raw = await (await secureBackend()).getItem(`${VALUE_PREFIX}${name}__META`);
+        if (!raw) return null;
+        const o = JSON.parse(raw) as Partial<EnvMeta>;
+        if (typeof o.account !== "string" || typeof o.note !== "string") return null;
+        return {
+          account: o.account,
+          note: o.note,
+          ...(typeof o.url === "string" ? { url: o.url } : {}),
+          updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+        };
+      } catch {
+        return null;
+      }
     },
 
     /** Redact all known secrets from text. */

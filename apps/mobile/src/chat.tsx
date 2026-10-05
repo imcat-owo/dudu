@@ -62,6 +62,11 @@ import {
   type AskUserRequest,
 } from "./mcp/ask-user";
 import { McpApprovalCard } from "./mcp/mcp-approval-card";
+import { EnvFormCard } from "./mcp/env-form-card";
+import {
+  subscribeEnvFormRequest,
+  type EnvFormRequest,
+} from "./mcp/env-form";
 import {
   subscribeMcpApprovalRequest,
   type McpApprovalRequest,
@@ -501,6 +506,8 @@ export function ChatScreen({
   const [askAnswers, setAskAnswers] = useState<Record<string, string | string[]>>({});
   // D13: MCP tool approval — the model pauses for her Allow / Deny.
   const [apprReq, setApprReq] = useState<McpApprovalRequest | null>(null);
+  // D15: env form — the model pauses while she fills the secret form.
+  const [envFormReq, setEnvFormReq] = useState<EnvFormRequest | null>(null);
   // Thinking drawer: track the message id (not a text snapshot) so the
   // drawer content live-updates while thinking is still streaming in.
   const [activityId, setActivityId] = useState<string | null>(null);
@@ -872,6 +879,11 @@ export function ChatScreen({
   useEffect(() => {
     setApprReq(null);
     return subscribeMcpApprovalRequest(setApprReq, { threadId });
+  }, [threadId]);
+  // D15: env form card — same dialog isolation.
+  useEffect(() => {
+    setEnvFormReq(null);
+    return subscribeEnvFormRequest(setEnvFormReq, { threadId });
   }, [threadId]);
   useEffect(() => {
     const subscription = agent.onTransportError((failure) => setError(failure.message));
@@ -2744,6 +2756,8 @@ export function ChatScreen({
               request={apprReq}
             />
           )}
+          {/* D15: env form — the model is waiting for her to fill the secret form. */}
+          {envFormReq && <EnvFormCard key={envFormReq.id} request={envFormReq} />}
           {/* D35: auto-read synthesis failure — visible above the input, auto-clears. */}
           {autoReadError && (
             <ErrorNotice error={t("voice.speakFailed", { error: autoReadError })} />

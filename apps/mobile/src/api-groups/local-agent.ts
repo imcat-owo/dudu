@@ -21,6 +21,7 @@ import { createCrossDialogTools, createIsolatedCrossDialogDeps, DEFAULT_PERSONA_
 import { sharedKeyedChain } from "../util/write-chain";
 import { createCrossDialogCliTools } from "../mcp/agent-cli";
 import { createAskUserTools } from "../mcp/ask-user";
+import { createEnvFormTools } from "../mcp/env-form";
 import { createDelegateTools, resolveSubagentTools } from "../mcp/delegate";
 import { envStore } from "../mcp/env";
 import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
@@ -1306,6 +1307,8 @@ export function createLocalAgent(opts: {
         // D17: ask_user is scoped to this agent's dialog (threadId) so a
         // question asked here never surfaces in another dialog.
         ...createAskUserTools({ threadId: opts.threadId }),
+        // D15: form card for secrets — same dialog scoping as ask_user.
+        ...createEnvFormTools({ threadId: opts.threadId }),
         ...createWebSearchTools(),
         ...createDelegateTools({
           // D25: the sub-agent gets REAL tools. allowedTools selects by name

@@ -208,12 +208,14 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
       .map((a) => `${a.provider}: ${a.status}${a.detail ? ` (${a.detail})` : ""}`)
       .join("; ");
     // D37: the old message told the model to send her to "env vars" to set a
-    // key — but there is currently NO settings page to add a search API key.
-    // Pointing her at a page that doesn't exist is a lie; say what's true.
+    // key — but there was NO settings page for it, so it pointed nowhere.
+    // D15 added one: the environment variables section in the connections
+    // settings tab. Point there (or offer the ask_env_form card).
     throw new Error(
       `Web search failed (tried: ${order.join(", ")}). ${summary}. ` +
-        `There is currently no in-app settings page to add a search API key — ` +
-        `tell her a key can't be added yet instead of pointing her somewhere that doesn't exist.`,
+        `To add a search API key, tell her to open the connections settings tab ` +
+        `and add it in the environment variables section there — or ask her directly ` +
+        `and use the ask_env_form tool to save it for her.`,
     );
   }
 
