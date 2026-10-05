@@ -1975,6 +1975,12 @@ export const enStrings: Record<StringKey, string> = {
   "mcp.tools.ask": "Ask",
   "mcp.tools.allow": "Allow",
   "mcp.tools.deny": "Deny",
+  "mcp.approval.title": "The AI wants to call a tool",
+  "mcp.approval.toolFrom": "\"{tool}\" on \"{server}\"",
+  "mcp.approval.args": "What it will send",
+  "mcp.approval.allow": "Allow",
+  "mcp.approval.deny": "Deny",
+  "mcp.approval.remember": "Remember my choice",
 
   // ---- persona ----
   "persona.title": "Personas",
