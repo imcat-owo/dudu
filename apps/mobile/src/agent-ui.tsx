@@ -764,9 +764,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
   const spending = Number(artifact.data.spending) || 1;
   const period = record(artifact.data.period);
   return (
-    <Card
-      style={{ gap: 12, padding: 10, backgroundColor: "#EEEEF0", maxWidth: 440, width: "100%" }}
-    >
+    <Card style={{ gap: 12, padding: 10, maxWidth: 440, width: "100%" }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("a11y.openFinance", { title: artifact.title })}
@@ -778,23 +776,25 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             minHeight: 200,
             borderRadius: radii.lg,
             overflow: "hidden",
-            backgroundColor: "#080B10",
+            backgroundColor: colors.secondaryBg,
             padding: 20,
           }}
         >
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: 142 }}>
             <Svg width="100%" height="100%">
               <Defs>
-                <LinearGradient id="finance" x1="0" y1="0" x2="0.5" y2="1">
-                  <Stop offset="0" stopColor="#281066" />
-                  <Stop offset="0.5" stopColor="#163BBF" />
-                  <Stop offset="1" stopColor="#148CE8" />
+                {/* Accent wash: the old neon gradient now comes from the theme's
+                    accent surface and fades out over the hero — every stop is
+                    token-derived, nothing hardcoded. */}
+                <LinearGradient id="finance" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor={colors.blueDark} stopOpacity={0.45} />
+                  <Stop offset="1" stopColor={colors.blueDark} stopOpacity={0} />
                 </LinearGradient>
               </Defs>
               <Rect width="100%" height="100%" fill="url(#finance)" />
             </Svg>
           </View>
-          <TText style={{ color: "#D4DCFC", fontSize: 11, lineHeight: 18, marginBottom: 20 }}>
+          <TText style={{ color: colors.muted, fontSize: 11, lineHeight: 18, marginBottom: 20 }}>
             {t("fin.readFrom")}
             {"\n"}
             {String(period?.from ?? "")} — {String(period?.to ?? "")}
@@ -811,9 +811,14 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
             ).map(([label, key]) => (
               <View
                 key={key}
-                style={{ flex: 1, padding: 11, borderRadius: radii.md, backgroundColor: "#1D2025" }}
+                style={{
+                  flex: 1,
+                  padding: 11,
+                  borderRadius: radii.md,
+                  backgroundColor: colors.card,
+                }}
               >
-                <TText style={{ color: "#A4A7AD", fontSize: 9 }}>{label}</TText>
+                <TText style={{ color: colors.muted, fontSize: 9 }}>{label}</TText>
                 <TText
                   selectable
                   numberOfLines={1}
@@ -822,13 +827,13 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                   style={{
                     fontSize: 17,
                     fontWeight: "600",
-                    color: key === "saved" ? "#58D3AE" : "#FFF",
+                    color: colors.text,
                     marginTop: 5,
                   }}
                 >
                   {amount(artifact.data[key])}
                 </TText>
-                <TText style={{ color: "#7E8289", fontSize: 8, marginTop: 4 }}>
+                <TText style={{ color: colors.muted, fontSize: 8, marginTop: 4 }}>
                   {t("agent.origCurrency")}
                 </TText>
               </View>
@@ -856,7 +861,7 @@ function FinanceArtifact({ artifact }: { artifact: AgentArtifact }) {
                   <TText style={s.text}>{String(row.name)}</TText>
                   <TText style={s.text}>{amount(row.amount)}</TText>
                 </View>
-                <View style={{ height: 7, backgroundColor: "#DFE8EB", borderRadius: radii.sm }}>
+                <View style={{ height: 7, backgroundColor: colors.line, borderRadius: radii.sm }}>
                   <View
                     style={{
                       width: `${Math.min(100, (Number(row.amount) / spending) * 100)}%`,
