@@ -75,6 +75,11 @@ export class GroupError extends Error {
   }
 }
 
+/** Exported for tests (Azure URL construction). */
+export function chatEndpointFor(group: ApiGroup): string {
+  return endpointFor(group);
+}
+
 function endpointFor(group: ApiGroup): string {
   // B14: Azure OpenAI mode — full deployment URL + api-version.
   const azure = group.azure;
@@ -104,15 +109,25 @@ export interface ResolvedAuth {
 const keyCursors = new Map<string, { index: number }>();
 
 export async function resolveAuth(group: ApiGroup): Promise<ResolvedAuth> {
-  const isAzure = !!group.azure?.enabled && !!group.azure.deploymentUrl.trim();
   // B1: OAuth account bound → fresh access token (auto-refreshes).
   if (group.oauthAccountId) {
     const token = await oauthStore.accessToken(group.oauthAccountId);
+    const isAzure = !!group.azure?.enabled && !!group.azure.deploymentUrl.trim();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (isAzure) headers["api-key"] = token;
     else headers.Authorization = `Bearer ${token}`;
     return { headers: applyCustomHeaders(headers, group), keyId: null, oauth: true };
   }
+  return resolveAuthSync(group);
+}
+
+/**
+ * Synchronous auth for the key-pool / legacy path (no token fetch).
+ * streamChat uses this to keep timer scheduling synchronous — the 8s
+ * fallback tests stub timers and assert they exist immediately.
+ */
+export function resolveAuthSync(group: ApiGroup): ResolvedAuth {
+  const isAzure = !!group.azure?.enabled && !!group.azure.deploymentUrl.trim();
   // B2: key pool with rotation.
   let cursor = keyCursors.get(group.id);
   if (!cursor) {
@@ -420,15 +435,30 @@ function statusError(group: ApiGroup, status: number, body: string): GroupError 
  * connection close). Rejects with GroupError on transport/API failures.
  * The AbortSignal cancels the request mid-stream.
  */
-export async function streamChat(
+export function streamChat(
   group: ApiGroup,
   messages: ChatMessage[],
   callbacks: SseCallbacks,
   opts?: { maxTokens?: number; dialogId?: string },
 ): Promise<void> {
+  // OAuth needs an async token fetch; the key-pool path stays synchronous
+  // so timer scheduling is immediate (the 8s-fallback tests rely on it).
+  if (group.oauthAccountId) {
+    return resolveAuth(group).then((auth) =>
+      startStream(group, messages, callbacks, opts, auth),
+    );
+  }
+  return startStream(group, messages, callbacks, opts, resolveAuthSync(group));
+}
+
+function startStream(
+  group: ApiGroup,
+  messages: ChatMessage[],
+  callbacks: SseCallbacks,
+  opts: { maxTokens?: number; dialogId?: string } | undefined,
+  auth: ResolvedAuth,
+): Promise<void> {
   const startedAt = Date.now();
-  // B1/B2: resolve auth (OAuth token or rotated key) before opening the stream.
-  const auth = await resolveAuth(group);
   const body = requestBody(group, messages, true, callbacks.tools, opts?.maxTokens, {
     dialogId: opts?.dialogId,
   });
