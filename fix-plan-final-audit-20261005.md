@@ -148,7 +148,7 @@
 - E2 定位口径：继续单轴"全能王"，还是收窄到"陪伴×能力双轴"（她原话"要爱给爱，要能力给能力"）/ "iOS 端全能王"（product P1-3/P1-4）。指挥官建议收窄——报告里 OpenClaw/Muse/Codex 三家真压不住，硬喊会被问住。
 - E3 coding-agent 闭环（plan→执行→验证）做不做，还是明确"我们不做 coding agent"（product P1-4）。
 - E4 `delegate_task` 子代理给不给工具（ai P2-7）。给了才是真子代理，不给就是"半个"。**已拍板（2026-10-05 她亲口）："我想要他们也能动工具呀。不然怎么给主ai干活"——给。修法：allowedTools 透传进子代理（不是删参数）。**
-- D25 delegate 子代理给工具（E4 已拍板，缺小细节第 7 条的修法）：`allowedTools` 透传进子代理（local-agent 的 runSubtask、group-meeting 的 generateOneShot 都要接上），子代理能动工具才是真给主 AI 干活。硬约束：子代理用工具走同一套授权模型（2026-10-02 她定的）——App 内全权，出 App（相册/定位/蓝牙/网络/对外发送）必须经她授权/弹窗，不能因为是小弟就绕过。
+- D25 delegate 子代理给工具（E4 已拍板，缺小细节第 7 条的修法）：`allowedTools` 透传进子代理（local-agent 的 runSubtask、group-meeting 的 generateOneShot 都要接上），子代理能动工具才是真给主 AI 干活。授权边界（2026-10-05 她亲定）："我已授权的，皆可自己用，不用反复确认，因为我不想的我不会去授权。我的 API 是干净的所以我信任。"——授权是一次性的门，进了门的随便用、不反复弹窗；她不想的东西她压根不授权。
 - E5 headers 三级粒度（provider/model/assistant）追 Kelivo（product P2-3）——小，可进 D。
 - E6 浏览器 hardening 对标 browser-use（product P2-4）——长期项，不进本轮。
 
