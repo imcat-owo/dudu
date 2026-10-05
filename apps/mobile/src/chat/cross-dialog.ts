@@ -39,7 +39,8 @@ import { ToolError } from "../api-groups/local-tools";
 import { planGateStore } from "../api-groups/plan-gate";
 import type { AgentCliDeps, DialogSummary } from "../mcp/agent-cli";
 import { sharedKeyedChain as exclusiveFor } from "../util/write-chain";
-import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace";
+import type { CrossDialogVisibilityStore } from "./cross-dialog-trace";
+import { CrossDialogTraceStore } from "./cross-dialog-trace";
 
 /** Must match historyKey() in api-groups/local-agent.ts. */
 const CHAT_HISTORY_PREFIX = "dudu.local-chat.";
@@ -438,6 +439,15 @@ export function createIsolatedDuduDeps(
   function toSummary(d: DialogInfo): DialogSummary {
     return { id: d.id, name: d.name, messageCount: d.messageCount, updatedAt: d.lastActiveAt };
   }
+  /**
+   * D32: the CLI read path must leave the same audit trace the in-app
+   * read_dialog tool leaves — the dudu tool description promises
+   * "Reads are traced (she can see you looked)". Built from the injected
+   * storage (AsyncStorage in production), so entries land in the same
+   * trace she browses; the store serializes appends, so concurrent reads
+   * can't lose an entry.
+   */
+  const trace = new CrossDialogTraceStore(storage);
   return {
     listDialogs: async () => (await ownDialogs()).map(toSummary),
     searchDialogs: async (query: string) => {
@@ -447,7 +457,8 @@ export function createIsolatedDuduDeps(
         .map(toSummary);
     },
     readDialog: async (id: string, limit: number) => {
-      const dialogs = await ownDialogs();
+      const personaId = await getPersonaId();
+      const dialogs = await listDialogs(storage, personaId);
       const needle = id.trim();
       const lower = needle.toLowerCase();
       const byId = dialogs.find((d) => d.id === needle);
@@ -460,6 +471,19 @@ export function createIsolatedDuduDeps(
         throw new Error(`No dialog "${needle}" found among this persona's dialogs.`);
       }
       const messages = await readDialog(storage, match.id, limit);
+      await trace.append({
+        action: "read",
+        // The CLI deps don't know which dialog the agent is talking in;
+        // the sentinel says honestly who acted (renders as "dudu CLI" in
+        // her trace log) instead of faking a dialog id.
+        fromThreadId: "agent-cli",
+        fromName: "dudu CLI",
+        toThreadId: match.id,
+        toName: match.name,
+        summary: `read ${messages.length} messages from "${match.name}" via dudu CLI`,
+        reason: "agent CLI read",
+        personaId,
+      });
       return messages.map((m) => `${m.role}: ${m.text}`).join("\n");
     },
   };
