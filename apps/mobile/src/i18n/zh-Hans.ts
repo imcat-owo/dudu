@@ -2080,6 +2080,55 @@ const zhHans = {
   "restore.mode.mergeHint": "只补上没有的，保留现在的数据",
   "restore.mode.warning": "覆盖会清空现在的所有数据，恢复前会自动存一张快照",
   "restore.confirm": "开始恢复",
+
+  // ---- platform: app lock (H8) ----
+  "platform.applock.title": "应用锁",
+  "platform.applock.hint": "打开嘟嘟时用 Face ID 确认一下，是你才给进。",
+  "platform.applock.enable": "启用应用锁",
+  "platform.applock.idle": "多久没用就再锁上",
+  "platform.applock.idle.onExit": "切出去就锁",
+  "platform.applock.idle.30s": "30 秒",
+  "platform.applock.idle.1m": "1 分钟",
+  "platform.applock.idle.5m": "5 分钟",
+  "platform.applock.idle.15m": "15 分钟",
+  "platform.applock.idle.never": "不自动锁",
+  "platform.applock.prompt.unlock": "确认是你本人",
+  "platform.applock.prompt.enable": "验证一下，之后就认这张脸了",
+  "platform.applock.locked.title": "嘟嘟锁上了",
+  "platform.applock.locked.hint": "刷个脸，我就开门。",
+  "platform.applock.unlock": "解锁",
+  "platform.applock.noBiometric": "这台设备没录入面容或指纹，先去系统设置里录一个。",
+  "platform.applock.enableFailed": "没验证通过，应用锁没打开。",
+
+  // ---- platform: scheduled tasks (H3) ----
+  "platform.tasks.title": "定时提醒",
+  "platform.tasks.hint": "你亲手定的提醒，到点我喊你。",
+  "platform.tasks.add": "加个提醒",
+  "platform.tasks.empty": "还没定过提醒，要不要先来一个？",
+  "platform.tasks.name": "叫什么",
+  "platform.tasks.message": "到点跟我说",
+  "platform.tasks.time": "几点",
+  "platform.tasks.repeat": "重复",
+  "platform.tasks.repeat.once": "只一次",
+  "platform.tasks.repeat.daily": "每天",
+  "platform.tasks.repeat.weekly": "每周",
+  "platform.tasks.repeat.monthly": "每月",
+  "platform.tasks.next": "下次",
+
+  // ---- platform: siri (H4) ----
+  "platform.siri.title": "Siri 快捷指令",
+  "platform.siri.hint": "不开 App 也能使唤我，去快捷指令里加一下。",
+  "platform.siri.intent.ask": "问嘟嘟",
+  "platform.siri.intent.open": "打开对话",
+  "platform.siri.intent.new": "新开一聊",
+
+  // ---- platform: share (H2) ----
+  "platform.share.received": "收到分享",
+  "platform.share.sendToChat": "发到聊天里聊聊",
+
+  // ---- platform: widget/live activity (H5/H6) ----
+  "platform.widget.hint": "桌面小组件在做了，任务进度会同步过去。",
+  "platform.liveactivity.starting": "任务开始了，锁屏能看到进度。",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

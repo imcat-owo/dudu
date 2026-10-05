@@ -2083,6 +2083,55 @@ const zhHant = {
   "restore.mode.mergeHint": "只補上沒有的，保留現在的數據",
   "restore.mode.warning": "覆蓋會清空現在的所有數據，恢復前會自動存一張快照",
   "restore.confirm": "開始恢復",
+
+  // ---- platform: app lock (H8) ----
+  "platform.applock.title": "應用鎖",
+  "platform.applock.hint": "打開嘟嘟時用 Face ID 確認一下，是你才給進。",
+  "platform.applock.enable": "啟用應用鎖",
+  "platform.applock.idle": "多久沒用就再鎖上",
+  "platform.applock.idle.onExit": "切出去就鎖",
+  "platform.applock.idle.30s": "30 秒",
+  "platform.applock.idle.1m": "1 分鐘",
+  "platform.applock.idle.5m": "5 分鐘",
+  "platform.applock.idle.15m": "15 分鐘",
+  "platform.applock.idle.never": "不自動鎖",
+  "platform.applock.prompt.unlock": "確認是你本人",
+  "platform.applock.prompt.enable": "驗證一下，之後就認這張臉了",
+  "platform.applock.locked.title": "嘟嘟鎖上了",
+  "platform.applock.locked.hint": "刷個臉，我就開門。",
+  "platform.applock.unlock": "解鎖",
+  "platform.applock.noBiometric": "這台設備沒錄入面容或指紋，先去系統設置裡錄一個。",
+  "platform.applock.enableFailed": "沒驗證通過，應用鎖沒打開。",
+
+  // ---- platform: scheduled tasks (H3) ----
+  "platform.tasks.title": "定時提醒",
+  "platform.tasks.hint": "你親手定的提醒，到點我喊你。",
+  "platform.tasks.add": "加個提醒",
+  "platform.tasks.empty": "還沒定過提醒，要不要先來一個？",
+  "platform.tasks.name": "叫什麼",
+  "platform.tasks.message": "到點跟我說",
+  "platform.tasks.time": "幾點",
+  "platform.tasks.repeat": "重複",
+  "platform.tasks.repeat.once": "只一次",
+  "platform.tasks.repeat.daily": "每天",
+  "platform.tasks.repeat.weekly": "每週",
+  "platform.tasks.repeat.monthly": "每月",
+  "platform.tasks.next": "下次",
+
+  // ---- platform: siri (H4) ----
+  "platform.siri.title": "Siri 快捷指令",
+  "platform.siri.hint": "不開 App 也能使喚我，去快捷指令裡加一下。",
+  "platform.siri.intent.ask": "問嘟嘟",
+  "platform.siri.intent.open": "打開對話",
+  "platform.siri.intent.new": "新開一聊",
+
+  // ---- platform: share (H2) ----
+  "platform.share.received": "收到分享",
+  "platform.share.sendToChat": "發到聊天裡聊聊",
+
+  // ---- platform: widget/live activity (H5/H6) ----
+  "platform.widget.hint": "桌面小組件在做了，任務進度會同步過去。",
+  "platform.liveactivity.starting": "任務開始了，鎖屏能看到進度。",
 } as const;
 
 // StringKey is defined in zh-Hans.ts (same keys).

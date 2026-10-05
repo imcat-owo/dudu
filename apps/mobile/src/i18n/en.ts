@@ -2158,4 +2158,53 @@ export const enStrings: Record<StringKey, string> = {
   "restore.mode.mergeHint": "Only add what's missing, keep current data",
   "restore.mode.warning": "Overwrite wipes everything — a snapshot is auto-saved first",
   "restore.confirm": "Start restore",
+
+  // ---- platform: app lock (H8) ----
+  "platform.applock.title": "App Lock",
+  "platform.applock.hint": "Confirm with Face ID when opening Dudu — only you get in.",
+  "platform.applock.enable": "Enable app lock",
+  "platform.applock.idle": "Re-lock after idle",
+  "platform.applock.idle.onExit": "On background",
+  "platform.applock.idle.30s": "30 seconds",
+  "platform.applock.idle.1m": "1 minute",
+  "platform.applock.idle.5m": "5 minutes",
+  "platform.applock.idle.15m": "15 minutes",
+  "platform.applock.idle.never": "Never auto-lock",
+  "platform.applock.prompt.unlock": "Confirm it's you",
+  "platform.applock.prompt.enable": "Verify once — I'll recognize you from now on",
+  "platform.applock.locked.title": "Dudu is locked",
+  "platform.applock.locked.hint": "Show your face and I'll open up.",
+  "platform.applock.unlock": "Unlock",
+  "platform.applock.noBiometric": "No Face ID or fingerprint enrolled — add one in system settings first.",
+  "platform.applock.enableFailed": "Verification failed — app lock wasn't enabled.",
+
+  // ---- platform: scheduled tasks (H3) ----
+  "platform.tasks.title": "Reminders",
+  "platform.tasks.hint": "Reminders you set yourself — I'll call you when it's time.",
+  "platform.tasks.add": "Add reminder",
+  "platform.tasks.empty": "No reminders yet — want to set one?",
+  "platform.tasks.name": "Title",
+  "platform.tasks.message": "Tell me",
+  "platform.tasks.time": "Time",
+  "platform.tasks.repeat": "Repeat",
+  "platform.tasks.repeat.once": "Once",
+  "platform.tasks.repeat.daily": "Daily",
+  "platform.tasks.repeat.weekly": "Weekly",
+  "platform.tasks.repeat.monthly": "Monthly",
+  "platform.tasks.next": "Next",
+
+  // ---- platform: siri (H4) ----
+  "platform.siri.title": "Siri Shortcuts",
+  "platform.siri.hint": "Boss me around without opening the app — add in Shortcuts.",
+  "platform.siri.intent.ask": "Ask Dudu",
+  "platform.siri.intent.open": "Open conversation",
+  "platform.siri.intent.new": "New chat",
+
+  // ---- platform: share (H2) ----
+  "platform.share.received": "Share received",
+  "platform.share.sendToChat": "Send to chat",
+
+  // ---- platform: widget/live activity (H5/H6) ----
+  "platform.widget.hint": "Home screen widget is coming — task progress will sync over.",
+  "platform.liveactivity.starting": "Task started — watch progress on the lock screen.",
 };
