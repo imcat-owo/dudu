@@ -15,6 +15,7 @@
  */
 
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Activity,
   Bell,
@@ -55,11 +56,26 @@ import {
 import { TText } from "./font";
 import { WebView } from "react-native-webview";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
-import { triggerAnniversaryCelebration } from "./avatar-celebration";
+import { triggerAnniversaryCelebration, triggerMilestoneCelebration } from "./avatar-celebration";
 import "./avatar-celebration-instance";
 import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
+import {
+  detectNewMilestones,
+  intimacyPhase,
+  loadCelebratedMilestones,
+  saveCelebratedMilestones,
+  type IntimacyPhase,
+} from "./romance/intimacy";
+import {
+  QUESTION_STATE_KEY,
+  dateKey,
+  questionForDate,
+  type DailyQuestion,
+  type QuestionCategory,
+  type QuestionState,
+} from "./romance/questions";
 import type { MemoryRecord } from "./memory/types";
 import { gardenStateOf } from "./memory/types";
 import { DUR, EASE, exitDuration, STAGGER } from "./motion";
@@ -1138,6 +1154,22 @@ function CoupleHeader() {
         countDiaryEntries: async () => (await ourSpaceStore.listDiary(1_000_000)).length,
       }).catch(() => null);
       setCounters(c);
+      // D12 P2-1: intimacy milestones — 100/365 days together, 50th love
+      // letter. Each fires once ever (persisted guard), reusing the P0-1
+      // milestone celebration clip.
+      try {
+        const celebrated = await loadCelebratedMilestones(AsyncStorage);
+        const fresh = detectNewMilestones(
+          { days: daysTogether(since), loveLetters: c ? c.loveLetters : 0 },
+          celebrated,
+        );
+        if (fresh.length > 0) {
+          triggerMilestoneCelebration();
+          await saveCelebratedMilestones(AsyncStorage, [...celebrated, ...fresh]);
+        }
+      } catch {
+        // Best-effort: a milestone check must never break the home screen.
+      }
     })();
   }, [v]);
 
@@ -1393,6 +1425,14 @@ const TAPE_ROTATION: Record<string, TapeColor> = {
 
 // ---- Today card: a quiet daily briefing — anniversaries, on-this-day, her mood ----
 
+// D12 P2-1: intimacy phase copy, derived from real days-together only.
+const INTIMACY_PHASE_KEY: Record<IntimacyPhase, StringKey> = {
+  budding: "space.today.intimacy.budding",
+  warming: "space.today.intimacy.warming",
+  steady: "space.today.intimacy.steady",
+  deep: "space.today.intimacy.deep",
+};
+
 function TodayCard() {
   const v = useOurSpaceVersion();
   const colors = useColors();
@@ -1415,10 +1455,13 @@ function TodayCard() {
       const next: Array<{ key: string; icon: typeof Heart; text: string }> = [];
       const togetherDays = daysTogether(resolveTogetherSince(profile, anniversaries));
       if (togetherDays !== null) {
+        // D12 P2-1: quiet intimacy line — "在一起的第 N 天 · 热恋升温中".
+        const phase = intimacyPhase(togetherDays);
+        const base = t("space.today.togetherDays", { n: togetherDays });
         next.push({
           key: "together-days",
           icon: Heart,
-          text: t("space.today.togetherDays", { n: togetherDays }),
+          text: phase ? `${base} · ${t(INTIMACY_PHASE_KEY[phase])}` : base,
         });
       }
       for (const a of getUpcomingAnniversaries(anniversaries).slice(0, 2)) {
@@ -1477,6 +1520,136 @@ function TodayCard() {
             })
           )}
         </View>
+      </SoftCard>
+    </View>
+  );
+}
+
+// ---- D12 P2-3: "今晚的问题" daily question card ----
+// One light couple question per day (local bank, deterministic rotation).
+// Her answer settles into 我们的时光 via addTimeline — pure local, no backend.
+
+const QUESTION_CAT_KEY: Record<QuestionCategory, StringKey> = {
+  icebreaker: "space.question.cat.icebreaker",
+  memory: "space.question.cat.memory",
+  future: "space.question.cat.future",
+  intimate: "space.question.cat.intimate",
+};
+
+function QuestionCard() {
+  const colors = useColors();
+  const [question, setQuestion] = useState<DailyQuestion | null>(null);
+  const [answered, setAnswered] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const q = questionForDate(new Date());
+    setQuestion(q);
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(QUESTION_STATE_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw) as Partial<QuestionState>;
+        setAnswered(
+          s.date === dateKey(new Date()) && s.questionId === q.id && s.answered === true,
+        );
+      } catch {
+        // No saved state — fresh question.
+      }
+    })();
+  }, []);
+
+  const submit = () => {
+    const text = answer.trim();
+    if (!text || !question || saving) return;
+    setSaving(true);
+    void (async () => {
+      try {
+        const qText = getLocale() === "en" ? question.en : question.zh;
+        await ourSpaceStore.addTimeline(
+          t("space.question.timelineTitle") as string,
+          `${qText}\n${text}`,
+          "moment",
+        );
+        const state: QuestionState = {
+          date: dateKey(new Date()),
+          questionId: question.id,
+          answered: true,
+        };
+        await AsyncStorage.setItem(QUESTION_STATE_KEY, JSON.stringify(state));
+        setAnswered(true);
+        setAnswer("");
+      } catch {
+        // Keep the draft; she can retry.
+      } finally {
+        setSaving(false);
+      }
+    })();
+  };
+
+  if (!question) return null;
+  const qText = getLocale() === "en" ? question.en : question.zh;
+  const canSubmit = !saving && answer.trim().length > 0;
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <SoftCard tape="pink">
+        <View
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <MessageCircleQuestion size={16} color={colors.muted} strokeWidth={1.8} />
+            <HandText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+              {t("space.question.title")}
+            </HandText>
+          </View>
+          <TText style={{ color: colors.muted, fontSize: 12 }}>
+            {t(QUESTION_CAT_KEY[question.category])}
+          </TText>
+        </View>
+        <TText style={{ color: colors.text, fontSize: 14.5, lineHeight: 23, marginTop: 10 }}>
+          {qText}
+        </TText>
+        {answered ? (
+          <TText style={{ color: colors.muted, fontSize: 13, marginTop: 10 }}>
+            {t("space.question.answered")}
+          </TText>
+        ) : (
+          <View style={{ marginTop: 10 }}>
+            <TextInput
+              value={answer}
+              onChangeText={setAnswer}
+              placeholder={t("space.question.placeholder") as string}
+              placeholderTextColor={colors.muted}
+              multiline
+              style={{
+                color: colors.text,
+                fontSize: 14,
+                lineHeight: 22,
+                minHeight: 64,
+                textAlignVertical: "top",
+              }}
+            />
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }}>
+              <PressableScale onPress={submit} accessibilityRole="button">
+                <View
+                  style={{
+                    backgroundColor: colors.blue,
+                    borderRadius: radii.md,
+                    paddingHorizontal: 18,
+                    paddingVertical: 10,
+                    opacity: canSubmit ? 1 : 0.5,
+                  }}
+                >
+                  <TText style={{ color: colors.onBlue, fontSize: 14, fontWeight: "600" }}>
+                    {t("space.question.submit")}
+                  </TText>
+                </View>
+              </PressableScale>
+            </View>
+          </View>
+        )}
       </SoftCard>
     </View>
   );
@@ -2579,6 +2752,9 @@ export function OurSpaceScreen({
         </FadeIn>
         <FadeIn>
           <TodayCard />
+        </FadeIn>
+        <FadeIn>
+          <QuestionCard />
         </FadeIn>
         <CardGrid onOpen={setPage} />
       </ScrollView>
