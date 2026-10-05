@@ -153,7 +153,10 @@ export function createMcpClient(config: McpServerConfig, deps: McpClientDeps): M
       }
       if (approval === "ask") {
         const ok = await deps.requestApproval(name, args);
-        if (!ok) throw new Error(`She declined the "${name}" tool call.`);
+        if (!ok)
+          throw new Error(
+            `MCP tool "${name}" was denied: "ask" approval has no UI in this build yet, so it fails closed. She was not asked and did not decline.`,
+          );
       }
       const result = (await request("tools/call", {
         name,

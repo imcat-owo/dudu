@@ -1410,9 +1410,11 @@ export function createLocalAgent(opts: {
         loadExternalTools: async () => {
           // Batch 4: MCP server tools — async providers. Per-tool approval
           // ("allow"/"deny") is enforced by the client via getApproval;
-          // "ask" fails closed here — a dedicated approval card UI is a
-          // follow-up; she can set tools to "allow" in MCP settings for
-          // trusted servers.
+          // "ask" fails closed here because no approval card UI exists in
+          // this build yet (a dedicated card UI is a follow-up). The denial
+          // error is worded honestly — it never claims she declined, because
+          // she was never asked. She can set tools to "allow" in MCP
+          // settings for trusted servers.
           const mcpProviders = await createMcpProviders({
             env: await envStore.getValues().catch(() => ({})),
             requestApproval: async () => false,
