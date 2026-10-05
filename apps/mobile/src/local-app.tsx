@@ -130,6 +130,11 @@ export function LocalApp() {
   // chat mode flips (hook sets differ between cloud and local agent).
   const mode = useChatMode();
   const [prompt, setPrompt] = useState<{ id: number; text: string }>();
+  // Gap fill A (local multi-dialog): which local dialog is open.
+  // "local-main" is the legacy default. The ChatScreen remounts per thread
+  // so each dialog gets its own agent/history lifecycle.
+  const [localThreadId, setLocalThreadId] = useState("local-main");
+  const newLocalThread = () => setLocalThreadId(`local-${Date.now().toString(36)}`);
   // Detail sheets in local mode. Only crossDialogTrace is wired today —
   // the promised cross-dialog audit log must be openable in the mode she
   // actually uses (P1-2). Other detail types stay unhandled (no-op).
@@ -377,7 +382,14 @@ export function LocalApp() {
                     <View style={{ flex: 1 }}>
                       <ErrorBoundary resetKey={section} label={section}>
                         {section === "chat" ? (
-                          <ChatScreen key={mode} prompt={prompt} active={true} />
+                          <ChatScreen
+                            key={`${mode}-${localThreadId}`}
+                            thread={{ id: localThreadId, existing: true }}
+                            prompt={prompt}
+                            active={true}
+                            onSwitchThread={setLocalThreadId}
+                            onNewThread={newLocalThread}
+                          />
                         ) : section === "space" ? (
                           <OurSpaceScreen
                             startPage={spaceLink?.page}

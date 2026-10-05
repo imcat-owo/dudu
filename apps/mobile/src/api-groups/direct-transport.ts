@@ -90,6 +90,7 @@ function requestBody(
   messages: ChatMessage[],
   stream: boolean,
   tools?: WireToolDef[],
+  maxTokens?: number,
 ): string {
   const body: Record<string, unknown> = { model: group.model, messages, stream };
   if (tools && tools.length > 0) {
@@ -97,6 +98,8 @@ function requestBody(
     // Let the model decide when tools are useful; don't force it.
     body.tool_choice = "auto";
   }
+  // A27: per-turn output cap — her key, her spend ceiling.
+  if (maxTokens && maxTokens > 0) body.max_tokens = Math.floor(maxTokens);
   return JSON.stringify(body);
 }
 
@@ -300,6 +303,7 @@ export function streamChat(
   group: ApiGroup,
   messages: ChatMessage[],
   callbacks: SseCallbacks,
+  opts?: { maxTokens?: number },
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const toolAcc = accumulateToolCalls();
@@ -438,7 +442,7 @@ export function streamChat(
     };
 
     try {
-      xhr.send(requestBody(group, messages, true, callbacks.tools));
+      xhr.send(requestBody(group, messages, true, callbacks.tools, opts?.maxTokens));
     } catch (e) {
       fail(e instanceof Error ? e : new Error(String(e)));
     }

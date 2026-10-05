@@ -8,11 +8,13 @@ import {
   type CrossDialogStorage,
   createCrossDialogTools,
   DEFAULT_PERSONA_ID,
+  deleteDialog,
   listDialogs,
   readDialog,
   resolveDialog,
   sendToDialog,
   setDialogName,
+  setDialogPinned,
 } from "../src/chat/cross-dialog.js";
 import {
   type CrossDialogTraceStorage,
@@ -508,5 +510,76 @@ describe("trace_read (AI-use P3-2)", () => {
     });
     const out = (await run(tools, "trace_read", {})) as string;
     assert.ok(!out.includes("other persona's business"), out);
+  });
+});
+
+describe("dialog pin/delete (gap fill A8/A10)", () => {
+  it("pins sort first in listDialogs", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "aaa", [{ role: "user", content: "a1" }, { role: "assistant", content: "a2" }, { role: "user", content: "a3" }]);
+    seedHistory(s, "bbb", [{ role: "user", content: "b1" }]);
+    await setDialogPinned(s, "bbb", true);
+    const list = await listDialogs(s);
+    assert.equal(list[0].id, "bbb");
+    assert.equal(list[0].pinned, true);
+    assert.equal(list[1].pinned, false);
+  });
+
+  it("unpins", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "aaa", [{ role: "user", content: "a" }]);
+    await setDialogPinned(s, "aaa", true);
+    await setDialogPinned(s, "aaa", false);
+    const list = await listDialogs(s);
+    assert.equal(list[0].pinned, false);
+  });
+
+  it("deletes a dialog (tombstone path when removeItem is absent)", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "aaa", [{ role: "user", content: "hi" }]);
+    seedHistory(s, "bbb", [{ role: "user", content: "yo" }]);
+    await setDialogName(s, "aaa", "To delete");
+    await deleteDialog(s, "aaa");
+    const list = await listDialogs(s);
+    assert.ok(!list.some((d) => d.id === "aaa"), "deleted dialog no longer listed");
+    assert.ok(list.some((d) => d.id === "bbb"), "other dialogs untouched");
+  });
+
+  it("deletes a dialog (removeItem path)", async () => {
+    const s = fakeStorage();
+    (s as FakeStorage & { removeItem: (k: string) => Promise<void> }).removeItem = async (k) => {
+      s.__map.delete(k);
+    };
+    seedHistory(s, "aaa", [{ role: "user", content: "hi" }]);
+    await deleteDialog(s, "aaa");
+    assert.equal(s.__map.has("dudu.local-chat.aaa.v1"), false);
+    assert.deepEqual(await listDialogs(s), []);
+  });
+});
+
+describe("loadMessages envelope compatibility", () => {
+  it("reads v2 envelopes", async () => {
+    const s = fakeStorage();
+    s.__map.set(
+      "dudu.local-chat.env.v1",
+      JSON.stringify({
+        v: 2,
+        messages: [
+          { id: "m0", role: "user", content: "hi" },
+          { id: "m1", role: "assistant", content: "hello", groupId: "g", versionIndex: 0 },
+        ],
+        meta: { selectedVersions: { g: "m1" } },
+      }),
+    );
+    const list = await listDialogs(s);
+    assert.equal(list.length, 1);
+    assert.equal(list[0].messageCount, 2);
+  });
+
+  it("still reads legacy v1 bare arrays", async () => {
+    const s = fakeStorage();
+    seedHistory(s, "legacy", [{ role: "user", content: "hi" }]);
+    const list = await listDialogs(s);
+    assert.equal(list[0].messageCount, 1);
   });
 });

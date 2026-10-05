@@ -69,11 +69,15 @@ export interface CrossDialogStorage {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   getAllKeys(): Promise<readonly string[]>;
+  /** Present on AsyncStorage; absent on minimal test fakes. */
+  removeItem?(key: string): Promise<void>;
 }
 
 export interface DialogRegistryEntry {
   name?: string;
   personaId: string;
+  /** Pinned dialogs sort first in her dialog list (A8). */
+  pinned?: boolean;
 }
 
 export interface DialogInfo {
@@ -85,6 +89,8 @@ export interface DialogInfo {
   lastActiveAt: number;
   /** True when the name came from the registry (vs derived). */
   named: boolean;
+  /** True when she pinned this dialog (A8). */
+  pinned: boolean;
 }
 
 export interface CrossDialogMessage {
@@ -129,11 +135,12 @@ async function readRegistry(
     const out: Record<string, DialogRegistryEntry> = {};
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof v !== "object" || v === null) continue;
-      const e = v as { name?: unknown; personaId?: unknown };
+      const e = v as { name?: unknown; personaId?: unknown; pinned?: unknown };
       out[k] = {
         ...(typeof e.name === "string" && e.name ? { name: e.name } : {}),
         personaId:
           typeof e.personaId === "string" && e.personaId ? e.personaId : DEFAULT_PERSONA_ID,
+        ...(e.pinned === true ? { pinned: true } : {}),
       };
     }
     return out;
@@ -179,8 +186,13 @@ async function loadMessages(
     const raw = await storage.getItem(`${CHAT_HISTORY_PREFIX}${threadId}${CHAT_HISTORY_SUFFIX}`);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isMessage);
+    // v2 envelope (versions/meta) or legacy v1 bare array.
+    const arr = Array.isArray(parsed)
+      ? parsed
+      : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { messages?: unknown }).messages)
+        ? (parsed as { messages: unknown[] }).messages
+        : [];
+    return arr.filter(isMessage);
   } catch {
     return [];
   }
@@ -215,6 +227,7 @@ export async function listDialogs(
   for (const key of keys) {
     const id = threadIdFromKey(key);
     if (!id) continue;
+    if (await isDeletedThread(storage, id)) continue;
     const reg = registry[id];
     const entryPersona = reg?.personaId ?? DEFAULT_PERSONA_ID;
     // 人设记忆隔离: a persona never even sees another persona's dialogs.
@@ -228,10 +241,76 @@ export async function listDialogs(
       messageCount: messages.length,
       lastActiveAt: 0,
       named,
+      pinned: reg?.pinned === true,
     });
   }
-  out.sort((a, b) => b.messageCount - a.messageCount);
+  // A8: pinned dialogs first, then by activity (message count).
+  out.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.messageCount - a.messageCount);
   return out;
+}
+
+/**
+ * Pin or unpin a dialog (A8). Serialized like other registry writes.
+ */
+export async function setDialogPinned(
+  storage: CrossDialogStorage,
+  threadId: string,
+  pinned: boolean,
+  personaId: string = DEFAULT_PERSONA_ID,
+): Promise<void> {
+  await exclusiveFor(DIALOG_REGISTRY_KEY, async () => {
+    const reg = await readRegistry(storage);
+    const prev = reg[threadId];
+    reg[threadId] = {
+      ...(prev?.name ? { name: prev.name } : {}),
+      personaId: prev?.personaId ?? personaId,
+      ...(pinned ? { pinned: true } : {}),
+    };
+    await storage.setItem(DIALOG_REGISTRY_KEY, JSON.stringify(reg));
+  });
+}
+
+/**
+ * Delete a dialog completely: its history key and its registry entry.
+ * The AI tools never call this — only her explicit delete action.
+ */
+export async function deleteDialog(
+  storage: CrossDialogStorage,
+  threadId: string,
+): Promise<void> {
+  const key = `${CHAT_HISTORY_PREFIX}${threadId}${CHAT_HISTORY_SUFFIX}`;
+  await exclusiveFor(DIALOG_REGISTRY_KEY, async () => {
+    const reg = await readRegistry(storage);
+    delete reg[threadId];
+    await storage.setItem(DIALOG_REGISTRY_KEY, JSON.stringify(reg));
+  });
+  // History delete goes through the shared per-key chain (audit round 3,
+  // code P2-6): never interleave with a concurrent history write.
+  await exclusiveFor(key, async () => {
+    if (typeof storage.removeItem === "function") {
+      await storage.removeItem(key);
+    } else {
+      // Minimal fakes without removeItem: leave a deleted tombstone so
+      // listDialogs stops showing it.
+      await storage.setItem(key, JSON.stringify({ v: 2, messages: [], meta: { deleted: true } }));
+    }
+  });
+}
+
+/** True when a thread's stored envelope is a deletion tombstone. */
+async function isDeletedThread(storage: CrossDialogStorage, threadId: string): Promise<boolean> {
+  try {
+    const raw = await storage.getItem(`${CHAT_HISTORY_PREFIX}${threadId}${CHAT_HISTORY_SUFFIX}`);
+    if (!raw) return false;
+    const parsed: unknown = JSON.parse(raw);
+    return (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      (parsed as { meta?: { deleted?: unknown } }).meta?.deleted === true
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -278,6 +357,7 @@ export async function resolveDialog(
       messageCount: 0,
       lastActiveAt: 0,
       named: !!registry[id]?.name,
+      pinned: registry[id]?.pinned === true,
     });
   }
   if (own.length === 0) throw new ToolError("There are no other dialogs yet.");

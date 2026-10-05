@@ -26,6 +26,7 @@ import {
   createLocalAgent,
   type LocalChatMessage,
   loadLocalHistory,
+  loadThread,
 } from "./api-groups/local-agent";
 import { useChatMode } from "./api-groups/mode";
 import { groupStore } from "./api-groups/store";
@@ -90,6 +91,21 @@ export interface ChatAgent {
   addMessage(m: { id: string; role: string; content: string }): void;
   runTurn(): Promise<void>;
   stop(): Promise<void>;
+  /** Every stored message, including unselected versions (A2 version UI). */
+  getAllMessages?(): { id: string; role: string; content?: unknown; groupId?: string; versionIndex?: number }[];
+  /** Gap fill A1: regenerate the assistant reply at messageId (new version). */
+  regenerateAt?(messageId: string): Promise<void>;
+  /** Gap fill A5: delete one message (optionally all versions of its group). */
+  deleteMessage?(messageId: string, deleteVersions: boolean): Promise<void>;
+  /** Gap fill A4: edit a user message and regenerate from there. */
+  editAndRegenerate?(messageId: string, newText: string): Promise<void>;
+  /** Gap fill: thread meta (version selections, system prompt, token budget). */
+  getThreadMeta?(): import("./chat/thread-versions.js").ThreadMeta;
+  setThreadMeta?(meta: import("./chat/thread-versions.js").ThreadMeta): void;
+  /** Gap fill A14: user-triggered context compression (Kelivo's model — new dialog). */
+  compressContext?(keepTail?: number, customPrompt?: string): Promise<{ summary: string; newThreadId: string } | null>;
+  /** Gap fill A13: estimated context usage of the visible history. */
+  getContextUsage?(): { tokens: number; messages: number };
   /**
    * Cloud-only: attach to an existing server thread (connectAgent).
    * Local: noop (no server thread to attach to).
@@ -278,6 +294,17 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
       runTurn: () => local.runTurn(),
       stop: () => local.stop(),
       retryHistorySave: () => local.retryHistorySave(),
+      getAllMessages: () => local.getAllMessages(),
+      regenerateAt: (messageId: string) => local.regenerateAt(messageId),
+      deleteMessage: (messageId: string, deleteVersions: boolean) =>
+        local.deleteMessage(messageId, deleteVersions),
+      editAndRegenerate: (messageId: string, newText: string) =>
+        local.editAndRegenerate(messageId, newText),
+      getThreadMeta: () => local.getThreadMeta(),
+      setThreadMeta: (meta) => local.setThreadMeta(meta),
+      compressContext: (keepTail?: number, customPrompt?: string) =>
+        local.compressContext(keepTail, customPrompt),
+      getContextUsage: () => local.getContextUsage(),
       connect: () => Promise.resolve(),
       onTransportError: () => ({ unsubscribe: () => {} }),
     };
@@ -310,4 +337,4 @@ export function useChatAgent(opts: { agentId: string; threadId: string }): {
 }
 
 export type { LocalChatMessage };
-export { loadLocalHistory };
+export { loadLocalHistory, loadThread };

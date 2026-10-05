@@ -178,7 +178,15 @@ export interface SecretsExcluded {
 
 export interface BackupChatThread {
   id: string;
-  messages: unknown[];
+  /**
+   * The thread's stored payload, verbatim: v2 envelope
+   * `{ v: 2, messages, meta }` or a legacy v1 bare array. Stored verbatim
+   * so version selections and thread meta survive backup/restore (A2).
+   * Older backups carry `messages` instead — restore handles both.
+   */
+  data?: unknown;
+  /** Legacy shape (pre-A2 backups). Read-only for restore. */
+  messages?: unknown[];
 }
 
 /**
@@ -273,6 +281,16 @@ async function readJson(kv: KeyValueStore, key: string): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+/** True for the v2 chat-history envelope `{ v: 2, messages, meta }`. */
+function isEnvelope(v: unknown): boolean {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    (v as { v?: unknown }).v === 2 &&
+    Array.isArray((v as { messages?: unknown }).messages)
+  );
 }
 
 async function readSecureJson(secure: SecureKV, key: string): Promise<unknown> {
@@ -378,8 +396,8 @@ export async function collectBackup(
   const threads: BackupChatThread[] = [];
   for (const key of chatKeys) {
     const id = key.slice(CHAT_PREFIX.length, -CHAT_SUFFIX.length);
-    const messages = (await readJson(kv, key)) as unknown[];
-    threads.push({ id, messages: Array.isArray(messages) ? messages : [] });
+    const data = await readJson(kv, key);
+    threads.push({ id, data: data ?? [] });
   }
   threads.sort((a, b) => (a.id < b.id ? -1 : 1));
 
@@ -624,9 +642,12 @@ export async function applyBackup(
   for (const thread of backup.chat.threads) {
     if (typeof thread.id !== "string") continue;
     wantedIds.add(thread.id);
+    // A2: write the stored payload back verbatim (v2 envelope or legacy
+    // v1 array) — version selections and thread meta survive the round trip.
+    const payload = thread.data !== undefined ? thread.data : thread.messages;
     await kv.setItem(
       `${CHAT_PREFIX}${thread.id}${CHAT_SUFFIX}`,
-      JSON.stringify(Array.isArray(thread.messages) ? thread.messages : []),
+      JSON.stringify(Array.isArray(payload) || isEnvelope(payload) ? payload : []),
     );
   }
   const allKeys = await kv.getAllKeys();

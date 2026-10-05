@@ -8,24 +8,34 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  Camera,
+  Copy,
   EyeOff,
   FileText,
+  GitBranch,
+  List,
   MessagesSquare,
+  Pencil,
   Play,
   Plus,
   RotateCcw,
+  Settings2,
   Square,
+  Trash2,
   X,
+  Zap,
 } from "lucide-react-native";
 import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -36,6 +46,8 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import { messageToolActions } from "./activity-drawer-model";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
@@ -82,7 +94,33 @@ import { ThinkingDrawer, ThinkingStatus, ToolActionsStatus } from "./thinking-dr
 import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
-import { type AgentMessage, loadLocalHistory, useChatAgent } from "./use-chat-agent";
+import { type AgentMessage, loadThread, useChatAgent } from "./use-chat-agent";
+import { generateOneShot } from "./chat/group-meeting-tools";
+import { listDialogs, setDialogName } from "./chat/cross-dialog";
+import {
+  defaultThreadMeta,
+  forkSlice,
+  saveThreadData,
+  versionsOf,
+  type ThreadMeta,
+  type VersionedMessage,
+} from "./chat/thread-versions";
+import {
+  buildDialogMarkdown,
+  DialogListSheet,
+  DialogSettingsSheet,
+  FollowUpChips,
+  MessageActionSheet,
+  QuickPhrasesSheet,
+  RoundShotModal,
+  shareDialogMarkdown,
+  SlashCommandList,
+  VersionSwitcher,
+  type MessageAction,
+  type ShotRound,
+} from "./chat/dialog-ui";
+import { memoryStore } from "./memory/instance";
+import { searchMemories } from "./memory/search";
 import {
   encodeUserMessageWithImages,
   parseUserMessageWithImages,
@@ -291,10 +329,16 @@ export function ChatScreen({
   prompt,
   thread,
   active = true,
+  onSwitchThread,
+  onNewThread,
 }: {
   prompt?: { id: number; text: string };
   thread?: Selection;
   active?: boolean;
+  /** Local mode: switch to another dialog (dialog list, branch). */
+  onSwitchThread?: (threadId: string) => void;
+  /** Local mode: start a brand-new dialog. */
+  onNewThread?: () => void;
 }) {
   const colors = useColors();
   const s = useStyles();
@@ -310,7 +354,9 @@ export function ChatScreen({
   // Local mode has no backend threads — force the simple local path.
   const richThreads = mode === "local" ? false : threadsEnabled;
   const selection = thread || { id: "local", existing: false };
-  const threadId = richThreads ? selection.id : "local-main";
+  // Local multi-dialog (gap fill A): the thread id comes from the dialog
+  // list selection. "local" is the legacy default -> the main dialog.
+  const threadId = richThreads ? selection.id : selection.id === "local" ? "local-main" : selection.id;
   const agentId = `dudu-${threadId}`;
   const { agent, isReady } = useChatAgent({ agentId, threadId });
   const renderToolCall = useSafeRenderToolCall();
@@ -357,6 +403,17 @@ export function ChatScreen({
   // data — never read in incognito; the greeting falls back to rhythm-only,
   // same as the system prompt (first-meeting rule).
   const [greeting, setGreeting] = useState<{ title: string; body: string } | null>(null);
+  // Gap fill Batch 1 — chat core.
+  const [threadMeta, setThreadMeta] = useState<ThreadMeta | null>(null);
+  const [menuMessage, setMenuMessage] = useState<AgentMessage | null>(null);
+  const [menuActions, setMenuActions] = useState<MessageAction[]>([]);
+  const [dialogListOpen, setDialogListOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [phrasesOpen, setPhrasesOpen] = useState(false);
+  const [shotRound, setShotRound] = useState<ShotRound | null>(null);
+  const [followUps, setFollowUps] = useState<string[]>([]);
+  const followUpForRef = useRef<string | null>(null);
+  const autoTitleDoneRef = useRef(false);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -416,17 +473,34 @@ export function ChatScreen({
         if (active && richThreads && messages.length) setLoaded(true);
         // P1-11: on-device history save failures surface here, not silently.
         if (active) setHistorySaveFailed(historySaveFailed ?? false);
+        // Gap fill A2: keep the version/thread meta in step so the version
+        // switcher and dialog settings always reflect the stored state.
+        if (active && mode === "local") {
+          const m = agent.getThreadMeta?.();
+          if (m) setThreadMeta(m);
+        }
       },
     });
     async function hydrate() {
       try {
         if (mode === "local") {
-          // Local mode: history lives on-device in AsyncStorage.
+          // Local mode: history lives on-device in AsyncStorage, as a v2
+          // envelope (messages + version/thread meta). Meta is set before
+          // messages so the first render already knows the selections.
           // Incognito still starts empty and never persists.
-          if (active)
-            agent.setMessages(
-              (incognitoOn ? [] : await loadLocalHistory(threadId)) as AgentMessage[],
-            );
+          if (active) {
+            if (incognitoOn) {
+              agent.setMessages([]);
+              setThreadMeta(null);
+            } else {
+              const { messages: full, meta } = await loadThread(threadId);
+              setThreadMeta(meta);
+              agent.setMessages(full as AgentMessage[]);
+            }
+            followUpForRef.current = null;
+            setFollowUps([]);
+            autoTitleDoneRef.current = false;
+          }
         } else if (incognitoOn) {
           // Incognito: start with an empty conversation, never load saved history.
           if (active) agent.setMessages([]);
@@ -584,17 +658,74 @@ export function ChatScreen({
     }
   }
   function send() {
-    const text = draft.trim();
+    let text = draft.trim();
     if (
       (!text && imageAttachments.length === 0 && fileAttachments.length === 0) ||
       !isReady ||
       !loaded
     )
       return;
+    // A22: local slash commands — handled on-device, never sent to the model.
+    // /img keeps its existing path below (image generation).
+    if (mode === "local" && text.startsWith("/")) {
+      const [cmd, ...rest] = text.slice(1).split(/\s+/);
+      const args = rest.join(" ").trim();
+      if (cmd === "new") {
+        setDraft("");
+        onNewThread?.();
+        return;
+      }
+      if (cmd === "compress") {
+        setDraft("");
+        // A14: opens a new dialog with the summary; switch to it.
+        void agent
+          .compressContext?.()
+          .then((r) => {
+            if (r && onSwitchThread) onSwitchThread(r.newThreadId);
+          })
+          .catch(() => {});
+        return;
+      }
+      if (cmd === "export") {
+        setDraft("");
+        void doExport();
+        return;
+      }
+      if (cmd === "clear") {
+        setDraft("");
+        Alert.alert(t("chat.slash.clear"), t("chat.slash.clearConfirm"), [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => {
+              agent.setMessages([]);
+              setFollowUps([]);
+              followUpForRef.current = null;
+            },
+          },
+        ]);
+        return;
+      }
+      if (cmd === "remember" && args) {
+        setDraft("");
+        // A real memory write into the same store the AI uses — not a fake.
+        void memoryStore.addMemory(args, { actor: "user", source: "slash-command" }).catch(() => {});
+        return;
+      }
+      if (cmd === "search" && args) {
+        // The AI does the searching with its browser tools — phrase it as a
+        // plain request so it understands.
+        text = `帮我搜索一下：${args}`;
+      }
+      // Anything else (incl. /img) falls through to the normal path.
+    }
     // A new submission can continue after Stop; held follow-ups still need explicit resume.
     if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
       queue.resume();
     setShowResults(false);
+    setFollowUps([]);
+    followUpForRef.current = null;
     const files = w.files.filter((f) => attachments.includes(f.id));
     // /img <prompt> → generate an image via Pollinations, insert as image message.
     const imagePrompt = parseImageCommand(text);
@@ -620,6 +751,7 @@ export function ChatScreen({
     setFileAttachments([]);
     setPicking(false);
   }
+
   function sendVoice(uri: string, duration: number) {
     if (!isReady || !loaded) return;
     if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
@@ -724,6 +856,331 @@ export function ChatScreen({
       ? messages[latestUserIndex].content
       : null;
   const visible = messages.filter((m) => m.role === "user" || m.role === "assistant");
+
+  // ------------------------------------------------------------------
+  // Gap fill Batch 1 — chat core helpers (local mode only).
+  // ------------------------------------------------------------------
+
+  /** Every stored message, including unselected versions. */
+  const allMessages = useMemo(
+    () => agent.getAllMessages?.() ?? messages,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agent, messages],
+  );
+
+  const [dialogTitle, setDialogTitle] = useState(threadId);
+
+  const messageText = (m: AgentMessage): string =>
+    typeof m.content === "string" ? m.content : "";
+
+  const groupOf = (m: AgentMessage): string =>
+    typeof m.groupId === "string" && m.groupId ? m.groupId : m.id;
+
+  const versionsOfMessage = (m: AgentMessage) =>
+    versionsOf(allMessages as unknown as VersionedMessage[], groupOf(m));
+
+  /** Switch the selected version of a group (A2). Persists via the agent. */
+  function switchVersion(m: AgentMessage, dir: -1 | 1) {
+    if (!agent.getThreadMeta || !agent.setThreadMeta) return;
+    const vs = versionsOfMessage(m);
+    const idx = vs.findIndex((v) => v.id === m.id);
+    const next = vs[idx + dir];
+    if (!next) return;
+    const meta = agent.getThreadMeta();
+    agent.setThreadMeta({
+      ...meta,
+      selectedVersions: { ...meta.selectedVersions, [groupOf(m)]: next.id },
+    });
+  }
+
+  /** Export this dialog as markdown via the share sheet (A18). */
+  async function doExport() {
+    try {
+      const md = buildDialogMarkdown(
+        allMessages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role, content: messageText(m) })),
+        dialogTitle,
+      );
+      await shareDialogMarkdown(md, dialogTitle);
+    } catch (e) {
+      setError(t("chat.exportFailed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  /** Branch: fork everything up to this message into a new dialog (A3). */
+  async function doBranch(m: AgentMessage) {
+    if (!onSwitchThread) return;
+    try {
+      const meta = agent.getThreadMeta?.() ?? defaultThreadMeta();
+      const slice = forkSlice(allMessages as unknown as VersionedMessage[], meta, m.id);
+      if (!slice?.length) return;
+      const newId = `local-${Date.now().toString(36)}`;
+      await saveThreadData(newId, slice, defaultThreadMeta(), AsyncStorage);
+      await setDialogName(AsyncStorage, newId, t("chat.branchDefaultName"));
+      onSwitchThread(newId);
+    } catch (e) {
+      setError(t("chat.exportFailed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  /** Withdraw memories related to a message (A24). Real deletes, confirmed. */
+  async function recallMemory(m: AgentMessage) {
+    const text = messageText(m).trim();
+    if (!text) return;
+    try {
+      const all = await memoryStore.listMemories();
+      const hits = searchMemories(all, text, { limit: 5 });
+      if (!hits.length) {
+        Alert.alert(t("chat.recallMemory"), t("chat.recallMemoryNone"));
+        return;
+      }
+      Alert.alert(
+        t("chat.recallMemory"),
+        hits.map((h) => `· ${h.record.content}`).join("\n"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                for (const h of hits) await memoryStore.deleteMemory(h.record.id, "user");
+                Alert.alert(t("chat.recalledMemory"));
+              })();
+            },
+          },
+        ],
+      );
+    } catch (e) {
+      setError(t("chat.exportFailed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  /** Open the round containing m as a screenshot (A26). */
+  function openRoundShot(m: AgentMessage) {
+    const idx = visible.findIndex((v) => v.id === m.id);
+    if (idx < 0) return;
+    let question = "";
+    let answer = "";
+    if (m.role === "user") {
+      question = messageText(m);
+      const next = visible.slice(idx + 1).find((v) => v.role === "assistant");
+      answer = next ? messageText(next) : "";
+    } else {
+      answer = messageText(m);
+      const prev = [...visible.slice(0, idx)].reverse().find((v) => v.role === "user");
+      question = prev ? messageText(prev) : "";
+    }
+    if (!question && !answer) return;
+    setShotRound({ question, answer });
+  }
+
+  /** Build the long-press menu for a message (A1/A3/A4/A5/A24/A26). */
+  function openMessageMenu(m: AgentMessage) {
+    if (mode !== "local") return;
+    const text = messageText(m);
+    const preview = text.slice(0, 80);
+    const actions: MessageAction[] = [];
+    const isUser = m.role === "user";
+    const vs = versionsOfMessage(m);
+    const idle = !busy && !agent.isRunning;
+    if (isUser) {
+      if (idle) {
+        actions.push({
+          key: "edit",
+          label: t("chat.editAndResend"),
+          icon: Pencil,
+          onPress: () => {
+            Alert.prompt(t("chat.editMessage"), undefined, (newText) => {
+              if (newText === undefined || !newText.trim() || newText === text) return;
+              void agent.editAndRegenerate?.(m.id, newText).catch((e) => setError(String(e)));
+            }, "plain-text", text);
+          },
+        });
+      }
+      actions.push({
+        key: "branch",
+        label: t("chat.branchDialog"),
+        icon: GitBranch,
+        onPress: () => void doBranch(m),
+      });
+      actions.push({
+        key: "shot",
+        label: t("chat.roundShot"),
+        icon: Camera,
+        onPress: () => openRoundShot(m),
+      });
+    } else {
+      if (idle) {
+        actions.push({
+          key: "regen",
+          label: t("chat.regenerate"),
+          icon: RotateCcw,
+          onPress: () => void agent.regenerateAt?.(m.id).catch((e) => setError(String(e))),
+        });
+      }
+      actions.push({
+        key: "shot",
+        label: t("chat.roundShot"),
+        icon: Camera,
+        onPress: () => openRoundShot(m),
+      });
+    }
+    if (text) {
+      actions.push({
+        key: "copy",
+        label: t("chat.copyMessage"),
+        icon: Copy,
+        onPress: () => {
+          void Clipboard.setStringAsync(text).catch(() => {});
+        },
+      });
+      actions.push({
+        key: "recall",
+        label: t("chat.recallMemory"),
+        icon: Zap,
+        onPress: () => void recallMemory(m),
+      });
+    }
+    if (isUser || vs.length <= 1) {
+      actions.push({
+        key: "delete",
+        label: t("chat.deleteMessage"),
+        icon: Trash2,
+        danger: true,
+        onPress: () => {
+          Alert.alert(t("chat.deleteMessage"), t("chat.deleteMessageConfirm"), [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("common.delete"),
+              style: "destructive",
+              onPress: () => void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
+            },
+          ]);
+        },
+      });
+    } else {
+      actions.push({
+        key: "delete-one",
+        label: t("chat.deleteThisVersion"),
+        icon: Trash2,
+        onPress: () => {
+          Alert.alert(t("chat.deleteMessage"), t("chat.deleteMessageConfirm"), [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("common.delete"),
+              style: "destructive",
+              onPress: () => void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
+            },
+          ]);
+        },
+      });
+      actions.push({
+        key: "delete-all",
+        label: t("chat.deleteAllVersions"),
+        icon: Trash2,
+        danger: true,
+        onPress: () => {
+          Alert.alert(t("chat.deleteMessage"), t("chat.deleteMessageConfirm"), [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+              text: t("common.delete"),
+              style: "destructive",
+              onPress: () => void agent.deleteMessage?.(m.id, true).catch((e) => setError(String(e))),
+            },
+          ]);
+        },
+      });
+    }
+    setMenuMessage(m);
+    setMenuActions(actions);
+  }
+
+  /** A6 follow-up chips + A7 auto title, once per completed reply. */
+  const busyNow = busy || agent.isRunning;
+  const wasBusyRef = useRef(false);
+  useEffect(() => {
+    if (wasBusyRef.current && !busyNow && active && mode === "local" && !incognitoOn) {
+      const last = visible[visible.length - 1];
+      if (last && last.role === "assistant" && followUpForRef.current !== last.id) {
+        followUpForRef.current = last.id;
+        void makeFollowUps(last);
+        void maybeAutoTitle();
+      }
+    }
+    wasBusyRef.current = busyNow;
+  });
+
+  async function makeFollowUps(last: AgentMessage) {
+    // Bonus affordance: never surfaces errors, never blocks.
+    try {
+      if (!activeGroup) return;
+      const text = messageText(last).trim();
+      if (!text) return;
+      const raw = await generateOneShot(
+        activeGroup,
+        "Suggest follow-up questions. Reply with exactly 3 short follow-up questions, one per line, no numbering, no extra text.",
+        `Her question was about: ${text.slice(0, 1200)}`,
+        { timeoutMs: 25000 },
+      );
+      const lines = raw
+        .split("\n")
+        .map((s) => s.trim().replace(/^[\d.\-*·\s]+/, ""))
+        .filter((s) => s.length > 1 && s.length < 60)
+        .slice(0, 3);
+      if (lines.length && active) setFollowUps(lines);
+    } catch {
+      /* silent */
+    }
+  }
+
+  async function maybeAutoTitle() {
+    try {
+      if (autoTitleDoneRef.current || !activeGroup) return;
+      autoTitleDoneRef.current = true;
+      const meta = agent.getThreadMeta?.();
+      if (!meta || meta.autoTitleDone) return;
+      // Never overwrite a name she chose herself.
+      const dialogs = await listDialogs(AsyncStorage);
+      const entry = dialogs.find((d) => d.id === threadId);
+      if (!entry || entry.named) return;
+      const firstUser = visible.find((m) => m.role === "user");
+      const firstAsst = visible.find((m) => m.role === "assistant");
+      const sample = [firstUser, firstAsst]
+        .filter(Boolean)
+        .map((m) => messageText(m as AgentMessage).slice(0, 400))
+        .join("\n");
+      if (!sample.trim()) return;
+      const title = await generateOneShot(
+        activeGroup,
+        "Generate a very short chat title (max 10 Chinese characters or 5 English words). Reply with ONLY the title, nothing else.",
+        sample,
+        { timeoutMs: 25000 },
+      );
+      const clean = title.trim().replace(/^["'「『]+|["'」』]+$/g, "").slice(0, 24);
+      if (clean && active) {
+        await setDialogName(AsyncStorage, threadId, clean);
+        setDialogTitle(clean);
+        agent.setThreadMeta?.({ ...agent.getThreadMeta?.()!, autoTitleDone: true });
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  // Dialog title for the header/settings/export (local mode).
+  useEffect(() => {
+    if (mode !== "local") return;
+    let on = true;
+    void listDialogs(AsyncStorage).then((ds) => {
+      if (on) setDialogTitle(ds.find((d) => d.id === threadId)?.name ?? threadId);
+    });
+    return () => {
+      on = false;
+    };
+  }, [mode, threadId, dialogListOpen]);
+
   const replying = busy || agent.isRunning;
   // P1-6: the send button's enabled state must match send()'s gate exactly —
   // attachments with no text are a supported send, so they enable the button.
@@ -766,6 +1223,46 @@ export function ChatScreen({
             override); the dot means an override is active. */}
         <DialogModelChip threadId={threadId} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {/* Gap fill A8-A10: dialog list (local mode). */}
+          {mode === "local" && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("chat.dialogList")}
+              onPress={() => setDialogListOpen(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: radii.lg,
+                backgroundColor: colors.line,
+              }}
+            >
+              <List size={13} color={colors.muted} />
+              <TText style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+                {t("chat.dialogList")}
+              </TText>
+            </Pressable>
+          )}
+          {/* Gap fill A13/A14/A16/A27: per-dialog settings (local mode). */}
+          {mode === "local" && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("chat.dialogSettings")}
+              onPress={() => setSettingsOpen(true)}
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                width: 32,
+                height: 32,
+                borderRadius: radii.lg,
+                backgroundColor: colors.line,
+              }}
+            >
+              <Settings2 size={14} color={colors.muted} />
+            </Pressable>
+          )}
           {/* Cross-dialog audit log (P1-2): the promised trace, openable
               anytime — not only when a "from dialog" tag is visible. */}
           <Pressable
@@ -1019,9 +1516,7 @@ export function ChatScreen({
                 }}
               >
                 {user ? (
-                  <TText selectable style={[s.text, { color: bubble.fg }]}>
-                    {text}
-                  </TText>
+                  <TText style={[s.text, { color: bubble.fg }]}>{text}</TText>
                 ) : (
                   <View>
                     <AssistantResponse content={text} />
@@ -1044,7 +1539,14 @@ export function ChatScreen({
                     }}
                   >
                     {!user && <ChatAvatar who="assistant" />}
-                    <View style={{ maxWidth: "80%" }}>
+                    {/* Gap fill A1/A3/A4/A5/A24/A26: long-press opens the
+                        message action sheet (local mode). Inner pressables
+                        (speak button, trace tag) keep working. */}
+                    <Pressable
+                      style={{ maxWidth: "80%" }}
+                      onLongPress={() => openMessageMenu(message)}
+                      delayLongPress={450}
+                    >
                       {/* Cross-dialog delivery marker (vision feature 2):
                           the AI sent this from another dialog. The tag is
                           her visibility setting; the trace log records the
@@ -1108,7 +1610,7 @@ export function ChatScreen({
                             />
                           ))}
                           {!!userImages.text.trim() && (
-                            <TText selectable style={[s.text, { color: bubble.fg }]}>
+                            <TText style={[s.text, { color: bubble.fg }]}>
                               {userImages.text}
                             </TText>
                           )}
@@ -1116,7 +1618,7 @@ export function ChatScreen({
                       ) : (
                         textBubble
                       )}
-                    </View>
+                    </Pressable>
                     {user && <ChatAvatar who="user" />}
                   </View>
                 )}
@@ -1178,6 +1680,61 @@ export function ChatScreen({
                     </BrowserRunContext>
                   </JevInteractionContext.Provider>
                 )}
+                {/* Gap fill A1/A2/A6 (local mode): version switcher under
+                    multi-version replies, a regenerate button under the last
+                    reply, and follow-up chips after it. */}
+                {mode === "local" && !user && message.role === "assistant" && (() => {
+                  const vs = versionsOfMessage(message);
+                  const vIdx = vs.findIndex((v) => v.id === message.id);
+                  const isLast = index === visible.length - 1;
+                  const idle = !busy && !agent.isRunning;
+                  return (
+                    <>
+                      {vs.length > 1 && vIdx >= 0 && (
+                        <View style={{ paddingHorizontal: 4 }}>
+                          <VersionSwitcher
+                            current={vIdx + 1}
+                            total={vs.length}
+                            onPrev={() => switchVersion(message, -1)}
+                            onNext={() => switchVersion(message, 1)}
+                          />
+                        </View>
+                      )}
+                      {isLast && idle && (
+                        <View style={{ paddingHorizontal: 4, alignItems: "flex-start" }}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t("chat.regenerate")}
+                            onPress={() =>
+                              void agent.regenerateAt?.(message.id).catch((e) => setError(String(e)))
+                            }
+                            style={({ pressed }) => ({
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 6,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: radii.lg,
+                              backgroundColor: pressed ? colors.line : colors.card,
+                              borderWidth: 1,
+                              borderColor: colors.line,
+                            })}
+                          >
+                            <RotateCcw size={12} color={colors.muted} />
+                            <TText style={{ fontSize: 12, color: colors.muted }}>
+                              {t("chat.regenerate")}
+                            </TText>
+                          </Pressable>
+                        </View>
+                      )}
+                      {isLast && followUps.length > 0 && (
+                        <View style={{ paddingHorizontal: 4 }}>
+                          <FollowUpChips suggestions={followUps} onPick={(sug) => enqueue(sug)} />
+                        </View>
+                      )}
+                    </>
+                  );
+                })()}
               </View>
             );
           })
@@ -1528,7 +2085,64 @@ export function ChatScreen({
               ))}
             </View>
           )}
+          {/* A22: slash command popup (local mode). */}
+          {mode === "local" && /^\/[a-z]*$/.test(draft) && (
+            <SlashCommandList
+              query={draft.slice(1)}
+              onPick={(name) => {
+                if (name === "new") {
+                  setDraft("");
+                  onNewThread?.();
+                } else if (name === "compress") {
+                  setDraft("");
+                  void agent
+                    .compressContext?.()
+                    .then((r) => {
+                      if (r && onSwitchThread) onSwitchThread(r.newThreadId);
+                    })
+                    .catch(() => {});
+                } else if (name === "clear") {
+                  setDraft("");
+                  Alert.alert(t("chat.slash.clear"), t("chat.slash.clearConfirm"), [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("common.delete"),
+                      style: "destructive",
+                      onPress: () => {
+                        agent.setMessages([]);
+                        setFollowUps([]);
+                        followUpForRef.current = null;
+                      },
+                    },
+                  ]);
+                } else if (name === "export") {
+                  setDraft("");
+                  void doExport();
+                } else {
+                  setDraft(`/${name} `);
+                }
+              }}
+            />
+          )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
+            {/* A17: quick phrases (local mode). */}
+            {mode === "local" && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("chat.quickPhrasesTitle")}
+                onPress={() => setPhrasesOpen(true)}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: radii.xl,
+                  backgroundColor: pressed ? colors.sky : "transparent",
+                })}
+              >
+                <Zap size={22} color={colors.text} />
+              </Pressable>
+            )}
             {/* Local mode: image + document attach (no backend file store needed). */}
             {mode === "local" ? (
               <Pressable
@@ -1666,6 +2280,57 @@ export function ChatScreen({
         }
         onClose={() => setActivityId(null)}
       />
+      {/* Gap fill Batch 1 sheets (local mode). */}
+      <MessageActionSheet
+        visible={menuMessage !== null}
+        onClose={() => {
+          setMenuMessage(null);
+          setMenuActions([]);
+        }}
+        actions={menuActions}
+        preview={menuMessage ? messageText(menuMessage).slice(0, 80) : undefined}
+      />
+      {mode === "local" && (
+        <>
+          <DialogListSheet
+            visible={dialogListOpen}
+            onClose={() => setDialogListOpen(false)}
+            currentId={threadId}
+            onSelect={(id) => onSwitchThread?.(id)}
+            onNew={() => onNewThread?.()}
+          />
+          <DialogSettingsSheet
+            visible={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            dialogName={dialogTitle}
+            meta={threadMeta ?? defaultThreadMeta()}
+            usage={agent.getContextUsage?.() ?? { tokens: 0, messages: 0 }}
+            onSaveMeta={(m) => agent.setThreadMeta?.(m)}
+            onCompress={async (keepTail, customPrompt) => {
+              // A14 (Kelivo's model): the summary opens a NEW dialog; the old
+              // one stays intact. Switch to the new dialog on success.
+              const r = await agent.compressContext?.(keepTail, customPrompt);
+              if (r && onSwitchThread) {
+                setSettingsOpen(false);
+                onSwitchThread(r.newThreadId);
+                return r.newThreadId;
+              }
+              return null;
+            }}
+            onExport={() => void doExport()}
+          />
+          <QuickPhrasesSheet
+            visible={phrasesOpen}
+            onClose={() => setPhrasesOpen(false)}
+            onPick={(phrase) => setDraft((d) => (d ? `${d}${phrase}` : phrase))}
+          />
+          <RoundShotModal
+            visible={shotRound !== null}
+            onClose={() => setShotRound(null)}
+            round={shotRound}
+          />
+        </>
+      )}
     </View>
   );
 }

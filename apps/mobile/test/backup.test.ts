@@ -164,7 +164,14 @@ describe("collectBackup", () => {
     const json = serializeBackup(b);
     assert.ok(!json.includes("incognito"));
     for (const t of b.chat.threads) {
-      for (const m of t.messages as Array<Record<string, unknown>>) {
+      // A2: threads are stored verbatim (v2 envelope or legacy v1 array).
+      const payload = (t.data ?? t.messages) as unknown;
+      const arr = Array.isArray(payload)
+        ? payload
+        : typeof payload === "object" && payload !== null
+          ? ((payload as { messages?: unknown }).messages as unknown[] | undefined) ?? []
+          : [];
+      for (const m of arr as Array<Record<string, unknown>>) {
         assert.ok(!("incognito" in m));
       }
     }
@@ -760,5 +767,44 @@ describe("findUnbackedKeys", () => {
 
   it("ignores non-dudu keys", () => {
     assert.deepEqual(findUnbackedKeys(["EXPO_PUBLIC_FOO", "other.key"]), []);
+  });
+});
+
+describe("chat envelope backup round trip (gap fill A2)", () => {
+  it("round-trips v2 envelopes verbatim (versions + meta survive)", async () => {
+    // A2: a thread with multiple versions and version selections must come
+    // back from backup with everything intact — no information断层.
+    const envelope = {
+      v: 2,
+      messages: [
+        { id: "u1", role: "user", content: "hi" },
+        { id: "a1", role: "assistant", content: "v1 answer", groupId: "g1", versionIndex: 0 },
+        { id: "a2", role: "assistant", content: "v2 answer", groupId: "g1", versionIndex: 1 },
+      ],
+      meta: {
+        selectedVersions: { g1: "a2" },
+        systemPrompt: "be brief",
+        tokenBudget: 50000,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    };
+    const kv = fakeKV({ "dudu.local-chat.envthread.v1": JSON.stringify(envelope) });
+    const b = await collectBackup(kv, fakeSecure());
+    const entry = b.chat.threads.find((t) => t.id === "envthread");
+    assert.ok(entry, "thread collected");
+    // Restore into a fresh store and read the raw value back.
+    const kv2 = fakeKV();
+    await applyBackup(b, kv2, fakeSecure());
+    const raw = await kv2.getItem("dudu.local-chat.envthread.v1");
+    assert.deepEqual(JSON.parse(raw ?? "null"), envelope);
+  });
+
+  it("restores legacy v1 array backups", async () => {
+    const b = await collectBackup(fakeKV(SEED), fakeSecure(SECURE_SEED));
+    const kv = fakeKV();
+    await applyBackup(b, kv, fakeSecure());
+    const raw = await kv.getItem("dudu.local-chat.thread1.v1");
+    assert.deepEqual(JSON.parse(raw ?? "null"), JSON.parse(SEED["dudu.local-chat.thread1.v1"]));
   });
 });

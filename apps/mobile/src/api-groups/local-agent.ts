@@ -113,6 +113,20 @@ import { buildRankingSlip } from "./model-ranking";
 import { createPlanTools } from "./plan-tools";
 import { groupStore } from "./store.js";
 import type { ApiGroup, FeatureSwitch } from "./types";
+import {
+  defaultThreadMeta,
+  historyKey,
+  loadThreadData,
+  saveThreadData,
+  truncateForEdit,
+  truncateForRegenerate,
+  deleteMessageFrom,
+  visibleMessages,
+  nextVersionIndex,
+  splitForCompression,
+  estimateMessagesTokens,
+  type ThreadMeta,
+} from "../chat/thread-versions.js";
 
 export interface LocalToolCall {
   id: string;
@@ -140,6 +154,15 @@ export interface LocalChatMessage {
   toolCalls?: LocalToolCall[];
   /** For role "tool": the id of the tool call this result answers. */
   toolCallId?: string;
+  /**
+   * Version group (gap fill A1/A2): regenerated assistant replies share the
+   * groupId of the original. Defaults to the message id. Non-selected
+   * versions stay in history (persisted, backed up, searchable) — the UI
+   * renders only the selected version per group (see chat/thread-versions.ts).
+   */
+  groupId?: string;
+  /** 0-based index within the version group. Defaults to 0. */
+  versionIndex?: number;
   /**
    * Cross-dialog delivery marker (vision feature 2): present when the AI
    * delivered this message from another dialog via send_to_dialog. The
@@ -179,7 +202,10 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
 }
 
 export interface ChatAgent {
+  /** Visible messages (selected versions only) for rendering. */
   readonly messages: LocalChatMessage[];
+  /** Every stored message, including unselected versions (A2 version UI). */
+  getAllMessages(): LocalChatMessage[];
   readonly isRunning: boolean;
   /**
    * Name of the tool currently executing, null when idle. Lets the UI
@@ -202,6 +228,38 @@ export interface ChatAgent {
   }): void;
   /** Send pending user messages and stream the reply. */
   runTurn(): Promise<void>;
+  /**
+   * Regenerate the assistant reply at messageId (A1): truncates the target
+   * and everything after it, then streams a fresh reply as a new version of
+   * the same group (A2). The old version stays in history.
+   */
+  regenerateAt(messageId: string): Promise<void>;
+  /**
+   * Delete one message (A5). When deleteVersions is true and the target is
+   * an assistant message, every version of its group is deleted.
+   */
+  deleteMessage(messageId: string, deleteVersions: boolean): Promise<void>;
+  /**
+   * Edit a user message's text and regenerate from there (A4): the message
+   * is replaced, everything after it is dropped, and a fresh reply streams.
+   */
+  editAndRegenerate(messageId: string, newText: string): Promise<void>;
+  /** This thread's meta (version selections, system prompt, token budget). */
+  getThreadMeta(): ThreadMeta;
+  /** Replace this thread's meta (persists unless incognito). */
+  setThreadMeta(meta: ThreadMeta): void;
+  /**
+   * Compress this thread's context now (A14, Kelivo's model): summarize older
+   * messages and open a NEW thread holding [summary, ...kept tail]. The old
+   * thread is untouched. Returns the summary and new thread id, or null
+   * when there was nothing to compress.
+   */
+  compressContext(
+    keepTail?: number,
+    customPrompt?: string,
+  ): Promise<{ summary: string; newThreadId: string } | null>;
+  /** Estimated context usage of the current visible history (A13). */
+  getContextUsage(): { tokens: number; messages: number };
   /** Abort an in-flight turn. */
   stop(): Promise<void>;
   /**
@@ -212,59 +270,55 @@ export interface ChatAgent {
   retryHistorySave(): Promise<boolean>;
 }
 
-function historyKey(threadId: string): string {
-  return `dudu.local-chat.${threadId}.v1`;
-}
-
-/**
- * Minimal storage surface for chat history. AsyncStorage in production,
- * injectable fakes in tests (AsyncStorage has no node implementation).
- */
 export interface HistoryStore {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
 }
 
+/**
+ * Load a thread's message history. v2 envelopes and legacy v1 bare arrays
+ * both read fine (see chat/thread-versions.ts). Extra fields (groupId,
+ * versionIndex) ride along — the filter only checks id/role.
+ */
+
 export async function loadLocalHistory(
   threadId: string,
   store: HistoryStore = AsyncStorage,
 ): Promise<LocalChatMessage[]> {
-  try {
-    const raw = await store.getItem(historyKey(threadId));
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((m): m is LocalChatMessage => {
-      if (typeof m !== "object" || m === null) return false;
-      const msg = m as LocalChatMessage;
-      if (typeof msg.id !== "string") return false;
-      // Tool messages and tool_calls ride along so the drawer can show
-      // past tool activity; the wire builder re-emits them correctly.
-      return (
-        msg.role === "user" ||
-        msg.role === "assistant" ||
-        msg.role === "system" ||
-        msg.role === "tool"
-      );
-    });
-  } catch {
-    return [];
-  }
+  // v2 envelope (versions/meta) and legacy v1 bare arrays both read fine.
+  const { messages } = await loadThreadData<LocalChatMessage>(threadId, store);
+  return messages;
+}
+
+/**
+ * Load a thread's full data: messages + meta (version selections,
+ * per-dialog system prompt, token budget). Prefer this over
+ * loadLocalHistory when the caller needs the meta.
+ */
+export async function loadThread(
+  threadId: string,
+  store: HistoryStore = AsyncStorage,
+): Promise<{ messages: LocalChatMessage[]; meta: ThreadMeta }> {
+  return loadThreadData<LocalChatMessage>(threadId, store);
 }
 
 async function saveLocalHistory(
   threadId: string,
   messages: LocalChatMessage[],
   store: HistoryStore,
+  meta?: ThreadMeta,
 ): Promise<boolean> {
   try {
     // Cap history so one thread can't grow storage unbounded.
     const capped = messages.slice(-200);
+    // Preserve the stored meta when the caller doesn't carry it (e.g.
+    // retryHistorySave): read-merge-write inside the same serialized chain.
     // code P2-6: same-key writes serialize through the SHARED per-key chain
     // (chat/cross-dialog.ts writes these keys too — one queue, no interleave).
-    await sharedKeyedChain(historyKey(threadId), () =>
-      store.setItem(historyKey(threadId), JSON.stringify(capped)),
-    );
+    await sharedKeyedChain(historyKey(threadId), async () => {
+      const current = meta ?? (await loadThreadData<LocalChatMessage>(threadId, store)).meta;
+      await saveThreadData(threadId, capped, current, store);
+    });
     persistFailures.delete(threadId);
     return true;
   } catch {
@@ -605,7 +659,8 @@ export function createLocalAgent(opts: {
     // Fire-and-forget: the session never blocks on storage. But the emit
     // above already went out with the pre-save flag state — if the save
     // fails, emit again so listeners (chat.tsx banner) see the failure.
-    void saveLocalHistory(opts.threadId, msgs, store).then((ok) => {
+    const metaSnap = threadMeta;
+    void saveLocalHistory(opts.threadId, msgs, store, metaSnap).then((ok) => {
       if (!ok) emit();
     });
   }
@@ -646,9 +701,156 @@ export function createLocalAgent(opts: {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  return {
+  // Thread meta (version selections, per-dialog system prompt, token budget).
+  // Loaded via setThreadMeta during hydration; default for fresh threads.
+  let threadMeta: ThreadMeta = defaultThreadMeta();
+  /**
+   * Set by regenerateAt before the turn: runCompletion consumes it to tag
+   * the new reply as another version of the same group (A2).
+   */
+  let forcedVersion: { groupId: string; index: number } | null = null;
+
+  /** The messages the user (and the model wire) actually see: selected versions only. */
+  function visible(): LocalChatMessage[] {
+    return visibleMessages(messages, threadMeta);
+  }
+
+  /**
+   * In-place auto compression (A15): summarize the older part of THIS thread
+   * into a system note ahead of the kept tail. Used automatically when the
+   * context approaches the budget — the turn continues in the same thread
+   * so she is never yanked into a new dialog mid-conversation. Returns true
+   * when compression happened.
+   */
+  async function autoCompressNow(group: ApiGroup, keepTail = 10): Promise<boolean> {
+    const vis = visible();
+    const { head } = splitForCompression(vis, keepTail);
+    if (head.length === 0) return false;
+    const transcript = head
+      .map((m) => `${m.role}: ${contentToText(m.content).slice(0, 2000)}`)
+      .join("\n");
+    let summary = "";
+    await streamChat(
+      group,
+      [
+        {
+          role: "user",
+          content:
+            "Summarize this conversation into key points (decisions, preferences, ongoing tasks, important facts). Be concise, write as briefing notes:\n\n" +
+            transcript,
+        },
+      ],
+      {
+        onToken: (d: string) => {
+          summary += d;
+        },
+        onThinking: () => {},
+        onToolCalls: () => {},
+        onDone: () => {},
+        onError: () => {},
+      },
+    ).catch(() => {});
+    if (!summary.trim()) return false;
+    const note: LocalChatMessage = {
+      id: newId("sys"),
+      role: "system",
+      content: `[Context auto-compressed. Summary of previous conversation:]\n${summary.trim()}`,
+    };
+    const headIds = new Set(head.map((m) => m.id));
+    const headGroups = new Set(
+      head.filter((m) => m.role === "assistant").map((m) => m.groupId ?? m.id),
+    );
+    messages = [
+      note,
+      ...messages.filter(
+        (m) => !headIds.has(m.id) && !(m.role === "assistant" && headGroups.has(m.groupId ?? m.id)),
+      ),
+    ];
+    const nextSelected: Record<string, string> = {};
+    for (const [g, sel] of Object.entries(threadMeta.selectedVersions)) {
+      if (messages.some((m) => m.id === sel)) nextSelected[g] = sel;
+    }
+    threadMeta = { ...threadMeta, selectedVersions: nextSelected };
+    emit();
+    persist(messages);
+    return true;
+  }
+
+  /**
+   * Compress context, Kelivo's model (A14): summarize the older part of this
+   * thread, then open a NEW thread holding [summary, ...kept tail] and leave
+   * this thread untouched. Returns the summary and the new thread id, or
+   * null when there was nothing to compress or summarization failed.
+   * The caller (UI) switches to the new thread. Caller must ensure no turn
+   * is running.
+   */
+  async function compressNow(
+    group: ApiGroup,
+    keepTail = 6,
+    customPrompt?: string,
+  ): Promise<{ summary: string; newThreadId: string } | null> {
+    const vis = visible();
+    const { head, tail } = splitForCompression(vis, keepTail);
+    if (head.length === 0) return null;
+    const transcript = head
+      .map((m) => `${m.role}: ${contentToText(m.content).slice(0, 2000)}`)
+      .join("\n");
+    let summary = "";
+    await streamChat(
+      group,
+      [
+        {
+          role: "user",
+          content:
+            (customPrompt?.trim() ||
+              "Summarize this conversation into key points (decisions, preferences, ongoing tasks, important facts). Be concise, write as briefing notes:") +
+            "\n\n" +
+            transcript,
+        },
+      ],
+      {
+        onToken: (d: string) => {
+          summary += d;
+        },
+        onThinking: () => {},
+        onToolCalls: () => {},
+        onDone: () => {},
+        onError: () => {},
+      },
+    ).catch(() => {});
+    if (!summary.trim()) return null;
+    const newThreadId = `local-${Date.now().toString(36)}`;
+    const summaryMsg: LocalChatMessage = {
+      id: newId("sys"),
+      role: "user",
+      // Marked as an archive note so it never reads as something she said.
+      content: `[压缩存档] 之前对话的总结：\n${summary.trim()}`,
+    };
+    // The new thread starts from the SELECTED versions only — unselected
+    // versions stay behind in the old thread (still searchable there).
+    const tailCollapsed: LocalChatMessage[] = tail.map((m) => ({
+      ...m,
+      groupId: m.id,
+      versionIndex: 0,
+    }));
+    const ok = await saveThreadData(
+      newThreadId,
+      [summaryMsg, ...tailCollapsed],
+      { ...defaultThreadMeta(), autoTitleDone: true },
+      store,
+    );
+    if (!ok) return null;
+    return { summary: summary.trim(), newThreadId };
+  }
+
+  const agent: ChatAgent = {
     get messages() {
-      return messages;
+      // UI contract: only the selected version per group. All versions stay
+      // in the persisted full list (no information断层).
+      return visible();
+    },
+    getAllMessages() {
+      return [...messages];
     },
     get isRunning() {
       return running;
@@ -1279,6 +1481,12 @@ export function createLocalAgent(opts: {
       };
       let toolsOn = resolveSwitch(activeGroup.toolsMode, profile?.tools ?? "auto");
       let thinkingOn = resolveSwitch(activeGroup.thinkingMode, profile?.thinking ?? "auto");
+      // A16: per-dialog system prompt override — her rule for THIS dialog,
+      // appended after the persona sections. Empty when unset: no noise.
+      const dialogSystemPrompt =
+        threadMeta.systemPrompt?.trim() && !incognito()
+          ? `Her instruction for this dialog (it overrides persona defaults for this conversation only):\n${threadMeta.systemPrompt.trim()}`
+          : "";
       const systemPrompt = buildLocalSystemPrompt(
         effectiveTools,
         t,
@@ -1294,6 +1502,7 @@ export function createLocalAgent(opts: {
           // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
           // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
           buildRankingSlip(capSnap.rankingMode),
+          ...(dialogSystemPrompt ? [dialogSystemPrompt] : []),
         ],
         { isIncognito: incognito() },
       );
@@ -1315,9 +1524,25 @@ export function createLocalAgent(opts: {
           groupStore.getSnapshot().groups,
           wireCapSnap.routingEnabled,
         );
+      // A15/A27: auto-compress when the visible context approaches the budget
+      // (her per-dialog budget, else a safe 100k default). The summary note
+      // stays in history and the reply announces it — never silent.
+      let preTurnNotice = "";
+      {
+        const budget =
+          threadMeta.tokenBudget && threadMeta.tokenBudget > 0 ? threadMeta.tokenBudget : 100000;
+        const usage = estimateMessagesTokens(visible(), (m) => contentToText(m.content));
+        if (usage > budget * 0.9 && !incognito()) {
+          const done = await autoCompressNow(activeGroup, 10).catch(() => false);
+          if (done) preTurnNotice = t("chat.autoCompressed") as string;
+        }
+      }
+
       const wire: ChatMessage[] = [];
       wire.push({ role: "system", content: systemPrompt });
-      for (const m of messages) {
+      // A2: the wire carries the SELECTED version of each group only —
+      // sending every version would feed the model duplicate replies.
+      for (const m of visible()) {
         if (m.role === "user") {
           wire.push(
             await toWireUserMessage(
@@ -1356,12 +1581,33 @@ export function createLocalAgent(opts: {
         let replyText = "";
         let thinkingText = "";
         let toolCalls: CompletedToolCall[] = [];
+        // A2: a regeneration reuses the target's version group; a normal
+        // reply starts a group of its own (groupId defaults to its id).
+        const fv = forcedVersion;
+        forcedVersion = null;
         // Insert the (initially empty) assistant message so the UI streams in place.
-        messages = [...messages, { id: replyId, role: "assistant", content: "" }];
+        messages = [
+          ...messages,
+          {
+            id: replyId,
+            role: "assistant",
+            content: "",
+            ...(fv ? { groupId: fv.groupId, versionIndex: fv.index } : {}),
+          },
+        ];
+        if (fv) {
+          // The new version becomes the selected one immediately so the UI
+          // streams the fresh reply, not the old version.
+          threadMeta = {
+            ...threadMeta,
+            selectedVersions: { ...threadMeta.selectedVersions, [fv.groupId]: replyId },
+          };
+        }
         emit();
 
         // Adaptation notices shown above the reply (never silent downgrades).
-        let noticeText = "";
+        // preTurnNotice carries the auto-compress announcement (A15).
+        let noticeText = preTurnNotice;
         const renderReply = () => {
           const content = noticeText ? `${noticeText}\n\n${replyText}` : replyText;
           messages = messages.map((m) => (m.id === replyId ? { ...m, content } : m));
@@ -1438,7 +1684,11 @@ export function createLocalAgent(opts: {
               onDone: () => {},
               // streamChat rejects on error — onError here is informational only.
               onError: () => {},
-            });
+            },
+            // A27: her per-turn output ceiling for this dialog.
+            threadMeta.maxTokens && threadMeta.maxTokens > 0
+              ? { maxTokens: threadMeta.maxTokens }
+              : undefined);
             break; // success
           } catch (e) {
             const cls = classifyError(e);
@@ -1573,11 +1823,13 @@ export function createLocalAgent(opts: {
         // Memory write path: async extraction, OFF the critical path.
         // Incognito turns never enter the pipeline (gated inside).
         // Fire-and-forget: extraction must never break the chat.
+        // A2: extract from the VISIBLE history (selected versions only).
+        const visForMemory = visible();
         const lastUser = contentToText(
-          [...messages].reverse().find((m) => m.role === "user")?.content ?? "",
+          [...visForMemory].reverse().find((m) => m.role === "user")?.content ?? "",
         );
         const lastAsst = contentToText(
-          [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "",
+          [...visForMemory].reverse().find((m) => m.role === "assistant")?.content ?? "",
         );
         if (lastUser || lastAsst) {
           // User kill-switch for auto-extract (checked async, fire-and-forget).
@@ -1608,6 +1860,70 @@ export function createLocalAgent(opts: {
         }
       }
     },
+    async regenerateAt(messageId: string): Promise<void> {
+      // A1: regenerate the assistant reply at messageId. The target and all
+      // trailing messages are dropped (they answered the old context); the
+      // fresh reply streams as a new version of the same group (A2).
+      const group = opts.getGroup();
+      if (!group) throw new GroupError("?", "noApiGroup");
+      if (running) return;
+      const t = truncateForRegenerate(messages, threadMeta, messageId);
+      if (!t) throw new Error("message not found");
+      forcedVersion = { groupId: t.groupId, index: nextVersionIndex(messages, t.groupId) };
+      messages = t.kept;
+      emit();
+      persist(messages);
+      await agent.runTurn();
+    },
+    async deleteMessage(messageId: string, deleteVersions: boolean): Promise<void> {
+      // A5: delete one message; optionally every version of its group.
+      // Selections that pointed at deleted messages re-point automatically.
+      const r = deleteMessageFrom(messages, threadMeta, messageId, deleteVersions);
+      threadMeta = r.meta;
+      messages = r.messages;
+      emit();
+      persist(messages);
+    },
+    async editAndRegenerate(messageId: string, newText: string): Promise<void> {
+      // A4: replace a user message's text, drop everything after it (it
+      // answered the old wording), and stream a fresh reply.
+      const group = opts.getGroup();
+      if (!group) throw new GroupError("?", "noApiGroup");
+      if (running) return;
+      const t = truncateForEdit(messages, threadMeta, messageId);
+      if (!t) throw new Error("message not found");
+      messages = [...t.kept, { ...t.target, content: newText }];
+      emit();
+      persist(messages);
+      await agent.runTurn();
+    },
+    getThreadMeta(): ThreadMeta {
+      return threadMeta;
+    },
+    setThreadMeta(meta: ThreadMeta): void {
+      threadMeta = meta;
+      emit();
+      persist(messages);
+    },
+    getContextUsage(): { tokens: number; messages: number } {
+      // A13: estimated usage over the visible history.
+      const vis = visible();
+      return {
+        tokens: estimateMessagesTokens(vis, (m) => contentToText(m.content)),
+        messages: vis.length,
+      };
+    },
+    async compressContext(
+      keepTail = 6,
+      customPrompt?: string,
+    ): Promise<{ summary: string; newThreadId: string } | null> {
+      // A14: user-triggered compression — Kelivo's model. The summary opens
+      // a NEW dialog (old dialog untouched); the UI switches to it.
+      const group = opts.getGroup();
+      if (!group) throw new GroupError("?", "noApiGroup");
+      if (running) return null;
+      return compressNow(group, keepTail, customPrompt);
+    },
     async stop(): Promise<void> {
       aborter?.abort();
     },
@@ -1620,4 +1936,5 @@ export function createLocalAgent(opts: {
       return ok;
     },
   };
+  return agent;
 }
