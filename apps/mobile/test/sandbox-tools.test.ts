@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AiAuthRequest } from "../src/ai-authorization.js";
 import { ToolError } from "../src/api-groups/local-tools.js";
-import type { SshDockerBackend } from "../src/sandbox/backend-ssh-docker.js";
+import type { SshDockerBackend } from "../src/sandbox/backend-ssh-docker";
 import { SandboxManager } from "../src/sandbox/manager.js";
 import {
   RELAY_DOWNLOAD_URL,

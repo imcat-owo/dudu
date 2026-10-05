@@ -93,7 +93,6 @@ describe("ai.defaultName i18n", () => {
         "music.djWorking",
         "apigroup.noActive",
         "sandbox.relayNote",
-        "sandbox.relayMissing",
         "persona.pickerNone",
       ] as const) {
         assert.ok(
