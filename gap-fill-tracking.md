@@ -72,8 +72,9 @@ D1-D14 全做完，对着 Kelivo 真源码学的（MCP HTTP/SSE+OAuth、ask_user
 E1-E5/F1-F3/G1-G4/G6 全做完，对着 Kelivo 真源码学的（World Book 激活逻辑逐行对过）。
 复审有条件 PASS（E5 标签是孤岛：能建不能贴）→ 修好（卡片显示+筛选+编辑器贴标签）→ 复审 PASS。G5 iCloud 跳过（她一台手机）。正式打勾。
 
-## Batch 6 — 平台 H（待）
-H2 Share Extension / H3 用户定时任务 / H4 Siri Shortcuts / H5 Widget（已在计划，对齐） / H6 Live Activity / H7 Files.app / H8 Face ID 锁 / H10 HomeKit / H11 Apple NLP
+## Batch 6 — 平台 H（✅ 2026-10-05 构建完成，待复审）
+H2 Share Extension（TS intake + 原生 ShareViewController）/ H3 用户定时任务（完整 TS，通知降级）/ H4 Siri Shortcuts（TS deep link + 原生 AppIntents）/ H5 Widget（TS 数据推送 + 原生 WidgetKit，对齐任务卡片）/ H6 Live Activity（TS 控制器 + 原生 ActivityKit）/ H7 Files.app（TS 发布/列表 + 原生 FileProvider）/ H8 Face ID 锁（纯 TS，expo-local-authentication）/ H10 HomeKit（TS 桥 + 原生模块）/ H11 Apple NLP（TS 桥 + 原生模块）
+H1 跳过（iOS 先行），H9 延期。原生模块需 Xcode 接线（见 plugins/dudu-platform/README.md）。
 
 ## Batch 7 — 小功能 I（待）
 I1 翻译 / I2 设置搜索 / I3 统计页 / I4 扫码 / I5 VoiceOver / I6 草稿 token 计数 / I7 回车发送 / I8 保持亮屏 / I9 触感反馈 / I10 新聊天行为 / I11 显示开关 / I12 自动滚动 / I13 长消息折叠 / I14 Markdown 按角色开关 / I15 配置审计
