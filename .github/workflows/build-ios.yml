@@ -67,9 +67,17 @@ jobs:
       - name: Build with xcodebuild (unsigned)
         run: |
           cd ios
+          WORKSPACE=$(ls -d *.xcworkspace | head -1)
+          if [ -z "$WORKSPACE" ]; then
+            echo "No .xcworkspace found. Contents:"
+            ls -la
+            exit 1
+          fi
+          SCHEME="${WORKSPACE%.xcworkspace}"
+          echo "Workspace: $WORKSPACE / Scheme: $SCHEME"
           xcodebuild \
-            -workspace OpenMuse.xcworkspace \
-            -scheme OpenMuse \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
@@ -81,12 +89,13 @@ jobs:
       - name: Package IPA
         run: |
           cd ios/build/Build/Products/Release-iphoneos
-          APP="OpenMuse.app"
-          if [ ! -d "$APP" ]; then
-            echo "Expected $APP not found. Contents:"
+          APPS=( *.app )
+          if [ "${#APPS[@]}" -ne 1 ]; then
+            echo "Expected exactly one .app, found ${#APPS[@]}. Contents:"
             ls -la
             exit 1
           fi
+          APP="${APPS[0]}"
           echo "App bundle: $APP"
           mkdir -p Payload
           cp -R "$APP" Payload/
