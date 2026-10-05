@@ -60,7 +60,7 @@
 - 验收证据：加两台服务器 → 点 A 连 A 的传话员 → 点 B 切到 B；删正在用的那台 → 诚实提示不崩。
 
 ### B4c · 去掉写死的"小梦"，AI 名字动态化（她 2026-10-05 15:21 新下的令）
-- 做法：App 里 16 处"小梦/小夢"全部去掉；用户给 AI 取的名字是什么就显示什么——动态名 = 当前人设的 name，无人设时 fallback 默认名"小助手"（`ai.defaultName` i18n key：小助手/小助手/Little Assistant，她可 veto）。
+- 做法：App 里 16 处"小梦/小夢"全部去掉；用户给 AI 取的名字是什么就显示什么——动态名 = 当前人设的 name，无人设时 fallback 默认名"嘟嘟"（她 2026-10-05 15:33 亲定；`ai.defaultName` i18n key：嘟嘟/嘟嘟/Dudu）。
 - 16 处清单：i18n×11（en.ts:1783 relayNote；zh-Hans.ts:152 djWorking, :1337 noActive, :1714 relayNote, :1863 pickerNone, :1868 namePlaceholder；zh-Hant.ts:155, :1340, :1717, :1866, :1871 同样 5 处繁体）→ 全部改成 `{name}` 插值（t 已支持 params），调用处传动态名；dialog-ui.tsx:393（buildDialogMarkdown，加 aiName 参数，调用处 chat.tsx:1158/1193 跟着传）、:467（搜索 snippet，同文件内 resolve 动态名）；local-agent.ts:402（buildLocalSystemPrompt 加 aiName 参数，identity 行改成 `you are ${aiName}, her boyfriend`，pinyin 不要了）；注释 2 处（diagnostics.ts:7、persona/types.ts:25）顺手改掉。
 - persona.pickerNone → "默认（{name}）" 传默认名；persona.namePlaceholder → "给你的AI起个名字"（不再拿小梦当例子）。
 - 注意：跟 B4b 串行（都改 i18n 文件和 sandbox-ui，必须等 B4b 收尾再开工，防文件撞车）。
