@@ -2058,6 +2058,7 @@ const zhHant = {
   "backup.remote.validation.endpoint-invalid": "Endpoint 格式不對，檢查一下",
   "backup.remote.validation.bucket-required": "請先填桶名",
   "backup.remote.validation.access-key-required": "請先填 Access Key",
+  "backup.remote.validation.secretRequired": "請先保存 Secret Key",
   "backup.remote.securityNote": "密碼只存在手機的安全區，不會進備份文件",
 
   // ---- snapshots ----

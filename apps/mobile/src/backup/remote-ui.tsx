@@ -177,6 +177,10 @@ export function RemoteBackupSection() {
         setCloudFiles(files);
       } else {
         const secret = (await secureBackend().getItem(S3_SECRET_KEY)) ?? "";
+        if (!secret.trim()) {
+          setNotice(t("backup.remote.validation.secretRequired"));
+          return;
+        }
         const files = await s3List({
           kind: "s3",
           config: {

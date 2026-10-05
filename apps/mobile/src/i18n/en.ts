@@ -2138,6 +2138,7 @@ export const enStrings: Record<StringKey, string> = {
   "backup.remote.validation.endpoint-invalid": "That endpoint doesn't look right — check it",
   "backup.remote.validation.bucket-required": "Enter the bucket name first",
   "backup.remote.validation.access-key-required": "Enter the access key first",
+  "backup.remote.validation.secretRequired": "Save the Secret Key first",
   "backup.remote.securityNote":
     "Passwords stay in the phone's secure storage, never in backup files",
 

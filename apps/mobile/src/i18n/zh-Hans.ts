@@ -2055,6 +2055,7 @@ const zhHans = {
   "backup.remote.validation.endpoint-invalid": "Endpoint 格式不对，检查一下",
   "backup.remote.validation.bucket-required": "请先填桶名",
   "backup.remote.validation.access-key-required": "请先填 Access Key",
+  "backup.remote.validation.secretRequired": "请先保存 Secret Key",
   "backup.remote.securityNote": "密码只存在手机的安全区，不会进备份文件",
 
   // ---- snapshots ----
