@@ -278,6 +278,31 @@ describe("groupSleepSamples", () => {
     assert.equal(sessions[1].asleepMinutes, 456);
   });
 
+  it("clamps efficiency at 1 when sources disagree", () => {
+    // One source says INBED 23:00-07:00; another reports ASLEEP 22:30-07:30,
+    // so asleep union (540 min) exceeds in-bed (480 min). Efficiency must
+    // never read above 100% — that would look like fake data.
+    const [s] = groupSleepSamples([
+      {
+        startDate: "2026-10-04T23:00:00+08:00",
+        endDate: "2026-10-05T07:00:00+08:00",
+        value: "INBED",
+      },
+      {
+        startDate: "2026-10-04T22:30:00+08:00",
+        endDate: "2026-10-05T07:30:00+08:00",
+        value: "ASLEEP",
+      },
+    ]);
+    assert.equal(s.inBedMinutes, 480);
+    assert.equal(s.asleepMinutes, 540);
+    assert.ok(
+      s.efficiency !== null && s.efficiency <= 1,
+      `efficiency ${s.efficiency} must not exceed 1`,
+    );
+    assert.equal(s.efficiency, 1);
+  });
+
   it("returns [] for empty input and null efficiency without INBED", () => {
     assert.deepEqual(groupSleepSamples([]), []);
     const [s] = groupSleepSamples([

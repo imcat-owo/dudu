@@ -441,7 +441,7 @@ export function groupSleepSamples(samples: SleepSample[]): SleepSession[] {
       coreMinutes,
       remMinutes,
       awakeMinutes,
-      efficiency: inBed > 0 ? Math.round((asleepMinutes / inBed) * 100) / 100 : null,
+      efficiency: inBed > 0 ? Math.min(1, Math.round((asleepMinutes / inBed) * 100) / 100) : null,
     };
   });
 }
