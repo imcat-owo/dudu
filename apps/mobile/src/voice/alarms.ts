@@ -26,6 +26,12 @@ export interface Alarm {
   label: string;
   /** True when scheduled via AlarmKit (system alarm UI). */
   viaAlarmKit: boolean;
+  /**
+   * False when she switched it off in settings. The record is kept (for
+   * re-enable / edit / delete) but nothing is scheduled natively.
+   * Absent on old records — they count as enabled.
+   */
+  enabled?: boolean;
   createdAt: number;
 }
 
@@ -116,14 +122,77 @@ export function createAlarmStore(deps: AlarmDeps) {
     }
   }
 
+  /** Run the native scheduling (AlarmKit, else notification). Shared by schedule/enable/reschedule. */
+  async function scheduleNative(
+    fireAt: number,
+    label: string,
+  ): Promise<{ id: string; viaAlarmKit: boolean }> {
+    // Try AlarmKit first.
+    const kit = await deps.alarmKit();
+    if (kit) {
+      try {
+        if (!kit.isAvailable()) throw new Error("unavailable");
+        const ok = await kit.requestAuthorization();
+        if (!ok) throw new AlarmError("得先允许闹钟权限，不然到点叫不醒你");
+        const id = await kit.scheduleAlarm(fireAt, label);
+        return { id, viaAlarmKit: true };
+      } catch (e) {
+        if (e instanceof AlarmError) throw e;
+        // Fall through to notifications.
+      }
+    }
+
+    // Fallback: scheduled notification.
+    const notif = await deps.notifications();
+    if (!notif) {
+      throw new AlarmError("闹钟功能不可用：需要 iOS 26+ 的 AlarmKit 或通知权限");
+    }
+    const { granted } = await notif.requestPermissionsAsync();
+    if (!granted) {
+      throw new AlarmError("得先允许通知权限，不然到点叫不醒你");
+    }
+    const id = await notif.scheduleNotificationAsync({
+      content: { title: label, body: "到点了", sound: true },
+      trigger: { type: "date", date: new Date(fireAt) },
+    });
+    return { id, viaAlarmKit: false };
+  }
+
+  /** Best-effort native cancellation for one record. */
+  async function cancelNative(alarm: Alarm): Promise<void> {
+    if (alarm.viaAlarmKit) {
+      const kit = await deps.alarmKit();
+      if (kit) {
+        try {
+          await kit.cancelAlarm(alarm.id);
+        } catch {
+          // Best-effort: the record is dropped regardless.
+        }
+      }
+    } else {
+      const notif = await deps.notifications();
+      if (notif) {
+        try {
+          await notif.cancelScheduledNotificationAsync(alarm.id);
+        } catch {
+          // Best-effort.
+        }
+      }
+    }
+  }
+
   return {
     async list(): Promise<Alarm[]> {
       const alarms = await load();
       const now = Date.now();
-      // Drop fired alarms older than an hour — they've rung.
-      const live = alarms.filter((a) => a.fireAt > now - 3_600_000);
+      // Drop fired alarms older than an hour — they've rung. Disabled
+      // alarms are kept no matter how old: she's managing them, and
+      // deleting is her explicit call.
+      const live = alarms.filter((a) => a.enabled === false || a.fireAt > now - 3_600_000);
       if (live.length !== alarms.length) await save(live);
-      return live.sort((a, b) => a.fireAt - b.fireAt);
+      return live
+        .map((a) => ({ ...a, enabled: a.enabled !== false }))
+        .sort((a, b) => a.fireAt - b.fireAt);
     },
 
     /**
@@ -140,49 +209,13 @@ export function createAlarmStore(deps: AlarmDeps) {
       }
       const cleanLabel = label.trim() || "闹钟";
 
-      // Try AlarmKit first.
-      const kit = await deps.alarmKit();
-      if (kit) {
-        try {
-          if (!kit.isAvailable()) throw new Error("unavailable");
-          const ok = await kit.requestAuthorization();
-          if (!ok) throw new AlarmError("得先允许闹钟权限，不然到点叫不醒你");
-          const id = await kit.scheduleAlarm(fireAt, cleanLabel);
-          const alarm: Alarm = {
-            id,
-            fireAt,
-            label: cleanLabel,
-            viaAlarmKit: true,
-            createdAt: Date.now(),
-          };
-          const alarms = await load();
-          alarms.push(alarm);
-          await save(alarms);
-          return alarm;
-        } catch (e) {
-          if (e instanceof AlarmError) throw e;
-          // Fall through to notifications.
-        }
-      }
-
-      // Fallback: scheduled notification.
-      const notif = await deps.notifications();
-      if (!notif) {
-        throw new AlarmError("闹钟功能不可用：需要 iOS 26+ 的 AlarmKit 或通知权限");
-      }
-      const { granted } = await notif.requestPermissionsAsync();
-      if (!granted) {
-        throw new AlarmError("得先允许通知权限，不然到点叫不醒你");
-      }
-      const id = await notif.scheduleNotificationAsync({
-        content: { title: cleanLabel, body: "到点了", sound: true },
-        trigger: { type: "date", date: new Date(fireAt) },
-      });
+      const { id, viaAlarmKit } = await scheduleNative(fireAt, cleanLabel);
       const alarm: Alarm = {
         id,
         fireAt,
         label: cleanLabel,
-        viaAlarmKit: false,
+        viaAlarmKit,
+        enabled: true,
         createdAt: Date.now(),
       };
       const alarms = await load();
@@ -191,30 +224,79 @@ export function createAlarmStore(deps: AlarmDeps) {
       return alarm;
     },
 
+    /**
+     * Switch an alarm on/off from the settings UI.
+     * Off: native scheduling is cancelled but the record is kept for
+     * re-enable / edit / delete. On: re-schedules natively; the time
+     * must still be in the future (else it throws honestly — edit the
+     * time instead).
+     */
+    async setEnabled(id: string, enabled: boolean): Promise<Alarm> {
+      const alarms = await load();
+      const target = alarms.find((a) => a.id === id);
+      if (!target) throw new AlarmError("找不到这个闹钟，可能已经被删了");
+      const isEnabled = target.enabled !== false;
+      if (isEnabled === enabled) return { ...target, enabled: isEnabled };
+      if (!enabled) {
+        await cancelNative(target);
+        const updated: Alarm = { ...target, enabled: false };
+        await save(alarms.map((a) => (a.id === id ? updated : a)));
+        return updated;
+      }
+      const problem = validateAlarmTime(target.fireAt);
+      if (problem === "alarmPast") {
+        throw new AlarmError("这个时间已经过了，改个时间再打开吧");
+      }
+      if (problem === "alarmTooFar") {
+        throw new AlarmError("闹钟时间太远了，一年以内吧");
+      }
+      const { id: newId, viaAlarmKit } = await scheduleNative(target.fireAt, target.label);
+      const updated: Alarm = { ...target, id: newId, viaAlarmKit, enabled: true };
+      await save(alarms.map((a) => (a.id === id ? updated : a)));
+      return updated;
+    },
+
+    /**
+     * Move an alarm to a new time (and optionally a new label).
+     * An enabled alarm is cancelled natively and re-scheduled; a
+     * disabled one just moves and stays off.
+     */
+    async reschedule(id: string, fireAt: number, label?: string): Promise<Alarm> {
+      const problem = validateAlarmTime(fireAt);
+      if (problem === "alarmPast") {
+        throw new AlarmError("闹钟时间得是未来，至少 1 分钟以后");
+      }
+      if (problem === "alarmTooFar") {
+        throw new AlarmError("闹钟时间太远了，一年以内吧");
+      }
+      const alarms = await load();
+      const target = alarms.find((a) => a.id === id);
+      if (!target) throw new AlarmError("找不到这个闹钟，可能已经被删了");
+      const cleanLabel = label === undefined ? target.label : label.trim() || "闹钟";
+      const wasEnabled = target.enabled !== false;
+      if (!wasEnabled) {
+        const updated: Alarm = { ...target, fireAt, label: cleanLabel, enabled: false };
+        await save(alarms.map((a) => (a.id === id ? updated : a)));
+        return updated;
+      }
+      await cancelNative(target);
+      const { id: newId, viaAlarmKit } = await scheduleNative(fireAt, cleanLabel);
+      const updated: Alarm = {
+        ...target,
+        id: newId,
+        fireAt,
+        label: cleanLabel,
+        viaAlarmKit,
+        enabled: true,
+      };
+      await save(alarms.map((a) => (a.id === id ? updated : a)));
+      return updated;
+    },
+
     async cancel(id: string): Promise<void> {
       const alarms = await load();
       const target = alarms.find((a) => a.id === id);
-      if (target) {
-        if (target.viaAlarmKit) {
-          const kit = await deps.alarmKit();
-          if (kit) {
-            try {
-              await kit.cancelAlarm(id);
-            } catch {
-              // Best-effort: still drop it from our list.
-            }
-          }
-        } else {
-          const notif = await deps.notifications();
-          if (notif) {
-            try {
-              await notif.cancelScheduledNotificationAsync(id);
-            } catch {
-              // Best-effort.
-            }
-          }
-        }
-      }
+      if (target) await cancelNative(target);
       await save(alarms.filter((a) => a.id !== id));
     },
 
