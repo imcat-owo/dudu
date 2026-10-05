@@ -752,14 +752,24 @@ function AlarmsSection() {
       setEditError(t("voice.alarmInvalidTime") as string);
       return;
     }
-    const fireAt = new Date(
-      Number(dm[1]),
-      Number(dm[2]) - 1,
-      Number(dm[3]),
-      Number(tm[1]),
-      Number(tm[2]),
-      0,
-    ).getTime();
+    const year = Number(dm[1]);
+    const month = Number(dm[2]);
+    const day = Number(dm[3]);
+    const hour = Number(tm[1]);
+    const minute = Number(tm[2]);
+    // new Date() silently rolls impossible dates ("2026-13-01", "2026-02-30",
+    // "25:99") into a different real date — what she typed must be what gets
+    // stored, so validate before accepting.
+    if (month < 1 || month > 12 || hour > 23 || minute > 59) {
+      setEditError(t("voice.alarmInvalidTime") as string);
+      return;
+    }
+    const lastDay = new Date(year, month, 0).getDate();
+    if (day < 1 || day > lastDay) {
+      setEditError(t("voice.alarmInvalidTime") as string);
+      return;
+    }
+    const fireAt = new Date(year, month - 1, day, hour, minute, 0).getTime();
     if (!Number.isFinite(fireAt)) {
       setEditError(t("voice.alarmInvalidTime") as string);
       return;

@@ -184,6 +184,44 @@ describe("alarms: reschedule", () => {
     assert.equal(log.scheduled.length, scheduledBefore);
   });
 
+  it("reschedule keeps the old alarm intact when the new schedule fails", async () => {
+    const backend = memBackend();
+    const log = newLog();
+    const deps = kitDeps(log);
+    // The initial schedule succeeds; every later native schedule throws
+    // (permission revoked between taps — the P2 lying-state scenario).
+    let calls = 0;
+    const store = createAlarmStore({
+      backend,
+      alarmKit: async () => {
+        const kit = await deps.alarmKit();
+        const orig = kit.scheduleAlarm;
+        return {
+          ...kit,
+          scheduleAlarm: async (fireAt: number, label: string) => {
+            calls += 1;
+            if (calls > 1) throw new Error("permission revoked");
+            return orig(fireAt, label);
+          },
+        };
+      },
+      notifications: deps.notifications,
+    });
+    const alarm = await store.schedule(Date.now() + 3600_000, "起床");
+
+    await assert.rejects(
+      () => store.reschedule(alarm.id, Date.now() + 7200_000),
+      /叫不醒|不可用/,
+    );
+    // Record untouched: still enabled, still the old time, same native id.
+    const kept = (await store.list())[0];
+    assert.equal(kept.enabled, true);
+    assert.equal(kept.fireAt, alarm.fireAt);
+    assert.equal(kept.id, alarm.id);
+    // Old native alarm was NOT cancelled — it still fires.
+    assert.deepEqual(log.cancelled, []);
+  });
+
   it("reschedule rejects past times loudly", async () => {
     const backend = memBackend();
     const log = newLog();

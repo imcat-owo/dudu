@@ -258,8 +258,10 @@ export function createAlarmStore(deps: AlarmDeps) {
 
     /**
      * Move an alarm to a new time (and optionally a new label).
-     * An enabled alarm is cancelled natively and re-scheduled; a
-     * disabled one just moves and stays off.
+     * An enabled alarm is re-scheduled natively — the new schedule goes
+     * first, then the old one is cancelled, so a failed schedule never
+     * leaves a record that says "on" with no native alarm behind it.
+     * A disabled one just moves and stays off.
      */
     async reschedule(id: string, fireAt: number, label?: string): Promise<Alarm> {
       const problem = validateAlarmTime(fireAt);
@@ -279,8 +281,12 @@ export function createAlarmStore(deps: AlarmDeps) {
         await save(alarms.map((a) => (a.id === id ? updated : a)));
         return updated;
       }
-      await cancelNative(target);
+      // Schedule the NEW time first, then cancel the old native alarm.
+      // If the new schedule fails (permission revoked, native module gone),
+      // the old alarm stays exactly as it was — the record and the native
+      // schedule never disagree about whether the alarm will fire.
       const { id: newId, viaAlarmKit } = await scheduleNative(fireAt, cleanLabel);
+      await cancelNative(target);
       const updated: Alarm = {
         ...target,
         id: newId,
