@@ -101,6 +101,7 @@ export function createInteractiveTerminalTools(
     },
     {
       name: "sandbox_shell_write",
+      manualId: "sandbox",
       description:
         "Send input to an interactive shell session (stdin). Include the trailing newline for Enter. For passwords, just send the text — it won't be echoed back.",
       parameters: {
@@ -120,6 +121,7 @@ export function createInteractiveTerminalTools(
     },
     {
       name: "sandbox_shell_read",
+      manualId: "sandbox",
       description:
         "Read new output from an interactive shell session since the last read. Poll this after writing input.",
       parameters: {
@@ -151,6 +153,7 @@ export function createInteractiveTerminalTools(
     },
     {
       name: "sandbox_shell_close",
+      manualId: "sandbox",
       description: "Close an interactive shell session.",
       parameters: {
         type: "object",
