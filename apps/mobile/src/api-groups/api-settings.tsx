@@ -21,6 +21,7 @@ import { Alert, Modal, Pressable, ScrollView, Switch, TextInput, View } from "re
 import QRCode from "react-native-qrcode-svg";
 import { TText } from "../font";
 import { t } from "../i18n";
+import McpSettings from "../mcp/mcp-settings";
 import { radii } from "../theme/radii";
 import { Button, Card, Chip, Field, Sheet, useColors, useStyles } from "../ui";
 import { VoiceSettingsSection } from "../voice/voice-settings";
@@ -726,6 +727,12 @@ export function ApiSettingsScreen() {
       <ModelSlotsSection />
 
       <VoiceSettingsSection />
+
+      {/* Batch 4: MCP servers — external tools via Model Context Protocol. */}
+      <View style={{ gap: 8 }}>
+        <TText style={[s.small, { fontWeight: "700" }]}>{t("mcp.title")}</TText>
+        <McpSettings />
+      </View>
 
       <Modal
         visible={editing !== null}

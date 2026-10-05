@@ -160,6 +160,14 @@ const EXTENSION_KEYS = [
   "dudu.sandbox.activeBackend.v1",
   "dudu.ambientvideo.v1.overrides",
   "dudu.theme.aiMode.v1",
+  // Batch 4: MCP/tools — servers go through mcpBackupPayload (strips secrets),
+  // the rest are plain (env names only, no values; no secrets).
+  "dudu.mcp-servers.v1",
+  "dudu.env-vars.v1",
+  "dudu.mounted-folders.v1",
+  "dudu.tool-desc-overrides.v1",
+  "dudu.image-compression.v1",
+  "dudu.browser-history.v1",
 ] as const;
 
 // TTS/STT configs live in SecureStore in production (voice/store.ts) —
@@ -499,6 +507,11 @@ export async function collectBackup(
       const { groups, sanitized } = sanitizeCapabilityGroups(v);
       urlsSanitized += sanitized;
       extensions[key] = groups;
+    } else if (key === "dudu.mcp-servers.v1") {
+      // MCP servers: strip OAuth client secrets (tokens live in SecureStore,
+      // never in the backup). See mcp/store.ts mcpBackupPayload.
+      const { mcpBackupPayload } = await import("./mcp/store");
+      extensions[key] = mcpBackupPayload(v as Parameters<typeof mcpBackupPayload>[0]);
     } else {
       extensions[key] = v;
     }

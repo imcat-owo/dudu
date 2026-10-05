@@ -1910,4 +1910,12 @@ export const enStrings: Record<StringKey, string> = {
   "mcp.useOAuth": "Requires OAuth login",
   "mcp.oauthScopes": "Scopes",
   "mcp.addServer": "Add server",
+  "mcp.title": "MCP Servers",
+  "mcp.oauth.authorize": "Authorize",
+  "mcp.oauth.authorizing": "Authorizing…",
+  "mcp.oauth.successTitle": "Authorized",
+  "mcp.oauth.success": "\"{name}\" is authorized. Its tools won't ask you to log in again.",
+  "mcp.oauth.failedTitle": "Authorization failed",
+  "mcp.askUser.title": "A few questions for you",
+  "mcp.askUser.submit": "Done",
 };

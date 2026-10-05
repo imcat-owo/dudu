@@ -17,8 +17,17 @@ import { createBackupTools } from "../backup-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools";
-import { createCrossDialogTools } from "../chat/cross-dialog";
+import { createCrossDialogTools, listDialogs, readDialog } from "../chat/cross-dialog";
 import { sharedKeyedChain } from "../util/write-chain";
+import { createAgentCliTools } from "../mcp/agent-cli";
+import { createAskUserTools } from "../mcp/ask-user";
+import { createDelegateTools } from "../mcp/delegate";
+import { envStore } from "../mcp/env";
+import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
+import { createMcpProviders } from "../mcp/provider";
+import { mcpStore } from "../mcp/store";
+import { descOverrideStore } from "../mcp/tool-descriptions";
+import { createWebSearchTools } from "../mcp/web-search";
 import {
   crossDialogTraceStore,
   crossDialogVisibilityStore,
@@ -959,7 +968,7 @@ export function createLocalAgent(opts: {
         aiThemeMode === "off"
           ? []
           : [...createWallpaperTools(AsyncStorage), ...createThemeTools(AsyncStorage)];
-      const tools = opts.tools ?? [
+      let tools: LocalTool[] = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createTaskProgressTools(taskProgressStore),
@@ -1230,6 +1239,55 @@ export function createLocalAgent(opts: {
           },
         }),
         ...sandboxTools(sandboxManager),
+        // Batch 4: MCP/external tools — ask_user, web search, delegation,
+        // agent CLI, interactive terminal, and MCP server providers.
+        ...createAskUserTools(),
+        ...createWebSearchTools(),
+        ...createDelegateTools({
+          runSubtask: async (prompt) => {
+            // Isolated subtask: same model, fresh context (no parent history,
+            // no tools — the parent decomposes and the child reasons).
+            return generateOneShot(
+              activeGroup,
+              "You are a focused sub-agent. Complete the task below concisely.",
+              prompt,
+            );
+          },
+        }),
+        ...createAgentCliTools({
+          listDialogs: async () => {
+            const dialogs = await listDialogs(AsyncStorage);
+            return dialogs.map((d) => ({
+              id: d.id,
+              name: d.name,
+              messageCount: d.messageCount,
+              updatedAt: d.lastActiveAt,
+            }));
+          },
+          readDialog: async (id, limit) => {
+            const messages = await readDialog(AsyncStorage, id, limit);
+            return messages.map((m) => `${m.role}: ${m.text}`).join("\n");
+          },
+          searchDialogs: async (query) => {
+            const dialogs = await listDialogs(AsyncStorage);
+            const q = query.toLowerCase();
+            return dialogs
+              .filter((d) => d.name.toLowerCase().includes(q))
+              .map((d) => ({
+                id: d.id,
+                name: d.name,
+                messageCount: d.messageCount,
+                updatedAt: d.lastActiveAt,
+              }));
+          },
+        }),
+        ...createInteractiveTerminalTools(() => {
+          try {
+            return sandboxManager.activeBackend();
+          } catch {
+            return null;
+          }
+        }),
         ...createNativeAppTools({
           getAuthState: async (id) => {
             const { checkers } = await import("../native-apps");
@@ -1339,6 +1397,45 @@ export function createLocalAgent(opts: {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.
         authorize: async () => false,
       };
+      // Batch 4: MCP server tools — async providers, wired after toolCtx so
+      // per-tool approval can use the authorize gate. Applied before the
+      // incognito filter so incognito sessions never see them.
+      if (!opts.tools) {
+        try {
+          const mcpProviders = await createMcpProviders({
+            env: await envStore.getValues().catch(() => ({})),
+            // Per-tool approval: "allow"/"deny" are enforced by the client
+            // via getApproval. "ask" fails closed here — a dedicated
+            // approval card UI is a follow-up; she can set tools to
+            // "allow" in MCP settings for trusted servers.
+            requestApproval: async () => false,
+            runOAuthFlow: async (server) => {
+              // The OAuth browser flow is driven from the MCP settings UI.
+              // If we get here without tokens, the server needs re-auth.
+              throw new Error(
+                `MCP server "${server.name}" needs OAuth authorization. ` +
+                  `Open Settings → MCP servers → authorize "${server.name}" first.`,
+              );
+            },
+            strings: {
+              toolDesc: (serverName, toolDesc) => `[MCP:${serverName}] ${toolDesc}`,
+            },
+          });
+          const mcpTools: LocalTool[] = [];
+          for (const p of mcpProviders) {
+            try {
+              mcpTools.push(...(await p.listTools()));
+            } catch {
+              // Server unreachable — skip, don't break the whole agent.
+            }
+          }
+          tools = [...tools, ...mcpTools];
+        } catch {
+          // MCP unavailable — agent works without it.
+        }
+        // D8: apply editable tool description overrides before the model sees them.
+        tools = await descOverrideStore.apply(tools);
+      }
       // Memory read path: profile + top-k relevant memories for this turn.
       // The last user message drives relevance; empty section when no memories.
       const lastUserText = contentToText(

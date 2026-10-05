@@ -53,6 +53,13 @@ import { z } from "zod";
 import { messageToolActions } from "./activity-drawer-model";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
+import {
+  answerAskUserRequest,
+  cancelAskUserRequest,
+  subscribeAskUserRequest,
+  type AskUserRequest,
+} from "./mcp/ask-user";
+import { shouldConvertPaste, savePasteAsFile, pastePreview } from "./mcp/long-paste";
 import { AnimatedAvatar } from "./animated-avatar";
 import { capabilityStore } from "./api-groups/capability-store";
 import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
@@ -395,6 +402,9 @@ export function ChatScreen({
   // surfaced to the AI as file URIs for knowledge_add_file.
   const [fileAttachments, setFileAttachments] = useState<UserFileAttachment[]>([]);
   const [transcribing, setTranscribing] = useState(false);
+  // Batch 4: ask_user — the model pauses for her answers.
+  const [askReq, setAskReq] = useState<AskUserRequest | null>(null);
+  const [askAnswers, setAskAnswers] = useState<Record<string, string | string[]>>({});
   // Thinking drawer: track the message id (not a text snapshot) so the
   // drawer content live-updates while thinking is still streaming in.
   const [activityId, setActivityId] = useState<string | null>(null);
@@ -673,6 +683,18 @@ export function ChatScreen({
     if (active && prompt && isReady && loaded && claimPrompt(prompt.id) && prompt.text.trim())
       enqueue(prompt.text);
   }, [active, prompt, isReady, loaded, enqueue, claimPrompt]);
+  // Batch 4: ask_user — render the model's questions, collect her answers.
+  useEffect(() => {
+    const unsub = subscribeAskUserRequest((req) => {
+      setAskReq(req);
+      if (req) {
+        const init: Record<string, string | string[]> = {};
+        for (const q of req.questions) init[q.id] = q.kind === "multi" ? [] : "";
+        setAskAnswers(init);
+      }
+    });
+    return unsub;
+  }, []);
   useEffect(() => {
     const subscription = agent.onTransportError((failure) => setError(failure.message));
     return () => subscription.unsubscribe();
@@ -693,6 +715,20 @@ export function ChatScreen({
       !loaded
     )
       return;
+    // Batch 4: long paste → file. If she pasted a wall of text, save it as
+    // a .txt attachment instead of jamming it into the message.
+    if (text && shouldConvertPaste(text)) {
+      void (async () => {
+        try {
+          const file = await savePasteAsFile(text);
+          setFileAttachments((prev) => [...prev, { uri: file.uri, name: file.name }]);
+          setDraft("");
+        } catch {
+          // Fall through: send as text if file save fails.
+        }
+      })();
+      return;
+    }
     // A22: local slash commands — handled on-device, never sent to the model.
     // /img keeps its existing path below (image generation).
     if (mode === "local" && text.startsWith("/")) {
@@ -2380,6 +2416,79 @@ export function ChatScreen({
               <Button small primary disabled={selectedIds.size === 0} onPress={exportSelected}>
                 {t("chat.exportSelected")}
               </Button>
+            </View>
+          )}
+          {/* Batch 4: ask_user — the model is asking her questions. */}
+          {askReq && (
+            <View style={{ gap: 12, padding: 12, backgroundColor: colors.card, borderRadius: radii.lg, marginBottom: 8 }}>
+              <TText style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+                {t("mcp.askUser.title")}
+              </TText>
+              {askReq.questions.map((q) => (
+                <View key={q.id} style={{ gap: 8 }}>
+                  <TText style={{ fontSize: 14, color: colors.text }}>{q.question}</TText>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {q.options.map((opt) => {
+                      const selected =
+                        q.kind === "multi"
+                          ? (askAnswers[q.id] as string[]).includes(opt)
+                          : askAnswers[q.id] === opt;
+                      return (
+                        <Pressable
+                          key={opt}
+                          accessibilityRole={q.kind === "multi" ? "checkbox" : "radio"}
+                          accessibilityState={{ selected }}
+                          onPress={() => {
+                            setAskAnswers((prev) => {
+                              if (q.kind === "multi") {
+                                const arr = (prev[q.id] as string[]) ?? [];
+                                return {
+                                  ...prev,
+                                  [q.id]: arr.includes(opt)
+                                    ? arr.filter((x) => x !== opt)
+                                    : [...arr, opt],
+                                };
+                              }
+                              return { ...prev, [q.id]: opt };
+                            });
+                          }}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: radii.md,
+                            borderWidth: 1,
+                            borderColor: selected ? colors.blue : colors.line,
+                            backgroundColor: selected ? colors.sky : "transparent",
+                          }}
+                        >
+                          <TText style={{ color: selected ? colors.blueDark : colors.text }}>
+                            {opt}
+                          </TText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Button
+                  primary
+                  onPress={() => {
+                    answerAskUserRequest(askReq.id, askAnswers);
+                    setAskReq(null);
+                  }}
+                >
+                  {t("mcp.askUser.submit")}
+                </Button>
+                <Button
+                  onPress={() => {
+                    cancelAskUserRequest(askReq.id);
+                    setAskReq(null);
+                  }}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </View>
             </View>
           )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>

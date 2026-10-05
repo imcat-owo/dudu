@@ -1833,6 +1833,14 @@ const zhHans = {
   "mcp.useOAuth": "需要登录授权 (OAuth)",
   "mcp.oauthScopes": "权限范围",
   "mcp.addServer": "添加服务器",
+  "mcp.title": "MCP 服务器",
+  "mcp.oauth.authorize": "授权登录",
+  "mcp.oauth.authorizing": "授权中…",
+  "mcp.oauth.successTitle": "授权成功",
+  "mcp.oauth.success": "「{name}」已授权，以后调用它的工具不用再登录了。",
+  "mcp.oauth.failedTitle": "授权失败",
+  "mcp.askUser.title": "问你几个问题",
+  "mcp.askUser.submit": "好了",
 } as const;
 
 export type StringKey = keyof typeof zhHans;
