@@ -159,6 +159,16 @@ function buildWelcomeBackPrompt(personaName: string, app: string): string {
 const HANDLED_TAPS_KEY = "dudu.openapp.v1.handledTaps";
 const MAX_HANDLED_TAPS = 200;
 
+/**
+ * In-process tap claims (P2-1): two near-simultaneous notification taps
+ * interleave — the wasTapHandled→markTapHandled check in the ledger is not
+ * atomic, so both taps could read "not handled" and both greet. A claimed
+ * watchId is processed at most once per process; the loser gets
+ * "already-handled" and stays silent. The persistent ledger below remains
+ * the cross-restart backstop.
+ */
+const claimedWatchIds = new Set<string>();
+
 async function wasTapHandled(storage: CrossDialogStorage, watchId: string): Promise<boolean> {
   try {
     const raw = await storage.getItem(HANDLED_TAPS_KEY);
@@ -190,6 +200,9 @@ export type WatchTapOutcome =
  * delivered to the dialog she jumped from. Persona isolation is structural:
  * resolveDialog filters by persona and fails closed — a threadId from
  * another persona (or a forged one) never receives the greeting.
+ * Idempotent: a double tap greets once — the in-process claim below guards
+ * the race before the first await, and the persistent ledger guards
+ * everything after.
  * Never throws.
  */
 export async function handleOpenAppTap(
@@ -198,6 +211,21 @@ export async function handleOpenAppTap(
 ): Promise<WatchTapOutcome> {
   const watch = parseWatchData(data);
   if (!watch) return { greeted: false, reason: "bad-data" };
+  // Synchronous claim BEFORE the first await — concurrent taps race here,
+  // not at the ledger. Released in finally; the ledger is the backstop.
+  if (claimedWatchIds.has(watch.watchId)) return { greeted: false, reason: "already-handled" };
+  claimedWatchIds.add(watch.watchId);
+  try {
+    return await handleOpenAppTapInner(deps, watch);
+  } finally {
+    claimedWatchIds.delete(watch.watchId);
+  }
+}
+
+async function handleOpenAppTapInner(
+  deps: OpenAppWatchDeps,
+  watch: OpenAppWatchData,
+): Promise<WatchTapOutcome> {
   if (await wasTapHandled(deps.storage, watch.watchId)) {
     return { greeted: false, reason: "already-handled" };
   }

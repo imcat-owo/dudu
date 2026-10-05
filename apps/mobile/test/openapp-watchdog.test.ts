@@ -19,12 +19,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ToolContext } from "../src/api-groups/local-tools.js";
-import { createOpenAppTools, type OpenAppToolEnv } from "../src/openapp/tools.js";
 import { type CrossDialogStorage, setDialogName } from "../src/chat/cross-dialog.js";
 import {
   CrossDialogTraceStore,
   CrossDialogVisibilityStore,
 } from "../src/chat/cross-dialog-trace.js";
+import { createOpenAppTools, type OpenAppToolEnv } from "../src/openapp/tools.js";
 import {
   armWatchdog,
   clampWatchdogMinutes,
@@ -238,6 +238,25 @@ describe("handleOpenAppTap", () => {
     assert.equal(history.length, 2, "no duplicate greeting");
   });
 
+  it("concurrent double tap → one greeting only (true race, no await between)", async () => {
+    const c = makeCtx();
+    seedDialog(c.storage);
+    await setDialogName(c.storage, "threadA", "和她的对话", "persona-1");
+    // Fire both taps without awaiting the first — this is the P2-1 race:
+    // the ledger's wasTapHandled→markTapHandled is not atomic, so only the
+    // synchronous in-process claim can save us.
+    const [first, second] = await Promise.all([
+      handleOpenAppTap(c.deps, watchData()),
+      handleOpenAppTap(c.deps, watchData()),
+    ]);
+    const greeted = [first, second].filter((o) => o.greeted);
+    assert.equal(greeted.length, 1, "exactly one concurrent tap greets");
+    const loser = [first, second].find((o) => !o.greeted);
+    assert.equal((loser as { reason: string }).reason, "already-handled");
+    const history = await readHistory(c.storage);
+    assert.equal(history.length, 2, "no duplicate greeting");
+  });
+
   it("persona isolation: another persona's threadId fails closed", async () => {
     const c = makeCtx();
     seedDialog(c.storage);
@@ -304,7 +323,7 @@ describe("end-to-end: jump → watchdog → tap → greeting lands", () => {
     //    (like a real expo-notifications payload).
     assert.equal(c.scheduled.length, 1);
     const data = c.scheduled[0].data;
-    assert.equal(data["kind"], "openapp-watch");
+    assert.equal(data.kind, "openapp-watch");
 
     // 3. She taps the notification → ONE welcome-back greeting lands in the
     //    dialog's real storage.
