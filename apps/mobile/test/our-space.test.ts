@@ -116,9 +116,9 @@ describe("our-space store", () => {
 });
 
 describe("our-space tools", () => {
-  it("exposes 37 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
+  it("exposes 38 dialog-operated tools (memory lives in the canonical memory/ tools)", () => {
     const tools = createOurSpaceTools(new OurSpaceStore(fakeStorage()));
-    assert.equal(tools.length, 37);
+    assert.equal(tools.length, 38);
     const names = tools.map((t) => t.name);
     for (const n of [
       "my_status_read",
@@ -150,6 +150,7 @@ describe("our-space tools", () => {
       "anniversary_add",
       "anniversary_read",
       "anniversary_delete",
+      "anniversary_update",
       "work_add",
       "work_read",
       "work_delete",
@@ -439,6 +440,60 @@ describe("our-space v2: anniversaries", () => {
     await reg.execute("anniversary_add", { title: "Met", date: "2024-02-14" }, ctx);
     const read = await reg.execute("anniversary_read", {}, ctx);
     assert.match(read, /Met.*2024-02-14/);
+  });
+
+  it("updateAnniversary: partial + full update, trims, validates", async () => {
+    const s = new OurSpaceStore(fakeStorage());
+    const item = await s.addAnniversary("Met", "2024-02-14", "  First hello  ");
+    // partial: only title
+    const t1 = await s.updateAnniversary(item.id, { title: "  We met  " });
+    assert.equal(t1?.title, "We met");
+    assert.equal(t1?.date, "2024-02-14"); // untouched
+    assert.equal(t1?.description, "First hello"); // untouched, trimmed at add
+    // full update incl. description clear
+    const t2 = await s.updateAnniversary(item.id, {
+      title: "Anniversary",
+      date: "2024-02-15",
+      description: "",
+    });
+    assert.equal(t2?.title, "Anniversary");
+    assert.equal(t2?.date, "2024-02-15");
+    assert.equal(t2?.description, "");
+    // description trim
+    const t3 = await s.updateAnniversary(item.id, { description: "  Beach trip  " });
+    assert.equal(t3?.description, "Beach trip");
+    // unknown id → null, no throw
+    assert.equal(await s.updateAnniversary("nope", { title: "X" }), null);
+    // validation mirrors add
+    await assert.rejects(() => s.updateAnniversary(item.id, { date: "tomorrow" }));
+    await assert.rejects(() => s.updateAnniversary(item.id, { date: "2024-02-30" }));
+    await assert.rejects(() => s.updateAnniversary(item.id, { title: "   " }));
+    // failed update leaves data intact
+    const after = (await s.listAnniversaries()).find((a) => a.id === item.id);
+    assert.equal(after?.title, "Anniversary");
+    assert.equal(after?.date, "2024-02-15");
+  });
+
+  it("AI tool: anniversary_update", async () => {
+    const store = new OurSpaceStore(fakeStorage());
+    const reg = createToolRegistry(createOurSpaceTools(store));
+    await reg.execute("anniversary_add", { title: "Met", date: "2024-02-14" }, ctx);
+    const [item] = await store.listAnniversaries();
+    const out = await reg.execute(
+      "anniversary_update",
+      { id: item.id, title: "We met", date: "2024-02-15" },
+      ctx,
+    );
+    assert.match(out, /We met.*2024-02-15/);
+    const [updated] = await store.listAnniversaries();
+    assert.equal(updated.title, "We met");
+    assert.equal(updated.date, "2024-02-15");
+    await assert.rejects(() => reg.execute("anniversary_update", { id: "nope", title: "X" }, ctx));
+    await assert.rejects(() => reg.execute("anniversary_update", { id: item.id }, ctx));
+    await assert.rejects(
+      () => reg.execute("anniversary_update", { id: item.id, date: "bogus" }, ctx),
+      /YYYY-MM-DD/,
+    );
   });
 });
 

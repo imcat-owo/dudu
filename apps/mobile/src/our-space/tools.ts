@@ -783,6 +783,39 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
         return "Anniversary deleted.";
       },
     },
+    {
+      name: "anniversary_update",
+      description:
+        "Edit an anniversary in Our Space by id (get the id from anniversary_read). Only the fields you pass are changed; the rest stay as they are.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The anniversary id (from anniversary_read)." },
+          title: { type: "string", description: "New title." },
+          date: { type: "string", description: "New date as YYYY-MM-DD." },
+          description: { type: "string", description: "New note (empty string clears it)." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("Missing required argument: id.");
+        const patch: { title?: string; date?: string; description?: string } = {};
+        const title = strArg(args, "title");
+        const date = strArg(args, "date");
+        if (title) patch.title = title;
+        if (date) patch.date = date;
+        if (typeof args.description === "string") patch.description = args.description;
+        if (Object.keys(patch).length === 0) {
+          throw new ToolError("Nothing to update: pass at least one of title, date, description.");
+        }
+        const item = await store.updateAnniversary(id, patch);
+        if (!item) throw new ToolError(`No anniversary with id "${id}".`);
+        return `Anniversary updated: "${item.title}" (${item.date}).`;
+      },
+    },
 
     // ---- v2: works drawer ----
     {

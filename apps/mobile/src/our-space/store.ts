@@ -205,6 +205,16 @@ async function writeJson(storage: OurSpaceStorage, key: string, value: unknown):
   await storage.setItem(key, JSON.stringify(value));
 }
 
+/** Shared by add/update anniversary: YYYY-MM-DD and a real calendar date. */
+function assertValidAnniversaryDate(date: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
+  const [y, m, d] = date.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+    throw new Error("Date is not a real calendar date.");
+  }
+}
+
 export type OurSpaceListener = () => void;
 
 export class OurSpaceStore {
@@ -698,12 +708,7 @@ export class OurSpaceStore {
     return this.exclusive(async () => {
       const t = title.trim();
       if (!t) throw new Error("Anniversary title is required.");
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD.");
-      const [y, m, d] = date.split("-").map(Number);
-      const dt = new Date(y, m - 1, d);
-      if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
-        throw new Error("Date is not a real calendar date.");
-      }
+      assertValidAnniversaryDate(date);
       const item: Anniversary = {
         id: newId(),
         title: t,
@@ -713,6 +718,30 @@ export class OurSpaceStore {
       };
       const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
       all.push(item);
+      await writeJson(this.storage, KEYS.anniversaries, all);
+      this.emit();
+      return item;
+    });
+  }
+
+  async updateAnniversary(
+    id: string,
+    patch: { title?: string; date?: string; description?: string },
+  ): Promise<Anniversary | null> {
+    return this.exclusive(async () => {
+      const all = await readJson<Anniversary[]>(this.storage, KEYS.anniversaries, []);
+      const item = all.find((a) => a.id === id);
+      if (!item) return null;
+      if (patch.title !== undefined) {
+        const t = patch.title.trim();
+        if (!t) throw new Error("Anniversary title is required.");
+        item.title = t;
+      }
+      if (patch.date !== undefined) {
+        assertValidAnniversaryDate(patch.date);
+        item.date = patch.date;
+      }
+      if (patch.description !== undefined) item.description = patch.description.trim();
       await writeJson(this.storage, KEYS.anniversaries, all);
       this.emit();
       return item;
