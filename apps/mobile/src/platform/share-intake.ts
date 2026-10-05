@@ -50,9 +50,11 @@ export async function takePendingShare(): Promise<PendingShare | null> {
   try {
     const raw = await mod.getString(SHARED_KEYS.pendingShare);
     if (!raw) return null;
-    await mod.remove(SHARED_KEYS.pendingShare);
+    // Parse BEFORE removing: a corrupt payload stays queued for the next
+    // attempt instead of being silently destroyed.
     const parsed = JSON.parse(raw) as PendingShare;
     if (!Array.isArray(parsed.items)) return null;
+    await mod.remove(SHARED_KEYS.pendingShare);
     return parsed;
   } catch {
     return null;
@@ -77,3 +79,37 @@ export function shareToPrompt(share: PendingShare): { text: string; attachments:
 }
 
 export const __sharedForTests = { APP_GROUP_ID, SHARED_KEYS };
+
+/**
+ * Pure routing step: turn a drained share into an `ask()` call that drops
+ * the content into the chat prompt. Returns true when something was routed.
+ * Kept separate from the native read so it is unit-testable without modules.
+ */
+export function routePendingShare(
+  pending: PendingShare | null,
+  ask: (text: string) => void,
+): boolean {
+  if (!pending) return false;
+  const { text, attachments } = shareToPrompt(pending);
+  const extra =
+    attachments.length > 0
+      ? `\n\n[${attachments.length} attachment(s) saved to the shared container]`
+      : "";
+  if (!text && attachments.length === 0) return false;
+  ask(text + extra);
+  return true;
+}
+
+/**
+ * Drain the App Group pending-share queue once and route it to `ask`.
+ * Single source of truth for BOTH the cloud shell (App.tsx) and the local
+ * shell (local-app.tsx) — do not duplicate this logic per mode.
+ * Best-effort: never throws, returns true when something was routed.
+ */
+export async function consumePendingShare(ask: (text: string) => void): Promise<boolean> {
+  try {
+    return routePendingShare(await takePendingShare(), ask);
+  } catch {
+    return false;
+  }
+}

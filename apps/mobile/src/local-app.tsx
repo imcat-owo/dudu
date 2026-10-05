@@ -23,7 +23,7 @@ import {
   Plug,
   SlidersHorizontal,
 } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppState, Dimensions, Pressable, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
@@ -131,6 +131,13 @@ export function LocalApp() {
   // chat mode flips (hook sets differ between cloud and local agent).
   const mode = useChatMode();
   const [prompt, setPrompt] = useState<{ id: number; text: string }>();
+  // B2: share-extension intake target — drop shared content into the chat
+  // prompt, same destination the cloud shell uses. Stable identity so the
+  // intake effects below don't resubscribe.
+  const askLocal = useCallback((text: string) => {
+    setPrompt({ id: Date.now(), text });
+    setSection("chat");
+  }, []);
   // Gap fill A (local multi-dialog): which local dialog is open.
   // "local-main" is the legacy default. The ChatScreen remounts per thread
   // so each dialog gets its own agent/history lifecycle.
@@ -226,6 +233,15 @@ export function LocalApp() {
     void import("./voice/cache-cleanup").then((m) => m.cleanVoiceCache()).catch(() => {});
   }, []);
 
+  // B2: share-extension intake in local mode (P1 silent drop). Drain the App
+  // Group queue on cold start — the same consumePendingShare the cloud shell
+  // uses — and again on every foreground, mirroring App.tsx. Best-effort.
+  useEffect(() => {
+    void import("./platform/share-intake")
+      .then((m) => m.consumePendingShare(askLocal))
+      .catch(() => {});
+  }, [askLocal]);
+
   // Proactive outreach (主动触达) lifecycle — local-first.
   // Foreground: cancel any scheduled nudge (she's here now), record presence.
   // Background: evaluate triggers and schedule AT MOST ONE notification.
@@ -319,6 +335,11 @@ export function LocalApp() {
             // She's back — the nudge is no longer needed.
             await cancelScheduledOutreach(notifPort);
             await outreachStore.markOpened();
+            // B2: she may have shared something in while we were away —
+            // drain the App Group queue, same as the cloud shell.
+            await import("./platform/share-intake")
+              .then((m) => m.consumePendingShare(askLocal))
+              .catch(() => {});
           }
         } catch {
           // Bookkeeping must never break the app lifecycle.
@@ -329,7 +350,7 @@ export function LocalApp() {
       alive = false;
       sub.remove();
     };
-  }, []);
+  }, [askLocal]);
 
   const nav: { id: LocalSection; label: string; icon: LucideIcon }[] = [
     { id: "chat", label: t("tab.chat"), icon: MessageCircle },
@@ -359,10 +380,8 @@ export function LocalApp() {
         setToast(message);
         setTimeout(() => setToast(""), 4000);
       },
-      ask: (text: string) => {
-        setPrompt({ id: Date.now(), text });
-        setSection("chat");
-      },
+      // B2: one definition — the same askLocal the share-intake effects use.
+      ask: askLocal,
     }),
     [api, section],
   );

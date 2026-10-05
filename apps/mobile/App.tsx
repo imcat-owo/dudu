@@ -382,20 +382,11 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
   }, []);
   // Batch 6 (H2): share-extension intake — if the user shared something into
   // Dudu from another app, turn it into a chat prompt. Fire-and-forget.
+  // B2: single source of truth lives in share-intake.consumePendingShare —
+  // the local shell (local-app.tsx) uses the same function.
   const maybeShareIntake = useCallback(async () => {
-    try {
-      const { takePendingShare, shareToPrompt } = await import("./src/platform/share-intake");
-      const pending = await takePendingShare();
-      if (!pending) return;
-      const { text, attachments } = shareToPrompt(pending);
-      const extra =
-        attachments.length > 0
-          ? `\n\n[${attachments.length} attachment(s) saved to the shared container]`
-          : "";
-      if (text || attachments.length > 0) ask(text + extra);
-    } catch {
-      // ignore — share intake is best-effort
-    }
+    const { consumePendingShare } = await import("./src/platform/share-intake");
+    await consumePendingShare(ask);
   }, [ask]);
   useEffect(() => {
     void maybeShareIntake();
