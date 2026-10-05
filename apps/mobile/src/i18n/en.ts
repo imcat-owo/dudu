@@ -2131,6 +2131,13 @@ export const enStrings: Record<StringKey, string> = {
   "backup.remote.test": "Test connection",
   "backup.remote.testOk": "Connected",
   "backup.remote.testFailed": "Can't connect — check URL and credentials",
+  "backup.remote.validation.url-required": "Enter the server address first",
+  "backup.remote.validation.url-scheme": "The address must start with http:// or https://",
+  "backup.remote.validation.url-invalid": "That address doesn't look right — check it",
+  "backup.remote.validation.endpoint-required": "Enter the endpoint first",
+  "backup.remote.validation.endpoint-invalid": "That endpoint doesn't look right — check it",
+  "backup.remote.validation.bucket-required": "Enter the bucket name first",
+  "backup.remote.validation.access-key-required": "Enter the access key first",
   "backup.remote.securityNote":
     "Passwords stay in the phone's secure storage, never in backup files",
 

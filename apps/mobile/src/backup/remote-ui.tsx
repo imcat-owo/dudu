@@ -11,6 +11,7 @@ import { t } from "../i18n";
 import { Button, SectionHeading, useColors } from "../ui";
 import {
   s3Download,
+  s3List,
   s3Upload,
   validateS3,
   validateWebDav,
@@ -87,7 +88,7 @@ export function RemoteBackupSection() {
   const saveWebDav = async () => {
     const err = validateWebDav(wdUrl);
     if (err) {
-      setNotice(t("backup.remote.testFailed"));
+      setNotice(t(`backup.remote.validation.${err}` as Parameters<typeof t>[0]));
       return;
     }
     await AsyncStorage.setItem(WD_URL_KEY, wdUrl.trim());
@@ -100,7 +101,7 @@ export function RemoteBackupSection() {
   const saveS3 = async () => {
     const err = validateS3(s3Endpoint, s3Bucket, s3Key);
     if (err) {
-      setNotice(t("backup.remote.testFailed"));
+      setNotice(t(`backup.remote.validation.${err}` as Parameters<typeof t>[0]));
       return;
     }
     await AsyncStorage.setItem(
@@ -175,7 +176,21 @@ export function RemoteBackupSection() {
         });
         setCloudFiles(files);
       } else {
-        setNotice(t("backup.remote.empty"));
+        const secret = (await secureBackend().getItem(S3_SECRET_KEY)) ?? "";
+        const files = await s3List({
+          kind: "s3",
+          config: {
+            endpoint: s3Endpoint.trim(),
+            region: s3Region.trim(),
+            bucket: s3Bucket.trim(),
+            accessKeyId: s3Key.trim(),
+            prefix: s3Prefix.trim(),
+            pathStyle: true,
+            includeFiles: true,
+          },
+          secretAccessKey: secret,
+        });
+        setCloudFiles(files);
       }
     } catch {
       setNotice(t("backup.remote.testFailed"));

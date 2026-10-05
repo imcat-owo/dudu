@@ -2051,6 +2051,13 @@ const zhHant = {
   "backup.remote.test": "測試連接",
   "backup.remote.testOk": "連上了",
   "backup.remote.testFailed": "連不上，檢查地址和賬號",
+  "backup.remote.validation.url-required": "請先填服務器地址",
+  "backup.remote.validation.url-scheme": "地址要以 http:// 或 https:// 開頭",
+  "backup.remote.validation.url-invalid": "這個地址格式不對，檢查一下",
+  "backup.remote.validation.endpoint-required": "請先填 Endpoint",
+  "backup.remote.validation.endpoint-invalid": "Endpoint 格式不對，檢查一下",
+  "backup.remote.validation.bucket-required": "請先填桶名",
+  "backup.remote.validation.access-key-required": "請先填 Access Key",
   "backup.remote.securityNote": "密碼只存在手機的安全區，不會進備份文件",
 
   // ---- snapshots ----

@@ -150,6 +150,11 @@ function toHex(bytes: Uint8Array): string {
     .join("");
 }
 
+/** RFC 3986 percent-encoding for SigV4 canonical query strings. */
+function encodeRfc3986(s: string): string {
+  return encodeURIComponent(s).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
 /** Sign an S3 request with SigV4. Returns the Authorization header value. */
 export async function s3Sign(
   dest: Extract<RemoteDestination, { kind: "s3" }>,
@@ -158,6 +163,7 @@ export async function s3Sign(
   payloadHash: string,
   amzDate: string, // "20240101T000000Z"
   contentType?: string,
+  query?: Record<string, string>,
 ): Promise<{ authorization: string; url: string }> {
   const { config, secretAccessKey, sessionToken } = dest;
   const dateStamp = amzDate.slice(0, 8);
@@ -168,7 +174,13 @@ export async function s3Sign(
     ? new URL(config.endpoint).host
     : `${config.bucket}.${new URL(config.endpoint).host}`;
   const path = config.pathStyle ? `/${config.bucket}/${objectKey}` : `/${objectKey}`;
-  const url = `${config.endpoint.replace(/\/+$/, "")}${path}`;
+  const canonicalQueryString = query
+    ? Object.keys(query)
+        .sort()
+        .map((k) => `${encodeRfc3986(k)}=${encodeRfc3986(query[k])}`)
+        .join("&")
+    : "";
+  const url = `${config.endpoint.replace(/\/+$/, "")}${path}${canonicalQueryString ? `?${canonicalQueryString}` : ""}`;
 
   const headers: Record<string, string> = {
     host,
@@ -183,7 +195,7 @@ export async function s3Sign(
     .sort()
     .map((k) => `${k}:${headers[k].trim()}\n`)
     .join("");
-  const canonicalRequest = [method, path, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+  const canonicalRequest = [method, path, canonicalQueryString, canonicalHeaders, signedHeaders, payloadHash].join("\n");
 
   const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
   const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, await sha256Hex(canonicalRequest)].join("\n");
@@ -247,6 +259,37 @@ export async function s3Download(
     throw new Error(`s3-download-failed:${res.status}`);
   }
   return res.text();
+}
+
+/** List backup files under the configured prefix via ListObjectsV2. Returns filenames with the prefix stripped, filtered to .json (mirrors webdavList). */
+export async function s3List(
+  dest: Extract<RemoteDestination, { kind: "s3" }>,
+  fetchFn: FetchLike = fetch,
+  now: Date = new Date(),
+): Promise<string[]> {
+  const prefix = dest.config.prefix.replace(/^\/+|\/+$/g, "");
+  const query: Record<string, string> = { "list-type": "2" };
+  if (prefix) query.prefix = `${prefix}/`;
+  const payloadHash = await sha256Hex("");
+  const amzDate = `${now.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
+  const { authorization, url } = await s3Sign(dest, "GET", "", payloadHash, amzDate, undefined, query);
+  const headers: Record<string, string> = {
+    Authorization: authorization,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": amzDate,
+  };
+  if (dest.sessionToken) headers["x-amz-security-token"] = dest.sessionToken;
+  const res = await fetchFn(url, { method: "GET", headers });
+  if (!res.ok) {
+    throw new Error(`s3-list-failed:${res.status}`);
+  }
+  const xml = await res.text();
+  const names: string[] = [];
+  for (const m of xml.matchAll(/<Key>([^<]+\.json)<\/Key>/g)) {
+    const key = m[1];
+    names.push(prefix && key.startsWith(`${prefix}/`) ? key.slice(prefix.length + 1) : key);
+  }
+  return names;
 }
 
 /** Validate a WebDAV config (returns error code or null). */

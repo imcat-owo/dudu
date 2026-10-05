@@ -2048,6 +2048,13 @@ const zhHans = {
   "backup.remote.test": "测试连接",
   "backup.remote.testOk": "连上了",
   "backup.remote.testFailed": "连不上，检查地址和账号",
+  "backup.remote.validation.url-required": "请先填服务器地址",
+  "backup.remote.validation.url-scheme": "地址要以 http:// 或 https:// 开头",
+  "backup.remote.validation.url-invalid": "这个地址格式不对，检查一下",
+  "backup.remote.validation.endpoint-required": "请先填 Endpoint",
+  "backup.remote.validation.endpoint-invalid": "Endpoint 格式不对，检查一下",
+  "backup.remote.validation.bucket-required": "请先填桶名",
+  "backup.remote.validation.access-key-required": "请先填 Access Key",
   "backup.remote.securityNote": "密码只存在手机的安全区，不会进备份文件",
 
   // ---- snapshots ----
