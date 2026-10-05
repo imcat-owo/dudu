@@ -9,11 +9,24 @@
 
 import { IshSandboxBackend } from "./backend-ish";
 import { SshDockerBackend } from "./backend-ssh-docker";
+import {
+  activeServer,
+  deleteServer as deleteServerFromStore,
+  EMPTY_SERVER_STORE,
+  migrateLegacySshConfig,
+  parseServerStore,
+  type SandboxServer,
+  type SandboxServerStore,
+  upsertServer,
+} from "./servers";
 import { RelaySshTransport } from "./transport-relay";
 import type { SandboxBackend, SandboxBackendId, SshConfig } from "./types";
 
 const ACTIVE_KEY = "dudu.sandbox.activeBackend.v1";
+/** Legacy single-server config key — read once for migration, then removed. */
 const SSH_CONFIG_KEY = "dudu.sandbox.sshConfig.v1";
+/** Multi-server list (names + per-server SshConfig, secrets included). SecureStore. */
+const SERVERS_KEY = "dudu.sandbox.servers.v1";
 
 export interface SecureBackend {
   getItem(key: string): Promise<string | null>;
@@ -93,7 +106,7 @@ export class SandboxManager {
   private cloudBackend: SshDockerBackend;
   private localBackend: IshSandboxBackend;
   private activeId: SandboxBackendId = "cloud";
-  private sshConfigured = false;
+  private serverStore: SandboxServerStore = EMPTY_SERVER_STORE;
   private secure: SecureBackend | null = null;
   private prefs: PrefsBackend | null = null;
   private initialized = false;
@@ -146,18 +159,45 @@ export class SandboxManager {
       // keep default
     }
     try {
-      const rawCfg = await this.secure.getItem(SSH_CONFIG_KEY);
-      if (rawCfg) {
-        const parsed: unknown = JSON.parse(rawCfg);
-        if (isSshConfig(parsed)) {
-          this.cloudBackend.setConfig(parsed);
-          this.sshConfigured = true;
+      const rawStore = await this.secure.getItem(SERVERS_KEY);
+      const parsed = rawStore ? parseServerStore(rawStore) : null;
+      if (parsed) {
+        this.serverStore = parsed;
+      } else {
+        // One-time migration: her old single-server config becomes the first
+        // list entry (named after its host — she can rename it). The legacy
+        // key is removed only after the new store is safely written: a move,
+        // never a drop.
+        const rawCfg = await this.secure.getItem(SSH_CONFIG_KEY);
+        if (rawCfg) {
+          try {
+            const cfg: unknown = JSON.parse(rawCfg);
+            if (isSshConfig(cfg)) {
+              this.serverStore = migrateLegacySshConfig(cfg);
+              await this.persistServers();
+              await this.secure.deleteItem(SSH_CONFIG_KEY).catch(() => {});
+            }
+          } catch {
+            // corrupt legacy config: start with an empty list
+          }
         }
       }
     } catch {
-      // corrupt config: start without one; user re-enters it
+      // unreadable store: start with an empty list; she re-adds it
     }
+    this.applyActiveConfig();
     this.initialized = true;
+  }
+
+  /** Push the active server's config into the cloud backend (or clear it). */
+  private applyActiveConfig(): void {
+    const active = activeServer(this.serverStore);
+    this.cloudBackend.setConfig(active ? active.config : null);
+  }
+
+  private async persistServers(): Promise<void> {
+    if (!this.secure) this.secure = await loadSecureStore();
+    await this.secure.setItem(SERVERS_KEY, JSON.stringify(this.serverStore));
   }
 
   activeBackendId(): SandboxBackendId {
@@ -183,23 +223,60 @@ export class SandboxManager {
     return this.backend(this.activeId);
   }
 
-  /** Persist SSH config to SecureStore (never to the repo). */
-  async saveSshConfig(config: SshConfig): Promise<void> {
-    if (!this.secure) this.secure = await loadSecureStore();
-    await this.secure.setItem(SSH_CONFIG_KEY, JSON.stringify(config));
-    this.cloudBackend.setConfig(config);
-    this.sshConfigured = true;
+  /** All saved servers (SecureStore). */
+  serverList(): SandboxServer[] {
+    return this.serverStore.servers;
   }
 
-  async clearSshConfig(): Promise<void> {
-    if (!this.secure) this.secure = await loadSecureStore();
-    await this.secure.deleteItem(SSH_CONFIG_KEY).catch(() => {});
-    this.cloudBackend.setConfig(null);
-    this.sshConfigured = false;
+  /** The active server, or null when the list is empty. */
+  activeServer(): SandboxServer | null {
+    return activeServer(this.serverStore);
   }
 
-  hasSshConfig(): boolean {
-    return this.sshConfigured;
+  /**
+   * Add or update a server. If it is the active one and the backend is
+   * connected, the live connection is dropped first — the next connect uses
+   * the new credentials. Never silently keeps stale creds.
+   */
+  async saveServer(server: SandboxServer): Promise<void> {
+    const wasActive =
+      activeServer(this.serverStore)?.id === server.id || this.serverStore.servers.length === 0;
+    this.serverStore = upsertServer(this.serverStore, server);
+    if (wasActive) {
+      if (this.cloudBackend.connectionState() === "connected") {
+        await this.cloudBackend.disconnect().catch(() => {});
+      }
+      this.applyActiveConfig();
+    }
+    await this.persistServers();
+  }
+
+  /**
+   * Delete a server (and its secret). Deleting the active one disconnects
+   * and falls back to the first remaining server; deleting the last one
+   * leaves the backend honestly unconfigured ("no server selected").
+   */
+  async deleteServer(id: string): Promise<void> {
+    const wasActive = activeServer(this.serverStore)?.id === id;
+    this.serverStore = deleteServerFromStore(this.serverStore, id);
+    if (wasActive && this.cloudBackend.connectionState() === "connected") {
+      await this.cloudBackend.disconnect().catch(() => {});
+    }
+    this.applyActiveConfig();
+    await this.persistServers();
+  }
+
+  /** Tap-to-switch: disconnect the current server, activate the new one. */
+  async setActiveServer(id: string): Promise<void> {
+    const target = this.serverStore.servers.find((s) => s.id === id);
+    if (!target) throw new Error("sandbox.noServerSelected");
+    if (activeServer(this.serverStore)?.id === id) return; // already active
+    if (this.cloudBackend.connectionState() === "connected") {
+      await this.cloudBackend.disconnect().catch(() => {});
+    }
+    this.serverStore = { ...this.serverStore, activeServerId: id };
+    this.applyActiveConfig();
+    await this.persistServers();
   }
 }
 

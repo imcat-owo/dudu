@@ -233,7 +233,7 @@ describe("SandboxManager", () => {
     assert.equal(m.activeBackend().id, "local");
   });
 
-  it("saves SSH config to SecureStore and tracks presence", async () => {
+  it("saves servers to SecureStore and tracks the active one", async () => {
     const store = new Map<string, string>();
     const m = SandboxManager.forTest({
       secure: {
@@ -247,21 +247,101 @@ describe("SandboxManager", () => {
       },
     });
     await m.init();
-    assert.equal(m.hasSshConfig(), false);
-    await m.saveSshConfig({
-      host: "h",
+    assert.equal(m.activeServer(), null);
+    await m.saveServer({
+      id: "srv-1",
+      name: "主力机",
+      config: {
+        host: "h",
+        port: 22,
+        username: "u",
+        authType: "password",
+        privateKey: null,
+        password: "p",
+      },
+    });
+    assert.equal(m.activeServer()?.name, "主力机");
+    assert.ok(store.has("dudu.sandbox.servers.v1"));
+    // password must be in the secure store, and the key must mention nothing else
+    assert.ok(store.get("dudu.sandbox.servers.v1")!.includes('"password":"p"'));
+    await m.deleteServer("srv-1");
+    assert.equal(m.activeServer(), null);
+  });
+
+  it("migrates the legacy single-server config into the server list", async () => {
+    const store = new Map<string, string>([
+      [
+        "dudu.sandbox.sshConfig.v1",
+        JSON.stringify({
+          host: "legacy.example.com",
+          port: 22,
+          username: "root",
+          authType: "key",
+          privateKey: "PEM",
+          password: null,
+        }),
+      ],
+    ]);
+    const secure = {
+      getItem: async (k: string) => store.get(k) ?? null,
+      setItem: async (k: string, v: string) => {
+        store.set(k, v);
+      },
+      deleteItem: async (k: string) => {
+        store.delete(k);
+      },
+    };
+    const m = SandboxManager.forTest({ secure });
+    await m.init();
+    // Migrated: named after the host, secret intact, active.
+    const servers = m.serverList();
+    assert.equal(servers.length, 1);
+    assert.equal(servers[0].name, "legacy.example.com");
+    assert.equal(servers[0].config.privateKey, "PEM");
+    assert.equal(m.activeServer()?.id, servers[0].id);
+    // A move, not a drop: new store written, legacy key removed.
+    assert.ok(store.has("dudu.sandbox.servers.v1"));
+    assert.ok(!store.has("dudu.sandbox.sshConfig.v1"));
+    // Second init does not duplicate: the store is now authoritative.
+    const m2 = SandboxManager.forTest({ secure });
+    await m2.init();
+    assert.equal(m2.serverList().length, 1);
+  });
+
+  it("switches the active server and falls back honestly when deleted", async () => {
+    const store = new Map<string, string>();
+    const secure = {
+      getItem: async (k: string) => store.get(k) ?? null,
+      setItem: async (k: string, v: string) => {
+        store.set(k, v);
+      },
+      deleteItem: async (k: string) => {
+        store.delete(k);
+      },
+    };
+    const m = SandboxManager.forTest({ secure });
+    await m.init();
+    const cfg = (host: string) => ({
+      host,
       port: 22,
       username: "u",
-      authType: "password",
-      privateKey: null,
-      password: "p",
+      authType: "key" as const,
+      privateKey: "PEM",
+      password: null,
     });
-    assert.equal(m.hasSshConfig(), true);
-    assert.ok(store.has("dudu.sandbox.sshConfig.v1"));
-    // password must be in the secure store, and the key must mention nothing else
-    assert.ok(store.get("dudu.sandbox.sshConfig.v1")!.includes('"password":"p"'));
-    await m.clearSshConfig();
-    assert.equal(m.hasSshConfig(), false);
+    await m.saveServer({ id: "a", name: "A", config: cfg("a.example.com") });
+    await m.saveServer({ id: "b", name: "B", config: cfg("b.example.com") });
+    assert.equal(m.activeServer()?.id, "a"); // first saved stays active
+    await m.setActiveServer("b");
+    assert.equal(m.activeServer()?.id, "b");
+    await assert.rejects(m.setActiveServer("nope"), /sandbox.noServerSelected/);
+    // Deleting the active server falls back to the first remaining one.
+    await m.deleteServer("b");
+    assert.equal(m.activeServer()?.id, "a");
+    // Deleting the last one leaves no active server (honest, no crash).
+    await m.deleteServer("a");
+    assert.equal(m.activeServer(), null);
+    assert.equal(m.serverList().length, 0);
   });
 
   it("ignores corrupt persisted backend id and config", async () => {

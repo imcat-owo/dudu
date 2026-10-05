@@ -10,8 +10,10 @@ import {
   Cpu,
   LoaderCircle,
   MonitorSmartphone,
+  Pencil,
   Play,
   PlugZap,
+  Plus,
   RefreshCw,
   Square,
   Terminal as TerminalIcon,
@@ -34,6 +36,7 @@ import {
   useStyles,
 } from "../ui";
 import { sandboxManager } from "./manager";
+import { newServerId, type SandboxServer } from "./servers";
 import type {
   SandboxBackend,
   SandboxBackendId,
@@ -115,12 +118,21 @@ function BackendCard({
   );
 }
 
-function SshConfigForm({ onSaved }: { onSaved: () => void }) {
+function SshConfigForm({
+  server,
+  onSaved,
+  onCancel,
+}: {
+  server: SandboxServer | null;
+  onSaved: (server: SandboxServer) => void;
+  onCancel: () => void;
+}) {
   const colors = useColors();
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("22");
-  const [username, setUsername] = useState("root");
-  const [authType, setAuthType] = useState<"key" | "password">("key");
+  const [name, setName] = useState(server?.name ?? "");
+  const [host, setHost] = useState(server?.config.host ?? "");
+  const [port, setPort] = useState(String(server?.config.port ?? 22));
+  const [username, setUsername] = useState(server?.config.username ?? "root");
+  const [authType, setAuthType] = useState<"key" | "password">(server?.config.authType ?? "key");
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -128,23 +140,37 @@ function SshConfigForm({ onSaved }: { onSaved: () => void }) {
   const save = async () => {
     setError("");
     const portNum = Number.parseInt(port, 10);
-    if (!host.trim() || !username.trim() || !secret.trim() || Number.isNaN(portNum)) {
+    const secretText = secret.trim();
+    if (!name.trim() || !host.trim() || !username.trim() || Number.isNaN(portNum)) {
+      setError(t("sandbox.cloud.noConfig"));
+      return;
+    }
+    if (!secretText && (!server || server.config.authType !== authType)) {
+      // New server, or switched auth type: the old secret (if any) no longer
+      // applies — a fresh one is required. Editing with the same auth type
+      // may leave it blank to keep the saved secret.
       setError(t("sandbox.cloud.noConfig"));
       return;
     }
     setBusy(true);
     try {
+      const old = server?.config;
       const config: SshConfig = {
         host: host.trim(),
         port: portNum,
         username: username.trim(),
         authType,
-        privateKey: authType === "key" ? secret : null,
-        password: authType === "password" ? secret : null,
+        privateKey: authType === "key" ? secretText || old?.privateKey || null : null,
+        password: authType === "password" ? secretText || old?.password || null : null,
       };
-      await sandboxManager.saveSshConfig(config);
+      const next: SandboxServer = {
+        id: server?.id ?? newServerId(),
+        name: name.trim(),
+        config,
+      };
+      await sandboxManager.saveServer(next);
       setSecret("");
-      onSaved();
+      onSaved(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -154,6 +180,12 @@ function SshConfigForm({ onSaved }: { onSaved: () => void }) {
 
   return (
     <View style={{ gap: 10 }}>
+      <Field
+        label={t("sandbox.serverName")}
+        value={name}
+        onChangeText={setName}
+        placeholder={t("sandbox.serverNamePlaceholder")}
+      />
       <Field label={t("sandbox.host")} value={host} onChangeText={setHost} autoCapitalize="none" />
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
@@ -203,10 +235,77 @@ function SshConfigForm({ onSaved }: { onSaved: () => void }) {
         multiline={authType === "key"}
         autoCapitalize="none"
       />
+      {server ? (
+        <TText style={{ fontSize: 11, color: colors.muted }}>{t("sandbox.secretKeepHint")}</TText>
+      ) : null}
       {error ? <ErrorNotice error={error} /> : null}
-      <Button primary onPress={save} disabled={busy}>
-        {busy ? <LoaderCircle size={16} /> : t("sandbox.saveAndConnect")}
-      </Button>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Button primary onPress={save} disabled={busy}>
+            {busy ? <LoaderCircle size={16} /> : t("sandbox.saveAndConnect")}
+          </Button>
+        </View>
+        <Button onPress={onCancel} disabled={busy}>
+          {t("common.cancel")}
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+function ServerRow({
+  server,
+  active,
+  state,
+  onSelect,
+  onEdit,
+  onDelete,
+}: {
+  server: SandboxServer;
+  active: boolean;
+  state: SandboxConnectionState;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const colors = useColors();
+  const s = useStyles();
+  return (
+    <View
+      style={[
+        s.card,
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          borderWidth: active ? 2 : 1,
+          borderColor: active ? colors.blueDark : colors.line,
+        },
+      ]}
+    >
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ checked: active }}
+        onPress={onSelect}
+        style={{ flex: 1, gap: 2 }}
+      >
+        <TText style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>{server.name}</TText>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <StatusDot state={active ? state : "disconnected"} />
+          <TText style={{ fontSize: 12, color: colors.muted }}>{server.config.host}</TText>
+        </View>
+      </Pressable>
+      <Pressable onPress={onEdit} accessibilityLabel={t("sandbox.editServer")} hitSlop={8}>
+        <Pencil size={16} color={colors.muted} />
+      </Pressable>
+      <Pressable onPress={onDelete} accessibilityLabel={t("common.delete")} hitSlop={8}>
+        <Trash2 size={16} color={colors.muted} />
+      </Pressable>
+      {active ? (
+        <View
+          style={{ width: 8, height: 8, borderRadius: radii.xs, backgroundColor: colors.blueDark }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -370,6 +469,10 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [relayMissing, setRelayMissing] = useState(false);
+  const [servers, setServers] = useState<SandboxServer[]>([]);
+  const [activeServerId, setActiveServerIdState] = useState<string | null>(null);
+  const [editing, setEditing] = useState<SandboxServer | "new" | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -377,6 +480,8 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
       await sandboxManager.init();
       if (live) {
         setActiveId(sandboxManager.activeBackendId());
+        setServers(sandboxManager.serverList());
+        setActiveServerIdState(sandboxManager.activeServer()?.id ?? null);
         setReady(true);
       }
     })();
@@ -385,12 +490,17 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
-  const refresh = () => setTick((x) => x + 1);
+  const refresh = () => {
+    setServers(sandboxManager.serverList());
+    setActiveServerIdState(sandboxManager.activeServer()?.id ?? null);
+    setTick((x) => x + 1);
+  };
   const backend = sandboxManager.backend(activeId);
   void tick;
 
   const select = async (id: SandboxBackendId) => {
     setError("");
+    setRelayMissing(false);
     setBusy(true);
     try {
       await sandboxManager.setActiveBackend(id);
@@ -402,17 +512,65 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const failConnect = (e: unknown) => {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Translate bare i18n keys (e.g. sandbox.cloud.noConfig); relay errors
+    // carry a detail suffix and stay raw — the relayMissing note below is
+    // the human-readable part.
+    setError(/^sandbox\.[a-zA-Z.]+$/.test(msg) ? t(msg as StringKey) : msg);
+    // The relay (传话员) isn't deployed on that server yet: say so in plain
+    // language, next to the raw error.
+    setRelayMissing(msg.includes("sandbox.relay.unreachable"));
+  };
+
   const connect = async () => {
     setError("");
+    setRelayMissing(false);
     setBusy(true);
     try {
       await backend.connect();
     } catch (e) {
-      setError(e instanceof Error ? t(e.message as StringKey) : String(e));
+      failConnect(e);
     } finally {
       setBusy(false);
       refresh();
     }
+  };
+
+  /** Tap a server row: switch to it, then connect. */
+  const selectServer = async (id: string) => {
+    setError("");
+    setRelayMissing(false);
+    setBusy(true);
+    try {
+      await sandboxManager.setActiveServer(id);
+      await sandboxManager.backend("cloud").connect();
+    } catch (e) {
+      failConnect(e);
+    } finally {
+      setBusy(false);
+      refresh();
+    }
+  };
+
+  const removeServer = async (id: string) => {
+    setError("");
+    setRelayMissing(false);
+    setBusy(true);
+    try {
+      await sandboxManager.deleteServer(id);
+      setEditing(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      refresh();
+    }
+  };
+
+  const onServerSaved = async (server: SandboxServer) => {
+    setEditing(null);
+    await selectServer(server.id);
   };
 
   const disconnect = async () => {
@@ -423,11 +581,6 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
       setBusy(false);
       refresh();
     }
-  };
-
-  const clearConfig = async () => {
-    await sandboxManager.clearSshConfig();
-    refresh();
   };
 
   /**
@@ -465,6 +618,9 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
             />
           ))}
           {error ? <ErrorNotice error={error} /> : null}
+          {relayMissing ? (
+            <TText style={{ fontSize: 12, color: colors.muted }}>{t("sandbox.relayMissing")}</TText>
+          ) : null}
 
           {state === "error" || state === "unavailable" ? (
             <View style={{ flexDirection: "row", gap: 8 }}>
@@ -474,15 +630,45 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
             </View>
           ) : null}
 
-          {activeId === "cloud" && state === "disconnected" ? (
-            <Card style={{ gap: 10 }}>
-              <TText style={{ fontSize: 12, color: colors.muted }}>{t("sandbox.relayNote")}</TText>
-              <SshConfigForm
-                onSaved={() => {
-                  void connect();
-                }}
-              />
-            </Card>
+          {activeId === "cloud" ? (
+            <View style={{ gap: 10 }}>
+              <SectionHeading title={t("sandbox.servers")} />
+              {editing ? (
+                <Card style={{ gap: 10 }}>
+                  <SshConfigForm
+                    server={editing === "new" ? null : editing}
+                    onSaved={onServerSaved}
+                    onCancel={() => setEditing(null)}
+                  />
+                </Card>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {servers.length === 0 ? (
+                    <TText style={{ fontSize: 13, color: colors.muted }}>
+                      {t("sandbox.noServers")}
+                    </TText>
+                  ) : (
+                    servers.map((s) => (
+                      <ServerRow
+                        key={s.id}
+                        server={s}
+                        active={s.id === activeServerId}
+                        state={state}
+                        onSelect={() => selectServer(s.id)}
+                        onEdit={() => setEditing(s)}
+                        onDelete={() => removeServer(s.id)}
+                      />
+                    ))
+                  )}
+                  <Button icon={Plus} onPress={() => setEditing("new")} disabled={busy}>
+                    {t("sandbox.addServer")}
+                  </Button>
+                  <TText style={{ fontSize: 11, color: colors.muted }}>
+                    {t("sandbox.relayNote")}
+                  </TText>
+                </View>
+              )}
+            </View>
           ) : null}
 
           {state === "connected" ? (
@@ -490,15 +676,10 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
               <Button icon={Unplug} onPress={disconnect} disabled={busy}>
                 {t("sandbox.disconnect")}
               </Button>
-              {activeId === "cloud" ? (
-                <Button icon={Trash2} onPress={clearConfig}>
-                  {t("common.delete")}
-                </Button>
-              ) : null}
             </View>
-          ) : state === "disconnected" && activeId === "cloud" && sandboxManager.hasSshConfig() ? (
+          ) : state === "disconnected" && activeId === "cloud" && activeServerId ? (
             <Button primary icon={PlugZap} onPress={connect} disabled={busy}>
-              {busy ? <LoaderCircle size={16} /> : t("sandbox.saveAndConnect")}
+              {busy ? <LoaderCircle size={16} /> : t("sandbox.connect")}
             </Button>
           ) : null}
 
