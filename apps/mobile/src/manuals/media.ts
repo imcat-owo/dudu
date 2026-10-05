@@ -23,6 +23,14 @@ Showing it to her:
 - The image is ALSO saved automatically to the works drawer in Our Space
   (作品小抽屉, the Instagram-style grid). Tell her it's there so she can
   find it later — don't make her dig through chat history.
+- When you drew this on your OWN initiative (she didn't ask for it in this
+  chat): the drawer is invisible — she will never know unless you show her.
+  ALSO call feed_post with the image attached (take the image URL out of the
+  image_message JSON block and pass it as imageUri) plus one short warm
+  line, so it lands in her Our Space feed where she'll actually see it.
+  One feed post per drawing, never spam. If she asked for the image here in
+  chat, the chat bubble is already the delivery — don't double-post it to
+  the feed.
 
 Iterating ("把刚才那张改成蓝色的", "再可爱一点"):
 - Call generate_image AGAIN with the FULL refined prompt — describe the
