@@ -148,11 +148,12 @@ function normalize(status: string | undefined): NativeAppStatus {
   return "undetermined";
 }
 
-/** Lazy require — keeps this module importable in node tests. */
-function tryRequire(name: string): unknown | null {
+/** Lazy require — keeps this module importable in node tests.
+ * Takes a thunk so Metro sees a static require("literal") at bundle time
+ * (Metro rejects require(variable)). */
+function tryRequire<T>(fn: () => T): T | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require(name);
+    return fn();
   } catch {
     return null;
   }
@@ -162,7 +163,7 @@ function tryRequire(name: string): unknown | null {
 
 export async function checkAppleMusicStatus(): Promise<NativeAppStatus> {
   try {
-    const mod = tryRequire("./music/sources.js") as {
+    const mod = tryRequire(() => require("./music/sources")) as {
       getMusicSource?: (id: string) => { getAuthState?: () => Promise<string> } | undefined;
     } | null;
     const src = mod?.getMusicSource?.("apple-music");
@@ -178,7 +179,7 @@ export async function checkAppleMusicStatus(): Promise<NativeAppStatus> {
 
 export async function requestAppleMusic(): Promise<NativeAppStatus> {
   try {
-    const mod = tryRequire("./music/sources.js") as {
+    const mod = tryRequire(() => require("./music/sources")) as {
       getMusicSource?: (id: string) => { authorize?: () => Promise<string> } | undefined;
     } | null;
     const src = mod?.getMusicSource?.("apple-music");
@@ -194,7 +195,7 @@ export async function requestAppleMusic(): Promise<NativeAppStatus> {
 /* ---------------- Calendar & Reminders (expo-calendar) ---------------- */
 
 export async function checkCalendarStatus(): Promise<NativeAppStatus> {
-  const Calendar = tryRequire("expo-calendar") as {
+  const Calendar = tryRequire(() => require("expo-calendar")) as {
     getCalendarPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Calendar?.getCalendarPermissionsAsync) return "unavailable";
@@ -207,7 +208,7 @@ export async function checkCalendarStatus(): Promise<NativeAppStatus> {
 }
 
 export async function requestCalendar(): Promise<NativeAppStatus> {
-  const Calendar = tryRequire("expo-calendar") as {
+  const Calendar = tryRequire(() => require("expo-calendar")) as {
     requestCalendarPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Calendar?.requestCalendarPermissionsAsync) return "unavailable";
@@ -220,7 +221,7 @@ export async function requestCalendar(): Promise<NativeAppStatus> {
 }
 
 export async function checkRemindersStatus(): Promise<NativeAppStatus> {
-  const Calendar = tryRequire("expo-calendar") as {
+  const Calendar = tryRequire(() => require("expo-calendar")) as {
     getRemindersPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Calendar?.getRemindersPermissionsAsync) return "unavailable";
@@ -233,7 +234,7 @@ export async function checkRemindersStatus(): Promise<NativeAppStatus> {
 }
 
 export async function requestReminders(): Promise<NativeAppStatus> {
-  const Calendar = tryRequire("expo-calendar") as {
+  const Calendar = tryRequire(() => require("expo-calendar")) as {
     requestRemindersPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Calendar?.requestRemindersPermissionsAsync) return "unavailable";
@@ -248,7 +249,7 @@ export async function requestReminders(): Promise<NativeAppStatus> {
 /* ---------------- Contacts (expo-contacts) ---------------- */
 
 export async function checkContactsStatus(): Promise<NativeAppStatus> {
-  const Contacts = tryRequire("expo-contacts") as {
+  const Contacts = tryRequire(() => require("expo-contacts")) as {
     getPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Contacts?.getPermissionsAsync) return "unavailable";
@@ -261,7 +262,7 @@ export async function checkContactsStatus(): Promise<NativeAppStatus> {
 }
 
 export async function requestContacts(): Promise<NativeAppStatus> {
-  const Contacts = tryRequire("expo-contacts") as {
+  const Contacts = tryRequire(() => require("expo-contacts")) as {
     requestPermissionsAsync?: () => Promise<{ status: string }>;
   } | null;
   if (!Contacts?.requestPermissionsAsync) return "unavailable";
@@ -283,7 +284,7 @@ const HEALTH_READ_TYPES = [
 ] as const;
 
 export async function checkHealthKitStatus(): Promise<NativeAppStatus> {
-  const Health = tryRequire("react-native-health") as {
+  const Health = tryRequire(() => require("react-native-health")) as {
     isAvailable?: (cb: (err: unknown, ok: boolean) => void) => void;
     getAuthStatus?: (
       perms: { read: string[]; write: string[] },
@@ -300,7 +301,7 @@ export async function checkHealthKitStatus(): Promise<NativeAppStatus> {
 }
 
 export async function requestHealthKit(): Promise<NativeAppStatus> {
-  const Health = tryRequire("react-native-health") as {
+  const Health = tryRequire(() => require("react-native-health")) as {
     initHealthKit?: (
       opts: { permissions: { read: string[]; write: string[] } },
       cb: (err: unknown, res: unknown) => void,
@@ -322,7 +323,7 @@ export async function requestHealthKit(): Promise<NativeAppStatus> {
 
 /** Read today's step count. Throws if not authorized. */
 export async function readTodaySteps(): Promise<number> {
-  const Health = tryRequire("react-native-health") as {
+  const Health = tryRequire(() => require("react-native-health")) as {
     getStepCount?: (
       opts: { date: string },
       cb: (err: unknown, res: { value: number }) => void,
@@ -369,12 +370,12 @@ export function formatBatteryState(state: DeviceInfo["batteryState"]): StringKey
 
 /** Read battery + device info. Throws if the native modules are missing. */
 export async function getDeviceInfo(): Promise<DeviceInfo> {
-  const Battery = tryRequire("expo-battery") as {
+  const Battery = tryRequire(() => require("expo-battery")) as {
     getBatteryLevelAsync?: () => Promise<number>;
     getBatteryStateAsync?: () => Promise<number>;
     isLowPowerModeEnabledAsync?: () => Promise<boolean>;
   } | null;
-  const Device = tryRequire("expo-device") as {
+  const Device = tryRequire(() => require("expo-device")) as {
     modelName?: string | null;
     osName?: string | null;
     osVersion?: string | null;
@@ -422,8 +423,8 @@ export async function getDeviceInfo(): Promise<DeviceInfo> {
  * modules are present and working. Nothing to request, so request = check.
  */
 export async function checkDeviceInfoStatus(): Promise<NativeAppStatus> {
-  const Battery = tryRequire("expo-battery");
-  const Device = tryRequire("expo-device");
+  const Battery = tryRequire(() => require("expo-battery"));
+  const Device = tryRequire(() => require("expo-device"));
   return Battery || Device ? "granted" : "unavailable";
 }
 
