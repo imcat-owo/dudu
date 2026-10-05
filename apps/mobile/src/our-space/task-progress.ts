@@ -8,6 +8,8 @@
  * Storage is injectable (AsyncStorage in production, Map-backed fake in tests).
  */
 
+import { triggerMilestoneCelebration } from "../avatar-celebration";
+
 export type TaskStatus = "running" | "stuck" | "done";
 
 /**
@@ -96,9 +98,14 @@ export class TaskProgressStore {
     if (task.progress >= 1 && task.status === "running") {
       task.status = "done";
     }
+    // A3: a task freshly reaching done is a milestone — the avatar plays
+    // the level-up clip for MILESTONE_CELEBRATION_MS, then falls back.
+    // (load() hydrates the cache directly, so cold starts never celebrate.)
+    const becameDone = prev?.status !== "done" && task.status === "done";
     this.cache.set(task.id, task);
     await this.storage.setItem(KEY_PREFIX + task.id, JSON.stringify(task)).catch(() => null);
     this.emit();
+    if (becameDone) triggerMilestoneCelebration(now);
     return task;
   }
 

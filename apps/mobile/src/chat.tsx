@@ -35,6 +35,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -61,7 +62,7 @@ import {
   type AskUserRequest,
 } from "./mcp/ask-user";
 import { shouldConvertPaste, savePasteAsFile, pastePreview } from "./mcp/long-paste";
-import { AnimatedAvatar } from "./animated-avatar";
+import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
 import { capabilityStore } from "./api-groups/capability-store";
 import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
 import { DialogModelChip } from "./api-groups/dialog-model-sheet";
@@ -171,6 +172,16 @@ import { UserMessageBody, MessageMetaRow } from "./extras/message-ui";
 
 /** Batch 3: voice correction learning — persistent confusion map (AsyncStorage). */
 const correctionStore = createCorrectionStore(AsyncStorage);
+
+/**
+ * A3: tools that mean the AI is "making something" — while one of these is
+ * the agent's activeToolName, the avatar plays making_something.mp4.
+ */
+const CREATIVE_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "generate_image",
+  "generate_podcast",
+  "generate_video",
+]);
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -423,6 +434,14 @@ export function ChatScreen({
   // Batch 7: generation flag + side effects (keep-awake I8, haptic I9,
   // VoiceOver announcement I5). Placed after `busy` is declared.
   const generating = busy || agent.isRunning;
+  // A3: the AI face is alive — idle by default, working while generating,
+  // making_something while a creative tool runs, milestone_level_up briefly
+  // after a task card completes or on anniversary day.
+  const avatarState = useLiveAvatarState({
+    busy,
+    running: agent.isRunning,
+    makingSomething: CREATIVE_TOOL_NAMES.has(agent.activeToolName ?? ""),
+  });
   useEffect(() => {
     if (!getExtrasPrefs().keepScreenOnWhileGenerating || !generating) {
       void deactivateKeepAwake("dudu-chat").catch(() => {});
@@ -651,6 +670,25 @@ export function ChatScreen({
     selection.existing,
     incognitoOn,
   ]);
+  // A3: re-render on tool start/stop edges so the avatar clip switches
+  // promptly. local-agent sets/clears activeToolName around each
+  // registry.execute with an emit on both edges; the main subscription
+  // above may bail out (identical setState values), so track the edge here.
+  const [, bumpAvatar] = useReducer((x: number) => x + 1, 0);
+  const activeToolRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isReady) return;
+    const sub = agent.subscribe({
+      onMessagesChanged: () => {
+        const name = agent.activeToolName;
+        if (name !== activeToolRef.current) {
+          activeToolRef.current = name;
+          bumpAvatar();
+        }
+      },
+    });
+    return () => sub.unsubscribe();
+  }, [agent, isReady]);
   const saveHistory = useCallback(async () => {
     // Incognito mode: never persist chat history.
     if (incognitoOn) {
@@ -1898,7 +1936,7 @@ export function ChatScreen({
                     }}
                   >
                     {/* Batch 7 I11: avatars are optional. */}
-                    {!user && prefs.showAvatars && <ChatAvatar who="assistant" />}
+                    {!user && prefs.showAvatars && <ChatAvatar who="assistant" liveState={avatarState} />}
                     {/* Gap fill A1/A3/A4/A5/A24/A26: long-press opens the
                         message action sheet (local mode). Inner pressables
                         (speak button, trace tag) keep working. */}

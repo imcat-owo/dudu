@@ -19,10 +19,11 @@
  * "our space" status area.
  */
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useEffect } from "react";
+import { useEffect, useReducer, useSyncExternalStore } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { avatarVideoSource, soraSource } from "./avatar-assets";
-import type { AvatarState } from "./avatar-state";
+import { getCelebrateUntil, subscribeCelebration } from "./avatar-celebration";
+import { type AvatarState, resolveAvatarState } from "./avatar-state";
 import { useAvatarSize } from "./chat-avatar";
 import { t } from "./i18n";
 
@@ -30,6 +31,32 @@ function setupPlayer(player: { loop: boolean; muted: boolean; play: () => void }
   player.loop = true;
   player.muted = true;
   player.play();
+}
+
+/**
+ * useLiveAvatarState — the AI face's current clip, resolved from real
+ * signals (A3 wiring):
+ * - `milestone_level_up` for MILESTONE_CELEBRATION_MS after a milestone
+ *   (a task card freshly reaching done, or anniversary day), then falls back;
+ * - `making_something` while a creative tool (image/podcast/video) runs;
+ * - `working` while a turn is in flight; `idle` otherwise.
+ */
+export function useLiveAvatarState(opts: {
+  busy: boolean;
+  running: boolean;
+  makingSomething?: boolean;
+}): AvatarState {
+  const celebrateUntil = useSyncExternalStore(subscribeCelebration, getCelebrateUntil);
+  const [, bump] = useReducer((x: number) => x + 1, 0);
+  // When the celebration window lapses, re-resolve so the clip falls back
+  // to the live signals instead of freezing on the last frame.
+  useEffect(() => {
+    const ms = celebrateUntil - Date.now();
+    if (ms <= 0) return;
+    const id = setTimeout(bump, ms + 50);
+    return () => clearTimeout(id);
+  }, [celebrateUntil]);
+  return resolveAvatarState({ ...opts, celebrateUntil });
 }
 
 export function AnimatedAvatar({ state = "idle", size }: { state?: AvatarState; size?: number }) {

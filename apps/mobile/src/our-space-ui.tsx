@@ -52,9 +52,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
 import { WebView } from "react-native-webview";
+import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
+import { triggerAnniversaryCelebration } from "./avatar-celebration";
 import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
@@ -1114,6 +1115,9 @@ function CoupleHeader() {
   const [togetherDays, setTogetherDays] = useState<number | null>(null);
   const [counters, setCounters] = useState<CoupleCounters | null>(null);
   const [chatApplied, setChatApplied] = useState(false);
+  // A3: the AI face in the couple header is alive — idle loop by default,
+  // milestone_level_up clip briefly on task-done / anniversary day.
+  const aiLiveState = useLiveAvatarState({ busy: false, running: false });
 
   useEffect(() => {
     void (async () => {
@@ -1122,6 +1126,10 @@ function CoupleHeader() {
       const anniversaries = await ourSpaceStore.listAnniversaries();
       const since = resolveTogetherSince(p, anniversaries);
       setTogetherDays(daysTogether(since));
+      // A3: anniversary day → celebrate once that day (guarded inside).
+      if (getUpcomingAnniversaries(anniversaries).some((a) => a.daysUntil === 0)) {
+        triggerAnniversaryCelebration(new Date().toDateString());
+      }
       // "我们第 N 次" (xiaomeng P2-2): derived from real records only.
       const c = await getCoupleCounters({
         countTogetherListens: () => musicStore.countTogetherListens(),
@@ -1151,9 +1159,12 @@ function CoupleHeader() {
   };
 
   const herSource = profile?.herAvatarUri ? { uri: profile.herAvatarUri } : null;
+  // A3: no custom AI avatar → the living face (idle loop, celebration clip
+  // on milestones). A picked avatar renders as-is via the source branch.
   const aiSource: { uri: string } | number | null = profile?.aiAvatarUri
     ? { uri: profile.aiAvatarUri }
-    : (soraSource() as { uri: string } | number);
+    : null;
+  const aiFallback = <AnimatedAvatar state={aiLiveState} size={70} />;
 
   // Couple-avatar play (P3): one tap applies the couple avatars as the chat
   // avatars — her photo becomes the user avatar, his the AI avatar. Real
@@ -1247,7 +1258,7 @@ function CoupleHeader() {
         <View style={{ alignItems: "center" }}>
           {avatar(
             aiSource,
-            <Heart size={26} color={colors.muted} strokeWidth={1.5} />,
+            aiFallback,
             "ai",
             t("space.couple.aiAvatar"),
           )}

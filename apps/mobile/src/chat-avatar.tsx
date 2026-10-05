@@ -14,8 +14,10 @@
 import { User } from "lucide-react-native";
 import { useState } from "react";
 import { Image, PixelRatio, View } from "react-native";
+import { AnimatedAvatar } from "./animated-avatar";
 import { useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
+import type { AvatarState } from "./avatar-state";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { useColors } from "./ui";
@@ -36,7 +38,13 @@ export function useAvatarSize(): number {
   return Math.round((bundle.avatar?.size ?? DEFAULT_AVATAR_SIZE) * effectiveScale);
 }
 
-export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
+export function ChatAvatar({
+  who,
+  liveState,
+}: {
+  who: "user" | "assistant";
+  liveState?: AvatarState;
+}) {
   const colors = useColors();
   const { bundle } = useTheme();
   const [failedUri, setFailedUri] = useState<string | null>(null);
@@ -60,10 +68,17 @@ export function ChatAvatar({ who }: { who: "user" | "assistant" }) {
   }
 
   if (who === "assistant") {
+    // A3: the default face is alive — idle loop, working while generating,
+    // making_something while a creative tool runs, celebration clip on
+    // milestones. A user-picked avatar stays exactly as she chose it
+    // (static image, via the uri branch above).
     // Default assistant face: the Sora avatar (owner finalized 2026-10-03,
     // "和 Muse 一样的"). Devil stickers stay selectable via Appearance →
     // avatar; picking one sets bundle.avatar.assistant and takes the uri
     // branch above.
+    if (!uri && liveState) {
+      return <AnimatedAvatar state={liveState} size={size} />;
+    }
     return (
       <Image
         accessibilityRole="image"
