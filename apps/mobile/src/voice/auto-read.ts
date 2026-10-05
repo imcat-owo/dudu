@@ -12,7 +12,7 @@
  * interruption.
  */
 
-import type { TtsConfig, VoiceSettings } from "./types.js";
+import type { TtsConfig, VoiceSettings } from "./types";
 
 export interface AudioPlayerLike {
   play(): void;

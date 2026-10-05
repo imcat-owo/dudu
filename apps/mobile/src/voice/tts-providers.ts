@@ -13,7 +13,7 @@
  * All functions take explicit params so tests can inject a mock fetch.
  */
 
-import { TTS_PROVIDER_DEFAULTS, type TtsConfig, type TtsProvider } from "./types.js";
+import { TTS_PROVIDER_DEFAULTS, type TtsConfig, type TtsProvider } from "./types";
 
 export class TtsProviderError extends Error {
   constructor(message: string) {
