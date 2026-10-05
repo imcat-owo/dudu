@@ -11,6 +11,7 @@ import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import { enStrings } from "../i18n/en";
 import { zhHansStrings } from "../i18n/zh-Hans";
 import { type AlarmBackend, createAlarmStore } from "./alarms";
+import { loadAlarmKitNative, loadNotificationsNative } from "./alarms-instance";
 import { estimateDurationFromText, generatePodcastAudio, splitPodcastText } from "./podcast";
 import { synthesizeSpeech } from "./tts";
 import type { TtsConfig } from "./types";
@@ -310,63 +311,11 @@ export function createAlarmTools(
     return s;
   };
 
-  async function alarmKit() {
-    try {
-      // expo-modules-core is an optional native dependency — resolve it
-      // dynamically so the module stays importable without it (tests).
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const req = (typeof require !== "undefined" ? require : null) as
-        | ((id: string) => unknown)
-        | null;
-      const mod = req
-        ? (req("expo-modules-core") as { NativeModulesProxy?: Record<string, unknown> })
-        : null;
-      const native = mod?.NativeModulesProxy?.DuduAlarmKit as
-        | {
-            isAvailable(): boolean;
-            requestAuthorization(): Promise<boolean>;
-            scheduleAlarm(fireAt: number, label: string): Promise<string>;
-            cancelAlarm(id: string): Promise<void>;
-          }
-        | undefined;
-      if (!native) return null;
-      return {
-        isAvailable: () => native.isAvailable(),
-        requestAuthorization: () => native.requestAuthorization(),
-        scheduleAlarm: (fireAt: number, label: string) => native.scheduleAlarm(fireAt, label),
-        cancelAlarm: (id: string) => native.cancelAlarm(id),
-        listAlarms: async () => [] as Array<{ id: string; fireAt: number; label: string }>,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  async function notifications() {
-    try {
-      const mod = await import("expo-notifications");
-      return {
-        requestPermissionsAsync: async () => {
-          const r = await mod.requestPermissionsAsync();
-          return { granted: r.granted };
-        },
-        scheduleNotificationAsync: (opts: {
-          content: { title: string; body: string; sound: boolean };
-          trigger: { type: "date"; date: Date };
-        }) =>
-          mod.scheduleNotificationAsync({
-            content: opts.content,
-            // expo-notifications v0.32+: date trigger needs explicit type.
-            trigger: { type: mod.SchedulableTriggerInputTypes.DATE, date: opts.trigger.date },
-          }),
-        cancelScheduledNotificationAsync: (id: string) => mod.cancelScheduledNotificationAsync(id),
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  const store = createAlarmStore({ backend, alarmKit, notifications });
+  const store = createAlarmStore({
+    backend,
+    alarmKit: loadAlarmKitNative,
+    notifications: loadNotificationsNative,
+  });
 
   return [
     {
@@ -426,7 +375,10 @@ export function createAlarmTools(
           .map((a) => {
             const d = new Date(a.fireAt);
             const when = `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-            return `- ${when} ${a.label} (id: ${a.id})`;
+            // Disabled alarms stay in the list (she manages them in
+            // settings) — mark them so the model doesn't call them upcoming.
+            const off = a.enabled === false ? ` (${t("voice.alarmOff")})` : "";
+            return `- ${when} ${a.label}${off} (id: ${a.id})`;
           })
           .join("\n");
       },
