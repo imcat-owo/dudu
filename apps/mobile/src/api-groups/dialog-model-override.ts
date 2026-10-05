@@ -192,6 +192,26 @@ export type DialogModelOverrideStore = ReturnType<typeof createDialogModelOverri
 /** App-wide singleton. */
 export const dialogModelOverrideStore = createDialogModelOverrideStore();
 
+/**
+ * D4: the effective group for a dialog — her per-dialog override when set
+ * (and the group still exists), else the global active group. This is the
+ * single source of truth for "which group answers this dialog": the chat
+ * send gates, the message "model · time" meta, and the header chip must all
+ * agree with the agent's getGroup (which resolves the same way per turn).
+ * Pure — unit-tested.
+ */
+export function resolveEffectiveGroup(
+  overrideGroupId: string | null,
+  groups: ApiGroup[],
+  active: ApiGroup | null,
+): ApiGroup | null {
+  if (overrideGroupId) {
+    const override = groups.find((g) => g.id === overrideGroupId);
+    if (override) return override;
+  }
+  return active;
+}
+
 export function useDialogModelOverride(threadId: string): {
   overrideGroupId: string | null;
   loaded: boolean;

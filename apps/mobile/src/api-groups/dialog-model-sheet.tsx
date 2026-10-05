@@ -14,7 +14,7 @@ import { TText } from "../font";
 import { t } from "../i18n";
 import { radii } from "../theme/radii";
 import { Chip, useColors, useStyles } from "../ui";
-import { useDialogModelOverride } from "./dialog-model-override";
+import { resolveEffectiveGroup, useDialogModelOverride } from "./dialog-model-override";
 import { useChatMode } from "./mode";
 import { useApiGroups } from "./store";
 
@@ -27,7 +27,8 @@ export function DialogModelChip({ threadId }: { threadId: string }) {
   const [open, setOpen] = useState(false);
 
   if (mode !== "local") return null;
-  const effective = groups.find((g) => g.id === overrideGroupId) ?? active;
+  // D4: single source of truth with chat.tsx's send gates and message meta.
+  const effective = resolveEffectiveGroup(overrideGroupId, groups, active);
   if (!effective) return null;
   const overridden = overrideGroupId !== null && overrideGroupId === effective.id;
 

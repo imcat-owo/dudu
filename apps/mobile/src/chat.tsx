@@ -69,7 +69,11 @@ import {
 import { shouldConvertPaste, savePasteAsFile, pastePreview } from "./mcp/long-paste";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
 import { capabilityStore } from "./api-groups/capability-store";
-import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
+import {
+  dialogModelOverrideStore,
+  resolveEffectiveGroup,
+  useDialogModelOverride,
+} from "./api-groups/dialog-model-override";
 import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
@@ -418,13 +422,21 @@ export function ChatScreen({
   const agentId = `dudu-${threadId}`;
   const { agent, isReady } = useChatAgent({ agentId, threadId });
   const renderToolCall = useSafeRenderToolCall();
-  const { active: activeGroup } = useApiGroups();
+  const { active: activeGroup, groups: apiGroups } = useApiGroups();
+  // D4: the group that actually answers THIS dialog — her top-bar chip
+  // override when set, else the global active group. The send gates, the
+  // queue gate, the empty state, and the message "model · time" meta must
+  // all agree with the agent's per-turn getGroup (same resolution).
+  const { overrideGroupId } = useDialogModelOverride(threadId);
+  const effectiveGroup = resolveEffectiveGroup(overrideGroupId, apiGroups, activeGroup);
   // Batch 7 (小功能 I): chat-comfort prefs — display, haptics, scroll, etc.
   const { prefs } = useExtrasPrefs();
   // Latest model name for the I11 message meta (ref: the subscription
-  // effect below doesn't re-run when the group changes).
+  // effect below doesn't re-run when the group changes). D4: tracks the
+  // EFFECTIVE group (her top-bar override), not just the global active —
+  // otherwise the "model · time" row lies after she switches models.
   const activeModelRef = useRef<string | undefined>(undefined);
-  activeModelRef.current = activeGroup?.model;
+  activeModelRef.current = effectiveGroup?.model;
   const [draft, setDraft] = useState("");
   // Batch 7 I6: debounced token estimate of the draft (Kelivo's
   // DraftTokenCounter equivalent — 200ms coalescing).
@@ -719,8 +731,10 @@ export function ChatScreen({
     async (message?: QueuedMessage) => {
       if (runLock.current || agent.isRunning || !isReady || !loaded)
         throw new Error(t("chat.notReady"));
-      // Local mode needs an API group before it can talk.
-      if (mode === "local" && !activeGroup)
+      // Local mode needs an API group before it can talk. D4: the
+      // effective group (her per-dialog override) counts — not just the
+      // global active one.
+      if (mode === "local" && !effectiveGroup)
         throw new Error(t("apigroup.noActive", { name: await getAiDisplayName(t, personaStore) }));
       runLock.current = true;
       setBusy(true);
@@ -741,7 +755,7 @@ export function ChatScreen({
         }
       }
     },
-    [agent, agentId, activeGroup, mode, isReady, loaded, refresh, refreshAgent, saveHistory, queue],
+    [agent, agentId, effectiveGroup, mode, isReady, loaded, refresh, refreshAgent, saveHistory, queue],
   );
   const runQueued = useCallback(
     async (message: QueuedMessage) => {
@@ -766,7 +780,9 @@ export function ChatScreen({
         runLocked: runLock.current,
         agentRunning: agent.isRunning,
         mode,
-        hasActiveGroup: !!activeGroup,
+        // D4: the queue may flush when THIS dialog has an effective group
+        // (her override counts), not only when the global active exists.
+        hasActiveGroup: !!effectiveGroup,
       })
     )
       return;
@@ -776,7 +792,7 @@ export function ChatScreen({
         hapticError();
         setError(e instanceof Error ? e.message : String(e));
       });
-  }, [agent, isReady, loaded, mode, activeGroup, queue, runQueued]);
+  }, [agent, isReady, loaded, mode, effectiveGroup, queue, runQueued]);
   const enqueue = useCallback(
     (text: string) => {
       queue.enqueue({ id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text });
@@ -1706,7 +1722,7 @@ export function ChatScreen({
           <TText style={[s.small, { color: colors.muted }]}>{t("chat.incognitoNote")}</TText>
         </View>
       )}
-      {mode === "local" && !activeGroup && loaded && (
+      {mode === "local" && !effectiveGroup && loaded && (
         <Card style={{ margin: 16 }}>
           <TText style={{ fontWeight: "700", marginBottom: 4 }}>
             {t("apigroup.noActive", { name: aiName })}
