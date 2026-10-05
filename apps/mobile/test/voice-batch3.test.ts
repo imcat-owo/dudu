@@ -7,24 +7,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-
-import {
-  base64ToBytes,
-  hexToBytes,
-  parseSseData,
-  pcmToWav,
-  resolveProviderCredentials,
-  synthesizeFishAudio,
-  synthesizeMiniMax,
-  synthesizeQwen,
-  synthesizeStepFun,
-  type ProviderCredentials,
-} from "../src/voice/tts-providers.js";
-import {
-  STT_PRESET_DEFAULTS,
-  validateSttConfig,
-  validateTtsConfig,
-} from "../src/voice/types.js";
+import { createAlarmStore, validateAlarmTime } from "../src/voice/alarms.js";
 import {
   __resetAutoReadForTests,
   maybeAutoReadAssistantMessage,
@@ -36,9 +19,18 @@ import {
   diffSegments,
 } from "../src/voice/corrections.js";
 import {
-  createAlarmStore,
-  validateAlarmTime,
-} from "../src/voice/alarms.js";
+  base64ToBytes,
+  hexToBytes,
+  type ProviderCredentials,
+  parseSseData,
+  pcmToWav,
+  resolveProviderCredentials,
+  synthesizeFishAudio,
+  synthesizeMiniMax,
+  synthesizeQwen,
+  synthesizeStepFun,
+} from "../src/voice/tts-providers.js";
+import { STT_PRESET_DEFAULTS, validateSttConfig, validateTtsConfig } from "../src/voice/types.js";
 
 // ---------------------------------------------------------------------------
 // TTS providers
@@ -215,14 +207,8 @@ describe("tts-providers: Qwen", () => {
 
 describe("tts types: validation", () => {
   it("new providers require a key", () => {
-    assert.equal(
-      validateTtsConfig({ provider: "minimax", voice: "v" }),
-      "ttsKeyRequired",
-    );
-    assert.equal(
-      validateTtsConfig({ provider: "minimax", voice: "v", providerKey: "k" }),
-      null,
-    );
+    assert.equal(validateTtsConfig({ provider: "minimax", voice: "v" }), "ttsKeyRequired");
+    assert.equal(validateTtsConfig({ provider: "minimax", voice: "v", providerKey: "k" }), null);
   });
 
   it("rejects malformed override URL", () => {
@@ -239,10 +225,7 @@ describe("tts types: validation", () => {
 
   it("edge-tts and custom validation unchanged", () => {
     assert.equal(validateTtsConfig({ provider: "edge-tts", voice: "" }), "voiceRequired");
-    assert.equal(
-      validateTtsConfig({ provider: "edge-tts", voice: "zh-CN-XiaoxiaoNeural" }),
-      null,
-    );
+    assert.equal(validateTtsConfig({ provider: "edge-tts", voice: "zh-CN-XiaoxiaoNeural" }), null);
   });
 });
 
@@ -258,10 +241,7 @@ describe("stt types", () => {
 
   it("presets require a key", () => {
     assert.equal(validateSttConfig({ provider: "dashscope" }), "sttKeyRequired");
-    assert.equal(
-      validateSttConfig({ provider: "dashscope", presetKey: "k" }),
-      null,
-    );
+    assert.equal(validateSttConfig({ provider: "dashscope", presetKey: "k" }), null);
   });
 
   it("group and custom unchanged", () => {
@@ -360,10 +340,7 @@ describe("corrections: diffSegments", () => {
   });
 
   it("ignores full rewrites", () => {
-    assert.deepEqual(
-      diffSegments("a".repeat(20), "b".repeat(20)),
-      [],
-    );
+    assert.deepEqual(diffSegments("a".repeat(20), "b".repeat(20)), []);
   });
 });
 
@@ -489,10 +466,7 @@ describe("alarms: scheduling", () => {
       alarmKit: async () => null,
       notifications: async () => null,
     });
-    await assert.rejects(
-      () => store.schedule(Date.now() + 3600_000, "x"),
-      /不可用/,
-    );
+    await assert.rejects(() => store.schedule(Date.now() + 3600_000, "x"), /不可用/);
   });
 
   it("throws loudly for past times", async () => {

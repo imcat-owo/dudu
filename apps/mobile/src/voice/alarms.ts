@@ -52,7 +52,10 @@ export const MAX_ALARM_LEAD_MS = 365 * 24 * 60 * 60 * 1000;
 export type AlarmValidationProblem = "alarmPast" | "alarmTooFar" | "alarmLabelRequired";
 
 /** Validate a fire time. Returns the problem key, or null when valid. */
-export function validateAlarmTime(fireAt: number, now: number = Date.now()): AlarmValidationProblem | null {
+export function validateAlarmTime(
+  fireAt: number,
+  now: number = Date.now(),
+): AlarmValidationProblem | null {
   if (fireAt < now + MIN_ALARM_LEAD_MS) return "alarmPast";
   if (fireAt > now + MAX_ALARM_LEAD_MS) return "alarmTooFar";
   return null;

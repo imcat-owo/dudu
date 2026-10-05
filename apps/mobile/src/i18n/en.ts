@@ -1641,7 +1641,6 @@ export const enStrings: Record<StringKey, string> = {
   "voice.autoReadDesc": "When on, AI replies are read aloud automatically. Handy when driving or doing chores.",
   "voice.sttPreset": "Transcription service",
   "voice.sttDashscope": "Alibaba Bailian",
-  "voice.sttVolcengine": "Volcengine",
   "voice.sttStepfun": "StepFun",
   "voice.sttPresetUrl": "Endpoint URL",
   "voice.sttPresetModel": "Model",

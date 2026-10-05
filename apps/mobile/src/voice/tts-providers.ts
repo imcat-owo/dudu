@@ -60,9 +60,13 @@ async function postWithTimeout(
     return await fetchFn(url, { method: "POST", headers, body, signal: controller.signal });
   } catch (e) {
     if ((e as { name?: string } | null)?.name === "AbortError") {
-      throw new TtsProviderError(`${label}: request timed out after ${PROVIDER_TIMEOUT_MS / 1000}s`);
+      throw new TtsProviderError(
+        `${label}: request timed out after ${PROVIDER_TIMEOUT_MS / 1000}s`,
+      );
     }
-    throw new TtsProviderError(`${label}: request failed (${e instanceof Error ? e.message : String(e)})`);
+    throw new TtsProviderError(
+      `${label}: request failed (${e instanceof Error ? e.message : String(e)})`,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -208,7 +212,9 @@ export async function synthesizeMiniMax(
     if ((e as { name?: string } | null)?.name === "AbortError") {
       throw new TtsProviderError("MiniMax TTS: request timed out");
     }
-    throw new TtsProviderError(`MiniMax TTS: request failed (${e instanceof Error ? e.message : String(e)})`);
+    throw new TtsProviderError(
+      `MiniMax TTS: request failed (${e instanceof Error ? e.message : String(e)})`,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -218,7 +224,10 @@ export async function synthesizeMiniMax(
   let total = 0;
   for (const data of parseSseData(sseText)) {
     if (data === "[DONE]") continue;
-    let obj: { data?: { audio?: unknown }; base_resp?: { status_code?: number; status_msg?: string } };
+    let obj: {
+      data?: { audio?: unknown };
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
     try {
       obj = JSON.parse(data) as typeof obj;
     } catch {
@@ -226,7 +235,9 @@ export async function synthesizeMiniMax(
     }
     const statusCode = obj.base_resp?.status_code;
     if (typeof statusCode === "number" && statusCode !== 0) {
-      throw new TtsProviderError(`MiniMax TTS: ${obj.base_resp?.status_msg ?? `error ${statusCode}`}`);
+      throw new TtsProviderError(
+        `MiniMax TTS: ${obj.base_resp?.status_msg ?? `error ${statusCode}`}`,
+      );
     }
     const audioHex = String(obj.data?.audio ?? "");
     if (!audioHex) continue;
@@ -310,7 +321,9 @@ export async function synthesizeStepFun(
     if ((e as { name?: string } | null)?.name === "AbortError") {
       throw new TtsProviderError("StepFun TTS: request timed out");
     }
-    throw new TtsProviderError(`StepFun TTS: request failed (${e instanceof Error ? e.message : String(e)})`);
+    throw new TtsProviderError(
+      `StepFun TTS: request failed (${e instanceof Error ? e.message : String(e)})`,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -353,7 +366,9 @@ export async function synthesizeQwen(
     if ((e as { name?: string } | null)?.name === "AbortError") {
       throw new TtsProviderError("Qwen TTS: request timed out");
     }
-    throw new TtsProviderError(`Qwen TTS: request failed (${e instanceof Error ? e.message : String(e)})`);
+    throw new TtsProviderError(
+      `Qwen TTS: request failed (${e instanceof Error ? e.message : String(e)})`,
+    );
   } finally {
     clearTimeout(timer);
   }

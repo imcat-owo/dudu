@@ -1575,7 +1575,6 @@ const zhHans = {
   "voice.autoReadDesc": "打开后，AI 回完话会自动念出来。开车或者做家务的时候听，不用动手点。",
   "voice.sttPreset": "转写服务",
   "voice.sttDashscope": "阿里百炼",
-  "voice.sttVolcengine": "火山引擎",
   "voice.sttStepfun": "StepFun",
   "voice.sttPresetUrl": "接口地址",
   "voice.sttPresetModel": "模型",

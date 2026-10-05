@@ -9,16 +9,16 @@
  *    (module-level behavior that chat.tsx wires up).
  */
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { collectBackup, type KeyValueStore, type SecureKV } from "../src/backup.js";
 import {
-  maybeAutoReadAssistantMessage,
-  stopAutoRead,
   __resetAutoReadForTests,
   type AutoReadDeps,
+  maybeAutoReadAssistantMessage,
+  stopAutoRead,
 } from "../src/voice/auto-read.js";
 import { createAlarmTools } from "../src/voice/tools.js";
-import { collectBackup, type KeyValueStore, type SecureKV } from "../src/backup.js";
 
 function makeAutoReadDeps(overrides?: Partial<AutoReadDeps>): AutoReadDeps & {
   played: string[];
@@ -49,9 +49,6 @@ function makeKv(data: Record<string, string>): KeyValueStore {
     setItem: async (k: string, v: string) => {
       data[k] = v;
     },
-    removeItem: async (k: string) => {
-      delete data[k];
-    },
     getAllKeys: async () => Object.keys(data),
   };
 }
@@ -59,7 +56,6 @@ function makeKv(data: Record<string, string>): KeyValueStore {
 const emptySecure: SecureKV = {
   getItem: async () => null,
   setItem: async () => {},
-  removeItem: async () => {},
 };
 
 describe("wiring: alarm tools registered", () => {
@@ -83,7 +79,10 @@ describe("wiring: alarm tools registered", () => {
     for (const locale of ["zh-Hans", "en"] as const) {
       const tools = createAlarmTools(backend, locale);
       for (const tool of tools) {
-        assert.ok(tool.description && tool.description.length > 20, `${tool.name} needs a real description`);
+        assert.ok(
+          tool.description && tool.description.length > 20,
+          `${tool.name} needs a real description`,
+        );
       }
     }
   });
