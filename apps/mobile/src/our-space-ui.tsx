@@ -56,6 +56,7 @@ import { TText } from "./font";
 import { WebView } from "react-native-webview";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
 import { triggerAnniversaryCelebration } from "./avatar-celebration";
+import "./avatar-celebration-instance";
 import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
@@ -1126,9 +1127,9 @@ function CoupleHeader() {
       const anniversaries = await ourSpaceStore.listAnniversaries();
       const since = resolveTogetherSince(p, anniversaries);
       setTogetherDays(daysTogether(since));
-      // A3: anniversary day → celebrate once that day (guarded inside).
+      // A3: anniversary day → celebrate once that day (guarded + persisted inside).
       if (getUpcomingAnniversaries(anniversaries).some((a) => a.daysUntil === 0)) {
-        triggerAnniversaryCelebration(new Date().toDateString());
+        await triggerAnniversaryCelebration(new Date().toDateString());
       }
       // "我们第 N 次" (xiaomeng P2-2): derived from real records only.
       const c = await getCoupleCounters({

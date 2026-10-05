@@ -11,6 +11,7 @@ import { beforeEach, describe, it } from "node:test";
 import {
   getCelebrateUntil,
   resetCelebrationForTests,
+  setCelebrationStorage,
   subscribeCelebration,
   triggerAnniversaryCelebration,
   triggerMilestoneCelebration,
@@ -33,6 +34,7 @@ function memStorage(): TaskStorage {
 
 beforeEach(() => {
   resetCelebrationForTests();
+  setCelebrationStorage(null);
 });
 
 describe("celebration store", () => {
@@ -54,10 +56,48 @@ describe("celebration store", () => {
     assert.equal(calls, 1);
   });
 
-  it("anniversary celebration fires at most once per day", () => {
-    assert.equal(triggerAnniversaryCelebration("Mon Oct 05 2026", 1000), true);
-    assert.equal(triggerAnniversaryCelebration("Mon Oct 05 2026", 2000), false);
-    assert.equal(triggerAnniversaryCelebration("Tue Oct 06 2026", 3000), true);
+  it("anniversary celebration fires at most once per day", async () => {
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 1000), true);
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 2000), false);
+    assert.equal(await triggerAnniversaryCelebration("Tue Oct 06 2026", 3000), true);
+  });
+
+  it("anniversary guard persists across an app restart (kill-and-reopen)", async () => {
+    const backing = new Map<string, string>();
+    setCelebrationStorage({
+      getItem: async (k) => backing.get(k) ?? null,
+      setItem: async (k, v) => {
+        backing.set(k, v);
+      },
+    });
+    // Anniversary day: first trigger celebrates and persists the day key.
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 1000), true);
+    assert.equal(backing.get("dudu.avatar.anniversary-day.v1"), "Mon Oct 05 2026");
+    const firstUntil = getCelebrateUntil();
+    assert.ok(firstUntil > 0);
+    // Simulate kill-and-reopen: module memory wiped, storage intact.
+    resetCelebrationForTests();
+    assert.equal(getCelebrateUntil(), 0);
+    // Same day: no second celebration — the persisted guard holds.
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 2000), false);
+    assert.equal(getCelebrateUntil(), 0);
+    // Next day: celebrates again.
+    assert.equal(await triggerAnniversaryCelebration("Tue Oct 06 2026", 3000), true);
+    assert.ok(getCelebrateUntil() > 0);
+    assert.equal(backing.get("dudu.avatar.anniversary-day.v1"), "Tue Oct 06 2026");
+  });
+
+  it("storage failure degrades to the in-memory guard (no crash)", async () => {
+    setCelebrationStorage({
+      getItem: async () => {
+        throw new Error("disk gone");
+      },
+      setItem: async () => {
+        throw new Error("disk gone");
+      },
+    });
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 1000), true);
+    assert.equal(await triggerAnniversaryCelebration("Mon Oct 05 2026", 2000), false);
   });
 
   it("resolveAvatarState prioritizes celebration, then making, then working", () => {
