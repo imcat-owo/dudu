@@ -126,6 +126,9 @@
 - D12 浪漫 P2（可选，排 C 批之后）：quiet 亲密度成长线、情境自拍作完画顺手 feed_post 发出来、"今晚的问题"每日一问小卡片（romance P2-1/P2-2/P2-3）。
 - D13 MCP 审批卡片（B3 第二步，必做）：真正的 in-session 审批卡片（允许/拒绝/记住），她的选择被真实执行；做完 B3 第一步不算完，这一步才是收尾。
 - D14 沙箱 SSH 配置 AI 代填（E5 已拍板）：新增 AI 工具（如 `sandbox_ssh_setup`）——她在对话框里说"连我的云服务器"，AI 把 host/port/username/secret 填好、她点一下确认，不再让她对着四个裸输入框发呆（user P2-5）。
+- D15 环境变量存入小卡片（她 2026-10-05 新需求，不急、当前活做完再做）：①新增环境变量管理页（列表只显示名字不显示值；增/删/改走 envStore，底层已有 apps/mobile/src/mcp/env.ts + SecureStore + 脱敏，web-search/local-agent 已在用它读 key）；②新增表单式提问卡片工具（现有 ask_user 只能做选择题，不能填表单；AI 缺 key 时弹卡片：账号/密码/备注必填、URL 选填，提交后自动存进 envStore）。
+
+> 注：施工对话框说后续还会发一份全 App "缺小细节"调研清单来核对补全，等那份。
 
 ---
 
