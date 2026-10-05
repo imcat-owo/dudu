@@ -28,22 +28,31 @@ export async function voiceMessageDir(): Promise<string> {
   return dir;
 }
 
-function stableName(): string {
+/** Audio extensions we ever store voice messages in. */
+const VOICE_MESSAGE_EXTS = ["m4a", "mp3", "wav", "aac", "ogg"];
+
+/** Keep the source file's real extension (whitelisted) — an mp3 named .m4a
+ *  risks playback failure on Android, which trusts the extension. */
+function extOf(uri: string): string {
+  const ext = uri.split(".").pop()?.toLowerCase() ?? "";
+  return VOICE_MESSAGE_EXTS.includes(ext) ? ext : "m4a";
+}
+
+function stableName(ext: string): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 8);
-  return `vm_${ts}_${rand}.m4a`;
+  return `vm_${ts}_${rand}.${ext}`;
 }
 
 /**
- * Copy a just-recorded audio file into stable storage. Returns the new
- * file:// URI to embed in the chat message. Best-effort: on failure the
- * original URI is returned unchanged so sending never breaks.
+ * Copy a just-recorded (or just-synthesized) audio file into stable storage.
+ * Returns the new file:// URI to embed in the chat message. Best-effort: on
+ * failure the original URI is returned unchanged so sending never breaks.
  */
 export async function persistVoiceMessage(srcUri: string): Promise<string> {
   try {
     const dir = await voiceMessageDir();
-    const name = stableName();
-    const dest = `${dir}${name}`;
+    const dest = `${dir}${stableName(extOf(srcUri))}`;
     const fs = await loadFs();
     await fs.copyAsync({ from: srcUri, to: dest });
     return dest;
@@ -58,7 +67,7 @@ export async function listVoiceMessageFiles(): Promise<string[]> {
     const dir = await voiceMessageDir();
     const fs = await loadFs();
     const names = await fs.readDirectoryAsync(dir);
-    return names.filter((n) => n.endsWith(".m4a"));
+    return names.filter((n) => VOICE_MESSAGE_EXTS.some((ext) => n.endsWith(`.${ext}`)));
   } catch {
     return [];
   }

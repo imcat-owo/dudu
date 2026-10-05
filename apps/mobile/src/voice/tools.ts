@@ -11,8 +11,10 @@ import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import { enStrings } from "../i18n/en";
 import { zhHansStrings } from "../i18n/zh-Hans";
 import { type AlarmBackend, createAlarmStore } from "./alarms";
-import { generatePodcastAudio, splitPodcastText } from "./podcast";
+import { estimateDurationFromText, generatePodcastAudio, splitPodcastText } from "./podcast";
+import { synthesizeSpeech } from "./tts";
 import type { TtsConfig } from "./types";
+import { persistVoiceMessage } from "./voice-message-files";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -47,36 +49,38 @@ function pickStrings(locale: PodcastLocale) {
  * Custom-TTS errors arrive as English technical strings ("TTS HTTP 401: …");
  * relaying them verbatim reads as gibberish to her. This maps the common
  * cases to plain Chinese with a concrete next step. (P2-4)
+ * `what` names the thing that failed ("播客" for podcast, "语音" for a
+ * short voice message) so the message doesn't blame the wrong feature.
  */
-export function friendlyPodcastError(e: unknown): string {
+export function friendlyPodcastError(e: unknown, what = "播客"): string {
   const raw = e instanceof Error ? e.message : String(e);
   if (/TTS request failed/i.test(raw)) {
     const detail = raw.replace(/^TTS request failed:\s*/i, "").slice(0, 120);
     return (
-      `播客没能生成：连不上她配置的自定义语音服务${detail ? `（${detail}）` : ""}。` +
+      `${what}没能生成：连不上她配置的自定义语音服务${detail ? `（${detail}）` : ""}。` +
       `让她检查一下自定义 TTS 的地址和网络，或者换回默认语音再试一次。`
     );
   }
   const http = raw.match(/TTS HTTP (\d+)/i);
   if (http) {
     if (http[1] === "401" || http[1] === "403") {
-      return `播客没能生成：自定义语音服务的密钥不对或过期了（HTTP ${http[1]}）。让她去语音设置里检查一下密钥。`;
+      return `${what}没能生成：自定义语音服务的密钥不对或过期了（HTTP ${http[1]}）。让她去语音设置里检查一下密钥。`;
     }
-    return `播客没能生成：自定义语音服务返回了错误（HTTP ${http[1]}）。让她稍后再试，或者换回默认语音。`;
+    return `${what}没能生成：自定义语音服务返回了错误（HTTP ${http[1]}）。让她稍后再试，或者换回默认语音。`;
   }
   if (/empty audio/i.test(raw)) {
-    return "播客没能生成：语音服务没有返回任何音频。让她换个语音或稍后再试。";
+    return `${what}没能生成：语音服务没有返回任何音频。让她换个语音或稍后再试。`;
   }
   if (/needs MP3/i.test(raw)) {
-    return "播客没能生成：当前语音只能合成非 MP3 格式，拼不成播客文件。让她换一个能出 MP3 的语音（比如默认语音）。";
+    return `${what}没能生成：当前语音只能合成非 MP3 格式，拼不成播客文件。让她换一个能出 MP3 的语音（比如默认语音）。`;
   }
   if (/edge-tts/i.test(raw)) {
-    return "播客没能生成：默认语音服务出了点问题，让她稍后再试一次。";
+    return `${what}没能生成：默认语音服务出了点问题，让她稍后再试一次。`;
   }
   if (/empty text/i.test(raw)) {
-    return "播客没能生成：要读的文本是空的。让她给我一段文字。";
+    return `${what}没能生成：要读的文本是空的。让她给我一段文字。`;
   }
-  return `播客没能生成：${raw.slice(0, 200)}。让她稍后再试，或换个语音。`;
+  return `${what}没能生成：${raw.slice(0, 200)}。让她稍后再试，或换个语音。`;
 }
 
 export function createPodcastTools(
@@ -177,6 +181,108 @@ export function createPodcastTools(
           await taskStore.saveIndex();
           throw new ToolError(friendlyPodcastError(e));
         }
+      },
+    },
+  ];
+}
+
+/**
+ * Build the short-voice-message tool set — let the AI send her a ~10s
+ * WeChat/QQ-style voice bubble on request ("给我发条语音").
+ *
+ * Unlike generate_podcast (long-form, task-progress card, MP3 join), this
+ * is one TTS call → stable file → voice_message envelope. The envelope is
+ * the same one chat.tsx parses into a VoiceBubble, so playback reuses the
+ * existing bubble player — nothing new to render or play.
+ */
+
+/** Max chars for a voice note (~10s of speech at ~5 CJK chars/sec, with
+ *  headroom). Longer text belongs in generate_podcast. */
+export const MAX_VOICE_MESSAGE_CHARS = 100;
+
+export interface VoiceMessageToolDeps {
+  synthesize: (text: string, cfg: TtsConfig) => Promise<string>;
+  /** Copy the synthesized file into stable voice-message storage. */
+  persist: (srcUri: string) => Promise<string>;
+  estimateDuration: (text: string) => number;
+}
+
+/**
+ * Core pipeline, deps-injected so tests can run it without network/audio.
+ * Returns the voice_message JSON string chat.tsx renders as a VoiceBubble.
+ */
+export async function makeVoiceMessage(
+  text: string,
+  cfg: TtsConfig,
+  deps: VoiceMessageToolDeps,
+): Promise<string> {
+  const clean = text.trim();
+  if (!clean) throw new ToolError("text is required.");
+  if (clean.length > MAX_VOICE_MESSAGE_CHARS) {
+    throw new ToolError(
+      `text is too long for a voice message (${clean.length} > ${MAX_VOICE_MESSAGE_CHARS} chars). ` +
+        "Use generate_podcast for anything longer than a sentence or two.",
+    );
+  }
+  let uri: string;
+  try {
+    uri = await deps.synthesize(clean, cfg);
+  } catch (e) {
+    throw new ToolError(friendlyPodcastError(e, "语音"));
+  }
+  const stable = await deps.persist(uri);
+  const duration = Math.max(1, Math.round(deps.estimateDuration(clean)));
+  return encodeVoiceMessage(stable, duration);
+}
+
+export function createVoiceMessageTools(
+  voiceStore: import("./store").VoiceStore,
+  locale: PodcastLocale = "zh-Hans",
+  opts?: { isIncognito?: () => boolean; deps?: Partial<VoiceMessageToolDeps> },
+): LocalTool[] {
+  // Locale is accepted for symmetry with createPodcastTools; user-facing
+  // strings here go through the shared friendly-error path.
+  void locale;
+  return [
+    {
+      name: "speak_as_voice",
+      description:
+        "Send her a SHORT voice message (WeChat/QQ-style voice bubble, ~10 seconds). " +
+        "Use when she says '给我发条语音' / '发条语音' / '用语音跟我说', or when a short spoken " +
+        "reply fits better than text — a quick goodnight, a one-line answer, a short sweet nothing. " +
+        "text must be SHORT: one or two sentences, max 100 characters. For anything longer " +
+        "(stories, briefings, paragraphs), use generate_podcast instead. " +
+        "The tool returns a JSON string like " +
+        '{"type":"voice_message","uri":"file:///...","duration":8}. ' +
+        "Include that JSON in your reply (a short intro line is fine — the app finds it and renders " +
+        "a WeChat-style voice bubble she can tap to play). Never describe it, never attach it as a file.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: {
+            type: "string",
+            description:
+              "Short text to speak — one or two sentences, max 100 characters. Plain prose; markdown is stripped.",
+          },
+        },
+        required: ["text"],
+        additionalProperties: false,
+      },
+      manualId: "voice",
+      run: async (args) => {
+        const text = strArg(args, "text");
+        const cfg: TtsConfig = voiceStore.getSnapshot().tts;
+        const ephemeral = opts?.isIncognito?.() === true;
+        const deps: VoiceMessageToolDeps = {
+          synthesize: synthesizeSpeech,
+          // Incognito: skip the durable copy — same rule as her recorded
+          // voice notes (chat.tsx): the temp URI plays fine in-session and
+          // nothing durable is left on disk.
+          persist: ephemeral ? async (u) => u : persistVoiceMessage,
+          estimateDuration: estimateDurationFromText,
+          ...opts?.deps,
+        };
+        return makeVoiceMessage(text, cfg, deps);
       },
     },
   ];

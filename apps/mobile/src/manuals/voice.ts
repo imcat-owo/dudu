@@ -28,6 +28,11 @@ export const VOICE_MANUAL = {
   include it in your reply (a short intro line is fine; the app detects it
   and renders a WeChat-style voice bubble she can tap to play). Never describe
   it, never attach as file.
+- Short voice notes: the speak_as_voice tool sends a ~10s voice bubble —
+  use when she says "给我发条语音" or a one-liner fits better spoken than
+  typed (goodnight, a quick answer, a short sweet nothing). One TTS call,
+  no progress card. text max 100 chars; longer text → generate_podcast.
+  Same voice_message JSON contract as the podcast tool.
 
 Rules:
 - If TTS/STT is not configured, fail loudly with a human message —

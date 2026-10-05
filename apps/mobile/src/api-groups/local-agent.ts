@@ -97,7 +97,7 @@ import {
   VisionError,
 } from "../vision/describe";
 import { voiceStore } from "../voice/store";
-import { createAlarmTools, createPodcastTools, createTtsVoiceTools } from "../voice/tools";
+import { createAlarmTools, createPodcastTools, createTtsVoiceTools, createVoiceMessageTools } from "../voice/tools";
 import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
@@ -1021,6 +1021,13 @@ export function createLocalAgent(opts: {
           taskProgressStore,
           getLocale() === "en" ? "en" : "zh-Hans",
           // Incognito: podcast audio goes to cache (temp), not documents.
+          { isIncognito: incognito },
+        ),
+        ...createVoiceMessageTools(
+          voiceStore,
+          getLocale() === "en" ? "en" : "zh-Hans",
+          // Incognito: voice note audio stays in the temp TTS cache, not
+          // durable voice-message storage (same rule as her recordings).
           { isIncognito: incognito },
         ),
         ...createImageTools({

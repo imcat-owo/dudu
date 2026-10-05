@@ -60,9 +60,11 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   // Backup (create writes a file; restore rewrites everything)
   "backup_create",
   "backup_restore",
-  // Voice (set voice persists; podcast writes task-progress entries)
+  // Voice (set voice persists; podcast writes task-progress entries;
+  // voice notes write audio files)
   "set_tts_voice",
   "generate_podcast",
+  "speak_as_voice",
   // Video generation (task-progress entries + files)
   "generate_video",
   // Dialog management (creates/renames persistent dialogs; plans persist too)

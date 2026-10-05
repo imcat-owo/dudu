@@ -56,6 +56,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "backup_restore",
       "set_tts_voice",
       "generate_podcast",
+      "speak_as_voice",
       "generate_video",
       "new_dialog",
       "rename_dialog",
