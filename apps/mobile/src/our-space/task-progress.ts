@@ -13,6 +13,21 @@ import { triggerMilestoneCelebration } from "../avatar-celebration";
 export type TaskStatus = "running" | "stuck" | "done";
 
 /**
+ * Curated card accent palette. Keys — never raw hex — resolved in the UI to
+ * the washi-tape pastels (tapePink/tapeBlue/tapeMint/tapeYellow/tapeLavender),
+ * which are HCT-derived and mixed toward the card background, so accents
+ * stay visible yet theme-aware in light and dark mode.
+ * null = theme default (the vivid accent blue).
+ */
+export const TASK_CARD_ACCENTS = ["pink", "blue", "mint", "yellow", "lavender"] as const;
+export type TaskCardAccent = (typeof TASK_CARD_ACCENTS)[number];
+
+/** True for a known accent key; anything else (old data, garbage) is not. */
+export function isTaskCardAccent(v: unknown): v is TaskCardAccent {
+  return typeof v === "string" && (TASK_CARD_ACCENTS as readonly string[]).includes(v);
+}
+
+/**
  * A "running" task with no progress update for this long is presumed
  * abandoned and auto-marked "stuck". Generous on purpose: tasks that report
  * progress (any upsert) refresh updatedAt and never trip this. The backstop
@@ -33,6 +48,11 @@ export interface BackgroundTask {
   status: TaskStatus;
   /** Card background image URI (user-uploaded or AI-generated), null = theme default */
   backgroundUri: string | null;
+  /**
+   * Card accent color key (curated palette, theme-derived). null = theme
+   * default (blue). Old persisted tasks without this field normalize to null.
+   */
+  accent: TaskCardAccent | null;
   updatedAt: number;
   createdAt: number;
 }
@@ -83,13 +103,23 @@ export class TaskProgressStore {
 
   /** Create or update a task. Progress is clamped to 0..1. */
   async upsert(
-    input: Omit<BackgroundTask, "updatedAt" | "createdAt"> & { createdAt?: number },
+    input: Omit<BackgroundTask, "updatedAt" | "createdAt" | "accent"> & {
+      createdAt?: number;
+      /**
+       * Optional accent override. Omitted = keep the task's existing accent
+       * (new tasks default to null). Unknown keys normalize to null — never
+       * persisted as garbage.
+       */
+      accent?: TaskCardAccent | null;
+    },
   ): Promise<BackgroundTask> {
     await this.sweepStale();
     const now = Date.now();
     const prev = this.cache.get(input.id);
+    const rawAccent = input.accent !== undefined ? input.accent : prev?.accent;
     const task: BackgroundTask = {
       ...input,
+      accent: isTaskCardAccent(rawAccent) ? rawAccent : null,
       progress: clamp01(input.progress),
       createdAt: prev?.createdAt ?? input.createdAt ?? now,
       updatedAt: now,
@@ -135,6 +165,13 @@ export class TaskProgressStore {
     await this.upsert({ ...task, backgroundUri: uri });
   }
 
+  /** Set card accent color key (curated palette). null = theme default. */
+  async setAccent(id: string, accent: TaskCardAccent | null): Promise<void> {
+    const task = this.cache.get(id);
+    if (!task) return;
+    await this.upsert({ ...task, accent });
+  }
+
   /** Hydrate from storage (call once at startup). */
   async load(): Promise<void> {
     // Storage backends without key enumeration: we track ids in an index key.
@@ -151,6 +188,9 @@ export class TaskProgressStore {
       if (!raw) continue;
       try {
         const task = JSON.parse(raw) as BackgroundTask;
+        // Old persisted tasks predate the accent field — normalize to null.
+        // Unknown keys (garbage) normalize too; never trust stored strings.
+        task.accent = isTaskCardAccent(task.accent) ? task.accent : null;
         this.cache.set(id, task);
       } catch {
         /* skip corrupt entries */

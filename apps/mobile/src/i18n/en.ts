@@ -1961,6 +1961,13 @@ export const enStrings: Record<StringKey, string> = {
   "space.tasks.bgFailedTitle": "Background not changed",
   "space.tasks.bgFailedBody":
     "Something hiccuped and the background didn't change — try again in a bit",
+  "space.tasks.accentTitle": "Card color",
+  "space.tasks.accent.default": "Default",
+  "space.tasks.accent.pink": "Pink",
+  "space.tasks.accent.blue": "Blue",
+  "space.tasks.accent.mint": "Mint",
+  "space.tasks.accent.yellow": "Yellow",
+  "space.tasks.accent.lavender": "Lavender",
   "crossDialog.traceTitle": "Cross-dialog trace",
   "crossDialog.traceShort": "Trace",
   "crossDialog.traceSubtitle": "Everything he did in your other dialogs, recorded here",

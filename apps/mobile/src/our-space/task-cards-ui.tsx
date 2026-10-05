@@ -10,7 +10,7 @@
  */
 
 import * as ImagePicker from "expo-image-picker";
-import { Image as ImageIcon, Sparkles, X } from "lucide-react-native";
+import { AlertCircle, CheckCircle2, Image as ImageIcon, Sparkles, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Animated, ImageBackground, Modal, Pressable, TextInput, View } from "react-native";
 import { TText } from "../font";
@@ -22,8 +22,25 @@ import { ProgressBar } from "../progress-bar";
 import { radii } from "../theme/radii";
 import { shadows } from "../theme/shadows";
 import { useColors } from "../ui";
-import type { BackgroundTask, TaskStatus } from "./task-progress";
+import type { BackgroundTask, TaskCardAccent, TaskStatus } from "./task-progress";
+import { TASK_CARD_ACCENTS } from "./task-progress";
 import { taskProgressStore } from "./task-progress-instance";
+
+/**
+ * Accent key → theme palette field. Pastel washi-tape colors: visible on
+ * cards yet derived from the active theme (light/dark safe). null/absent
+ * accent falls back to the vivid theme blue (the card's original look).
+ */
+const ACCENT_TOKEN: Record<
+  TaskCardAccent,
+  "tapePink" | "tapeBlue" | "tapeMint" | "tapeYellow" | "tapeLavender"
+> = {
+  pink: "tapePink",
+  blue: "tapeBlue",
+  mint: "tapeMint",
+  yellow: "tapeYellow",
+  lavender: "tapeLavender",
+};
 
 function useTaskVersion(): number {
   const [v, setV] = useState(0);
@@ -48,6 +65,12 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
   const [genPrompt, setGenPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const pct = Math.round(task.progress * 100);
+
+  // Card accent: curated pastel key → theme token. null = vivid theme blue
+  // (the card's original look — existing cards don't change).
+  const accentColor = task.accent ? colors[ACCENT_TOKEN[task.accent]] : colors.blue;
+  // Status tint: stuck reads as a warning (danger), otherwise the accent.
+  const statusColor = task.status === "stuck" ? colors.danger : accentColor;
 
   // Cute springy entrance, staggered per card.
   const enter = useRef(new Animated.Value(0)).current;
@@ -104,6 +127,12 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
     setMenuOpen(false);
   };
 
+  const setAccent = async (accent: TaskCardAccent | null) => {
+    await taskProgressStore.setAccent(task.id, accent);
+    await taskProgressStore.saveIndex();
+    setMenuOpen(false);
+  };
+
   const dismissTask = () => {
     Alert.alert(t("space.tasks.dismissTitle") as string, t("space.tasks.dismissBody") as string, [
       { text: t("common.cancel") as string, style: "cancel" },
@@ -124,9 +153,16 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
           <TText style={{ color: colors.text, fontSize: 15, fontWeight: "700" }} numberOfLines={1}>
             {task.name}
           </TText>
-          <TText style={{ color: colors.muted, fontSize: 11.5 }}>
-            {t(statusLabel(task.status))} · {pct}%
-          </TText>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {task.status === "done" ? (
+              <CheckCircle2 size={12} color={accentColor} />
+            ) : task.status === "stuck" ? (
+              <AlertCircle size={12} color={colors.danger} />
+            ) : null}
+            <TText style={{ color: statusColor, fontSize: 11.5, fontWeight: "600" }}>
+              {t(statusLabel(task.status))} · {pct}%
+            </TText>
+          </View>
           {/* P3-8: a stuck card used to say only "卡住了" + delete. Say
               what happened in human words. */}
           {task.status === "stuck" ? (
@@ -142,7 +178,11 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
           <X size={16} color={colors.muted} />
         </Pressable>
       </View>
-      <ProgressBar progress={task.progress} active={task.status === "running"} />
+      <ProgressBar
+        progress={task.progress}
+        active={task.status === "running"}
+        color={accentColor}
+      />
       {!!task.stage && (
         <TText style={{ color: colors.muted, fontSize: 12.5, lineHeight: 18 }} numberOfLines={2}>
           {task.stage}
@@ -166,7 +206,8 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
           borderRadius: radii.lg,
           overflow: "hidden",
           borderWidth: 1,
-          borderColor: colors.line,
+          // A finished card gets a soft accent ring — a quiet little celebration.
+          borderColor: task.status === "done" ? accentColor : colors.line,
           marginBottom: 12,
         }}
       >
@@ -260,6 +301,35 @@ function TaskCard({ task, index }: { task: BackgroundTask; index: number }) {
                     </TText>
                   </Pressable>
                 )}
+                <TText style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
+                  {t("space.tasks.accentTitle")}
+                </TText>
+                <View
+                  style={{ flexDirection: "row", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+                >
+                  {(["default", ...TASK_CARD_ACCENTS] as const).map((key) => {
+                    const selected = (task.accent ?? "default") === key;
+                    const isDefault = key === "default";
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => void setAccent(isDefault ? null : key)}
+                        hitSlop={6}
+                        accessibilityLabel={t(`space.tasks.accent.${key}` as StringKey) as string}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: isDefault ? colors.card : colors[ACCENT_TOKEN[key]],
+                          borderWidth: selected ? 2.5 : 1.5,
+                          borderColor: selected ? colors.text : colors.line,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
               </Pressable>
             </GlassView>
           </Pressable>

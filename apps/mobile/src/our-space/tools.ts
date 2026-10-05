@@ -13,6 +13,7 @@ import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import { buildImageUrl } from "../image/protocol";
 import { getOnThisDay } from "./on-this-day";
 import type { OurSpaceStore, TimelineKind } from "./store";
+import { isTaskCardAccent, TASK_CARD_ACCENTS, type TaskCardAccent } from "./task-progress";
 import { daysTogether, resolveTogetherSince } from "./together";
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -925,9 +926,9 @@ export function createTaskProgressTools(
         if (!id || !name) throw new ToolError("id and name are required.");
         const statusRaw = strArg(args, "status");
         const status = statusRaw === "stuck" || statusRaw === "done" ? statusRaw : "running";
-        // Preserve the card's existing background (she may have set a custom
-        // image). Progress updates must never wipe it — only overwrite when a
-        // new background is explicitly provided.
+        // Preserve the card's existing background and accent (she may have set
+        // a custom image or color). Progress updates must never wipe them —
+        // only overwrite when explicitly provided.
         const prev = taskStore.get(id);
         const task = await taskStore.upsert({
           id,
@@ -936,6 +937,7 @@ export function createTaskProgressTools(
           stage: strArg(args, "stage"),
           status,
           backgroundUri: prev?.backgroundUri ?? null,
+          accent: prev?.accent ?? null,
         });
         await taskStore.saveIndex();
         return `Task card updated: "${task.name}" ${Math.round(task.progress * 100)}% (${task.status}).`;
@@ -1000,6 +1002,64 @@ export function createTaskProgressTools(
         await taskStore.setBackground(id, bg);
         await taskStore.saveIndex();
         return `Task card "${task.name}" background ${note}.`;
+      },
+    },
+    {
+      name: "task_card_set_style",
+      description:
+        "Change a background task's progress-card accent color in Our Space. Use ONLY when she explicitly asks to change a card's color/style (e.g. '把那张卡片换成粉的'). Never call unprompted, and never overwrite a color she set herself unless she asked for this exact change. Exactly one of accent / clear must be given: accent = one of pink, blue, mint, yellow, lavender; clear = true resets to the theme default.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Task card id (the same id used in task_progress_update).",
+          },
+          accent: {
+            type: "string",
+            description: "Accent color key: one of pink, blue, mint, yellow, lavender.",
+          },
+          clear: {
+            type: "boolean",
+            description: "true = remove the custom accent, back to theme default.",
+          },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("id is required.");
+        const task = taskStore.get(id);
+        if (!task) {
+          throw new ToolError(
+            `No task card with id "${id}". Create it with task_progress_update first, or check the id.`,
+          );
+        }
+        const accentRaw = strArg(args, "accent");
+        const clear = args.clear === true;
+        const given = [accentRaw !== "", clear].filter(Boolean).length;
+        if (given !== 1) {
+          throw new ToolError("Give exactly one of: accent, or clear=true.");
+        }
+        let accent: TaskCardAccent | null;
+        let note: string;
+        if (clear) {
+          accent = null;
+          note = "cleared, back to theme default";
+        } else {
+          if (!isTaskCardAccent(accentRaw)) {
+            throw new ToolError(
+              `Unknown accent "${accentRaw}". Pick one of: ${TASK_CARD_ACCENTS.join(", ")}.`,
+            );
+          }
+          accent = accentRaw;
+          note = `accent set to ${accent}`;
+        }
+        await taskStore.setAccent(id, accent);
+        await taskStore.saveIndex();
+        return `Task card "${task.name}" ${note}.`;
       },
     },
     {
