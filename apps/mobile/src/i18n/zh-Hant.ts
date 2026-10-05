@@ -1846,6 +1846,7 @@ const zhHant = {
   "crossDialog.actionMeetingRound": "開會中",
   "crossDialog.actionMeetingEnd": "會議結束",
   "crossDialog.actionProactiveSend": "主動找她",
+  "crossDialog.actionFeedNudge": "給她的動態點了讚",
   "crossDialog.fromDialogTag": "來自「{name}」對話框",
   "crossDialog.sendTagVisible": "在目標對話框顯示來源標記",
   "crossDialog.sendTagVisibleDetail":

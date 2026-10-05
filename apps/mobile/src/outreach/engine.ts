@@ -48,6 +48,11 @@ export interface OutreachTrigger {
   yearsAgo?: number;
   /** feed_nudge only: the post to like + reply to. */
   postId?: string;
+  /**
+   * feed_nudge only: false for image-only / blank posts → like-only nudge.
+   * Carried so the in-session prompt matches the background executor's rule.
+   */
+  hasReadableText?: boolean;
 }
 
 export interface OutreachEvalInput {
@@ -261,6 +266,7 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
         priority: 4,
         detail: candidate.snippet,
         postId: candidate.postId,
+        hasReadableText: candidate.hasReadableText,
       });
     }
   }

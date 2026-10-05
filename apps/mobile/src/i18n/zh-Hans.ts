@@ -1843,6 +1843,7 @@ const zhHans = {
   "crossDialog.actionMeetingRound": "开会中",
   "crossDialog.actionMeetingEnd": "会议结束",
   "crossDialog.actionProactiveSend": "主动找她",
+  "crossDialog.actionFeedNudge": "给她的动态点了赞",
   "crossDialog.fromDialogTag": "来自「{name}」对话框",
   "crossDialog.sendTagVisible": "在目标对话框显示来源标记",
   "crossDialog.sendTagVisibleDetail":

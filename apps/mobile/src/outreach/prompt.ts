@@ -65,14 +65,34 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
           `for today, write one with diary_write — at most one per day, quietly; do not announce it.`,
       );
       break;
-    case "feed_nudge":
-      lines.push(
-        `- She posted in Our Space 24h+ ago and you haven't reacted: "${t.detail}". ` +
-          `Call feed_like with postId "${t.postId ?? ""}", then leave ONE short warm reply with feed_reply ` +
-          `(cute and restrained, no emoji — one natural line, like a texting reply, never generic). ` +
-          `Do it once, quietly; don't announce that you're doing it.`,
-      );
+    case "feed_nudge": {
+      // feed_like TOGGLES: a stale call would silently UNLIKE. The trigger
+      // was evaluated earlier — re-check the live state first, like the
+      // background executor does.
+      const likeGuard =
+        `First check the post's current state with feed_read — only call feed_like with postId ` +
+        `"${t.postId ?? ""}" if you have NOT already liked it. feed_like TOGGLES: calling it on ` +
+        `a post you already liked would UNLIKE it.`;
+      if (t.hasReadableText === false) {
+        // Like-only parity with the background executor: image-only / blank
+        // posts get no reply — a hollow comment is worse than none.
+        lines.push(
+          `- She posted in Our Space 24h+ ago and you haven't reacted: "${t.detail}". ` +
+            `${likeGuard} ` +
+            `This one is like-only — do NOT leave a reply. ` +
+            `Do it once, quietly; don't announce that you're doing it.`,
+        );
+      } else {
+        lines.push(
+          `- She posted in Our Space 24h+ ago and you haven't reacted: "${t.detail}". ` +
+            `${likeGuard} ` +
+            `Then leave ONE short warm reply with feed_reply ` +
+            `(cute and restrained, no emoji — one natural line, like a texting reply, never generic). ` +
+            `Do it once, quietly; don't announce that you're doing it.`,
+        );
+      }
       break;
+    }
   }
   return lines.join("\n");
 }

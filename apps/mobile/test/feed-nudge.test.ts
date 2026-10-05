@@ -390,6 +390,15 @@ describe("engine: feed_nudge trigger", () => {
     assert.ok(triggers[0].detail.length > 0);
   });
 
+  it("carries hasReadableText through to the trigger (image post → false)", () => {
+    const img = post({ id: "p9", text: "  ", imageUri: "file://x.jpg" });
+    const triggers = evaluateOutreachTriggers(baseInput({ feedNudge: feedInput([img]) }));
+    assert.equal(triggers[0].kind, "feed_nudge");
+    assert.equal(triggers[0].hasReadableText, false);
+    const txt = evaluateOutreachTriggers(baseInput({ feedNudge: feedInput([post()]) }));
+    assert.equal(txt[0].hasReadableText, true);
+  });
+
   it("stays off without feed input, and under quiet frequency", () => {
     assert.deepEqual(evaluateOutreachTriggers(baseInput()), []);
     assert.deepEqual(
@@ -430,6 +439,46 @@ describe("prompt: feed_nudge section", () => {
     assert.ok(s.includes("feed_reply"));
     assert.ok(s.includes("p1"));
     assert.ok(!s.includes("在吗"));
+  });
+
+  it("tells him to re-check like state first — feed_like toggles (P2-1)", () => {
+    const s = buildOutreachSection([
+      {
+        kind: "feed_nudge",
+        priority: 4,
+        detail: "好吃的蛋糕",
+        postId: "p1",
+        hasReadableText: true,
+      },
+    ]);
+    // The trigger was evaluated earlier; a stale call would silently UNLIKE.
+    assert.ok(s.includes("feed_read"));
+    assert.ok(s.includes("TOGGLES"));
+    assert.ok(s.includes("NOT already liked"));
+  });
+
+  it("is like-only for image/blank posts — no reply instruction (P3-2)", () => {
+    const s = buildOutreachSection([
+      { kind: "feed_nudge", priority: 4, detail: "[图片]", postId: "p2", hasReadableText: false },
+    ]);
+    assert.ok(s.includes("feed_like"));
+    assert.ok(s.includes("feed_read"));
+    assert.ok(!s.includes("feed_reply"));
+    assert.ok(s.toLowerCase().includes("like-only"));
+  });
+
+  it("keeps the reply for posts with readable text", () => {
+    const s = buildOutreachSection([
+      {
+        kind: "feed_nudge",
+        priority: 4,
+        detail: "好吃的蛋糕",
+        postId: "p1",
+        hasReadableText: true,
+      },
+    ]);
+    assert.ok(s.includes("feed_like"));
+    assert.ok(s.includes("feed_reply"));
   });
 });
 
