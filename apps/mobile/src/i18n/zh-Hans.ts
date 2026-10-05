@@ -1884,6 +1884,16 @@ const zhHans = {
   "mcp.oauth.failedTitle": "授权失败",
   "mcp.askUser.title": "问你几个问题",
   "mcp.askUser.submit": "好了",
+  "mcp.tools.manage": "工具权限",
+  "mcp.tools.hint": "给每个工具定个规矩：每次都问你、直接放行，还是永远不许调用。",
+  "mcp.tools.loading": "正在连接服务器读工具列表…",
+  "mcp.tools.empty": "这个服务器没有工具。",
+  "mcp.tools.loadFailed": "连不上服务器：{error}",
+  "mcp.tools.retry": "重试",
+  "mcp.tools.needAuth": "这个服务器要先点「授权」登录，再来读工具列表。",
+  "mcp.tools.ask": "每次问",
+  "mcp.tools.allow": "放行",
+  "mcp.tools.deny": "禁止",
 
   // ---- persona (人设) ----
   "persona.title": "人设",

@@ -14,9 +14,12 @@ import { Alert, Pressable, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, Card, useColors } from "../ui";
+import { createMcpClient, type McpClient } from "./client";
+import { envStore } from "./env";
 import { startAuthorization } from "./oauth";
 import { mcpStore, useMcpServers } from "./store";
-import type { McpServerConfig, McpTransportType } from "./types";
+import { withToolApproval } from "./tool-approval-edit";
+import type { McpServerConfig, McpToolDefinition, McpTransportType } from "./types";
 
 export const MCP_OAUTH_REDIRECT = "dudu://oauth/mcp";
 
@@ -191,6 +194,135 @@ function ServerEditor({
   );
 }
 
+const DECISION_ORDER = ["ask", "allow", "deny"] as const;
+const DECISION_KEYS = {
+  ask: "mcp.tools.ask",
+  allow: "mcp.tools.allow",
+  deny: "mcp.tools.deny",
+} as const;
+
+/**
+ * D21: per-tool approval management. The provider honors
+ * `server.toolApprovals` (provider.ts getApproval) and the D13 approval
+ * card writes into it via "remember my choice" — this UI makes that
+ * record visible and editable instead of a write-only black box.
+ */
+function ToolApprovalsSection({ server }: { server: McpServerConfig }) {
+  const colors = useColors();
+  const [open, setOpen] = useState(false);
+  const [tools, setTools] = useState<McpToolDefinition[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    let client: McpClient | null = null;
+    try {
+      const env = await envStore.getValues();
+      client = createMcpClient(server, {
+        env,
+        getTokens: () => mcpStore.getTokens(server.id),
+        saveTokens: (tk) => mcpStore.saveTokens(server.id, tk),
+        getClientCreds: () => mcpStore.getClientCreds(server.id),
+        onNeedsAuth: async () => {
+          // Listing tools never silently starts an OAuth browser flow;
+          // she authorizes via the Authorize button, then retries.
+          throw new Error(t("mcp.tools.needAuth"));
+        },
+        getApproval: () => "ask",
+        requestApproval: async () => false,
+      });
+      await client.connect();
+      setTools(await client.listTools());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+      if (client) await client.close().catch(() => {});
+    }
+  }
+
+  function toggle() {
+    if (!open && tools === null && !loading && !error) void load();
+    setOpen(!open);
+  }
+
+  function setApproval(toolName: string, decision: "ask" | "allow" | "deny") {
+    void mcpStore.upsert(withToolApproval(server, toolName, decision));
+  }
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <Button small onPress={toggle}>
+        {t("mcp.tools.manage")}
+      </Button>
+      {open && (
+        <View style={{ marginTop: 8, gap: 8 }}>
+          <TText style={{ fontSize: 12, color: colors.muted }}>{t("mcp.tools.hint")}</TText>
+          {loading && (
+            <TText style={{ fontSize: 12, color: colors.muted }}>{t("mcp.tools.loading")}</TText>
+          )}
+          {error && (
+            <View style={{ gap: 6 }}>
+              <TText style={{ fontSize: 12, color: colors.danger }}>
+                {t("mcp.tools.loadFailed", { error })}
+              </TText>
+              <Button small onPress={() => void load()}>
+                {t("mcp.tools.retry")}
+              </Button>
+            </View>
+          )}
+          {!loading && !error && tools && tools.length === 0 && (
+            <TText style={{ fontSize: 12, color: colors.muted }}>{t("mcp.tools.empty")}</TText>
+          )}
+          {tools?.map((tool) => {
+            const current = server.toolApprovals?.[tool.name] ?? "ask";
+            return (
+              <View
+                key={tool.name}
+                style={{
+                  gap: 4,
+                  paddingTop: 8,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.line,
+                }}
+              >
+                <TText style={{ fontWeight: "600", color: colors.text }}>{tool.name}</TText>
+                {tool.description ? (
+                  <TText style={{ fontSize: 12, color: colors.muted }} numberOfLines={2}>
+                    {tool.description}
+                  </TText>
+                ) : null}
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
+                  {DECISION_ORDER.map((d) => (
+                    <Pressable
+                      key={d}
+                      onPress={() => setApproval(tool.name, d)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        backgroundColor: current === d ? colors.blue : colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.line,
+                      }}
+                    >
+                      <TText style={{ color: current === d ? "#fff" : colors.text }}>
+                        {t(DECISION_KEYS[d])}
+                      </TText>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function McpSettings() {
   const { servers, loaded } = useMcpServers();
   const [editing, setEditing] = useState<McpServerConfig | null>(null);
@@ -270,6 +402,7 @@ export default function McpSettings() {
               {t("common.delete")}
             </Button>
           </View>
+          <ToolApprovalsSection server={s} />
         </Card>
       ))}
 

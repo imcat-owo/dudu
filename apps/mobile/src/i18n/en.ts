@@ -1965,6 +1965,16 @@ export const enStrings: Record<StringKey, string> = {
   "mcp.oauth.failedTitle": "Authorization failed",
   "mcp.askUser.title": "A few questions for you",
   "mcp.askUser.submit": "Done",
+  "mcp.tools.manage": "Tool permissions",
+  "mcp.tools.hint": "Set a rule per tool: ask you each time, always allow, or never call it.",
+  "mcp.tools.loading": "Connecting to list tools…",
+  "mcp.tools.empty": "This server exposes no tools.",
+  "mcp.tools.loadFailed": "Couldn't reach the server: {error}",
+  "mcp.tools.retry": "Retry",
+  "mcp.tools.needAuth": "This server needs OAuth login first — tap Authorize, then try again.",
+  "mcp.tools.ask": "Ask",
+  "mcp.tools.allow": "Allow",
+  "mcp.tools.deny": "Deny",
 
   // ---- persona ----
   "persona.title": "Personas",

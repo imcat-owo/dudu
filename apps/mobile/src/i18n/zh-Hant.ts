@@ -1887,6 +1887,16 @@ const zhHant = {
   "mcp.oauth.failedTitle": "授權失敗",
   "mcp.askUser.title": "問你幾個問題",
   "mcp.askUser.submit": "好了",
+  "mcp.tools.manage": "工具權限",
+  "mcp.tools.hint": "給每個工具定個規矩：每次都問你、直接放行，還是永遠不許調用。",
+  "mcp.tools.loading": "正在連接伺服器讀工具列表…",
+  "mcp.tools.empty": "這個伺服器沒有工具。",
+  "mcp.tools.loadFailed": "連不上伺服器：{error}",
+  "mcp.tools.retry": "重試",
+  "mcp.tools.needAuth": "這個伺服器要先點「授權」登入，再來讀工具列表。",
+  "mcp.tools.ask": "每次問",
+  "mcp.tools.allow": "放行",
+  "mcp.tools.deny": "禁止",
 
   // ---- persona (人設) ----
   "persona.title": "人設",
