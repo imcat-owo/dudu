@@ -1,17 +1,17 @@
 /**
- * B5: dudu tools respect persona isolation.
+ * B5: cross_dialog tools respect persona isolation.
  *
- * - `dudu list` / `search` only ever see the current persona's dialogs.
- * - `dudu read` on another persona's dialog is refused — the refusal is
+ * - `cross_dialog list` / `search` only ever see the current persona's dialogs.
+ * - ``cross_dialog read`` on another persona's dialog is refused — the refusal is
  *   indistinguishable from "unknown dialog" (no existence/content leak).
- * - The `dudu` tool is hidden in incognito sessions (same registration path
+ * - The `cross_dialog` tool is hidden in incognito sessions (same registration path
  *   the app uses: assembleAgentTools + the incognito blocklist backstop).
  * - Same-persona list/read behavior is unchanged.
  *
  * Uses node:test + tsx. All modules under test are PURE (no React Native in
  * the import chain). local-agent.ts itself can't load under tsx (pre-existing:
  * its import graph pulls react-native Flow syntax) — its wiring is a
- * one-line call to createIsolatedDuduDeps, verified by tsc + review.
+ * one-line call to createIsolatedCrossDialogDeps, verified by tsc + review.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -20,11 +20,11 @@ import type { LocalTool } from "../src/api-groups/local-tools.js";
 import { assembleAgentTools } from "../src/api-groups/tool-assembly.js";
 import {
   type CrossDialogStorage,
-  createIsolatedDuduDeps,
+  createIsolatedCrossDialogDeps,
   DEFAULT_PERSONA_ID,
   setDialogName,
 } from "../src/chat/cross-dialog.js";
-import { createAgentCliTools } from "../src/mcp/agent-cli.js";
+import { createCrossDialogCliTools } from "../src/mcp/agent-cli.js";
 
 const PERSONA_A = "persona-a";
 const PERSONA_B = "persona-b";
@@ -72,11 +72,11 @@ async function seed(s: FakeStorage): Promise<void> {
   await setDialogName(s, "d0", "默认对话"); // DEFAULT_PERSONA_ID
 }
 
-describe("dudu deps persona isolation (B5)", () => {
+describe("cross_dialog deps persona isolation (B5)", () => {
   it("list returns ONLY the current persona's dialogs", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     const dialogs = await deps.listDialogs();
     const ids = dialogs.map((d) => d.id).sort();
     assert.deepEqual(ids, ["b1", "b2"]);
@@ -85,7 +85,7 @@ describe("dudu deps persona isolation (B5)", () => {
   it("search never matches another persona's dialogs", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     assert.deepEqual(await deps.searchDialogs("秘密"), []);
     const hits = await deps.searchDialogs("工作");
     assert.deepEqual(
@@ -97,7 +97,7 @@ describe("dudu deps persona isolation (B5)", () => {
   it("read works normally for the same persona's dialog (id or name)", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     const byId = await deps.readDialog("b1", 20);
     assert.ok(byId.includes("B 的回答"), "same-persona read by id unchanged");
     const byName = await deps.readDialog("B 工作", 20);
@@ -107,7 +107,7 @@ describe("dudu deps persona isolation (B5)", () => {
   it("read on another persona's dialog is refused with no leak", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     await assert.rejects(
       () => deps.readDialog("a1", 20),
       (err: unknown) => {
@@ -127,7 +127,7 @@ describe("dudu deps persona isolation (B5)", () => {
   it("read on an unknown dialog looks identical to a foreign one", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     await assert.rejects(
       () => deps.readDialog("nope", 20),
       /No dialog "nope" found among this persona's dialogs\./,
@@ -139,7 +139,7 @@ describe("dudu deps persona isolation (B5)", () => {
     await seed(s);
     seedHistory(s, "b3", [{ role: "user", content: "重名" }]);
     await setDialogName(s, "b3", "B 工作", PERSONA_B);
-    const deps = createIsolatedDuduDeps(s, async () => PERSONA_B);
+    const deps = createIsolatedCrossDialogDeps(s, async () => PERSONA_B);
     await assert.rejects(() => deps.readDialog("B 工作", 20), /Multiple dialogs named/);
   });
 
@@ -147,7 +147,7 @@ describe("dudu deps persona isolation (B5)", () => {
     const s = fakeStorage();
     await seed(s);
     let current = PERSONA_B;
-    const deps = createIsolatedDuduDeps(s, async () => current);
+    const deps = createIsolatedCrossDialogDeps(s, async () => current);
     assert.deepEqual((await deps.listDialogs()).map((d) => d.id).sort(), ["b1", "b2"]);
     current = PERSONA_A; // switch mid-session: no stale capture allowed
     assert.deepEqual(
@@ -159,7 +159,7 @@ describe("dudu deps persona isolation (B5)", () => {
   it("falls back to the default persona when none is selected", async () => {
     const s = fakeStorage();
     await seed(s);
-    const deps = createIsolatedDuduDeps(s, async () => DEFAULT_PERSONA_ID);
+    const deps = createIsolatedCrossDialogDeps(s, async () => DEFAULT_PERSONA_ID);
     assert.deepEqual(
       (await deps.listDialogs()).map((d) => d.id),
       ["d0"],
@@ -167,12 +167,14 @@ describe("dudu deps persona isolation (B5)", () => {
   });
 });
 
-describe("dudu tool wiring (B5)", () => {
-  it("the dudu tool exposes list/search/read through the isolated deps", async () => {
+describe("cross_dialog tool wiring (B5)", () => {
+  it("the cross_dialog tool exposes list/search/read through the isolated deps", async () => {
     const s = fakeStorage();
     await seed(s);
-    const [tool] = createAgentCliTools(createIsolatedDuduDeps(s, async () => PERSONA_B));
-    assert.equal(tool.name, "dudu");
+    const [tool] = createCrossDialogCliTools(
+      createIsolatedCrossDialogDeps(s, async () => PERSONA_B),
+    );
+    assert.equal(tool.name, "cross_dialog");
     const list = await tool.run({ command: "list" }, {} as never);
     assert.ok(list.includes("b1") && list.includes("b2"), "lists own dialogs");
     assert.ok(!list.includes("a1"), "never lists another persona's dialog");
@@ -180,7 +182,7 @@ describe("dudu tool wiring (B5)", () => {
   });
 });
 
-describe("dudu hidden in incognito (B5)", () => {
+describe("cross_dialog hidden in incognito (B5)", () => {
   function fakeTool(name: string): LocalTool {
     return {
       name,
@@ -190,12 +192,12 @@ describe("dudu hidden in incognito (B5)", () => {
     };
   }
 
-  it("isBlockedInIncognito refuses the dudu tool", () => {
-    assert.equal(isBlockedInIncognito("dudu"), true);
+  it("isBlockedInIncognito refuses the cross_dialog tool", () => {
+    assert.equal(isBlockedInIncognito("cross_dialog"), true);
   });
 
-  it("assembleAgentTools drops dudu from the registry in incognito, keeps it otherwise", async () => {
-    const baseTools = [fakeTool("dudu"), fakeTool("time_now")];
+  it("assembleAgentTools drops cross_dialog from the registry in incognito, keeps it otherwise", async () => {
+    const baseTools = [fakeTool("cross_dialog"), fakeTool("time_now")];
     const incognito = await assembleAgentTools({
       baseTools,
       externalSupplied: true,
@@ -204,8 +206,8 @@ describe("dudu hidden in incognito (B5)", () => {
       applyDescOverrides: async (t) => t,
     });
     assert.ok(
-      !incognito.effectiveTools.some((t) => t.name === "dudu"),
-      "dudu must not reach the prompt/registry in incognito",
+      !incognito.effectiveTools.some((t) => t.name === "cross_dialog"),
+      "cross_dialog must not reach the prompt/registry in incognito",
     );
     assert.ok(incognito.effectiveTools.some((t) => t.name === "time_now"));
 
@@ -217,8 +219,8 @@ describe("dudu hidden in incognito (B5)", () => {
       applyDescOverrides: async (t) => t,
     });
     assert.ok(
-      normal.effectiveTools.some((t) => t.name === "dudu"),
-      "dudu stays available outside incognito",
+      normal.effectiveTools.some((t) => t.name === "cross_dialog"),
+      "cross_dialog stays available outside incognito",
     );
   });
 });

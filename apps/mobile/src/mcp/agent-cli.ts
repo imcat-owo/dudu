@@ -1,8 +1,8 @@
 /**
- * Cross-session agent CLI — PURE module (no React Native imports).
+ * Cross-dialog agent CLI — PURE module (no React Native imports).
  *
  * D13: When the AI is working in the sandbox (or just wants a CLI feel),
- * `dudu` commands let it list, search, and read other sessions (dialogs).
+ * `cross_dialog` commands let it list, search, and read other sessions (dialogs).
  * Same data as the cross-dialog chat tools, but shaped for agent use:
  * terse, greppable, scriptable.
  *
@@ -25,12 +25,12 @@ export interface AgentCliDeps {
   searchDialogs: (query: string) => Promise<DialogSummary[]>;
 }
 
-export function createAgentCliTools(deps: AgentCliDeps): LocalTool[] {
+export function createCrossDialogCliTools(deps: AgentCliDeps): LocalTool[] {
   return [
     {
-      name: "dudu",
+      name: "cross_dialog",
       description:
-        "Cross-session agent CLI. Subcommands: `list` (all dialogs), `search <query>` (find dialogs), `read <id> [--limit N]` (read another dialog's messages). For when you're working across sessions and need context from elsewhere. Reads are traced (she can see you looked).",
+        "Cross-dialog agent CLI. Subcommands: `list` (all dialogs), `search <query>` (find dialogs), `read <id> [--limit N]` (read another dialog's messages). For when you're working across sessions and need context from elsewhere. Reads are traced (she can see you looked).",
       parameters: {
         type: "object",
         properties: {
@@ -51,6 +51,7 @@ export function createAgentCliTools(deps: AgentCliDeps): LocalTool[] {
         required: ["command"],
         additionalProperties: false,
       },
+      manualId: "cross-dialog",
       run: async (args, _ctx) => {
         const command = String(args.command ?? "");
         const arg = String(args.arg ?? "").trim();
@@ -63,17 +64,17 @@ export function createAgentCliTools(deps: AgentCliDeps): LocalTool[] {
             return dialogs.map((d) => `${d.id}\t${d.name}\t${d.messageCount} msgs`).join("\n");
           }
           case "search": {
-            if (!arg) throw new Error("dudu search: empty query");
+            if (!arg) throw new Error("cross_dialog search: empty query");
             const hits = await deps.searchDialogs(arg);
             if (hits.length === 0) return `No dialogs matching "${arg}".`;
             return hits.map((d) => `${d.id}\t${d.name}`).join("\n");
           }
           case "read": {
-            if (!arg) throw new Error("dudu read: empty dialog id");
+            if (!arg) throw new Error("cross_dialog read: empty dialog id");
             return deps.readDialog(arg, limit);
           }
           default:
-            throw new Error(`dudu: unknown command "${command}" (list/search/read)`);
+            throw new Error(`cross_dialog: unknown command "${command}" (list/search/read)`);
         }
       },
     },

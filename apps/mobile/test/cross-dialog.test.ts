@@ -7,7 +7,7 @@ import { describe, it } from "node:test";
 import {
   type CrossDialogStorage,
   createCrossDialogTools,
-  createIsolatedDuduDeps,
+  createIsolatedCrossDialogDeps,
   DEFAULT_PERSONA_ID,
   deleteDialog,
   listDialogs,
@@ -677,8 +677,8 @@ describe("loadMessages envelope compatibility", () => {
   });
 });
 
-describe("createIsolatedDuduDeps (D32: CLI reads leave a trace)", () => {
-  it("dudu read appends a trace entry she can see", async () => {
+describe("createIsolatedCrossDialogDeps (D32: CLI reads leave a trace)", () => {
+  it("cross_dialog read appends a trace entry she can see", async () => {
     const s = fakeStorage();
     await setDialogName(s, "aaa", "工作");
     await setDialogName(s, "bbb", "旅行");
@@ -686,7 +686,7 @@ describe("createIsolatedDuduDeps (D32: CLI reads leave a trace)", () => {
       { role: "user", content: "hello" },
       { role: "assistant", content: "hi" },
     ]);
-    const deps = createIsolatedDuduDeps(s, async () => DEFAULT_PERSONA_ID);
+    const deps = createIsolatedCrossDialogDeps(s, async () => DEFAULT_PERSONA_ID);
     const out = await deps.readDialog("bbb", 20);
     assert.match(out, /hello/);
     const trace = new CrossDialogTraceStore(s);
@@ -695,13 +695,13 @@ describe("createIsolatedDuduDeps (D32: CLI reads leave a trace)", () => {
     assert.ok(read, "expected a trace entry for the CLI read");
     assert.equal(read.toName, "旅行");
     assert.equal(read.personaId, DEFAULT_PERSONA_ID);
-    assert.match(read.summary, /via dudu CLI/);
+    assert.match(read.summary, /via cross_dialog CLI/);
   });
 
   it("failed reads (unknown dialog) leave no trace", async () => {
     const s = fakeStorage();
     await setDialogName(s, "aaa", "工作");
-    const deps = createIsolatedDuduDeps(s, async () => DEFAULT_PERSONA_ID);
+    const deps = createIsolatedCrossDialogDeps(s, async () => DEFAULT_PERSONA_ID);
     await assert.rejects(() => deps.readDialog("nope", 20));
     const trace = new CrossDialogTraceStore(s);
     assert.deepEqual(await trace.list(10), []);

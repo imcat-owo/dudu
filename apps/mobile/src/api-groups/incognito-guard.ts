@@ -71,11 +71,11 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "new_dialog",
   "rename_dialog",
   "propose_coordination_plan", // ai-use P1-2: persists to dudu.plan-gate.v1 + pops a plan card
-  // B5: the dudu agent CLI (list/search/read other dialogs) reads dialog
+  // B5: the cross_dialog agent CLI (list/search/read other dialogs) reads dialog
   // metadata — in incognito the persona is unresolved so isolation can't be
   // enforced, and cross-session reads break the "zero trace" promise.
   // Fail closed: hidden from the prompt/registry + refused loudly.
-  "dudu",
+  "cross_dialog",
   // Knowledge base
   "knowledge_add_doc",
   "knowledge_reindex",

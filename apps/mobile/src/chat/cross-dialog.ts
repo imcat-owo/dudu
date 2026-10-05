@@ -416,9 +416,9 @@ export async function readDialog(
 }
 
 /**
- * Persona-isolated deps for the `dudu` agent CLI tool (B5).
+ * Persona-isolated deps for the `cross_dialog` agent CLI tool (B5).
  *
- * The dudu tool's list/search/read must never cross persona boundaries:
+ * The cross_dialog tool's list/search/read must never cross persona boundaries:
  * - list/search only ever see the current persona's dialogs
  *   (listDialogs already filters by personaId).
  * - read resolves the ref (id or name) within the current persona's dialogs
@@ -429,7 +429,7 @@ export async function readDialog(
  * module load or agent construction — so a persona switch mid-session takes
  * effect immediately.
  */
-export function createIsolatedDuduDeps(
+export function createIsolatedCrossDialogDeps(
   storage: CrossDialogStorage,
   getPersonaId: () => Promise<string>,
 ): AgentCliDeps {
@@ -441,7 +441,7 @@ export function createIsolatedDuduDeps(
   }
   /**
    * D32: the CLI read path must leave the same audit trace the in-app
-   * read_dialog tool leaves — the dudu tool description promises
+   * read_dialog tool leaves — the cross_dialog tool description promises
    * "Reads are traced (she can see you looked)". Built from the injected
    * storage (AsyncStorage in production), so entries land in the same
    * trace she browses; the store serializes appends, so concurrent reads
@@ -474,13 +474,13 @@ export function createIsolatedDuduDeps(
       await trace.append({
         action: "read",
         // The CLI deps don't know which dialog the agent is talking in;
-        // the sentinel says honestly who acted (renders as "dudu CLI" in
+        // the sentinel says honestly who acted (renders as "cross_dialog CLI" in
         // her trace log) instead of faking a dialog id.
         fromThreadId: "agent-cli",
-        fromName: "dudu CLI",
+        fromName: "cross_dialog CLI",
         toThreadId: match.id,
         toName: match.name,
-        summary: `read ${messages.length} messages from "${match.name}" via dudu CLI`,
+        summary: `read ${messages.length} messages from "${match.name}" via cross_dialog CLI`,
         reason: "agent CLI read",
         personaId,
       });
@@ -533,7 +533,7 @@ export interface CrossDialogToolOpts {
    * Lazy current-persona reader (B5-followup): resolved on EVERY tool
    * invocation — never captured at construction — so a persona switch
    * mid-session takes effect immediately. Takes precedence over the static
-   * `personaId` when provided. Same pattern as createIsolatedDuduDeps.
+   * `personaId` when provided. Same pattern as createIsolatedCrossDialogDeps.
    */
   getPersonaId?: () => Promise<string>;
   storage: CrossDialogStorage;
@@ -592,7 +592,7 @@ export function createCrossDialogTools(opts: CrossDialogToolOpts): LocalTool[] {
    * never captured at construction — so a persona switch mid-session takes
    * effect immediately. Falls back to the static opt, then the default
    * persona, if the reader is absent or hiccups. Mirrors
-   * createIsolatedDuduDeps' getPersonaId contract.
+   * createIsolatedCrossDialogDeps' getPersonaId contract.
    */
   async function resolvePersonaId(): Promise<string> {
     try {

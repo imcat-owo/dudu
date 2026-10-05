@@ -3,7 +3,7 @@
  *
  * Proves:
  * 1. MCP tool factories produce registered tools (ask_user, web_search,
- *    delegate_task, dudu CLI, terminal tools).
+ *    delegate_task, cross_dialog CLI, terminal tools).
  * 2. ask_user flow: subscribe → request emitted → answer resolves.
  * 3. mcpBackupPayload strips OAuth client secrets from backup.
  * 4. Long-paste threshold logic.
@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createAgentCliTools } from "../src/mcp/agent-cli";
+import { createCrossDialogCliTools } from "../src/mcp/agent-cli";
 import {
   __pendingAskUserCount,
   answerAskUserRequest,
@@ -78,14 +78,14 @@ describe("Batch 4 wiring", () => {
     assert.equal(out, "done: hello");
   });
 
-  it("dudu agent CLI tools are registered", () => {
-    const tools = createAgentCliTools({
+  it("cross_dialog agent CLI tools are registered", () => {
+    const tools = createCrossDialogCliTools({
       listDialogs: async () => [],
       readDialog: async () => "",
       searchDialogs: async () => [],
     });
     assert.equal(tools.length, 1);
-    assert.equal(tools[0].name, "dudu");
+    assert.equal(tools[0].name, "cross_dialog");
   });
 
   it("interactive terminal tools are registered", () => {

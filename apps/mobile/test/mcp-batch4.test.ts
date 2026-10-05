@@ -218,9 +218,9 @@ describe("delegate_task", () => {
 });
 
 // --- agent CLI ---
-import { createAgentCliTools } from "../src/mcp/agent-cli";
+import { createCrossDialogCliTools } from "../src/mcp/agent-cli";
 
-describe("dudu agent CLI", () => {
+describe("cross_dialog agent CLI", () => {
   const deps = {
     listDialogs: async () => [{ id: "d1", name: "Chat", messageCount: 10, updatedAt: 1 }],
     readDialog: async (id: string, limit: number) => `read ${id} limit ${limit}`,
@@ -229,13 +229,13 @@ describe("dudu agent CLI", () => {
   };
 
   it("lists dialogs", async () => {
-    const [tool] = createAgentCliTools(deps);
+    const [tool] = createCrossDialogCliTools(deps);
     const out = await tool.run({ command: "list" }, {} as never);
     assert.ok(out.includes("d1"));
   });
 
   it("searches", async () => {
-    const [tool] = createAgentCliTools(deps);
+    const [tool] = createCrossDialogCliTools(deps);
     const out = await tool.run({ command: "search", arg: "chat" }, {} as never);
     assert.ok(out.includes("d1"));
     const none = await tool.run({ command: "search", arg: "zzz" }, {} as never);
@@ -243,13 +243,13 @@ describe("dudu agent CLI", () => {
   });
 
   it("reads with limit cap", async () => {
-    const [tool] = createAgentCliTools(deps);
+    const [tool] = createCrossDialogCliTools(deps);
     const out = await tool.run({ command: "read", arg: "d1", limit: 999 }, {} as never);
     assert.ok(out.includes("limit 50"));
   });
 
   it("rejects unknown commands", async () => {
-    const [tool] = createAgentCliTools(deps);
+    const [tool] = createCrossDialogCliTools(deps);
     await assert.rejects(() => tool.run({ command: "nope" }, {} as never), /unknown command/);
   });
 });
