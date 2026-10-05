@@ -119,6 +119,13 @@ Current workflow: dispatch build worker → fresh reviewer (build→review→fix
 
 ---
 
+### Addendum 2026-10-05 — Codex 28-day sprint（Thibault Sottiaux 军令状）
+- 背景：Codex 团队立下 28 天军令状——未来四周每天要么上线多数人可感知的改进，要么直接全额重置（reset）。四件事：简化产品、提升效率换可用额度、突破性功能、新模型。来源：ExplainX（https://explainx.ai/blog/openai-dots-pro-200-usage-halved-october-2026）、KuCoin 快讯（https://www.kucoin.com/news/flash/openai-sets-28-day-sprint-for-codex-with-daily-improvements-or-resets）。
+- 可偷的招：①"每天可感知的改进 or 全额重置"——把"可感知"当硬指标，逼团队每天交付用户能摸到的东西，而不是内部重构；②把"效率换可用额度"（efficiency → usable quota）明说成目标——跟嘟嘟的"智能 API 自适应"（失败分类＋降级重试＋按模型记忆可用配置）是同一个账本逻辑：省下来的 token 就是能多干的活。
+- 对嘟嘟施工管线的启示：我们现在的"做→审→对齐→修→复审→没问题→下一个"已经是日级交付节奏；可以加一条——每天收工时 Parent 用一句话写"今天用户可感知的变化是什么"，写不出来说明那天在磨内部的东西，第二天优先排可感知的。
+
+---
+
 ## Sources
 - Claude Code hooks: https://github.com/carmandale/agent-os/blob/HEAD/docs/research/claude-code-hooks-environment.md
 - Claude Code tool/agent reference: https://github.com/tealaxdevelopers/modded-opencode/blob/HEAD/source/skills/agents-md/references/claude-tools.md
