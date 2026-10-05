@@ -5,10 +5,17 @@
  * (single-choice or multi-choice) instead of guessing. The tool pauses
  * the agent loop until she answers in the UI.
  *
+ * D17: pending requests are scoped to the dialog (threadId) that asked.
+ * A question asked in dialog A must never surface in dialog B — the UI
+ * subscribes with its own threadId and only receives matching requests.
+ *
+ * D20: the 5-minute safety timeout reports honestly ("timed out — she may
+ * not have seen it") instead of claiming she dismissed the question.
+ *
  * Wiring: the agent loop (local-agent.ts) registers these tools via
- * createAskUserTools(). The UI (chat.tsx) subscribes via
- * subscribeAskUserRequest() to render the questions, then calls
- * answerAskUserRequest(id, answers).
+ * createAskUserTools({ threadId }). The UI (chat.tsx) subscribes via
+ * subscribeAskUserRequest(listener, { threadId }) to render the questions,
+ * then calls answerAskUserRequest(id, answers).
  */
 
 import type { LocalTool } from "../api-groups/local-tools";
@@ -24,30 +31,73 @@ export interface AskUserQuestion {
 
 export interface AskUserRequest {
   id: string;
+  /** Owning dialog. "" = unscoped (legacy/tests) — visible everywhere. */
+  threadId: string;
   questions: AskUserQuestion[];
   resolve: (answers: Record<string, string | string[]>) => void;
   reject: (e: Error) => void;
   createdAt: number;
 }
 
+export type AskUserCancelReason = "dismissed" | "timeout";
+
 type Listener = (req: AskUserRequest | null) => void;
 
+interface ListenerEntry {
+  fn: Listener;
+  /** Dialog this listener cares about. undefined = unfiltered (legacy). */
+  threadId?: string;
+}
+
 const pending = new Map<string, AskUserRequest>();
-const listeners = new Set<Listener>();
+const listeners = new Set<ListenerEntry>();
 let seq = 0;
 
-export function subscribeAskUserRequest(listener: Listener): () => void {
-  listeners.add(listener);
-  // Replay any pending request (e.g. UI remounted mid-question).
-  const first = pending.values().next();
-  if (!first.done) listener(first.value);
+/**
+ * A request is visible to a listener when it belongs to the listener's
+ * dialog. Unscoped requests and unfiltered listeners keep the legacy
+ * see-everything behavior.
+ */
+function visibleTo(req: AskUserRequest, listenerThreadId: string | undefined): boolean {
+  if (!req.threadId) return true;
+  if (listenerThreadId === undefined) return true;
+  return req.threadId === listenerThreadId;
+}
+
+export function subscribeAskUserRequest(
+  listener: Listener,
+  opts?: { threadId?: string },
+): () => void {
+  const entry: ListenerEntry = { fn: listener, threadId: opts?.threadId };
+  listeners.add(entry);
+  // Replay the first pending request for this dialog (e.g. UI remounted
+  // mid-question, or user switched back to this dialog).
+  for (const req of pending.values()) {
+    if (visibleTo(req, entry.threadId)) {
+      listener(req);
+      break;
+    }
+  }
   return () => {
-    listeners.delete(listener);
+    listeners.delete(entry);
   };
 }
 
-function emit(req: AskUserRequest | null) {
-  for (const l of listeners) l(req);
+function emit(req: AskUserRequest | null, scopeThreadId?: string) {
+  for (const e of listeners) {
+    if (req) {
+      if (!visibleTo(req, e.threadId)) continue;
+    } else if (
+      scopeThreadId !== undefined &&
+      scopeThreadId !== "" &&
+      e.threadId !== undefined &&
+      e.threadId !== scopeThreadId
+    ) {
+      // A clear for another dialog: don't wipe this listener's card.
+      continue;
+    }
+    e.fn(req);
+  }
 }
 
 function validateQuestions(raw: unknown): AskUserQuestion[] {
@@ -79,17 +129,26 @@ export function answerAskUserRequest(
   const req = pending.get(id);
   if (!req) return false;
   pending.delete(id);
-  emit(null);
+  emit(null, req.threadId);
   req.resolve(answers);
   return true;
 }
 
-export function cancelAskUserRequest(id: string): boolean {
+export function cancelAskUserRequest(
+  id: string,
+  reason: AskUserCancelReason = "dismissed",
+): boolean {
   const req = pending.get(id);
   if (!req) return false;
   pending.delete(id);
-  emit(null);
-  req.reject(new Error("She dismissed the question."));
+  emit(null, req.threadId);
+  req.reject(
+    new Error(
+      reason === "timeout"
+        ? "No answer within 5 minutes (timed out — she may not have seen it)."
+        : "She dismissed the question.",
+    ),
+  );
   return true;
 }
 
@@ -98,7 +157,10 @@ export function __pendingAskUserCount(): number {
   return pending.size;
 }
 
-export function createAskUserTools(): LocalTool[] {
+export function createAskUserTools(opts?: { threadId?: string }): LocalTool[] {
+  // The dialog that owns this agent instance. Requests carry it so the UI
+  // only ever surfaces them in the dialog that asked (D17).
+  const ownerThreadId = opts?.threadId ?? "";
   return [
     {
       name: "ask_user",
@@ -140,6 +202,7 @@ export function createAskUserTools(): LocalTool[] {
         const answers = await new Promise<Record<string, string | string[]>>((resolve, reject) => {
           const req: AskUserRequest = {
             id,
+            threadId: ownerThreadId,
             questions,
             resolve,
             reject,
@@ -150,7 +213,7 @@ export function createAskUserTools(): LocalTool[] {
           // Safety: auto-cancel after 5 minutes so the loop can't hang forever.
           const safetyTimer = setTimeout(
             () => {
-              if (pending.has(id)) cancelAskUserRequest(id);
+              if (pending.has(id)) cancelAskUserRequest(id, "timeout");
             },
             5 * 60 * 1000,
           );

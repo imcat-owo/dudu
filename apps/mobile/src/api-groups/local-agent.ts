@@ -1296,7 +1296,9 @@ export function createLocalAgent(opts: {
         ...sandboxTools(sandboxManager),
         // Batch 4: MCP/external tools — ask_user, web search, delegation,
         // agent CLI, interactive terminal, and MCP server providers.
-        ...createAskUserTools(),
+        // D17: ask_user is scoped to this agent's dialog (threadId) so a
+        // question asked here never surfaces in another dialog.
+        ...createAskUserTools({ threadId: opts.threadId }),
         ...createWebSearchTools(),
         ...createDelegateTools({
           runSubtask: async (prompt) => {
