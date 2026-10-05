@@ -68,8 +68,9 @@ C1 四家 TTS / C2 自动朗读 / C4 云端 STT / C6 闹钟 / C7 纠错学习全
 D1-D14 全做完，对着 Kelivo 真源码学的（MCP HTTP/SSE+OAuth、ask_user、浏览器多标签、网页搜索、Skills 导入、sub-agent 委派等）。
 复审 FAIL 一次（P1 测试类型错 + P2 D4 漏了 cookie 审计 + P3 biome）→ 全修好（cookie 审计 UI 是真的，HttpOnly 限制诚实注明）→ 复审 PASS。D1-STDIO 诚实延期（iOS 不能 spawn 进程）。正式打勾。
 
-## Batch 5 — 记忆/人设 E + 主题 F + 数据 G（待）
-E1 人设编辑器 / E2 用户画像字段 / E3 World books / E4 GLOBAL.md / E5 人设标签 / F1 繁体中文 / F2 Google Fonts / F3 Web apps / G1 WebDAV/S3 备份 / G2 自动快照 / G3 Cherry/ChatBox 导入 / G4 存储空间页 / G6 恢复覆盖合并选项
+## Batch 5 — 记忆/人设 E + 主题 F + 数据 G（✅✅ 构建+复审+修+复审 全 PASS 2026-10-05）
+E1-E5/F1-F3/G1-G4/G6 全做完，对着 Kelivo 真源码学的（World Book 激活逻辑逐行对过）。
+复审有条件 PASS（E5 标签是孤岛：能建不能贴）→ 修好（卡片显示+筛选+编辑器贴标签）→ 复审 PASS。G5 iCloud 跳过（她一台手机）。正式打勾。
 
 ## Batch 6 — 平台 H（待）
 H2 Share Extension / H3 用户定时任务 / H4 Siri Shortcuts / H5 Widget（已在计划，对齐） / H6 Live Activity / H7 Files.app / H8 Face ID 锁 / H10 HomeKit / H11 Apple NLP
