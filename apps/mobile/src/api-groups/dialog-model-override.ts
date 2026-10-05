@@ -13,7 +13,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import type { ApiGroup } from "./types.js";
+import type { ApiGroup } from "./types";
 
 const OVERRIDE_KEY = "dudu.dialog-model-override.v1";
 

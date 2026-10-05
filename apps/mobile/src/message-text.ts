@@ -5,8 +5,8 @@
  * decides whether a text bubble appears (and what it shows). That decision
  * is extracted here so node tests can cover it as the render-level guard.
  */
-import type { ImageMessageHit } from "./image/protocol.js";
-import type { VoiceMessageHit } from "./message-envelope.js";
+import type { ImageMessageHit } from "./image/protocol";
+import type { VoiceMessageHit } from "./message-envelope";
 
 /**
  * Text-bubble content for an AI message, given envelope detection results.

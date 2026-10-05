@@ -18,9 +18,9 @@
  * transport), so this module stays testable without network.
  */
 
-import { searchMemories } from "./search.js";
-import type { MemoryStore } from "./store.js";
-import type { MemoryCategory } from "./types.js";
+import { searchMemories } from "./search";
+import type { MemoryStore } from "./store";
+import type { MemoryCategory } from "./types";
 
 /** A turn of conversation, for extraction. */
 export interface MemoryTurn {

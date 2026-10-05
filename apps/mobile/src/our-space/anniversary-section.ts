@@ -11,7 +11,7 @@
  * passed) is what gets compared against today.
  */
 
-import type { Anniversary } from "./store.js";
+import type { Anniversary } from "./store";
 
 /** How many days ahead counts as "upcoming". */
 export const ANNIVERSARY_WARNING_DAYS = 7;

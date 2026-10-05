@@ -12,61 +12,61 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { refreshFontSizeOption } from "../app-settings.js";
-import { createBackupTools } from "../backup-tools.js";
-import { createBrowserTools } from "../browser/tools.js";
+import { refreshFontSizeOption } from "../app-settings";
+import { createBackupTools } from "../backup-tools";
+import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
-import { createContextTools } from "../chat/context-tools.js";
-import { createCrossDialogTools } from "../chat/cross-dialog.js";
-import { sharedKeyedChain } from "../util/write-chain.js";
+import { createContextTools } from "../chat/context-tools";
+import { createCrossDialogTools } from "../chat/cross-dialog";
+import { sharedKeyedChain } from "../util/write-chain";
 import {
   crossDialogTraceStore,
   crossDialogVisibilityStore,
-} from "../chat/cross-dialog-instance.js";
-import { createDialogTools } from "../chat/dialog-tools.js";
-import { groupMeetingStore } from "../chat/group-meeting-instance.js";
-import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools.js";
-import { deviceTimeLine } from "../date-time.js";
+} from "../chat/cross-dialog-instance";
+import { createDialogTools } from "../chat/dialog-tools";
+import { groupMeetingStore } from "../chat/group-meeting-instance";
+import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools";
+import { deviceTimeLine } from "../date-time";
 import { getLocale, type StringKey, t } from "../i18n";
-import { createImageTools, type ImageOutputBackend } from "../image/tools.js";
-import { getKnowledgeStore } from "../knowledge/instance.js";
-import { lazyKnowledgeStore } from "../knowledge/lazy-store.js";
-import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools.js";
-import { buildManualIndex, manualNote } from "../manuals/index.js";
-import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index.js";
-import { memoryStore } from "../memory/instance.js";
-import type { MemoryStore } from "../memory/store.js";
-import { musicStore } from "../music/instance.js";
-import { createMusicTools } from "../music/tools.js";
-import { createNativeAppTools } from "../native-apps-tools.js";
+import { createImageTools, type ImageOutputBackend } from "../image/tools";
+import { getKnowledgeStore } from "../knowledge/instance";
+import { lazyKnowledgeStore } from "../knowledge/lazy-store";
+import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools";
+import { buildManualIndex, manualNote } from "../manuals/index";
+import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index";
+import { memoryStore } from "../memory/instance";
+import type { MemoryStore } from "../memory/store";
+import { musicStore } from "../music/instance";
+import { createMusicTools } from "../music/tools";
+import { createNativeAppTools } from "../native-apps-tools";
 import {
   buildAnniversarySection,
   getUpcomingAnniversaries,
-} from "../our-space/anniversary-section.js";
-import { buildHerMoodSection } from "../our-space/her-mood-section.js";
-import { buildHerRhythmSection } from "../our-space/her-rhythm.js";
-import { ourSpaceStore } from "../our-space/instance.js";
-import { buildNicknameSection } from "../our-space/nickname-section.js";
-import type { Anniversary } from "../our-space/store.js";
-import { taskProgressStore } from "../our-space/task-progress-instance.js";
+} from "../our-space/anniversary-section";
+import { buildHerMoodSection } from "../our-space/her-mood-section";
+import { buildHerRhythmSection } from "../our-space/her-rhythm";
+import { ourSpaceStore } from "../our-space/instance";
+import { buildNicknameSection } from "../our-space/nickname-section";
+import type { Anniversary } from "../our-space/store";
+import { taskProgressStore } from "../our-space/task-progress-instance";
 import {
   createAmbientVideoTools,
   createOurSpaceTools,
   createTaskProgressTools,
-} from "../our-space/tools.js";
-import { evaluateOutreachTriggers } from "../outreach/engine.js";
-import type { OutreachTriggerKind } from "../outreach/engine.js";
-import { buildOnThisDayInput } from "../outreach/on-this-day-input.js";
-import { buildOutreachSection } from "../outreach/prompt.js";
+} from "../our-space/tools";
+import { evaluateOutreachTriggers } from "../outreach/engine";
+import type { OutreachTriggerKind } from "../outreach/engine";
+import { buildOnThisDayInput } from "../outreach/on-this-day-input";
+import { buildOutreachSection } from "../outreach/prompt";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
-import { createFontSizeTools } from "../settings/tools.js";
-import { skillStore } from "../skills/instance.js";
-import { createSkillTools } from "../skills/tools.js";
-import { ambientVideoStore } from "../sora-ambient-video-instance.js";
-import { getAiThemeMode } from "../theme/ai-mode.js";
-import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools.js";
-import { createVideoTools, type VideoBackend } from "../video/tools.js";
+import { createFontSizeTools } from "../settings/tools";
+import { skillStore } from "../skills/instance";
+import { createSkillTools } from "../skills/tools";
+import { ambientVideoStore } from "../sora-ambient-video-instance";
+import { getAiThemeMode } from "../theme/ai-mode";
+import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools";
+import { createVideoTools, type VideoBackend } from "../video/tools";
 import {
   describeImage,
   formatDescriptionBlock,
@@ -74,9 +74,9 @@ import {
   parseUserMessageWithImages,
   VisionError,
 } from "../vision/describe";
-import { voiceStore } from "../voice/store.js";
-import { createPodcastTools, createTtsVoiceTools } from "../voice/tools.js";
-import { createCapabilityGroupTools } from "./capability-group-tools.js";
+import { voiceStore } from "../voice/store";
+import { createPodcastTools, createTtsVoiceTools } from "../voice/tools";
+import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
 import {
@@ -108,11 +108,11 @@ import {
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
-import { refreshChatMode } from "./mode.js";
+import { refreshChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
 import { buildRankingSlip } from "./model-ranking";
 import { createPlanTools } from "./plan-tools";
-import { groupStore } from "./store.js";
+import { groupStore } from "./store";
 import type { ApiGroup, FeatureSwitch } from "./types";
 import {
   defaultThreadMeta,
@@ -127,7 +127,7 @@ import {
   splitForCompression,
   estimateMessagesTokens,
   type ThreadMeta,
-} from "../chat/thread-versions.js";
+} from "../chat/thread-versions";
 
 export interface LocalToolCall {
   id: string;
@@ -647,17 +647,17 @@ export function createLocalAgent(opts: {
    * Our Space store. Defaults to the shared AsyncStorage-backed singleton
    * (so UI and AI tools see the same data); injectable for tests.
    */
-  ourSpaceStore?: import("../our-space/store.js").OurSpaceStore;
+  ourSpaceStore?: import("../our-space/store").OurSpaceStore;
   /**
    * Proactive outreach store. Defaults to the shared AsyncStorage-backed
    * singleton; injectable for tests.
    */
-  outreachStore?: import("../outreach/store.js").OutreachStore;
+  outreachStore?: import("../outreach/store").OutreachStore;
   /**
    * Music room store. Defaults to the shared AsyncStorage-backed singleton
    * (so UI and AI tools see the same data); injectable for tests.
    */
-  musicStore?: import("../music/store.js").MusicStore;
+  musicStore?: import("../music/store").MusicStore;
   /**
    * AI memory store. Defaults to the shared AsyncStorage-backed singleton;
    * injectable for tests.
@@ -667,7 +667,7 @@ export function createLocalAgent(opts: {
    * Skills store. Defaults to the shared AsyncStorage-backed singleton
    * (so UI and AI tools see the same data); injectable for tests.
    */
-  skillStore?: import("../skills/store.js").SkillStore;
+  skillStore?: import("../skills/store").SkillStore;
 }): ChatAgent {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
@@ -1084,7 +1084,7 @@ export function createLocalAgent(opts: {
           // old voice bubbles keep playing after a reinstall / new device.
           collectVoiceFiles: async () => {
             const { listVoiceMessageFiles, readVoiceMessageFile } = await import(
-              "../voice/voice-message-files.js"
+              "../voice/voice-message-files"
             );
             const out: Record<string, string> = {};
             for (const name of await listVoiceMessageFiles()) {
@@ -1095,7 +1095,7 @@ export function createLocalAgent(opts: {
           },
           restoreVoiceFiles: async (files) => {
             const { writeVoiceMessageFile, voiceMessageDir, rewriteVoiceMessageUris } =
-              await import("../voice/voice-message-files.js");
+              await import("../voice/voice-message-files");
             let restored = 0;
             for (const [name, b64] of Object.entries(files)) {
               if (await writeVoiceMessageFile(name, b64)) restored++;
@@ -1222,7 +1222,7 @@ export function createLocalAgent(opts: {
           },
           // Apple Music catalog search (RN layer owns the MusicKit bridge).
           appleSearch: async (query, limit) => {
-            const { getMusicSource } = await import("../music/sources.js");
+            const { getMusicSource } = await import("../music/sources");
             const src = getMusicSource("apple-music");
             if (!src.isAvailable()) {
               throw new Error(
@@ -1248,7 +1248,7 @@ export function createLocalAgent(opts: {
         ...sandboxTools(sandboxManager),
         ...createNativeAppTools({
           getAuthState: async (id) => {
-            const { checkers } = await import("../native-apps.js");
+            const { checkers } = await import("../native-apps");
             const fn = checkers[id as keyof typeof checkers];
             return fn ? await fn() : "unavailable";
           },
@@ -1335,11 +1335,11 @@ export function createLocalAgent(opts: {
               }));
           },
           getTodaySteps: async () => {
-            const { readTodaySteps } = await import("../native-apps.js");
+            const { readTodaySteps } = await import("../native-apps");
             return readTodaySteps();
           },
           getBatteryStatus: async () => {
-            const { getDeviceInfo } = await import("../native-apps.js");
+            const { getDeviceInfo } = await import("../native-apps");
             return getDeviceInfo();
           },
         }),
@@ -1421,7 +1421,7 @@ export function createLocalAgent(opts: {
         // local-agent must stay importable in node tests. Tests inject
         // opts.outreachStore and never touch this branch.
         const oStore =
-          opts.outreachStore ?? (await import("../outreach/instances.js")).outreachStore;
+          opts.outreachStore ?? (await import("../outreach/instances")).outreachStore;
         const frequency = await oStore.getFrequency();
         if (frequency !== "quiet") {
           const oAnniversaries = await (opts.ourSpaceStore ?? ourSpaceStore)

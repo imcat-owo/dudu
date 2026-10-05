@@ -12,7 +12,7 @@ import {
   MEETING_STORAGE_KEY,
   MEETINGS_CAP,
   type MeetingMessage,
-} from "./group-meeting.js";
+} from "./group-meeting";
 import { createWriteChain } from "../util/write-chain";
 
 export interface GroupMeetingStorage {

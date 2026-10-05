@@ -9,7 +9,7 @@
  * embeddings endpoint -> clear error (never silently skip).
  */
 
-import { type ApiGroup, normalizeBaseUrl } from "../api-groups/types.js";
+import { type ApiGroup, normalizeBaseUrl } from "../api-groups/types";
 
 /** Default embedding model for OpenAI-compatible endpoints. */
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";

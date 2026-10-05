@@ -9,10 +9,10 @@
  * human-language descriptions written FOR the AI).
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { getOnThisDay } from "./on-this-day.js";
-import type { OurSpaceStore, TimelineKind } from "./store.js";
-import { daysTogether, resolveTogetherSince } from "./together.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { getOnThisDay } from "./on-this-day";
+import type { OurSpaceStore, TimelineKind } from "./store";
+import { daysTogether, resolveTogetherSince } from "./together";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -859,7 +859,7 @@ export function createOurSpaceTools(store: OurSpaceStore): LocalTool[] {
  * Bound to a TaskProgressStore instance.
  */
 export function createTaskProgressTools(
-  taskStore: import("./task-progress.js").TaskProgressStore,
+  taskStore: import("./task-progress").TaskProgressStore,
 ): LocalTool[] {
   return [
     {
@@ -938,7 +938,7 @@ export function createTaskProgressTools(
  * per slot ("醒醒定制的"); the AI swaps them on request with this tool.
  */
 export function createAmbientVideoTools(
-  videoStore: import("../sora-ambient-video.js").AmbientVideoStore,
+  videoStore: import("../sora-ambient-video").AmbientVideoStore,
 ): LocalTool[] {
   return [
     {

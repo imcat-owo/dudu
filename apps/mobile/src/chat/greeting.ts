@@ -12,7 +12,7 @@
  * real record the caller loaded.
  */
 
-import type { HerMoment } from "../our-space/her-rhythm.js";
+import type { HerMoment } from "../our-space/her-rhythm";
 
 export interface GreetingAnchors {
   anniversaries: { title: string; daysUntil: number }[];

@@ -6,7 +6,7 @@
  * the system remembers so he doesn't have to.
  */
 
-import type { Anniversary, DiaryEntry, TimelineEvent } from "./store.js";
+import type { Anniversary, DiaryEntry, TimelineEvent } from "./store";
 
 export type OnThisDayKind = "diary" | "timeline" | "anniversary";
 

@@ -8,8 +8,8 @@
  * - lastOutreachAt: per-kind timestamps for the 24h cooldown.
  */
 
-import type { OutreachFrequency, OutreachTriggerKind } from "./engine.js";
-import { isOutreachFrequency } from "./engine.js";
+import type { OutreachFrequency, OutreachTriggerKind } from "./engine";
+import { isOutreachFrequency } from "./engine";
 
 export interface OutreachStorage {
   getItem(key: string): Promise<string | null>;

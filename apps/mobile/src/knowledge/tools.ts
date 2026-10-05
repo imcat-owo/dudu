@@ -10,11 +10,11 @@
  * In-app tool: no authorization gate (nothing crosses the app boundary).
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import type { ApiGroup } from "../api-groups/types.js";
-import type { EmbedResult } from "./embeddings.js";
-import { embedWithRealModel } from "./embeddings-local.js";
-import { topKByCosine } from "./vectors.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import type { ApiGroup } from "../api-groups/types";
+import type { EmbedResult } from "./embeddings";
+import { embedWithRealModel } from "./embeddings-local";
+import { topKByCosine } from "./vectors";
 
 export interface KnowledgeToolDeps {
   /** Active API group (for /v1/embeddings). Null = honestly report unconfigured. */
@@ -128,8 +128,8 @@ function formatHit(docName: string, headingPath: string, text: string, score: nu
  */
 export interface KnowledgeSearchStore {
   hasIndexedDocs(): Promise<boolean>;
-  listChunks(docId?: string): Promise<import("./store.js").KbChunkRecord[]>;
-  listDocs(): Promise<import("./store.js").KbDoc[]>;
+  listChunks(docId?: string): Promise<import("./store").KbChunkRecord[]>;
+  listDocs(): Promise<import("./store").KbDoc[]>;
 }
 
 /**
@@ -243,12 +243,12 @@ export function createKnowledgeTools(
  * and the lazy wrapper.
  */
 export interface KnowledgeAddStore {
-  addDoc(name: string, kind: string, size: number): Promise<import("./store.js").KbDoc>;
-  updateDoc(id: string, patch: Partial<import("./store.js").KbDoc>): Promise<unknown>;
-  getDoc(id: string): Promise<import("./store.js").KbDoc | null>;
-  listDocs(): Promise<import("./store.js").KbDoc[]>;
-  listChunks(docId?: string): Promise<import("./store.js").KbChunkRecord[]>;
-  putChunks(records: import("./store.js").KbChunkRecord[]): Promise<unknown>;
+  addDoc(name: string, kind: string, size: number): Promise<import("./store").KbDoc>;
+  updateDoc(id: string, patch: Partial<import("./store").KbDoc>): Promise<unknown>;
+  getDoc(id: string): Promise<import("./store").KbDoc | null>;
+  listDocs(): Promise<import("./store").KbDoc[]>;
+  listChunks(docId?: string): Promise<import("./store").KbChunkRecord[]>;
+  putChunks(records: import("./store").KbChunkRecord[]): Promise<unknown>;
 }
 
 /**
@@ -297,9 +297,9 @@ export function createKnowledgeAddTools(
         await guardKnowledgeAdd(store, name, text);
         const doc = await store.addDoc(name, "md", text.length);
         try {
-          const { indexDocument } = await import("./indexer.js");
+          const { indexDocument } = await import("./indexer");
           const result = await indexDocument(
-            store as unknown as import("./store.js").KnowledgeStore,
+            store as unknown as import("./store").KnowledgeStore,
             group,
             doc.id,
             text,
@@ -352,9 +352,9 @@ export function createKnowledgeAddTools(
           );
         }
         try {
-          const { reindexDocument } = await import("./indexer.js");
+          const { reindexDocument } = await import("./indexer");
           const result = await reindexDocument(
-            store as unknown as import("./store.js").KnowledgeStore,
+            store as unknown as import("./store").KnowledgeStore,
             group,
             doc.id,
             { embed: deps.embed },
@@ -435,9 +435,9 @@ export function createKnowledgeAddTools(
         await guardKnowledgeAdd(store, name, text);
         const doc = await store.addDoc(name, kind, text.length);
         try {
-          const { indexDocument } = await import("./indexer.js");
+          const { indexDocument } = await import("./indexer");
           const result = await indexDocument(
-            store as unknown as import("./store.js").KnowledgeStore,
+            store as unknown as import("./store").KnowledgeStore,
             group,
             doc.id,
             text,

@@ -3,8 +3,8 @@
  * PURE module: no React Native imports.
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import { ToolError } from "../api-groups/local-tools.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import { ToolError } from "../api-groups/local-tools";
 
 export interface ContextManager {
   /** Replace all messages with the given list (empty = clear). */

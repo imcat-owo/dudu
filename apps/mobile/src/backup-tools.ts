@@ -7,8 +7,8 @@
  * real wiring lives in local-agent.ts.
  */
 
-import type { LocalTool } from "./api-groups/local-tools.js";
-import { ToolError } from "./api-groups/local-tools.js";
+import type { LocalTool } from "./api-groups/local-tools";
+import { ToolError } from "./api-groups/local-tools";
 import {
   applyBackup,
   collectBackup,
@@ -19,7 +19,7 @@ import {
   parseBackup,
   type SecureKV,
   serializeBackup,
-} from "./backup.js";
+} from "./backup";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

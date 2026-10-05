@@ -6,12 +6,12 @@
  * doc failed with an honest reason (never a silent half-index).
  */
 
-import type { ApiGroup } from "../api-groups/types.js";
-import { chunkDocument } from "./chunking.js";
-import type { EmbedResult } from "./embeddings.js";
-import { embedWithRealModel } from "./embeddings-local.js";
-import type { KbChunkRecord, KnowledgeStore } from "./store.js";
-import type { SqliteKnowledgeStore } from "./vec-store.js";
+import type { ApiGroup } from "../api-groups/types";
+import { chunkDocument } from "./chunking";
+import type { EmbedResult } from "./embeddings";
+import { embedWithRealModel } from "./embeddings-local";
+import type { KbChunkRecord, KnowledgeStore } from "./store";
+import type { SqliteKnowledgeStore } from "./vec-store";
 
 /** Max texts per /v1/embeddings call (proxy-friendly). */
 export const EMBED_BATCH_SIZE = 32;

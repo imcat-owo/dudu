@@ -11,7 +11,7 @@
  * "在一起的第一天").
  */
 
-import type { Anniversary, CoupleProfile } from "./store.js";
+import type { Anniversary, CoupleProfile } from "./store";
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 

@@ -16,10 +16,10 @@
  * read-path results are always labeled with their confidence.
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { searchMemories } from "./search.js";
-import type { MemoryStore } from "./store.js";
-import { gardenStateOf, isMemoryCategory, type MemoryCategory } from "./types.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { searchMemories } from "./search";
+import type { MemoryStore } from "./store";
+import { gardenStateOf, isMemoryCategory, type MemoryCategory } from "./types";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

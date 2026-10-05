@@ -19,7 +19,7 @@
 
 import type { AiAuthRequest } from "../ai-authorization";
 import type { CapabilityId } from "../capabilities";
-import { getManual, MANUALS } from "../manuals/index.js";
+import { getManual, MANUALS } from "../manuals/index";
 import appJson from "../../app.json";
 import type { WireToolDef } from "./direct-transport";
 

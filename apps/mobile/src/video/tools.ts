@@ -17,8 +17,8 @@
  * PURE module: expo/task-progress imports are type-only or injected.
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import type { TaskProgressStore } from "../our-space/task-progress.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import type { TaskProgressStore } from "../our-space/task-progress";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

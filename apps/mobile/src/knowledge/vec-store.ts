@@ -15,8 +15,8 @@
  * injected database for tests.
  */
 
-import type { KbChunkRecord, KbDoc } from "./store.js";
-import { cosineSimilarity } from "./vectors.js";
+import type { KbChunkRecord, KbDoc } from "./store";
+import { cosineSimilarity } from "./vectors";
 
 const SCHEMA_VERSION = 2;
 

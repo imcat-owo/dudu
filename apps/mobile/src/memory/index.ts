@@ -16,17 +16,17 @@
  * The MemoryStore interface is storage-agnostic — see store.ts.
  */
 
-import { buildMemorySection } from "./read-path.js";
-import type { MemoryStorage, MemoryStore } from "./store.js";
-import { createMemoryTools } from "./tools.js";
-import { gardenStateOf } from "./types.js";
-import { extractMemories, type MemoryTurn, shouldExtract } from "./write-path.js";
+import { buildMemorySection } from "./read-path";
+import type { MemoryStorage, MemoryStore } from "./store";
+import { createMemoryTools } from "./tools";
+import { gardenStateOf } from "./types";
+import { extractMemories, type MemoryTurn, shouldExtract } from "./write-path";
 
-export { buildMemorySection } from "./read-path.js";
-export { searchMemories, tokenize } from "./search.js";
-export type { MemoryStorage } from "./store.js";
-export { MemoryStore } from "./store.js";
-export { createMemoryTools } from "./tools.js";
+export { buildMemorySection } from "./read-path";
+export { searchMemories, tokenize } from "./search";
+export type { MemoryStorage } from "./store";
+export { MemoryStore } from "./store";
+export { createMemoryTools } from "./tools";
 export type {
   GardenState,
   MemoryCategory,
@@ -34,16 +34,16 @@ export type {
   MemoryEvent,
   MemoryRecord,
   ProfileEntry,
-} from "./types.js";
-export { gardenStateOf } from "./types.js";
-export type { MemoryTurn } from "./write-path.js";
+} from "./types";
+export { gardenStateOf } from "./types";
+export type { MemoryTurn } from "./write-path";
 export {
   buildExtractionPrompt,
   extractMemories,
   looksSensitive,
   parseExtractionResult,
   shouldExtract,
-} from "./write-path.js";
+} from "./write-path";
 
 /**
  * Build the memory tools bound to a store instance (for local-agent).

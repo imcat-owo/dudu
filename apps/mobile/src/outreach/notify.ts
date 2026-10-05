@@ -19,7 +19,7 @@
  *    silently (never nag for permission from the background).
  */
 
-import type { NewTraceEntry } from "../chat/cross-dialog-trace.js";
+import type { NewTraceEntry } from "../chat/cross-dialog-trace";
 import {
   OUTREACH_DELAY_SECONDS,
   evaluateOutreachTriggers,
@@ -27,14 +27,14 @@ import {
   type OutreachFrequency,
   type OutreachTrigger,
   type OutreachTriggerKind,
-} from "./engine.js";
-import { getUpcomingAnniversaries } from "../our-space/anniversary-section.js";
+} from "./engine";
+import { getUpcomingAnniversaries } from "../our-space/anniversary-section";
 import {
   HER_SLEEP_END_HOUR,
   isHerSleepTime,
-} from "../our-space/her-rhythm.js";
-import type { Anniversary } from "../our-space/store.js";
-import type { OutreachStore } from "./store.js";
+} from "../our-space/her-rhythm";
+import type { Anniversary } from "../our-space/store";
+import type { OutreachStore } from "./store";
 
 export type { OutreachTriggerKind };
 

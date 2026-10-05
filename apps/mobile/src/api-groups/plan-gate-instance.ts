@@ -8,7 +8,7 @@
  * persisted plans; tests keep importing the PURE module directly.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isValidPlan, planGateStore, type CoordinationPlan } from "./plan-gate.js";
+import { isValidPlan, planGateStore, type CoordinationPlan } from "./plan-gate";
 
 const PLAN_GATE_KEY = "dudu.plan-gate.v1";
 

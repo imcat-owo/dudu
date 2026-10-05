@@ -4,8 +4,8 @@
  * injected callback registered by the UI layer (threads.tsx).
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import { ToolError } from "../api-groups/local-tools.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import { ToolError } from "../api-groups/local-tools";
 
 /** Callback the UI registers to actually open a new dialog. */
 type NewDialogHandler = (title?: string) => void;

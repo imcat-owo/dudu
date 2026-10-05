@@ -147,7 +147,7 @@ export function isNegativeMoodWord(mood: string): boolean {
   return false;
 }
 
-import { HER_MOOD_FRESH_DAYS } from "../our-space/her-mood-section.js";
+import { HER_MOOD_FRESH_DAYS } from "../our-space/her-mood-section";
 
 function cooledDown(kind: OutreachTriggerKind, now: number, last: Partial<Record<OutreachTriggerKind, number>>): boolean {
   const at = last[kind];

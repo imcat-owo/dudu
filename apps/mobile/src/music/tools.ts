@@ -17,14 +17,14 @@
  * human-language descriptions written FOR the AI).
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
+import type { LocalTool } from "../api-groups/local-tools";
 import {
   type MusicAuthor,
   type MusicStore,
   OURS_PLAYLIST_ID,
   SHARED_PLAYLIST_ID,
   type Track,
-} from "./store.js";
+} from "./store";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

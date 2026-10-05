@@ -6,7 +6,7 @@
  * image-generation.tsx re-exports everything for backward compatibility.
  */
 
-import { extractEnvelope } from "../message-envelope.js";
+import { extractEnvelope } from "../message-envelope";
 
 export type ImageMessage = {
   uri: string;

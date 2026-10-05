@@ -7,11 +7,11 @@
  * even if you add a short intro line around it. Never attach it as a file.
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { enStrings } from "../i18n/en.js";
-import { zhHansStrings } from "../i18n/zh-Hans.js";
-import { generatePodcastAudio, splitPodcastText } from "./podcast.js";
-import type { TtsConfig } from "./types.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { enStrings } from "../i18n/en";
+import { zhHansStrings } from "../i18n/zh-Hans";
+import { generatePodcastAudio, splitPodcastText } from "./podcast";
+import type { TtsConfig } from "./types";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -79,8 +79,8 @@ export function friendlyPodcastError(e: unknown): string {
 }
 
 export function createPodcastTools(
-  voiceStore: import("./store.js").VoiceStore,
-  taskStore: import("../our-space/task-progress.js").TaskProgressStore,
+  voiceStore: import("./store").VoiceStore,
+  taskStore: import("../our-space/task-progress").TaskProgressStore,
   locale: PodcastLocale = "zh-Hans",
   opts?: { isIncognito?: () => boolean },
 ): LocalTool[] {
@@ -184,7 +184,7 @@ export function createPodcastTools(
 /**
  * Build the TTS voice tool set — let the AI change the voice on request.
  */
-export function createTtsVoiceTools(voiceStore: import("./store.js").VoiceStore): LocalTool[] {
+export function createTtsVoiceTools(voiceStore: import("./store").VoiceStore): LocalTool[] {
   return [
     {
       name: "set_tts_voice",

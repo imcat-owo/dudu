@@ -16,7 +16,7 @@
  *   the trace — the fact of the send stays visible in the trace log.
  */
 
-import { createWriteChain } from "../util/write-chain.js";
+import { createWriteChain } from "../util/write-chain";
 
 export type CrossDialogAction =
   | "list"

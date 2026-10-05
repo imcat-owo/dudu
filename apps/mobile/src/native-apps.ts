@@ -162,7 +162,7 @@ function tryRequire(name: string): unknown | null {
 
 export async function checkAppleMusicStatus(): Promise<NativeAppStatus> {
   try {
-    const mod = tryRequire("./music/sources.js") as {
+    const mod = tryRequire("./music/sources") as {
       getMusicSource?: (id: string) => { getAuthState?: () => Promise<string> } | undefined;
     } | null;
     const src = mod?.getMusicSource?.("apple-music");
@@ -178,7 +178,7 @@ export async function checkAppleMusicStatus(): Promise<NativeAppStatus> {
 
 export async function requestAppleMusic(): Promise<NativeAppStatus> {
   try {
-    const mod = tryRequire("./music/sources.js") as {
+    const mod = tryRequire("./music/sources") as {
       getMusicSource?: (id: string) => { authorize?: () => Promise<string> } | undefined;
     } | null;
     const src = mod?.getMusicSource?.("apple-music");

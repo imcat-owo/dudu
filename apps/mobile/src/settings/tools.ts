@@ -3,8 +3,8 @@
  * PURE module: no React Native imports (storage is injectable).
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import { ToolError } from "../api-groups/local-tools.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import { ToolError } from "../api-groups/local-tools";
 
 /** Must match STORAGE_KEY in app-settings.ts */
 const FONT_SIZE_STORAGE_KEY = "dudu.settings.fontSize.v1";
