@@ -40,7 +40,8 @@ Follow-up 全做完（ade53fb）+ 复审 PASS：搜索滚动定位 / 追问气�
 - [x] A27 每轮 token/请求预算（maxTokens 经 max_tokens 下发；上下文预算另计）
 - [ ] A11 minimap / A12 问题跳转 / A19 代码高亮 / A20 LaTeX / A21 Mermaid / A23 @文件 / A25 打印（小众/低优，未做，诚实记）
 
-## Batch 2 — 模型/API B（✅ 2026-10-05 收官）
+## Batch 2 — 模型/API B（✅✅ 构建+复审+修+复审 全 PASS 2026-10-05）
+复审发现 B13 有 5 个死设置 → 已修（title/suggest/memory 真接线，translate/ocr 无消费者已删干净）+ B7 缓存诚实说明 + P3 清理 → 复审 PASS。B5/B10 诚实延期（技术上确实做不了，不是借口）。正式打勾。
 - [x] B1 OAuth 登录（ChatGPT/Grok/Kimi/Claude，PKCE，逆向端点已标明）
 - [x] B2 多 key 轮换（轮询/优先级/最少用/随机，失败自动禁用+冷却恢复）
 - [x] B3 余额查询（自定义端点+JSON 路径，60s 缓存）
