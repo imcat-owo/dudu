@@ -18,12 +18,14 @@ import {
   useAudioRecorder,
 } from "expo-audio";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Switch, View } from "react-native";
+import { Alert, Pressable, Switch, View } from "react-native";
 import { useApiGroups } from "../api-groups/store";
 import { TText } from "../font";
 import { getLocale, t } from "../i18n";
 import { radii } from "../theme/radii";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
+import type { Alarm } from "./alarms";
+import { getAlarmStore } from "./alarms-instance";
 import { useVoiceConfig, voiceStore } from "./store";
 import { transcribeAudio } from "./stt";
 import { synthesizeSpeech } from "./tts";
@@ -644,8 +646,249 @@ export function VoiceSettingsSection() {
       <TtsSection />
       <SttSection />
       <MicModeSection />
+      <AlarmsSection />
       <CacheSection />
     </View>
+  );
+}
+
+function formatAlarmWhen(fireAt: number): string {
+  const d = new Date(fireAt);
+  return d.toLocaleString(getLocale() === "en" ? "en-US" : "zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/**
+ * Alarm management: the alarms the AI set for her, listed with time,
+ * label, on/off switch, time editing, and delete. Every control hits
+ * the real alarm store (same one behind set_alarm) — no decorative UI.
+ */
+function AlarmsSection() {
+  const colors = useColors();
+  const s = useStyles();
+  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editError, setEditError] = useState("");
+
+  async function refresh() {
+    try {
+      setAlarms(await getAlarmStore().list());
+    } catch {
+      // Storage read failure — show empty rather than crash.
+      setAlarms([]);
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  async function onToggle(alarm: Alarm, value: boolean) {
+    setError("");
+    setBusyId(alarm.id);
+    try {
+      await getAlarmStore().setEnabled(alarm.id, value);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function onDelete(alarm: Alarm) {
+    Alert.alert(t("voice.alarmConfirmDeleteTitle") as string, undefined, [
+      { text: t("common.cancel") as string, style: "cancel" },
+      {
+        text: t("voice.alarmDelete") as string,
+        style: "destructive",
+        onPress: () => {
+          setError("");
+          setBusyId(alarm.id);
+          void (async () => {
+            try {
+              await getAlarmStore().cancel(alarm.id);
+              await refresh();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e));
+            } finally {
+              setBusyId(null);
+            }
+          })();
+        },
+      },
+    ]);
+  }
+
+  function startEdit(alarm: Alarm) {
+    const d = new Date(alarm.fireAt);
+    setEditDate(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`);
+    setEditTime(`${pad2(d.getHours())}:${pad2(d.getMinutes())}`);
+    setEditError("");
+    setEditingId(alarm.id);
+  }
+
+  async function onSaveEdit(alarm: Alarm) {
+    setEditError("");
+    const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(editDate.trim());
+    const tm = /^(\d{2}):(\d{2})$/.exec(editTime.trim());
+    if (!dm || !tm) {
+      setEditError(t("voice.alarmInvalidTime") as string);
+      return;
+    }
+    const fireAt = new Date(
+      Number(dm[1]),
+      Number(dm[2]) - 1,
+      Number(dm[3]),
+      Number(tm[1]),
+      Number(tm[2]),
+      0,
+    ).getTime();
+    if (!Number.isFinite(fireAt)) {
+      setEditError(t("voice.alarmInvalidTime") as string);
+      return;
+    }
+    setBusyId(alarm.id);
+    try {
+      await getAlarmStore().reschedule(alarm.id, fireAt);
+      setEditingId(null);
+      await refresh();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (!loaded) return null;
+  return (
+    <Card>
+      <TText style={{ fontWeight: "700", marginBottom: 4 }}>{t("voice.alarmTitle")}</TText>
+      <TText style={[s.small, { color: colors.muted, marginBottom: 10 }]}>
+        {t("voice.alarmDesc")}
+      </TText>
+      {!!error && <TText style={{ color: colors.danger, marginBottom: 8 }}>{error}</TText>}
+      {alarms.length === 0 ? (
+        <TText style={[s.small, { color: colors.muted }]}>{t("voice.alarmEmpty")}</TText>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {alarms.map((alarm) => {
+            const on = alarm.enabled !== false;
+            const editing = editingId === alarm.id;
+            const busy = busyId === alarm.id;
+            return (
+              <View
+                key={alarm.id}
+                style={{
+                  padding: 10,
+                  borderRadius: radii.sm,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  backgroundColor: colors.card,
+                  opacity: on ? 1 : 0.55,
+                  gap: 8,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <TText style={{ fontWeight: "700", color: colors.text }}>
+                      {formatAlarmWhen(alarm.fireAt)}
+                    </TText>
+                    <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+                      {alarm.label} ·{" "}
+                      {t(alarm.viaAlarmKit ? "voice.alarmViaSystem" : "voice.alarmViaNotification")}
+                      {" · "}
+                      {t(on ? "voice.alarmOn" : "voice.alarmOff")}
+                    </TText>
+                  </View>
+                  <Switch
+                    value={on}
+                    disabled={busy}
+                    onValueChange={(v) => void onToggle(alarm, v)}
+                  />
+                </View>
+                {editing ? (
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Field
+                          label={t("voice.alarmEditDate") as string}
+                          value={editDate}
+                          onChangeText={setEditDate}
+                          placeholder="2026-10-06"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Field
+                          label={t("voice.alarmTime") as string}
+                          value={editTime}
+                          onChangeText={setEditTime}
+                          placeholder="07:00"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                    </View>
+                    {!!editError && (
+                      <TText style={{ color: colors.danger, fontSize: 13 }}>{editError}</TText>
+                    )}
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Button small onPress={() => setEditingId(null)}>
+                          {t("common.cancel")}
+                        </Button>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Button small primary busy={busy} onPress={() => void onSaveEdit(alarm)}>
+                          {t("common.save")}
+                        </Button>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Button small disabled={busy} onPress={() => startEdit(alarm)}>
+                        {t("voice.alarmEdit")}
+                      </Button>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button small danger disabled={busy} onPress={() => onDelete(alarm)}>
+                        {t("voice.alarmDelete")}
+                      </Button>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </Card>
   );
 }
 
