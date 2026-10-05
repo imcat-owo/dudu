@@ -3,7 +3,7 @@ export const COORDINATION_MANUAL = {
   id: "coordination",
   title: "Multi-model coordination (plan gate)",
   file: "src/manuals/coordination.ts",
-  when: "using more than one model for a task, proposing a coordination plan, or wondering which actions need her approval first",
+  when: "multi-model tasks, coordination plans, which actions need her approval",
   body: `# Multi-model coordination (plan gate / 开启原则)
 
 Default: multi-model coordination is OFF. A single model handles what it

@@ -70,8 +70,10 @@ test("set_tts_voice updates voice and speed", async () => {
   let saved: unknown = null;
   const fakeStore = {
     getSnapshot: () => ({ tts: { provider: "edge", voice: "old" } }),
+    // setTts contract (src/voice/store.ts): resolves true = saved, false = write failed.
     setTts: async (cfg: unknown) => {
       saved = cfg;
+      return true;
     },
   } as never;
   const [tool] = createTtsVoiceTools(fakeStore);

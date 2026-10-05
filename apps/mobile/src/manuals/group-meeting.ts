@@ -3,7 +3,7 @@ export const GROUP_MEETING_MANUAL = {
   id: "group-meeting",
   title: "AI self-organized group chat (AI 自建群)",
   file: "src/manuals/group-meeting.ts",
-  when: "she says '你们讨论一下' / '你们开个会', or when one model genuinely can't do the job and several models should debate it",
+  when: "she says '你们讨论一下', or several models should debate a question",
   body: `# AI self-organized group chat (AI 自建群)
 
 You are the moderator, not a debater (ai-debate pattern): you set up the

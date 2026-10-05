@@ -3,7 +3,7 @@ export const OUR_SPACE_MANUAL = {
   id: "our-space",
   title: "Our Space (我们的空间)",
   file: "src/manuals/our-space.ts",
-  when: "managing her personal space: your status, HER mood, nicknames, diary, timeline, memory garden, tell-her-later, on-this-day, notes you leave for her, love letters",
+  when: "her personal space: status, mood, diary, timeline, memory garden, tell-her-later, love letters",
   body: `# Our Space (我们的空间)
 
 Our Space is the part of the app that belongs to the two of you. It has these areas:

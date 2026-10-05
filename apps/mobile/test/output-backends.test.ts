@@ -47,11 +47,23 @@ function stubFetch(handler: (url: string, init: unknown) => unknown) {
   (globalThis as Record<string, unknown>).fetch = async (url: unknown, init: unknown) => {
     const result = handler(String(url), init);
     if (result instanceof Error) throw result;
-    const { ok, status, body } = result as { ok: boolean; status: number; body: string };
+    const { ok, status, body, contentType } = result as {
+      ok: boolean;
+      status: number;
+      body: string;
+      contentType?: string;
+    };
     return {
       ok,
       status,
       text: async () => body,
+      // P2-14: the product verifies media URLs via res.headers.get("content-type").
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "content-type"
+            ? (contentType ?? "application/octet-stream")
+            : null,
+      },
     };
   };
   return () => {
@@ -112,7 +124,14 @@ test("generate_image: her image_output backend wins over free fallback", async (
 });
 
 test("generate_image: backend failure falls back to free backend, honestly noted", async () => {
-  const restore = stubFetch(() => ({ ok: false, status: 500, body: "nope" }));
+  // Configured backend fails; the free backend (pollinations) verifies fine.
+  // (The product verifies the free URL before claiming success — the stub
+  // must let that verification through, or the honest ToolError is correct.)
+  const restore = stubFetch((url) =>
+    String(url).includes("pollinations")
+      ? { ok: true, status: 200, body: "fake-image-bytes" }
+      : { ok: false, status: 500, body: "nope" },
+  );
   try {
     const [tool] = createImageTools({
       resolveBackends: () => [
@@ -142,6 +161,10 @@ test("generate_video: no backends -> honest ToolError, no fake link", async () =
 
 test("generate_video: sync backend -> card done, url returned", async () => {
   const restore = stubFetch((url) => {
+    // P2-14: the product HEAD/GETs the returned URL to verify it serves video.
+    if (String(url).startsWith("https://cdn/")) {
+      return { ok: true, status: 200, body: "", contentType: "video/mp4" };
+    }
     assert.equal(url, "https://vid.example.com/make");
     return { ok: true, status: 200, body: JSON.stringify({ video_url: "https://cdn/v.mp4" }) };
   });
@@ -193,6 +216,9 @@ test("generate_video: async backend task_id -> poll -> done", async () => {
   let polls = 0;
   const restore = stubFetch((url, init) => {
     seen.push(String(url));
+    if (String(url).startsWith("https://cdn/")) {
+      return { ok: true, status: 200, body: "", contentType: "video/mp4" };
+    }
     const method = (init as { method?: string } | undefined)?.method ?? "GET";
     if (method === "POST" && String(url).endsWith("/make")) {
       return { ok: true, status: 200, body: JSON.stringify({ task_id: "t-9" }) };
@@ -235,6 +261,9 @@ test("generate_video: pollEndpoint without {id} appends task_id query", async ()
   const seen: string[] = [];
   const restore = stubFetch((url, init) => {
     seen.push(String(url));
+    if (String(url).startsWith("https://cdn/")) {
+      return { ok: true, status: 200, body: "", contentType: "video/mp4" };
+    }
     const method = (init as { method?: string } | undefined)?.method ?? "GET";
     if (method === "POST") {
       return { ok: true, status: 200, body: JSON.stringify({ task_id: "q-1" }) };
@@ -266,6 +295,9 @@ test("generate_video: pollEndpoint without {id} appends task_id query", async ()
 test("generate_video: poll blip recovers, card keeps honest stage", async () => {
   let polls = 0;
   const restore = stubFetch((_url, init) => {
+    if (String(_url).startsWith("https://cdn/")) {
+      return { ok: true, status: 200, body: "", contentType: "video/mp4" };
+    }
     const method = (init as { method?: string } | undefined)?.method ?? "GET";
     if (method === "POST") {
       return { ok: true, status: 200, body: JSON.stringify({ job_id: "b-2" }) };
@@ -343,6 +375,9 @@ test("generate_video: poll timeout -> stuck card, honest error", async () => {
 test("generate_video: backend 1 fails -> backend 2 tried (ordered chain)", async () => {
   const hit: string[] = [];
   const restore = stubFetch((url, init) => {
+    if (String(url).startsWith("https://cdn/")) {
+      return { ok: true, status: 200, body: "", contentType: "video/mp4" };
+    }
     const method = (init as { method?: string } | undefined)?.method ?? "GET";
     if (method !== "POST") {
       return { ok: true, status: 200, body: JSON.stringify({ status: "done" }) };

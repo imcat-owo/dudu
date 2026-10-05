@@ -1,3 +1,4 @@
+import "./helpers/rn-stub.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type BrowserWebViewRef, browserController } from "../src/browser/controller.js";

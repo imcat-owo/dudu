@@ -355,7 +355,10 @@ async function saveLocalHistory(
     // (chat/cross-dialog.ts writes these keys too — one queue, no interleave).
     await sharedKeyedChain(historyKey(threadId), async () => {
       const current = meta ?? (await loadThreadData<LocalChatMessage>(threadId, store)).meta;
-      await saveThreadData(threadId, capped, current, store);
+      // saveThreadData reports failure as `false`, not a throw — honor it,
+      // otherwise the P1-11 failure flag below can never be set.
+      const saved = await saveThreadData(threadId, capped, current, store);
+      if (!saved) throw new Error(`history save failed for thread ${threadId}`);
     });
     persistFailures.delete(threadId);
     return true;

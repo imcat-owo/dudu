@@ -1,22 +1,13 @@
+import "./helpers/rn-stub.js";
 import assert from "node:assert/strict";
 import Module from "node:module";
 import { test } from "node:test";
 
-// react-native / lucide can't load under plain tsx (Flow syntax), so stub
-// the imports before the module under test is required.
+// react-native / expo / lucide stubs come from ./helpers/rn-stub.js (first
+// import above). i18n is stubbed here to return keys — the tests pin state
+// logic, not copy.
 const originalLoad = (Module as any)._load;
 (Module as any)._load = function (request: string, ...rest: unknown[]) {
-  if (request === "react-native") {
-    return {
-      Pressable: "Pressable",
-      Text: "Text",
-      View: "View",
-      useColorScheme: () => "light",
-    };
-  }
-  if (request === "lucide-react-native") {
-    return { HeartCrack: "HeartCrack", RotateCcw: "RotateCcw" };
-  }
   if (request === "./i18n" || request.endsWith("/i18n")) {
     return { t: (key: string) => key };
   }

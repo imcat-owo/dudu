@@ -5,7 +5,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import test from "node:test";
+import { test as nodeTest } from "node:test";
 import { createApp } from "../apps/server/src/app.ts";
 import { Auth } from "../apps/server/src/auth.ts";
 import { BrowserService } from "../apps/server/src/browser.ts";
@@ -16,6 +16,22 @@ import { startEgressProxy } from "../apps/worker/src/proxy.ts";
 import { createWorkerServer } from "../apps/worker/src/server.ts";
 import type { BrowserSession } from "../packages/domain/src/index.ts";
 import { browserFixture } from "./helpers/browser.ts";
+
+/**
+ * Heavyweight suite gate: these tests spin up real HTTP servers and
+ * browser fixtures (~40s). They are EXCLUDED from the default `pnpm test`
+ * so the fast suite stays fast. Run them explicitly with:
+ *
+ *   RUN_BROWSER_TESTS=1 pnpm exec tsx --test tests/browser.test.ts
+ *
+ * CI runs them in a dedicated step (see .github/workflows/ci.yml).
+ * When the flag is unset each test reports as SKIPPED with this reason —
+ * never silently dropped.
+ */
+function test(name: string, fn: (t: import("node:test").TestContext) => unknown): Promise<void> {
+  if (process.env.RUN_BROWSER_TESTS === "1") return nodeTest(name, fn);
+  return nodeTest(name, { skip: "browser suite: set RUN_BROWSER_TESTS=1 to run" }, () => {});
+}
 
 const sessionId = "00000000-0000-4000-8000-000000000001";
 const savedSession: BrowserSession = {

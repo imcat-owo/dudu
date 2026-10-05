@@ -26,6 +26,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm --dir apps/worker typecheck
       - run: pnpm test
+      # tests/browser.test.ts is gated behind RUN_BROWSER_TESTS (too heavy
+      # for the default suite) — run it explicitly here so CI keeps coverage.
+      - run: RUN_BROWSER_TESTS=1 pnpm exec tsx --test tests/browser.test.ts
       - run: pnpm build:server
   platform:
     runs-on: ubuntu-latest
