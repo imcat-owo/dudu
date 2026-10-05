@@ -5,9 +5,14 @@ import { resolveLocale } from "../src/i18n/locale.js";
 import { zhHansStrings } from "../src/i18n/zh-Hans.js";
 
 describe("resolveLocale", () => {
-  it("maps Chinese variants to zh-Hans", () => {
-    for (const tag of ["zh", "zh-Hans", "zh-Hant", "zh-CN", "zh-HK", "zh-TW", "ZH-cn"]) {
+  it("maps Simplified Chinese variants to zh-Hans", () => {
+    for (const tag of ["zh", "zh-Hans", "zh-CN", "zh-SG", "ZH-cn"]) {
       assert.equal(resolveLocale(tag), "zh-Hans", tag);
+    }
+  });
+  it("maps Traditional Chinese variants to zh-Hant", () => {
+    for (const tag of ["zh-Hant", "zh-TW", "zh-HK", "zh-MO", "ZH-tw"]) {
+      assert.equal(resolveLocale(tag), "zh-Hant", tag);
     }
   });
   it("maps English to en", () => {
@@ -38,6 +43,23 @@ describe("language packs", () => {
   it("en has no extra keys beyond zh-Hans", () => {
     for (const key of Object.keys(enStrings)) {
       assert.ok(key in zhHansStrings, `en has extra key: ${key}`);
+    }
+  });
+  it("zh-Hant covers every zh-Hans key", async () => {
+    const { zhHantStrings } = await import("../src/i18n/zh-Hant.js");
+    const zhKeys = Object.keys(zhHansStrings);
+    for (const key of zhKeys) {
+      assert.ok(
+        typeof (zhHantStrings as Record<string, string>)[key] === "string" &&
+          (zhHantStrings as Record<string, string>)[key].length > 0,
+        `zh-Hant is missing key: ${key}`,
+      );
+    }
+  });
+  it("zh-Hant has no extra keys beyond zh-Hans", async () => {
+    const { zhHantStrings } = await import("../src/i18n/zh-Hant.js");
+    for (const key of Object.keys(zhHantStrings)) {
+      assert.ok(key in zhHansStrings, `zh-Hant has extra key: ${key}`);
     }
   });
 });

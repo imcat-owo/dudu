@@ -16,10 +16,11 @@ import { useMemo } from "react";
 import { enStrings } from "./en";
 import { type AppLocale, resolveLocale } from "./locale";
 import { type StringKey, zhHansStrings } from "./zh-Hans";
+import { zhHantStrings } from "./zh-Hant";
 
 export type { AppLocale, StringKey };
 
-const packs = { "zh-Hans": zhHansStrings, en: enStrings } as const;
+const packs = { "zh-Hans": zhHansStrings, "zh-Hant": zhHantStrings, en: enStrings } as const;
 
 function detectLocale(): AppLocale {
   try {

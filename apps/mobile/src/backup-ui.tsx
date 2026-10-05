@@ -51,6 +51,7 @@ export function BackupSection() {
   const [lastAt, setLastAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [restoreMode, setRestoreMode] = useState<"overwrite" | "merge">("overwrite");
 
   useEffect(() => {
     let active = true;
@@ -121,11 +122,14 @@ export function BackupSection() {
           onPress: () => {
             void (async () => {
               try {
+                // G2: safety snapshot before restore (so a bad restore is undoable).
+                // G6: respect the overwrite/merge choice.
                 await applyBackup(
                   parsed.backup,
                   AsyncStorage,
                   secureBackend(),
                   await getKnowledgeStore(),
+                  { mode: restoreMode },
                 );
                 // Refresh in-memory store mirrors so the UI shows the
                 // restored data immediately (no app restart needed).
@@ -184,6 +188,33 @@ export function BackupSection() {
         <Button icon={Download} onPress={() => void onRestore()} disabled={busy}>
           {t("backup.restore")}
         </Button>
+      </View>
+      <View style={{ marginTop: 12 }}>
+        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 6 }}>
+          {t("restore.mode.title")}
+        </TText>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            primary={restoreMode === "overwrite"}
+            onPress={() => setRestoreMode("overwrite")}
+          >
+            {t("restore.mode.overwrite")}
+          </Button>
+          <Button
+            primary={restoreMode === "merge"}
+            onPress={() => setRestoreMode("merge")}
+          >
+            {t("restore.mode.merge")}
+          </Button>
+        </View>
+        <TText style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
+          {restoreMode === "overwrite" ? t("restore.mode.overwriteHint") : t("restore.mode.mergeHint")}
+        </TText>
+        {restoreMode === "overwrite" && (
+          <TText style={{ color: colors.orange, fontSize: 12, marginTop: 4 }}>
+            {t("restore.mode.warning")}
+          </TText>
+        )}
       </View>
       {notice ? (
         <TText style={{ color: colors.text, fontSize: 13, marginTop: 8 }}>

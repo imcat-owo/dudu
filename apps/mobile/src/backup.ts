@@ -168,6 +168,19 @@ const EXTENSION_KEYS = [
   "dudu.tool-desc-overrides.v1",
   "dudu.image-compression.v1",
   "dudu.browser-history.v1",
+  // Batch 5: persona/worldbook/global-md/webapps/fonts catalog
+  "dudu.persona.v1.list",
+  "dudu.persona.v1.tags",
+  "dudu.persona.v1.active",
+  "dudu.worldbook.v1.list",
+  "dudu.global-md.v1",
+  "dudu.webapps.v1.list",
+  "dudu.fonts.v1.catalog",
+  "dudu.snapshot.v1.settings",
+  "dudu.backup.webdav.url.v1",
+  "dudu.backup.webdav.user.v1",
+  "dudu.backup.webdav.path.v1",
+  "dudu.backup.s3.cfg.v1",
 ] as const;
 
 // TTS/STT configs live in SecureStore in production (voice/store.ts) —
@@ -649,44 +662,64 @@ export function parseBackup(text: string): ParseBackupResult {
  * `knowledge` is optional — when present, the knowledge snapshot is
  * restored through it; when absent, the section is skipped.
  */
+/** Restore mode: overwrite replaces everything, merge adds what's missing. */
+export type RestoreMode = "overwrite" | "merge";
+
 export async function applyBackup(
   backup: BackupFile,
   kv: KeyValueStore,
   secure: SecureKV,
   knowledge?: KnowledgeBackupTarget | null,
+  opts?: { mode?: RestoreMode },
 ): Promise<void> {
-  // Chat threads: write the backup's threads FIRST, then clear stale keys.
+  const mode: RestoreMode = opts?.mode ?? "overwrite";
+  const merge = mode === "merge";
+  // Chat threads: write the backup's threads FIRST, then clear stale keys
+  // (overwrite only — merge keeps local threads not in the backup).
   // Crash-safe ordering — a crash midway leaves old data plus new data,
   // never a wiped store with nothing written.
   const wantedIds = new Set<string>();
   for (const thread of backup.chat.threads) {
     if (typeof thread.id !== "string") continue;
     wantedIds.add(thread.id);
+    const key = `${CHAT_PREFIX}${thread.id}${CHAT_SUFFIX}`;
+    if (merge) {
+      // Merge: keep the local thread if it already exists.
+      const existing = await kv.getItem(key);
+      if (existing != null) continue;
+    }
     // A2: write the stored payload back verbatim (v2 envelope or legacy
     // v1 array) — version selections and thread meta survive the round trip.
     const payload = thread.data !== undefined ? thread.data : thread.messages;
     await kv.setItem(
-      `${CHAT_PREFIX}${thread.id}${CHAT_SUFFIX}`,
+      key,
       JSON.stringify(Array.isArray(payload) || isEnvelope(payload) ? payload : []),
     );
   }
   const allKeys = await kv.getAllKeys();
-  for (const key of allKeys) {
-    if (!key.startsWith(CHAT_PREFIX) || !key.endsWith(CHAT_SUFFIX)) continue;
-    const id = key.slice(CHAT_PREFIX.length, -CHAT_SUFFIX.length);
-    if (!wantedIds.has(id)) {
-      await kv.setItem(key, JSON.stringify([]));
+  if (!merge) {
+    for (const key of allKeys) {
+      if (!key.startsWith(CHAT_PREFIX) || !key.endsWith(CHAT_SUFFIX)) continue;
+      const id = key.slice(CHAT_PREFIX.length, -CHAT_SUFFIX.length);
+      if (!wantedIds.has(id)) {
+        await kv.setItem(key, JSON.stringify([]));
+      }
     }
   }
 
   // API groups (keyless) go back to SecureStore.
-  await secure.setItem(GROUPS_KEY, JSON.stringify(backup.apiGroups));
+  // Merge: keep local groups if they already exist.
+  if (!merge || (await secure.getItem(GROUPS_KEY)) == null) {
+    await secure.setItem(GROUPS_KEY, JSON.stringify(backup.apiGroups));
+  }
 
   // Voice configs go back to SecureStore (production layout — voice/store.ts
   // reads TTS_KEY/STT_KEY from the secure backend, never AsyncStorage).
   for (const key of SECURE_VOICE_KEYS) {
     if (key in backup.plain) {
-      await secure.setItem(key, JSON.stringify(backup.plain[key]));
+      if (!merge || (await secure.getItem(key)) == null) {
+        await secure.setItem(key, JSON.stringify(backup.plain[key]));
+      }
     }
   }
 
@@ -694,7 +727,9 @@ export async function applyBackup(
   for (const [key, value] of Object.entries(backup.plain)) {
     if ((SECURE_VOICE_KEYS as readonly string[]).includes(key)) continue;
     if (!PLAIN_KEYS.includes(key)) continue; // never write unknown keys
-    await kv.setItem(key, JSON.stringify(value));
+    if (!merge || (await kv.getItem(key)) == null) {
+      await kv.setItem(key, JSON.stringify(value));
+    }
   }
 
   // AI-auth prefs.
