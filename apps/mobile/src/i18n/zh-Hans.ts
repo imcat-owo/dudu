@@ -1437,7 +1437,7 @@ const zhHans = {
   "apigroup.diag.desc": "每次请求的情况都记着，key 已经脱敏，看不到原文。",
   "apigroup.diag.view": "看看日志",
   "apigroup.diag.clear": "清空",
-  "apigroup.diag.clearConfirm": "所有分组的诊断记录都会清空，确定？",
+  "apigroup.diag.clearConfirm": "只清空这个分组的诊断记录，确定？",
   "apigroup.diag.empty": "干干净净，还没记过",
   "apigroup.diag.ok": "成功",
   "apigroup.diag.fail": "失败",

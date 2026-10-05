@@ -1440,7 +1440,7 @@ const zhHant = {
   "apigroup.diag.desc": "每次請求的情況都記着，key 已經脫敏，看不到原文。",
   "apigroup.diag.view": "看看日誌",
   "apigroup.diag.clear": "清空",
-  "apigroup.diag.clearConfirm": "所有分組的診斷記錄都會清空，確定？",
+  "apigroup.diag.clearConfirm": "只清空這個分組的診斷記錄，確定？",
   "apigroup.diag.empty": "乾乾淨淨，還沒記過",
   "apigroup.diag.ok": "成功",
   "apigroup.diag.fail": "失敗",

@@ -1498,7 +1498,7 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.diag.desc": "Every request is logged here; keys are redacted, never shown raw.",
   "apigroup.diag.view": "View log",
   "apigroup.diag.clear": "Clear",
-  "apigroup.diag.clearConfirm": "This clears the diagnostic log for all groups. Sure?",
+  "apigroup.diag.clearConfirm": "This clears the diagnostic log for this group only. Sure?",
   "apigroup.diag.empty": "Nothing logged yet",
   "apigroup.diag.ok": "OK",
   "apigroup.diag.fail": "Failed",

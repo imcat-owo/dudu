@@ -107,8 +107,11 @@ export async function listDiagEntries(): Promise<DiagEntry[]> {
   return [...(memory ?? [])].reverse();
 }
 
-export async function clearDiagEntries(): Promise<void> {
-  memory = [];
+export async function clearDiagEntries(groupId?: string): Promise<void> {
+  // D23: must load first — filtering an unloaded (null) buffer would
+  // persist [] and silently wipe entries that were never read.
+  await ensureLoaded();
+  memory = groupId ? (memory ?? []).filter((e) => e.groupId !== groupId) : [];
   await persist();
 }
 

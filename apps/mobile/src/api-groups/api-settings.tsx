@@ -1743,7 +1743,8 @@ function DiagSection({ draft }: { draft: ApiGroup }) {
         text: t("apigroup.diag.clear"),
         style: "destructive",
         onPress: () => {
-          void clearDiagEntries().then(() => setEntries([]));
+          // D23: the viewer filters to this group — clear only this group.
+          void clearDiagEntries(draft.id).then(() => setEntries([]));
         },
       },
     ]);
