@@ -1779,6 +1779,8 @@ export const enStrings: Record<StringKey, string> = {
   "sandbox.local.nativeRequired":
     "The local Linux sandbox needs the native iSH module, which is not bundled in this build yet. It follows OpenMinis's iSH approach.",
   "sandbox.cloud.noConfig": "Fill in the server connection first.",
+  "sandbox.relayNote":
+    "Cloud mode needs a tiny relay installed on your server first (小梦 can set it up for you). Fill in the form below, then save and connect.",
   "sandbox.command.timeout": "Command timed out after 2 minutes.",
   "sandbox.docker.listFailed": "Could not list containers.",
   "sandbox.docker.startFailed": "Could not start the container.",

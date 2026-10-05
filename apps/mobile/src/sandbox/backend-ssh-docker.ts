@@ -83,14 +83,9 @@ export class SshDockerBackend implements SandboxBackend {
    * into that container (`docker exec -i`); otherwise it's the host shell.
    * Used by the sandbox_shell_* AI tools via interactive-terminal.ts.
    */
-  async openShell(
-    container?: string,
-    onData?: (chunk: string) => void,
-  ): Promise<SshShellHandle> {
+  async openShell(container?: string, onData?: (chunk: string) => void): Promise<SshShellHandle> {
     this.requireConnected();
-    const handle = await this.transport.shell((chunk) =>
-      onData?.(chunk.data),
-    );
+    const handle = await this.transport.shell((chunk) => onData?.(chunk.data));
     if (container) {
       handle.write(`docker exec -i ${shellEscape(container)} sh\n`);
     }

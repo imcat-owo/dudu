@@ -269,9 +269,9 @@ async function handleShellOpen(body, res) {
       waiters: new Set(), closed: false, overrun: false,
       lastActive: Date.now(), cols, rows,
     };
-    // Fail-fast: if ssh dies immediately (bad creds etc.), report it now.
-    let earlyErr = "";
-    proc.stderr.on("data", (c) => { earlyErr += c.toString("utf8").slice(0, 500); });
+    // Fail-fast: if ssh dies immediately (bad creds etc.), the "close" event
+    // below already marks the session closed; the first poll then reports
+    // closed:true along with the stderr chunk, so no extra handling is needed.
     proc.stdout.on("data", (c) => pushChunk(sh, "stdout", c));
     proc.stderr.on("data", (c) => pushChunk(sh, "stderr", c));
     const onExit = () => {
@@ -285,16 +285,6 @@ async function handleShellOpen(body, res) {
     proc.on("close", onExit);
     proc.on("error", onExit);
     shells.set(id, sh);
-    // give auth failures ~3s to surface before claiming success
-    setTimeout(() => {
-      if (!sh.closed) return;
-      if (!sh.reported) {
-        sh.reported = true;
-        // leave the closed record for poll; the opener already got 200 —
-        // the first poll will report closed:true with the stderr chunk.
-      }
-    }, 3000).unref?.();
-    void earlyErr;
     send(res, 200, { shellId: id });
   } catch (e) {
     bad(res, 500, `shell open failed: ${e instanceof Error ? e.message : String(e)}`);

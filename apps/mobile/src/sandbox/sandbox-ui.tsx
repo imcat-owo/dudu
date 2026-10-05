@@ -476,6 +476,9 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
 
           {activeId === "cloud" && state === "disconnected" ? (
             <Card style={{ gap: 10 }}>
+              <TText style={{ fontSize: 12, color: colors.muted }}>
+                {t("sandbox.relayNote")}
+              </TText>
               <SshConfigForm
                 onSaved={() => {
                   void connect();

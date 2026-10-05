@@ -1710,6 +1710,8 @@ const zhHans = {
   "sandbox.local.nativeRequired":
     "本地 Linux 沙箱需要原生 iSH 模块，此版本尚未内置。做法沿用 OpenMinis 的 iSH 方案。",
   "sandbox.cloud.noConfig": "请先填写服务器连接信息。",
+  "sandbox.relayNote":
+    "云端连接要在你的服务器上先装一个小中转（小梦会帮你装好）。填完下面点保存并连接就行啦。",
   "sandbox.command.timeout": "命令执行超过 2 分钟，已超时。",
   "sandbox.docker.listFailed": "无法列出容器。",
   "sandbox.docker.startFailed": "无法启动容器。",
