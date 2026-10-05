@@ -1,5 +1,6 @@
 /**
- * Built-in theme presets: 5 tasteful bundles, mixed light and dark.
+ * Built-in theme presets: 6 tasteful bundles, all following the iOS system
+ * appearance (mode "system") — never hardcoded light/dark.
  *
  * Display names are i18n keys ("theme.preset.*") resolved via t() at render
  * time — no hardcoded user-facing strings anywhere here.
@@ -17,47 +18,47 @@ export const PRESETS: readonly ThemeBundle[] = [
     // Seed extracted from the owner's finalized avatar
     // (artwork/avatar/sora-avatar.webp, mid-tone average).
     seed: { primary: "#aaa7aa" },
-    mode: "light",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
   makeThemeBundle({
     id: "preset-mint-frost",
     name: "theme.preset.mintFrost",
     seed: { primary: "#3f9b8a" },
-    mode: "light",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
   makeThemeBundle({
     id: "preset-sunset-peach",
     name: "theme.preset.sunsetPeach",
     seed: { primary: "#cf6a4d" },
-    mode: "light",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
   makeThemeBundle({
     id: "preset-sakura-mist",
     name: "theme.preset.sakuraMist",
     seed: { primary: "#b98aa5" },
-    mode: "light",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
   makeThemeBundle({
     id: "preset-lavender-night",
     name: "theme.preset.lavenderNight",
     seed: { primary: "#9b8afb" },
-    mode: "dark",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
   makeThemeBundle({
     id: "preset-deep-ocean",
     name: "theme.preset.deepOcean",
     seed: { primary: "#5b9bd5" },
-    mode: "dark",
+    mode: "system",
     author: BUILT_IN_AUTHOR,
   }),
 ];
 
-export const DEFAULT_PRESET_ID = "preset-mint-frost";
+export const DEFAULT_PRESET_ID = "preset-sora-gray";
 
 export function getPreset(id: string): ThemeBundle {
   const found = PRESETS.find((p) => p.id === id);

@@ -15,6 +15,7 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StatusBar } from "expo-status-bar";
 import {
   createContext,
   type ReactNode,
@@ -126,6 +127,18 @@ const ThemeContext = createContext<ThemeContextValue>(buildFallbackValue(default
 /** Any screen wrapped in ThemeProvider gets live tokens from this hook. */
 export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
+}
+
+/**
+ * StatusBar that follows the resolved theme — light content on dark
+ * backgrounds, dark content on light ones. Because resolvedMode already
+ * accounts for bundle.mode ("system" follows the OS) AND any explicit
+ * user choice, a pinned light/dark theme keeps winning over the system.
+ * Must be rendered inside a ThemeProvider.
+ */
+export function ThemedStatusBar(): ReactNode {
+  const { resolvedMode } = useTheme();
+  return <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />;
 }
 
 type RemoteTheme = {

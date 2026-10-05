@@ -1,5 +1,4 @@
 import { CopilotKitProvider } from "@copilotkit/react-native/headless";
-import { StatusBar } from "expo-status-bar";
 import {
   Bell,
   Check,
@@ -53,7 +52,7 @@ import { AppLockGate } from "./src/platform/app-lock-gate";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
 import { Splash } from "./src/splash";
-import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { ThemedStatusBar, ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 import { ThemeTransition } from "./src/theme-transition";
 import { ThreadsProvider, ThreadsSheet, useMuseThread } from "./src/threads";
 import {
@@ -105,10 +104,14 @@ export default function App() {
   if (!splashed) {
     return (
       <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <ErrorBoundary label="splash">
-          <Splash onDone={() => setSplashed(true)} />
-        </ErrorBoundary>
+        {/* ThemedStatusBar needs the theme context: with the default
+            preset on mode "system", the splash already follows iOS. */}
+        <ThemeProvider>
+          <ThemedStatusBar />
+          <ErrorBoundary label="splash">
+            <Splash onDone={() => setSplashed(true)} />
+          </ErrorBoundary>
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -117,7 +120,6 @@ export default function App() {
   if (mode === "local") {
     return (
       <SafeAreaProvider>
-        <StatusBar style="dark" />
         <ErrorBoundary label="app">
           {/* B1 P2-1: the gate uses useColors()/useStyles(), so it must sit
               under a ThemeProvider — otherwise it falls back to the default
@@ -126,6 +128,7 @@ export default function App() {
               keeps the locally cached theme (no apiToken: server sync, if
               any, is owned by the inner cloud provider). */}
           <ThemeProvider>
+            <ThemedStatusBar />
             <AppLockGate>
               <LocalApp />
             </AppLockGate>
@@ -139,6 +142,7 @@ export default function App() {
       {/* B1 P2-1: see the local branch above — the gate must render under a
           ThemeProvider so the lock screen follows her theme. */}
       <ThemeProvider>
+        <ThemedStatusBar />
         <AppLockGate>
           <CloudApp />
         </AppLockGate>
@@ -207,7 +211,7 @@ function CloudApp() {
   }, [restore]);
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <ThemedStatusBar />
       {token ? (
         <CopilotKitProvider
           runtimeUrl={`${API_URL}/api/copilotkit`}

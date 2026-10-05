@@ -69,15 +69,13 @@ describe("deriveSurfaces", () => {
 });
 
 describe("presets", () => {
-  it("ships 4–6 presets, mixing light and dark, all valid ThemeBundles", () => {
+  it("ships 4–6 presets, all following the system, all valid ThemeBundles", () => {
     assert.ok(
       PRESETS.length >= 4 && PRESETS.length <= 6,
       `expected 4–6 presets, got ${PRESETS.length}`,
     );
-    const modes = new Set(PRESETS.map((p) => p.mode));
-    assert.ok(modes.has("light"), "presets must include a light bundle");
-    assert.ok(modes.has("dark"), "presets must include a dark bundle");
     for (const preset of PRESETS) {
+      assert.equal(preset.mode, "system", `preset ${preset.id} must follow the system`);
       assert.ok(isThemeBundle(preset), `preset ${preset.id} failed validation`);
       assert.match(preset.name, /^theme\.preset\./, "preset name must be an i18n key");
       assert.ok(
