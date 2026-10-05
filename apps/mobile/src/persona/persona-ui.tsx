@@ -4,8 +4,8 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
-import { Alert, ScrollView, Switch, TextInput, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, SectionHeading, useColors } from "../ui";
@@ -19,6 +19,64 @@ const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
 const globalMdStore = createGlobalMdStore(AsyncStorage);
 
+/** Small tag chip. Pressable when onPress is given, static otherwise. */
+function TagChip({
+  tag,
+  selected,
+  onPress,
+}: {
+  tag: PersonaTag;
+  selected?: boolean;
+  onPress?: () => void;
+}) {
+  const colors = useColors();
+  const accent = tag.color ?? colors.blue;
+  const body = (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: selected ? 2 : 1,
+        borderColor: accent,
+        marginRight: 6,
+        marginBottom: 6,
+      }}
+    >
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: accent,
+          marginRight: 6,
+        }}
+      />
+      <TText style={{ color: colors.text, fontSize: 12, fontWeight: selected ? "600" : "400" }}>
+        {tag.name}
+      </TText>
+    </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: !!selected }}>
+      {body}
+    </Pressable>
+  );
+}
+
+/** Resolve a persona's tagIds to tag objects (drops stale ids). */
+function resolvePersonaTags(p: Persona, tagsById: Map<string, PersonaTag>): PersonaTag[] {
+  const out: PersonaTag[] = [];
+  for (const id of p.tagIds) {
+    const tag = tagsById.get(id);
+    if (tag) out.push(tag);
+  }
+  return out;
+}
+
 export function PersonaSection() {
   const colors = useColors();
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -26,6 +84,7 @@ export function PersonaSection() {
   const [editing, setEditing] = useState<Persona | null>(null);
   const [books, setBooks] = useState<WorldBook[]>([]);
   const [globalMd, setGlobalMd] = useState("");
+  const [filterTagId, setFilterTagId] = useState<string | null>(null);
 
   const refresh = () => {
     void personaStore.list().then(setPersonas);
@@ -35,6 +94,18 @@ export function PersonaSection() {
   };
 
   useEffect(refresh, []);
+
+  const tagsById = useMemo(() => {
+    const m = new Map<string, PersonaTag>();
+    for (const tag of tags) m.set(tag.id, tag);
+    return m;
+  }, [tags]);
+
+  const visiblePersonas = useMemo(
+    () =>
+      filterTagId ? personas.filter((p) => p.tagIds.includes(filterTagId)) : personas,
+    [personas, filterTagId],
+  );
 
   const savePersona = async (p: Persona) => {
     const err = await personaStore.upsert(p);
@@ -58,23 +129,66 @@ export function PersonaSection() {
   };
 
   if (editing) {
-    return <PersonaEditor persona={editing} onSave={savePersona} onCancel={() => setEditing(null)} />;
+    return (
+      <PersonaEditor
+        persona={editing}
+        tags={tags}
+        onSave={savePersona}
+        onCancel={() => setEditing(null)}
+      />
+    );
   }
 
   return (
     <ScrollView>
       <SectionHeading title={t("persona.title")} />
-      {personas.length === 0 && <TText style={{ color: colors.muted }}>{t("persona.noPersonas")}</TText>}
-      {personas.map((p) => (
-        <View key={p.id} style={{ padding: 12, borderBottomWidth: 1, borderColor: colors.line }}>
-          <TText style={{ fontWeight: "600" }}>{p.name}</TText>
-          {p.description ? <TText style={{ color: colors.muted }}>{p.description}</TText> : null}
-          <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
-            <Button onPress={() => setEditing(p)}>{t("common.edit")}</Button>
-            <Button onPress={() => deletePersona(p)}>{t("persona.delete")}</Button>
-          </View>
+      {tags.length > 0 && (
+        <View style={{ marginBottom: 8 }}>
+          <TText style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>
+            {t("persona.tags.filterBy")}
+          </TText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <TagChip
+              tag={{ id: "", name: t("persona.tags.filterAll"), createdAt: 0 }}
+              selected={filterTagId === null}
+              onPress={() => setFilterTagId(null)}
+            />
+            {tags.map((tag) => (
+              <TagChip
+                key={tag.id}
+                tag={tag}
+                selected={filterTagId === tag.id}
+                onPress={() => setFilterTagId(filterTagId === tag.id ? null : tag.id)}
+              />
+            ))}
+          </ScrollView>
         </View>
-      ))}
+      )}
+      {visiblePersonas.length === 0 && (
+        <TText style={{ color: colors.muted }}>
+          {filterTagId ? t("persona.tags.noMatch") : t("persona.noPersonas")}
+        </TText>
+      )}
+      {visiblePersonas.map((p) => {
+        const pTags = resolvePersonaTags(p, tagsById);
+        return (
+          <View key={p.id} style={{ padding: 12, borderBottomWidth: 1, borderColor: colors.line }}>
+            <TText style={{ fontWeight: "600" }}>{p.name}</TText>
+            {p.description ? <TText style={{ color: colors.muted }}>{p.description}</TText> : null}
+            {pTags.length > 0 && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 6 }}>
+                {pTags.map((tag) => (
+                  <TagChip key={tag.id} tag={tag} />
+                ))}
+              </View>
+            )}
+            <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
+              <Button onPress={() => setEditing(p)}>{t("common.edit")}</Button>
+              <Button onPress={() => deletePersona(p)}>{t("persona.delete")}</Button>
+            </View>
+          </View>
+        );
+      })}
       <Button onPress={() => setEditing(personaStore.blank())}>{t("persona.create")}</Button>
 
       <SectionHeading title={t("persona.tags")} />
@@ -190,16 +304,23 @@ function TagManager({ tags, onRefresh }: { tags: PersonaTag[]; onRefresh: () => 
 
 function PersonaEditor({
   persona,
+  tags,
   onSave,
   onCancel,
 }: {
   persona: Persona;
+  tags: PersonaTag[];
   onSave: (p: Persona) => void;
   onCancel: () => void;
 }) {
   const colors = useColors();
   const [p, setP] = useState<Persona>(persona);
   const set = (patch: Partial<Persona>) => setP({ ...p, ...patch });
+
+  const toggleTag = (tagId: string) => {
+    const has = p.tagIds.includes(tagId);
+    set({ tagIds: has ? p.tagIds.filter((id) => id !== tagId) : [...p.tagIds, tagId] });
+  };
 
   const inputStyle = {
     borderWidth: 1,
@@ -257,6 +378,22 @@ function PersonaEditor({
         <TText style={{ flex: 1 }}>{t("persona.enabled")}</TText>
         <Switch value={p.enabled} onValueChange={(v) => set({ enabled: v })} />
       </View>
+
+      {tags.length > 0 && (
+        <View style={{ marginBottom: 12 }}>
+          <TText style={{ marginBottom: 6 }}>{t("persona.tags.pick")}</TText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            {tags.map((tag) => (
+              <TagChip
+                key={tag.id}
+                tag={tag}
+                selected={p.tagIds.includes(tag.id)}
+                onPress={() => toggleTag(tag.id)}
+              />
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
         <Button onPress={() => onSave(p)}>{t("common.save")}</Button>
