@@ -3,7 +3,7 @@ export const API_GROUPS_MANUAL = {
   id: "api-groups",
   title: "API groups & dual-mode architecture",
   file: "src/manuals/api-groups.ts",
-  when: "model config, switching groups/modes, model ranking, per-dialog model override",
+  when: "model config, switching groups/modes, capability groups, model ranking questions, per-dialog model switching, or key questions",
   body: `# API groups & dual-mode architecture
 
 - Default is LOCAL mode: her key lives in the app, the phone talks directly

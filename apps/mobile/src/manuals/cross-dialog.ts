@@ -3,7 +3,7 @@ export const CROSS_DIALOG_MANUAL = {
   id: "cross-dialog",
   title: "Cross-dialog read/write (留痕 trace)",
   file: "src/manuals/cross-dialog.ts",
-  when: "messages across chat dialogs, passing things to another dialog",
+  when: "reading or sending messages across chat dialogs, or when she asks you to pass something to another dialog",
   body: `# Cross-dialog read/write (跨对话框读写)
 
 You can reach her other dialogs with four tools: list_dialogs (see them),

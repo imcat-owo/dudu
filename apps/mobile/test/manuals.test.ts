@@ -54,8 +54,12 @@ describe("manual registry", () => {
       assert.ok(index.includes(m.id), `index missing ${m.id}`);
       assert.ok(index.includes(m.file), `index missing file for ${m.id}`);
     }
+    // Budget: ~135 chars/manual. The `when` trigger copy is deliberately rich
+    // (added 2026-10-04) — it is what the AI matches on to pick manuals.
+    // If this budget ever fails, RAISE the budget (or shrink the index some
+    // other honest way). Never shorten `when` copy to fit the test.
     assert.ok(
-      index.length < MANUALS.length * 115,
+      index.length < MANUALS.length * 135,
       `index too long: ${index.length} chars for ${MANUALS.length} manuals`,
     );
     assert.equal(index.split("\n").length, MANUALS.length, "one line per manual");
