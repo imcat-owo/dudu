@@ -36,6 +36,7 @@ async function loadSharedModule(): Promise<{
   remove(key: string): Promise<void>;
   getSharedFilePath(name: string): Promise<string | null>;
 } | null> {
+  if (sharedModuleForTests !== undefined) return sharedModuleForTests;
   return getNativeModule<{
     getString(key: string): Promise<string | null>;
     remove(key: string): Promise<void>;
@@ -43,22 +44,69 @@ async function loadSharedModule(): Promise<{
   }>("DuduSharedData");
 }
 
+/**
+ * Poison-pill guard: a payload that parses as JSON but has the wrong shape
+ * (or isn't JSON at all) would otherwise be retried on every cold start /
+ * foreground forever. Count consecutive parse/shape failures in module
+ * memory; after POISON_DROP_AFTER_FAILURES of them, drop the payload and
+ * log one line. The counter resets on any successful take.
+ */
+const POISON_DROP_AFTER_FAILURES = 3;
+let consecutiveParseFailures = 0;
+
+/** Test seam: undefined = resolve the real native module. */
+let sharedModuleForTests:
+  | {
+      getString(key: string): Promise<string | null>;
+      remove(key: string): Promise<void>;
+      getSharedFilePath(name: string): Promise<string | null>;
+    }
+  | null
+  | undefined;
+
 /** Read and clear the pending share. Returns null when nothing is waiting. */
 export async function takePendingShare(): Promise<PendingShare | null> {
   const mod = await loadSharedModule();
   if (!mod) return null;
+  let raw: string | null;
   try {
-    const raw = await mod.getString(SHARED_KEYS.pendingShare);
-    if (!raw) return null;
-    // Parse BEFORE removing: a corrupt payload stays queued for the next
-    // attempt instead of being silently destroyed.
-    const parsed = JSON.parse(raw) as PendingShare;
-    if (!Array.isArray(parsed.items)) return null;
-    await mod.remove(SHARED_KEYS.pendingShare);
-    return parsed;
+    raw = await mod.getString(SHARED_KEYS.pendingShare);
   } catch {
     return null;
   }
+  if (!raw) return null;
+  // Parse BEFORE removing: a corrupt payload stays queued for the next
+  // attempt instead of being silently destroyed — but only up to
+  // POISON_DROP_AFTER_FAILURES consecutive failures, after which the
+  // poisoned payload is dropped so we don't retry it forever.
+  let parsed: PendingShare;
+  try {
+    parsed = JSON.parse(raw) as PendingShare;
+    if (!Array.isArray(parsed.items)) {
+      throw new Error("pending share payload has no items array");
+    }
+  } catch {
+    consecutiveParseFailures += 1;
+    if (consecutiveParseFailures >= POISON_DROP_AFTER_FAILURES) {
+      consecutiveParseFailures = 0;
+      console.warn(
+        `[share-intake] dropping poisoned share payload after ${POISON_DROP_AFTER_FAILURES} failed parses`,
+      );
+      try {
+        await mod.remove(SHARED_KEYS.pendingShare);
+      } catch {
+        // best-effort: the key may already be gone
+      }
+    }
+    return null;
+  }
+  consecutiveParseFailures = 0;
+  try {
+    await mod.remove(SHARED_KEYS.pendingShare);
+  } catch {
+    return null;
+  }
+  return parsed;
 }
 
 /**
@@ -78,7 +126,29 @@ export function shareToPrompt(share: PendingShare): { text: string; attachments:
   return { text: texts.join("\n\n"), attachments };
 }
 
-export const __sharedForTests = { APP_GROUP_ID, SHARED_KEYS };
+export const __sharedForTests = {
+  APP_GROUP_ID,
+  SHARED_KEYS,
+  POISON_DROP_AFTER_FAILURES,
+  /** Inject a fake native module (null = force "no module"). */
+  __setModule(
+    mod: {
+      getString(key: string): Promise<string | null>;
+      remove(key: string): Promise<void>;
+      getSharedFilePath(name: string): Promise<string | null>;
+    } | null,
+  ) {
+    sharedModuleForTests = mod;
+  },
+  /** Back to resolving the real native module. */
+  __resetModule() {
+    sharedModuleForTests = undefined;
+  },
+  /** Reset the poison-pill failure counter. */
+  __resetPoisonGuard() {
+    consecutiveParseFailures = 0;
+  },
+};
 
 /**
  * Pure routing step: turn a drained share into an `ask()` call that drops
