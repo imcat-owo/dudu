@@ -152,11 +152,12 @@ export function createMcpClient(config: McpServerConfig, deps: McpClientDeps): M
         throw new Error(`Tool "${name}" is disabled for this server.`);
       }
       if (approval === "ask") {
+        // D13: the approval card asks her in-session. Deny (or dismiss /
+        // timeout) fails closed — the error says what actually happened so
+        // the model never gets a false story about her choice.
         const ok = await deps.requestApproval(name, args);
         if (!ok)
-          throw new Error(
-            `MCP tool "${name}" was denied: "ask" approval has no UI in this build yet, so it fails closed. She was not asked and did not decline.`,
-          );
+          throw new Error(`MCP tool "${name}" was not called: she declined the approval request.`);
       }
       const result = (await request("tools/call", {
         name,

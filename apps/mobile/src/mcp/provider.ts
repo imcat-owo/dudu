@@ -13,12 +13,23 @@
 import type { LocalTool } from "../api-groups/local-tools";
 import { createMcpClient } from "./client";
 import { mcpStore } from "./store";
+import type { McpApprovalOutcome } from "./tool-approval";
 import type { McpServerConfig, McpToolDefinition } from "./types";
 
 export interface McpProviderDeps {
   env: Record<string, string>;
-  /** Ask her to approve a tool call (approval mode "ask"). */
-  requestApproval: (serverName: string, toolName: string, args: unknown) => Promise<boolean>;
+  /**
+   * Ask her to approve a tool call (approval mode "ask"). Renders the real
+   * in-session approval card (D13). `remember: true` means she checked
+   * "remember my choice" — the provider persists it into
+   * `server.toolApprovals` so it sticks for subsequent calls.
+   */
+  requestApproval: (
+    serverId: string,
+    serverName: string,
+    toolName: string,
+    args: unknown,
+  ) => Promise<McpApprovalOutcome>;
   /** Run the OAuth browser flow; resolves with nothing (tokens are saved by the client). */
   runOAuthFlow: (server: McpServerConfig) => Promise<void>;
   /** Localized strings for tool descriptions. */
@@ -52,6 +63,12 @@ export async function createMcpProviders(deps: McpProviderDeps): Promise<
 
   for (const server of servers) {
     if (!server.enabled) continue;
+    // Per-provider working copy of approvals: "remember" updates it
+    // immediately so the very next call is honored, and the persisted
+    // store (mcpStore) keeps it across sessions.
+    const approvals: Record<string, "ask" | "allow" | "deny"> = {
+      ...(server.toolApprovals ?? {}),
+    };
     const client = createMcpClient(server, {
       env: deps.env,
       getTokens: () => mcpStore.getTokens(server.id),
@@ -63,8 +80,16 @@ export async function createMcpProviders(deps: McpProviderDeps): Promise<
         if (!tokens) throw new Error("OAuth flow did not produce tokens");
         return tokens;
       },
-      getApproval: (toolName) => server.toolApprovals?.[toolName] ?? "ask",
-      requestApproval: (toolName, args) => deps.requestApproval(server.name, toolName, args),
+      getApproval: (toolName) => approvals[toolName] ?? "ask",
+      requestApproval: async (toolName, args) => {
+        const outcome = await deps.requestApproval(server.id, server.name, toolName, args);
+        if (outcome.remember) {
+          approvals[toolName] = outcome.allowed ? "allow" : "deny";
+          // Persist so it sticks; the in-memory copy above already honors it.
+          await mcpStore.upsert({ ...server, toolApprovals: { ...approvals } }).catch(() => {});
+        }
+        return outcome.allowed;
+      },
     });
 
     // Connect lazily on first listTools; keep the client for calls.
