@@ -765,7 +765,10 @@ export function ApiSettingsScreen() {
       <Modal
         visible={editing !== null}
         animationType="slide"
-        onRequestClose={() => setEditing(null)}
+        onRequestClose={() => {
+          setOauthFirst(false);
+          setEditing(null);
+        }}
       >
         <View style={{ flex: 1, backgroundColor: colors.canvas, paddingTop: 48 }}>
           <View
@@ -782,7 +785,10 @@ export function ApiSettingsScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("a11y.close")}
-              onPress={() => setEditing(null)}
+              onPress={() => {
+                setOauthFirst(false);
+                setEditing(null);
+              }}
               style={{ padding: 8 }}
             >
               <X size={20} color={colors.text} />
