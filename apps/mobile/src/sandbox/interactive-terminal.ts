@@ -10,7 +10,8 @@
  * the tools fail honestly.
  */
 
-import type { LocalTool } from "../api-groups/local-tools";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { requireRunnable } from "./sandbox-tools";
 import type { SandboxBackend } from "./types";
 
 interface ShellSession {
@@ -49,13 +50,25 @@ export function createInteractiveTerminalTools(
         },
         additionalProperties: false,
       },
-      run: async (args, _ctx) => {
+      capability: "sandbox",
+      manualId: "sandbox",
+      run: async (args, ctx) => {
         const backend = getBackend();
         if (!backend) throw new Error("Sandbox backend not available.");
+        requireRunnable(backend);
+        const ok = await ctx.authorize({
+          capability: "sandbox",
+          action: "Open an interactive shell session",
+          reason: "She asked the AI to work in the terminal.",
+        });
+        if (!ok) throw new ToolError("She did not approve this.");
         const container = (args.container as string) || undefined;
 
         // The backend exposes an interactive shell via its transport.
         // We use a dynamic access pattern to avoid coupling to internals.
+        // The session id is created FIRST so output has somewhere to land
+        // from the very first chunk.
+        const id = `sh_${Date.now()}_${++seq}`;
         const shell = await (
           backend as unknown as {
             openShell?: (
@@ -66,7 +79,7 @@ export function createInteractiveTerminalTools(
               close: () => void;
             }>;
           }
-        ).openShell?.(container, undefined);
+        ).openShell?.(container, (chunk) => __pushShellOutput(id, chunk));
 
         if (!shell) {
           throw new Error(
@@ -74,7 +87,6 @@ export function createInteractiveTerminalTools(
           );
         }
 
-        const id = `sh_${Date.now()}_${++seq}`;
         const session: ShellSession = {
           id,
           write: shell.write,
@@ -84,8 +96,6 @@ export function createInteractiveTerminalTools(
         };
         sessions.set(id, session);
 
-        // Wire output into the buffer. The backend calls onData via the
-        // shell handle's internal subscription; we poll via read.
         return JSON.stringify({ sessionId: id });
       },
     },

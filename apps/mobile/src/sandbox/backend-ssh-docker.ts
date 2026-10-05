@@ -3,14 +3,18 @@
  *
  * Real and complete: connection config (SecureStore, user-filled, never
  * hardcoded), Docker protocol (list/start/stop/exec with output parsing),
- * streaming command execution. It talks to the SshTransport interface;
- * until a real SSH socket implementation is bundled, connect() honestly
- * reports "unavailable" via the transport — never fake-connected.
+ * streaming command execution. It talks to the SshTransport interface.
+ *
+ * The bundled transport is RelaySshTransport (transport-relay.ts): the app
+ * talks HTTPS to the sandbox relay on her server, and the relay opens the
+ * REAL SSH session (real handshake + key/password auth via the system ssh
+ * client). Output is never faked. When no SSH config is saved, connect()
+ * fails honestly with sandbox.cloud.noConfig instead of pretending.
  *
  * Docker commands use stable `--format` templates (documented Docker CLI).
  */
 
-import { type SshTransport, UnavailableSshTransport } from "./transport";
+import { type SshShellHandle, type SshTransport, UnavailableSshTransport } from "./transport";
 import type {
   SandboxBackend,
   SandboxCommandResult,
@@ -67,6 +71,30 @@ export class SshDockerBackend implements SandboxBackend {
   /** Set (or replace) the connection config. Stored by the manager in SecureStore. */
   setConfig(config: SshConfig | null): void {
     this.config = config;
+  }
+
+  /** Swap the transport (used by the manager to inject the relay transport). */
+  setTransport(transport: SshTransport): void {
+    this.transport = transport;
+  }
+
+  /**
+   * Open an interactive shell. When `container` is given, the shell attaches
+   * into that container (`docker exec -i`); otherwise it's the host shell.
+   * Used by the sandbox_shell_* AI tools via interactive-terminal.ts.
+   */
+  async openShell(
+    container?: string,
+    onData?: (chunk: string) => void,
+  ): Promise<SshShellHandle> {
+    this.requireConnected();
+    const handle = await this.transport.shell((chunk) =>
+      onData?.(chunk.data),
+    );
+    if (container) {
+      handle.write(`docker exec -i ${shellEscape(container)} sh\n`);
+    }
+    return handle;
   }
 
   async connect(): Promise<void> {
@@ -173,24 +201,40 @@ export class SshDockerBackend implements SandboxBackend {
       });
     };
     // One stream callback serves both: live chunks to the caller and
-    // accumulation for the final result.
+    // accumulation for the final result. \r\n from the pty is normalized so
+    // the exit marker scan and the returned text stay clean.
+    //
+    // Marker scan is line-based and anchored: with a pty the typed command
+    // is echoed, and the echo literally contains the marker text (inside
+    // `echo "<marker>:$?"`). A substring search would match the echo first
+    // and parse `$?"` as the exit code. Only a full line shaped exactly
+    // `<marker>:<digits>` counts — the echo line never has that shape.
+    const markerLineRe = new RegExp(`^${marker}:(\\d+)\\s*$`, "gm");
     const handle = await this.transport.shell((chunk) => {
       onChunk?.(chunk);
       if (settled) return;
-      if (chunk.stream === "stdout") stdout += chunk.data;
-      else stderr += chunk.data;
-      const idx = stdout.indexOf(marker);
-      if (idx >= 0) {
-        const tail = stdout
-          .slice(idx + marker.length + 1)
-          .split("\n")[0]
-          .trim();
-        const code = Number.parseInt(tail, 10);
-        stdout = stdout.slice(0, idx);
+      const text = chunk.data.replace(/\r\n?/g, "\n");
+      if (chunk.stream === "stdout") stdout += text;
+      else stderr += text;
+      markerLineRe.lastIndex = 0;
+      let last: RegExpExecArray | null = null;
+      for (;;) {
+        const m = markerLineRe.exec(stdout);
+        if (!m) break;
+        last = m;
+      }
+      if (last) {
+        const code = Number.parseInt(last[1], 10);
+        stdout = stdout.slice(0, last.index);
         settleResult(Number.isNaN(code) ? -1 : code);
       }
     });
     try {
+      // Disable input echo first: otherwise the wrapped command (which
+      // literally contains the marker text) is echoed back and pollutes
+      // the output. Each runCommand gets a fresh shell, so this is safe.
+      // lastIndexOf above is the belt-and-suspenders fallback.
+      handle.write("stty -echo\n");
       // Wrap the command so completion + exit code are detectable on the stream.
       handle.write(
         `docker exec -i ${shellEscape(envId)} sh -c ${shellEscape(command)}; echo "${marker}:$?"\n`,

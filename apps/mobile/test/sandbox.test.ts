@@ -273,3 +273,106 @@ describe("SandboxManager", () => {
     assert.equal(m.activeBackendId(), "cloud");
   });
 });
+
+import type { SshShellHandle } from "../src/sandbox/transport.js";
+import { RelaySshTransport } from "../src/sandbox/transport-relay.js";
+
+/** Access to backend privates for tests. */
+interface BackendInternals {
+  transport: unknown;
+  state: string;
+}
+
+const asInternals = (b: object): BackendInternals => b as unknown as BackendInternals;
+
+const b4Config: SshConfig = {
+  host: "example.com",
+  port: 22,
+  username: "root",
+  authType: "key",
+  privateKey: "PEM",
+  password: null,
+};
+
+/** Spy transport: records shell writes, lets tests drive output. */
+function spyTransport(): SshTransport & { writes: string[]; push: (s: string) => void } {
+  const writes: string[] = [];
+  let onChunk: ((c: { stream: "stdout" | "stderr"; data: string }) => void) | null = null;
+  const t = {
+    writes,
+    push: (s: string) => onChunk?.({ stream: "stdout", data: s }),
+    connect: async () => {},
+    disconnect: async () => {},
+    isConnected: () => true,
+    exec: async (): Promise<SandboxCommandResult> => ({
+      stdout: "",
+      stderr: "",
+      exitCode: 0,
+      durationMs: 1,
+    }),
+    shell: async (
+      cb: (c: { stream: "stdout" | "stderr"; data: string }) => void,
+    ): Promise<SshShellHandle> => {
+      onChunk = cb;
+      return {
+        write: (data: string) => {
+          writes.push(data);
+        },
+        resize: () => {},
+        close: () => {},
+      };
+    },
+  };
+  return t;
+}
+
+describe("SshDockerBackend.openShell (B4)", () => {
+  it("opens a transport shell and attaches into the container when given", async () => {
+    const spy = spyTransport();
+    const b = new SshDockerBackend(spy);
+    b.setConfig(b4Config);
+    // fake a connected state the way connect() would (transport is stubbed)
+    asInternals(b).state = "connected";
+    const seen: string[] = [];
+    const handle = await b.openShell("c1", (chunk) => seen.push(chunk));
+    assert.deepEqual(spy.writes, ["docker exec -i 'c1' sh\n"]);
+    spy.push("hi\n");
+    assert.deepEqual(seen, ["hi\n"]);
+    handle.close();
+  });
+
+  it("opens a bare host shell when no container is given", async () => {
+    const spy = spyTransport();
+    const b = new SshDockerBackend(spy);
+    b.setConfig(b4Config);
+    asInternals(b).state = "connected";
+    await b.openShell(undefined, () => {});
+    assert.deepEqual(spy.writes, []);
+  });
+
+  it("refuses to open a shell when not connected", async () => {
+    const b = new SshDockerBackend(spyTransport());
+    b.setConfig(b4Config);
+    await assert.rejects(() => b.openShell(undefined, () => {}), /notConnected/);
+  });
+
+  it("setTransport swaps the transport", async () => {
+    const b = new SshDockerBackend(spyTransport());
+    const relay = new RelaySshTransport("http://127.0.0.1:9/x");
+    b.setTransport(relay);
+    assert.equal(asInternals(b).transport, relay);
+  });
+});
+
+describe("SandboxManager default transport (B4)", () => {
+  it("cloud backend ships the relay transport and starts disconnected (not unavailable)", () => {
+    const m = SandboxManager.forTest({});
+    const backend = m.activeBackend();
+    assert.equal(backend.id, "cloud");
+    assert.ok(
+      asInternals(backend).transport instanceof RelaySshTransport,
+      "manager must inject RelaySshTransport, not UnavailableSshTransport",
+    );
+    assert.equal(backend.connectionState(), "disconnected");
+  });
+});

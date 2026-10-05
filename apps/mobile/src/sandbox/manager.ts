@@ -9,7 +9,7 @@
 
 import { IshSandboxBackend } from "./backend-ish";
 import { SshDockerBackend } from "./backend-ssh-docker";
-import { UnavailableSshTransport } from "./transport";
+import { RelaySshTransport } from "./transport-relay";
 import type { SandboxBackend, SandboxBackendId, SshConfig } from "./types";
 
 const ACTIVE_KEY = "dudu.sandbox.activeBackend.v1";
@@ -99,8 +99,9 @@ export class SandboxManager {
   private initialized = false;
 
   constructor() {
-    // Transport is injected when a real SSH implementation is bundled.
-    this.cloudBackend = new SshDockerBackend(new UnavailableSshTransport());
+    // Real transport: the app talks HTTPS to the sandbox relay on her
+    // server (sandbox-relay/relay.mjs), which opens the genuine SSH session.
+    this.cloudBackend = new SshDockerBackend(new RelaySshTransport());
     this.localBackend = new IshSandboxBackend();
   }
 

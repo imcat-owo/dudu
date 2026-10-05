@@ -1,14 +1,16 @@
 /**
  * SSH transport interface for Backend A (cloud Docker).
  *
- * Why an interface: React Native / Expo has no production SSH client library
- * (ssh2 is Node-only; react-native-ssh is archived). The backend, Docker
- * protocol layer, config UI, and terminal UI are all real and complete —
- * they talk to this interface. The raw SSH socket needs either a native
- * module or a companion relay script; until one is
- * present the backend honestly reports "unavailable" instead of faking it.
+ * Why an interface: React Native / Expo has no TCP sockets and no production
+ * SSH client library (ssh2 is Node-only; react-native-ssh is archived), so
+ * the app cannot open an SSH session by itself. The bundled implementation
+ * is RelaySshTransport (transport-relay.ts): the app talks HTTPS to the
+ * sandbox relay (sandbox-relay/relay.mjs) on her server, and the relay opens
+ * the REAL SSH session (real handshake + key/password auth via the system
+ * ssh client). UnavailableSshTransport remains as the honest fallback for
+ * tests / builds without the relay.
  *
- * A future transport implements:
+ * A transport implements:
  * - connect(config): open the SSH session (key or password auth)
  * - exec(command): run to completion, capture stdout/stderr/exit code
  * - shell(onData): open an interactive shell channel with streaming output

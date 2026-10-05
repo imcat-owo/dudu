@@ -24,19 +24,21 @@ function strArg(args: Record<string, unknown>, name: string): string {
 
 /**
  * Throw an honest, actionable error when the backend can't run commands.
- * "unavailable" means the native capability isn't bundled in this build —
- * telling her to "go connect it" would be a lie, so say plainly it needs a
- * future app update instead.
+ * "unavailable" means the backend's transport failed to initialize — a bug,
+ * not something she can fix in settings, so say so plainly.
  */
-function requireRunnable(backend: SandboxBackend): void {
+export function requireRunnable(backend: SandboxBackend): void {
   const state = backend.connectionState();
   if (state === "connected") return;
   if (state === "unavailable") {
     throw new ToolError(
       `Sandbox backend "${backend.id}" is unavailable in this build ` +
-        `(${backend.id === "cloud" ? "no SSH transport module is bundled yet" : "the native iSH module is not bundled yet"}). ` +
-        `Tell her honestly that sandbox commands can't run until a future app update adds it. ` +
-        `Do NOT ask her to connect it in settings — it cannot connect.`,
+        `(${
+          backend.id === "cloud"
+            ? "its relay transport failed to initialize — a bug, not a settings problem; this needs an app update to fix"
+            : "the native iSH module is not bundled yet"
+        }). ` +
+        `Tell her honestly; do NOT ask her to connect it in settings — it cannot connect.`,
     );
   }
   throw new ToolError(
