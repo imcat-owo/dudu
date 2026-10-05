@@ -599,57 +599,173 @@ function oneShotFailed(e: unknown, timeoutMs: number): Error {
   return new Error(`model call failed: ${e instanceof Error ? e.message : String(e)}`);
 }
 
+/**
+ * A tool a one-shot call may use (D25: delegate_task's allowedTools).
+ * The executor is injected by the caller — for sub-agents it's the
+ * parent's LocalTool.run bound to the parent's ToolContext, so her
+ * authorization gate still applies: already-granted capabilities run
+ * freely, new ones go through her as usual.
+ */
+export interface OneShotTool {
+  name: string;
+  description: string;
+  /** JSON Schema for the arguments object. */
+  parameters: Record<string, unknown>;
+  run: (args: Record<string, unknown>) => Promise<string>;
+}
+
+export interface GenerateOneShotOpts {
+  timeoutMs?: number;
+  /**
+   * When present, the model receives these as function tools and the call
+   * runs an agentic loop: tool calls execute, results feed back as
+   * role:"tool" messages, until the model stops calling. Omitted = the
+   * old bare text call.
+   */
+  tools?: OneShotTool[];
+  /** Max tool-calling iterations (default 8) — the loop always terminates. */
+  maxToolIterations?: number;
+}
+
+/** Cap on agentic-loop iterations for one-shot calls — sub-agents stay cheap. */
+export const ONESHOT_MAX_TOOL_ITERATIONS = 8;
+
+interface OneShotMessage {
+  role: string;
+  content?: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+}
+
+interface OneShotResponse {
+  choices?: Array<{
+    message?: {
+      content?: unknown;
+      tool_calls?: Array<{
+        id?: unknown;
+        type?: unknown;
+        function?: { name?: unknown; arguments?: unknown };
+      }>;
+    };
+  }>;
+}
+
 export async function generateOneShot(
   group: ApiGroup,
   system: string,
   user: string,
-  opts: { timeoutMs?: number } = {},
+  opts: GenerateOneShotOpts = {},
 ): Promise<string> {
   const timeoutMs = opts.timeoutMs ?? GENERATE_ONESHOT_TIMEOUT_MS;
   const endpoint = `${group.baseUrl.trim().replace(/\/+$/, "")}/chat/completions`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const key = group.apiKey?.trim();
   if (key) headers.Authorization = `Bearer ${key}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  let res: Response;
-  try {
-    res = await fetch(endpoint, {
-      method: "POST",
-      headers: { ...headers, ...group.headers },
-      body: JSON.stringify({
-        model: group.model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        stream: false,
-        // Meeting turns stay short: bounded cost, legible transcript.
-        max_tokens: 600,
-      }),
-      signal: controller.signal,
+  const tools = opts.tools ?? [];
+  const maxIter = opts.maxToolIterations ?? ONESHOT_MAX_TOOL_ITERATIONS;
+
+  const messages: OneShotMessage[] = [
+    { role: "system", content: system },
+    { role: "user", content: user },
+  ];
+
+  async function postOnce(body: Record<string, unknown>): Promise<OneShotResponse | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      let res: Response;
+      try {
+        res = await fetch(endpoint, {
+          method: "POST",
+          headers: { ...headers, ...group.headers },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (e) {
+        throw oneShotFailed(e, timeoutMs);
+      }
+      if (!res.ok) {
+        const resBody = await res.text().catch(() => "");
+        throw new Error(
+          `model call failed: HTTP ${res.status}${resBody ? ` — ${resBody.slice(0, 120)}` : ""}`,
+        );
+      }
+      return (await res.json().catch((e: unknown) => {
+        if ((e as { name?: string } | null)?.name === "AbortError")
+          throw oneShotFailed(e, timeoutMs);
+        return null;
+      })) as OneShotResponse | null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  let lastText = "";
+  for (let iter = 0; ; iter++) {
+    const body: Record<string, unknown> = {
+      model: group.model,
+      messages,
+      stream: false,
+      // Meeting turns stay short: bounded cost, legible transcript.
+      max_tokens: 600,
+    };
+    if (tools.length > 0) {
+      body.tools = tools.map((t) => ({
+        type: "function",
+        function: { name: t.name, description: t.description, parameters: t.parameters },
+      }));
+      body.tool_choice = "auto";
+    }
+    const data = await postOnce(body);
+    const message = data?.choices?.[0]?.message;
+    const toolCalls = message?.tool_calls ?? [];
+    if (typeof message?.content === "string" && message.content.trim()) {
+      lastText = message.content.trim();
+    }
+    // No tool calls (or loop cap reached): the turn is over. Without tools
+    // this is exactly the old behavior — empty reply is an honest failure.
+    if (toolCalls.length === 0 || iter >= maxIter) {
+      if (!lastText) throw new Error("model call failed: empty reply");
+      return lastText;
+    }
+    messages.push({
+      role: "assistant",
+      content: typeof message?.content === "string" ? message.content : null,
+      tool_calls: toolCalls.map((tc) => ({
+        id: String(tc.id ?? ""),
+        type: "function" as const,
+        function: {
+          name: String(tc.function?.name ?? ""),
+          arguments: String(tc.function?.arguments ?? "{}"),
+        },
+      })),
     });
-  } catch (e) {
-    clearTimeout(timer);
-    throw oneShotFailed(e, timeoutMs);
+    for (const tc of toolCalls) {
+      const name = String(tc.function?.name ?? "");
+      const tool = tools.find((t) => t.name === name);
+      let result: string;
+      try {
+        if (!tool) {
+          result = `Unknown tool: ${name}.`;
+        } else {
+          let parsed: Record<string, unknown>;
+          try {
+            parsed = JSON.parse(String(tc.function?.arguments ?? "{}")) as Record<string, unknown>;
+          } catch {
+            throw new Error(`bad arguments JSON for tool "${name}"`);
+          }
+          result = await tool.run(parsed);
+        }
+      } catch (e) {
+        // Tool failures become tool ERRORS the model sees — never silent,
+        // never a retry loop on our side.
+        result = `Tool error: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      messages.push({ role: "tool", tool_call_id: String(tc.id ?? ""), content: result });
+    }
   }
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    clearTimeout(timer);
-    throw new Error(
-      `model call failed: HTTP ${res.status}${body ? ` — ${body.slice(0, 120)}` : ""}`,
-    );
-  }
-  const data = (await res.json().catch((e: unknown) => {
-    if ((e as { name?: string } | null)?.name === "AbortError") throw oneShotFailed(e, timeoutMs);
-    return null;
-  })) as {
-    choices?: Array<{ message?: { content?: unknown } }>;
-  } | null;
-  clearTimeout(timer);
-  const text = data?.choices?.[0]?.message?.content;
-  if (typeof text !== "string" || !text.trim()) {
-    throw new Error("model call failed: empty reply");
-  }
-  return text.trim();
 }

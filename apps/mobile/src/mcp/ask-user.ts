@@ -196,6 +196,7 @@ export function createAskUserTools(opts?: { threadId?: string }): LocalTool[] {
         required: ["questions"],
         additionalProperties: false,
       },
+      manualId: "mcp-tools",
       run: async (args, _ctx) => {
         const questions = validateQuestions(args.questions);
         const id = `ask_${Date.now()}_${++seq}`;

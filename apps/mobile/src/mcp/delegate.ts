@@ -31,6 +31,40 @@ export interface DelegateDeps {
 const running = new Set<string>();
 let seq = 0;
 
+/**
+ * Tools the sub-agent does NOT get unless explicitly named in allowedTools:
+ * - delegate_task: no recursive delegation in the default set (the parent
+ *   decomposes; unbounded fan-out is a footgun).
+ * - ask_user: dialog-scoped to the parent's thread (D17) — a sub-agent's
+ *   question would pop up in her dialog without the parent's context.
+ *   Questions ride back through the subtask result instead.
+ */
+const SUBAGENT_DEFAULT_DENYLIST = new Set(["delegate_task", "ask_user"]);
+
+/**
+ * Resolve which tools a sub-agent actually receives (D25).
+ *
+ * - allowedTools given: exactly those tools, by name, from the parent's
+ *   tool list. Unknown names throw — a misspelled name is a gap, not a
+ *   silent drop.
+ * - allowedTools omitted: the default set — everything except the denylist.
+ */
+export function resolveSubagentTools(allTools: LocalTool[], allowedTools?: string[]): LocalTool[] {
+  if (allowedTools && allowedTools.length > 0) {
+    const byName = new Map(allTools.map((t) => [t.name, t]));
+    return allowedTools.map((name) => {
+      const tool = byName.get(name);
+      if (!tool) {
+        throw new Error(
+          `delegate_task: unknown tool "${name}" — the sub-agent can't use a tool that doesn't exist. Check the name and try again.`,
+        );
+      }
+      return tool;
+    });
+  }
+  return allTools.filter((t) => !SUBAGENT_DEFAULT_DENYLIST.has(t.name));
+}
+
 export function createDelegateTools(deps: DelegateDeps): LocalTool[] {
   const maxConcurrent = deps.maxConcurrent ?? 3;
 
@@ -51,12 +85,13 @@ export function createDelegateTools(deps: DelegateDeps): LocalTool[] {
             type: "array",
             items: { type: "string" },
             description:
-              "Tool names the sub-agent may use (optional). Omit to allow the default set.",
+              "Tool names the sub-agent may use (optional). Omit for the default set: all your tools except delegate_task (no recursive delegation by default) and ask_user (its questions would pop up in her dialog without your context — have it return questions in its result instead).",
           },
         },
         required: ["task"],
         additionalProperties: false,
       },
+      manualId: "coordination",
       run: async (args, _ctx) => {
         const task = String(args.task ?? "").trim();
         if (!task) throw new Error("delegate_task: empty task");

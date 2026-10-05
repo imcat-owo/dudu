@@ -161,6 +161,7 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
         required: ["query"],
         additionalProperties: false,
       },
+      manualId: "mcp-tools",
       run: async (args, _ctx) => {
         const query = String(args.query ?? "").trim();
         if (!query) throw new Error("web_search: empty query");

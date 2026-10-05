@@ -19,6 +19,9 @@ Rules:
 - Every registered tool must REALLY work — no stubs, no fake data.
 - Out-of-app tools carry a capability id and go through her authorization
   gate first; denial is a tool error, not a retry loop.
-- External MCP servers (stdio/SSE): only the McpToolProvider interface
-  exists — transports are NOT implemented. Never claim otherwise.`,
+- External MCP servers: the remote transports (Streamable HTTP + legacy
+  SSE) ARE implemented (mcp/transports.ts) and wired through the MCP client
+  — she adds servers in Settings, tools appear as mcp__<server>__<tool>.
+  stdio is NOT available (a phone app can't spawn subprocesses).
+  Never claim stdio works.`,
 };
