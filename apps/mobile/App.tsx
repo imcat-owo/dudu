@@ -119,18 +119,30 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <ErrorBoundary label="app">
-          <AppLockGate>
-            <LocalApp />
-          </AppLockGate>
+          {/* B1 P2-1: the gate uses useColors()/useStyles(), so it must sit
+              under a ThemeProvider — otherwise it falls back to the default
+              theme instead of her chosen one. The inner providers inside
+              LocalApp/CloudApp shadow this one for the app content; the gate
+              keeps the locally cached theme (no apiToken: server sync, if
+              any, is owned by the inner cloud provider). */}
+          <ThemeProvider>
+            <AppLockGate>
+              <LocalApp />
+            </AppLockGate>
+          </ThemeProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
     );
   }
   return (
     <ErrorBoundary label="app">
-      <AppLockGate>
-        <CloudApp />
-      </AppLockGate>
+      {/* B1 P2-1: see the local branch above — the gate must render under a
+          ThemeProvider so the lock screen follows her theme. */}
+      <ThemeProvider>
+        <AppLockGate>
+          <CloudApp />
+        </AppLockGate>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
