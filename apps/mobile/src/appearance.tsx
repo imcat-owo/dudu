@@ -39,10 +39,18 @@ import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "rea
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
 import { BackupSection } from "./backup-ui";
+import { ImportSection } from "./backup/import-ui";
+import { RemoteBackupSection } from "./backup/remote-ui";
+import { SnapshotSection } from "./backup/snapshot-ui";
+import { StorageSection } from "./backup/storage-ui";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
+import { ProfileSection } from "./memory/profile-ui";
+import { PersonaSection } from "./persona/persona-ui";
+import { GoogleFontsSection } from "./theme/google-fonts-ui";
+import { WebAppsSection } from "./theme/web-apps-ui";
 import { KnowledgeSheet } from "./knowledge/knowledge-ui";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
@@ -1048,6 +1056,14 @@ export function AppearanceScreen() {
       {sandboxOpen ? <SandboxSheet onClose={() => setSandboxOpen(false)} /> : null}
 
       <BackupSection />
+      <RemoteBackupSection />
+      <SnapshotSection />
+      <ImportSection />
+      <StorageSection />
+      <PersonaSection />
+      <ProfileSection />
+      <GoogleFontsSection />
+      <WebAppsSection />
     </View>
   );
 }

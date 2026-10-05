@@ -1855,6 +1855,9 @@ const zhHans = {
   // ---- persona (人设) ----
   "persona.title": "人设",
   "persona.list": "人设列表",
+  "persona.pickerTitle": "用谁陪你聊",
+  "persona.pickerNone": "默认（小梦）",
+  "persona.pickerHint": "换个人设，AI 的说话方式会跟着变。",
   "persona.create": "新建人设",
   "persona.edit": "编辑人设",
   "persona.name": "名字",

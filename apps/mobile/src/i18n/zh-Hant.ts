@@ -1858,6 +1858,9 @@ const zhHant = {
   // ---- persona (人設) ----
   "persona.title": "人設",
   "persona.list": "人設列表",
+  "persona.pickerTitle": "用誰陪你聊",
+  "persona.pickerNone": "預設（小夢）",
+  "persona.pickerHint": "換個人設，AI 的說話方式會跟著變。",
   "persona.create": "新建人設",
   "persona.edit": "編輯人設",
   "persona.name": "名字",

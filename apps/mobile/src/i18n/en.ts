@@ -1933,6 +1933,9 @@ export const enStrings: Record<StringKey, string> = {
   // ---- persona ----
   "persona.title": "Personas",
   "persona.list": "Personas",
+  "persona.pickerTitle": "Who's chatting with you",
+  "persona.pickerNone": "Default (Xiao Meng)",
+  "persona.pickerHint": "Switch persona to change how the AI talks.",
   "persona.create": "New persona",
   "persona.edit": "Edit persona",
   "persona.name": "Name",

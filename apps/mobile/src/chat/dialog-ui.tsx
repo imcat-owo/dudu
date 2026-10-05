@@ -39,6 +39,8 @@ import {
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
 import { TText } from "../font";
 import { t } from "../i18n";
+import { personaStore } from "../persona/stores";
+import type { Persona } from "../persona/types";
 import { radii } from "../theme/radii";
 import { Button, Card, useColors, useStyles } from "../ui";
 import {
@@ -854,6 +856,9 @@ export function DialogSettingsSheet({
   const [notice, setNotice] = useState("");
   // P2-1: follow-up chips toggle (A6). Default on; false hides + skips them.
   const [chipsOn, setChipsOn] = useState(meta.followUpChips !== false);
+  // Batch 5: persona picker — sets the global active persona.
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -864,6 +869,14 @@ export function DialogSettingsSheet({
       setCustomPrompt("");
       setNotice("");
       setChipsOn(meta.followUpChips !== false);
+      void personaStore
+        .list()
+        .then((ps) => setPersonas(ps.filter((p) => p.enabled)))
+        .catch(() => setPersonas([]));
+      void personaStore
+        .getActiveId()
+        .then(setActivePersonaId)
+        .catch(() => setActivePersonaId(null));
     }
   }, [visible]);
 
@@ -900,6 +913,39 @@ export function DialogSettingsSheet({
     <SheetShell title={t("chat.dialogSettings")} onClose={onClose}>
       <ScrollView style={{ paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
         <TText style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>{dialogName}</TText>
+
+        {personas.length > 0 ? (
+          <>
+            <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("persona.pickerTitle")}</TText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+              <View style={{ flexDirection: "row", gap: 8, paddingVertical: 4 }}>
+                <Button
+                  key="__none__"
+                  onPress={() => {
+                    void personaStore.setActiveId(null).then(() => setActivePersonaId(null));
+                  }}
+                  {...(activePersonaId === null ? { primary: true } : {})}
+                >
+                  {t("persona.pickerNone")}
+                </Button>
+                {personas.map((p) => (
+                  <Button
+                    key={p.id}
+                    onPress={() => {
+                      void personaStore.setActiveId(p.id).then(() => setActivePersonaId(p.id));
+                    }}
+                    {...(activePersonaId === p.id ? { primary: true } : {})}
+                  >
+                    {p.name}
+                  </Button>
+                ))}
+              </View>
+            </ScrollView>
+            <TText style={[s.small, { color: colors.muted, marginTop: 4, marginBottom: 16 }]}>
+              {t("persona.pickerHint")}
+            </TText>
+          </>
+        ) : null}
 
         <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("chat.dialogSystemPrompt")}</TText>
         <TextInput

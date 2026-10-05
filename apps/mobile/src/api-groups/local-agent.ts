@@ -64,6 +64,15 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools";
 import { evaluateOutreachTriggers } from "../outreach/engine";
+import { globalMdStore, personaStore, worldBookStore } from "../persona/stores";
+import { applyPersonaRegex, type Persona } from "../persona/types";
+import { renderGlobalMdBlock } from "../persona/global-md";
+import {
+  evaluateWorldBooks,
+  groupWorldBookEntries,
+  renderWorldBookBlock,
+  type ScanMessage,
+} from "../persona/world-book";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { buildOnThisDayInput } from "../outreach/on-this-day-input";
 import { buildOutreachSection } from "../outreach/prompt";
@@ -1585,6 +1594,45 @@ export function createLocalAgent(opts: {
       };
       let toolsOn = resolveSwitch(activeGroup.toolsMode, profile?.tools ?? "auto");
       let thinkingOn = resolveSwitch(activeGroup.thinkingMode, profile?.thinking ?? "auto");
+      // Batch 5: persona + GLOBAL.md + world books. All best-effort — a
+      // storage hiccup must never break the turn.
+      let activePersona: Persona | null = null;
+      let personaPrompt = "";
+      let globalMdBlock = "";
+      let worldBookBefore = "";
+      let worldBookAfter = "";
+      if (!incognito()) {
+        try {
+          const activeId = await personaStore.getActiveId().catch(() => null);
+          if (activeId) {
+            activePersona = await personaStore.get(activeId).catch(() => null);
+            if (activePersona?.enabled && activePersona.systemPrompt.trim()) {
+              personaPrompt = activePersona.systemPrompt.trim();
+            }
+          }
+        } catch {
+          // ignore
+        }
+        try {
+          globalMdBlock = renderGlobalMdBlock(await globalMdStore.get().catch(() => ""));
+        } catch {
+          // ignore
+        }
+        try {
+          const books = await worldBookStore.enabledBooks().catch(() => []);
+          if (books.length > 0) {
+            const scan: ScanMessage[] = visible()
+              .filter((m) => m.role === "user" || m.role === "assistant")
+              .map((m) => ({ role: m.role, content: contentToText(m.content) }));
+            const { entries } = evaluateWorldBooks(books, scan);
+            const grouped = groupWorldBookEntries(entries);
+            worldBookBefore = renderWorldBookBlock(grouped.beforeSystem);
+            worldBookAfter = renderWorldBookBlock(grouped.afterSystem);
+          }
+        } catch {
+          // ignore
+        }
+      }
       // A16: per-dialog system prompt override — her rule for THIS dialog,
       // appended after the persona sections. Empty when unset: no noise.
       const dialogSystemPrompt =
@@ -1594,7 +1642,7 @@ export function createLocalAgent(opts: {
       const systemPrompt = buildLocalSystemPrompt(
         effectiveTools,
         t,
-        opts.systemPrompt,
+        [worldBookBefore, personaPrompt, opts.systemPrompt].filter(Boolean).join("\n\n") || undefined,
         [
           memorySection,
           skillSection,
@@ -1603,6 +1651,10 @@ export function createLocalAgent(opts: {
           herRhythmSection,
           nicknameSection,
           outreachSection,
+          // Batch 5: GLOBAL.md + world book (after-system) entries ride as
+          // extra sections so they land after the base prompt.
+          ...(globalMdBlock ? [globalMdBlock] : []),
+          ...(worldBookAfter ? [worldBookAfter] : []),
           // 智商排行榜纸条: compact model-ranking slip, refreshed per turn so
           // her ranking mode (均衡/聪明优先/速度优先) applies immediately.
           buildRankingSlip(capSnap.rankingMode),
@@ -1842,6 +1894,19 @@ export function createLocalAgent(opts: {
             })),
           });
           emit();
+        }
+        // Batch 5: apply the active persona's regex rules to the final AI
+        // output (post-processing, after streaming completes — never mid-stream).
+        if (activePersona && !incognito()) {
+          try {
+            const rules = activePersona.regexRules ?? [];
+            if (rules.length > 0 && replyText) {
+              replyText = applyPersonaRegex(replyText, rules);
+              renderReply();
+            }
+          } catch {
+            // A bad rule must never break the reply.
+          }
         }
         return { replyId, toolCalls };
       }

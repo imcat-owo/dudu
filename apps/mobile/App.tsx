@@ -48,6 +48,7 @@ import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
 import { LocalApp } from "./src/local-app";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
+import { getSnapshotStore } from "./src/backup/snapshot-stores";
 import { tokenStore } from "./src/session-store";
 import { Splash } from "./src/splash";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
@@ -256,12 +257,42 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
   useEffect(() => {
     void refresh().catch((e) => setError(String(e)));
   }, [refresh]);
+  // Batch 5: scheduled auto-snapshot — check on foreground, take if due.
+  // Fire-and-forget: a snapshot failure must never break the app.
+  const maybeSnapshot = useCallback(async () => {
+    try {
+      const store = await getSnapshotStore();
+      if (!(await store.isDue())) return;
+      const { collectBackup, serializeBackup } = await import("./src/backup");
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      const SecureStore = await import("expo-secure-store");
+      const kv = {
+        getItem: (k: string) => AsyncStorage.getItem(k),
+        setItem: (k: string, v: string) => AsyncStorage.setItem(k, v),
+        getAllKeys: () => AsyncStorage.getAllKeys(),
+      };
+      const secure = {
+        getItem: (k: string) => SecureStore.getItemAsync(k),
+        setItem: (k: string, v: string) => SecureStore.setItemAsync(k, v),
+      };
+      const backup = await collectBackup(kv, secure);
+      await store.take(serializeBackup(backup), "schedule");
+    } catch {
+      // ignore — snapshots are best-effort
+    }
+  }, []);
+  useEffect(() => {
+    void maybeSnapshot();
+  }, [maybeSnapshot]);
   useEffect(() => {
     const listener = AppState.addEventListener("change", (state) => {
-      if (state === "active") void refresh().catch((e) => setError(String(e)));
+      if (state === "active") {
+        void refresh().catch((e) => setError(String(e)));
+        void maybeSnapshot();
+      }
     });
     return () => listener.remove();
-  }, [refresh]);
+  }, [refresh, maybeSnapshot]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 5500);
