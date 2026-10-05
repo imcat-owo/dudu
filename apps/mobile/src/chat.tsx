@@ -134,8 +134,12 @@ import {
   type UserImageAttachment,
 } from "./vision/describe";
 import { SpeakButton } from "./voice/speak-button";
-import { useVoiceConfig } from "./voice/store";
+import { useVoiceConfig, voiceStore } from "./voice/store";
 import { transcribeAudioWithCandidates } from "./voice/stt";
+import { maybeAutoReadAssistantMessage, stopAutoRead } from "./voice/auto-read";
+import { createCorrectionStore } from "./voice/corrections";
+import { synthesizeSpeech } from "./voice/tts";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import {
   encodeVoiceMessage,
   extractVoiceMessage,
@@ -144,6 +148,9 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
+
+/** Batch 3: voice correction learning — persistent confusion map (AsyncStorage). */
+const correctionStore = createCorrectionStore(AsyncStorage);
 
 const displayParameters = z.record(z.string(), z.unknown());
 // The composer pill shows focus with its border, so the browser's ring inside it is noise.
@@ -431,6 +438,9 @@ export function ChatScreen({
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const pendingScrollRef = useRef<string | null>(null);
   const followUpForRef = useRef<string | null>(null);
+  // Batch 3: correction learning — what the STT produced (before her edits),
+  // plus the draft text that was already there before transcription.
+  const transcriptionRef = useRef<{ before: string; transcribed: string } | null>(null);
   const autoTitleDoneRef = useRef(false);
   useEffect(() => {
     let alive = true;
@@ -764,6 +774,24 @@ export function ChatScreen({
           : "");
     }
     enqueue(outgoing);
+    // Batch 3: she's talking now — stop any auto-read playback.
+    stopAutoRead();
+    // Batch 3: correction learning — if she edited the STT transcription,
+    // learn the confusion for next time.
+    const transc = transcriptionRef.current;
+    if (transc) {
+      transcriptionRef.current = null;
+      // The transcription was appended after `before`; isolate her edited version.
+      let portion = "";
+      if (transc.before && text.startsWith(transc.before)) {
+        portion = text.slice(transc.before.length).trim();
+      } else if (!transc.before) {
+        portion = text;
+      }
+      if (portion && portion !== transc.transcribed) {
+        void correctionStore.learnCorrection(transc.transcribed, portion).catch(() => {});
+      }
+    }
     setDraft("");
     setInputHeight(44);
     setAttachments([]);
@@ -777,6 +805,8 @@ export function ChatScreen({
     if (!busy && !agent.isRunning && !saveError && !queue.getSnapshot().pending.length)
       queue.resume();
     setShowResults(false);
+    // Batch 3: she's talking now — stop any auto-read playback.
+    stopAutoRead();
     enqueue(encodeVoiceMessage(uri, duration));
   }
   async function pickImage() {
@@ -842,6 +872,9 @@ export function ChatScreen({
           capSnap.routingEnabled,
         );
         const text = await transcribeAudioWithCandidates(uri, candidates, sttConfig);
+        // Batch 3: remember what the STT produced (and the draft before it)
+        // so send() can learn from her edits.
+        transcriptionRef.current = { before: draft.trim(), transcribed: text };
         setDraft((d) => (d.trim() ? `${d.trim()} ${text}` : text));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -1225,10 +1258,25 @@ export function ChatScreen({
         followUpForRef.current = last.id;
         void makeFollowUps(last);
         void maybeAutoTitle();
+        // Batch 3: auto-read the finished reply aloud if she opted in.
+        void maybeAutoReadAssistantMessage(messageText(last), {
+          getSettings: () => voiceStore.getSnapshot().settings,
+          getTtsConfig: () => voiceStore.getSnapshot().tts,
+          synthesize: synthesizeSpeech,
+          createPlayer: (uri) => createAudioPlayer(uri),
+          setAudioMode: (mode) => setAudioModeAsync(mode),
+        });
       }
     }
     wasBusyRef.current = busyNow;
   });
+
+  // Batch 3: leaving the dialog stops any auto-read playback.
+  useEffect(() => {
+    return () => {
+      stopAutoRead();
+    };
+  }, []);
 
   async function makeFollowUps(last: AgentMessage) {
     // Bonus affordance: never surfaces errors, never blocks.

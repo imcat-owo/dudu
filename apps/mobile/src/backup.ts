@@ -64,6 +64,8 @@ const FONT_SIZE_KEY = "dudu.settings.fontSize.v1";
 const TTS_KEY = "dudu.tts.v1";
 const STT_KEY = "dudu.stt.v1";
 const VOICE_SETTINGS_KEY = "dudu.voice-settings.v1";
+const VOICE_CORRECTIONS_KEY = "dudu.voice-corrections.v1";
+const ALARMS_KEY = "dudu.alarms.v1";
 const AI_AUTH_KEY = "dudu.aiAuth.v1";
 const LAST_BACKUP_KEY = "dudu.backup.lastAt.v1";
 
@@ -76,6 +78,8 @@ const PLAIN_KEYS = [
   FONT_KEY,
   FONT_SIZE_KEY,
   VOICE_SETTINGS_KEY,
+  VOICE_CORRECTIONS_KEY,
+  ALARMS_KEY,
 ];
 
 // Memories (memory/store.ts): profile + memories + audit events + the

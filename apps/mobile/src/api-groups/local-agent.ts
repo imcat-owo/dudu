@@ -75,7 +75,7 @@ import {
   VisionError,
 } from "../vision/describe";
 import { voiceStore } from "../voice/store";
-import { createPodcastTools, createTtsVoiceTools } from "../voice/tools";
+import { createAlarmTools, createPodcastTools, createTtsVoiceTools } from "../voice/tools";
 import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
@@ -1098,6 +1098,8 @@ export function createLocalAgent(opts: {
           },
         }),
         ...createTtsVoiceTools(voiceStore),
+        // Batch 3: alarm tools — let the AI set alarms on request.
+        ...createAlarmTools(AsyncStorage, getLocale() === "en" ? "en" : "zh-Hans"),
         ...createDialogTools({ threadId: opts.threadId }),
         // Capability groups (audit round 2, AI-use P1-2): the AI was blind
         // to "分组" — now it can list them read-only and answer her
