@@ -102,6 +102,7 @@ import {
 } from "./chat/dialog-ui";
 import { composeGreeting } from "./chat/greeting";
 import { GroupMeetingCard } from "./chat/group-meeting-card";
+import { PromptSheet } from "./chat/prompt-sheet";
 import { getAiDisplayName } from "./persona/ai-name";
 import { personaStore } from "./persona/stores";
 import { useAiName } from "./persona/use-ai-name";
@@ -548,6 +549,12 @@ export function ChatScreen({
   const [threadMeta, setThreadMeta] = useState<ThreadMeta | null>(null);
   const [menuMessage, setMenuMessage] = useState<AgentMessage | null>(null);
   const [menuActions, setMenuActions] = useState<MessageAction[]>([]);
+  // D39: cross-platform replacement for Alert.prompt (iOS-only).
+  const [promptReq, setPromptReq] = useState<{
+    title: string;
+    initial: string;
+    onSubmit: (text: string) => void;
+  } | null>(null);
   // Batch 7 I1: message chosen for translation (language sheet target).
   const [translateFor, setTranslateFor] = useState<AgentMessage | null>(null);
   const [dialogListOpen, setDialogListOpen] = useState(false);
@@ -887,6 +894,8 @@ export function ChatScreen({
           const file = await savePasteAsFile(text);
           setFileAttachments((prev) => [...prev, { uri: file.uri, name: file.name }]);
           setDraft("");
+          // D41: the paste became a file — the message is NOT sent yet, say so.
+          Alert.alert(t("chat.pasteToFileTitle"), t("chat.pasteToFileBody"));
         } catch {
           // Fall through: send as text if file save fails.
         }
@@ -1311,12 +1320,46 @@ export function ChatScreen({
     setShotRound({ question, answer });
   }
 
+  /** D40: read-only message actions that work in both local and cloud mode. */
+  function pushReadOnlyActions(actions: MessageAction[], m: AgentMessage, text: string) {
+    if (!text) return;
+    actions.push({
+      key: "copy",
+      label: t("chat.copyMessage"),
+      icon: Copy,
+      onPress: () => {
+        void Clipboard.setStringAsync(text).catch(() => {});
+      },
+    });
+    // Batch 7 I1: one-tap translation — pick a language, the translation
+    // streams in under the message (TranslationCard).
+    actions.push({
+      key: "translate",
+      label: t("chat.translateMessage"),
+      icon: Languages,
+      onPress: () => setTranslateFor(m),
+    });
+    actions.push({
+      key: "recall",
+      label: t("chat.recallMemory"),
+      icon: Zap,
+      onPress: () => void recallMemory(m),
+    });
+  }
+
   /** Build the long-press menu for a message (A1/A3/A4/A5/A24/A26). */
   function openMessageMenu(m: AgentMessage) {
-    if (mode !== "local") return;
     const text = messageText(m);
     const preview = text.slice(0, 80);
     const actions: MessageAction[] = [];
+    if (mode !== "local") {
+      // D40: cloud mode has no local agent to mutate messages — offer the
+      // read-only essentials instead of silently doing nothing.
+      pushReadOnlyActions(actions, m, text);
+      setMenuMessage(m);
+      setMenuActions(actions);
+      return;
+    }
     const isUser = m.role === "user";
     const vs = versionsOfMessage(m);
     const idle = !busy && !agent.isRunning;
@@ -1327,16 +1370,15 @@ export function ChatScreen({
           label: t("chat.editAndResend"),
           icon: Pencil,
           onPress: () => {
-            Alert.prompt(
-              t("chat.editMessage"),
-              undefined,
-              (newText) => {
-                if (newText === undefined || !newText.trim() || newText === text) return;
+            // D39: Alert.prompt is iOS-only — use the cross-platform sheet.
+            setPromptReq({
+              title: t("chat.editMessage"),
+              initial: text,
+              onSubmit: (newText) => {
+                if (!newText.trim() || newText === text) return;
                 void agent.editAndRegenerate?.(m.id, newText).catch((e) => setError(String(e)));
               },
-              "plain-text",
-              text,
-            );
+            });
           },
         });
       }
@@ -1368,30 +1410,7 @@ export function ChatScreen({
         onPress: () => openRoundShot(m),
       });
     }
-    if (text) {
-      actions.push({
-        key: "copy",
-        label: t("chat.copyMessage"),
-        icon: Copy,
-        onPress: () => {
-          void Clipboard.setStringAsync(text).catch(() => {});
-        },
-      });
-      // Batch 7 I1: one-tap translation — pick a language, the translation
-      // streams in under the message (TranslationCard).
-      actions.push({
-        key: "translate",
-        label: t("chat.translateMessage"),
-        icon: Languages,
-        onPress: () => setTranslateFor(m),
-      });
-      actions.push({
-        key: "recall",
-        label: t("chat.recallMemory"),
-        icon: Zap,
-        onPress: () => void recallMemory(m),
-      });
-    }
+    pushReadOnlyActions(actions, m, text);
     // P3-4: multi-select export — enters select mode with this message picked.
     actions.push({
       key: "select",
@@ -2424,7 +2443,20 @@ export function ChatScreen({
                   />
                 ))
               ) : (
-                <TText style={s.muted}>{t("chat.importPdfHint")}</TText>
+                <View style={{ gap: 8 }}>
+                  <TText style={s.muted}>{t("chat.importPdfHint")}</TText>
+                  {/* D42: real import entry — one tap to Files instead of a dead end. */}
+                  <Button
+                    small
+                    onPress={() => {
+                      setPicking(false);
+                      navigate("files");
+                    }}
+                    style={{ alignSelf: "flex-start" }}
+                  >
+                    {t("chat.goImportFile")}
+                  </Button>
+                </View>
               )}
             </ScrollView>
             <Button
@@ -2897,6 +2929,14 @@ export function ChatScreen({
         }}
         actions={menuActions}
         preview={menuMessage ? messageText(menuMessage).slice(0, 80) : undefined}
+      />
+      {/* D39: cross-platform text prompt (replaces iOS-only Alert.prompt). */}
+      <PromptSheet
+        visible={promptReq !== null}
+        title={promptReq?.title ?? ""}
+        initialValue={promptReq?.initial}
+        onSubmit={(v) => promptReq?.onSubmit(v)}
+        onClose={() => setPromptReq(null)}
       />
       {/* Batch 7 I1: translation target-language sheet. */}
       {translateFor && (

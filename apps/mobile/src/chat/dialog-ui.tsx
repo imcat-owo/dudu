@@ -53,6 +53,7 @@ import {
   setDialogName,
   setDialogPinned,
 } from "./cross-dialog";
+import { PromptSheet } from "./prompt-sheet";
 import type { ThreadMeta } from "./thread-versions";
 
 const storage: CrossDialogStorage = AsyncStorage;
@@ -505,6 +506,8 @@ export function DialogListSheet({
   const [batch, setBatch] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  // D39: cross-platform rename prompt (Alert.prompt is iOS-only).
+  const [renameTarget, setRenameTarget] = useState<DialogInfo | null>(null);
 
   const reload = async () => {
     setDialogs(await listDialogs(storage));
@@ -559,11 +562,8 @@ export function DialogListSheet({
   };
 
   const doRename = (d: DialogInfo) => {
-    Alert.prompt(t("chat.renameDialog"), d.name, async (name) => {
-      if (name === undefined) return;
-      await setDialogName(storage, d.id, name.trim());
-      await reload();
-    });
+    // D39: Alert.prompt is iOS-only — use the cross-platform sheet.
+    setRenameTarget(d);
   };
 
   const doDelete = (d: DialogInfo) => {
@@ -840,6 +840,22 @@ export function DialogListSheet({
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
+      {/* D39: cross-platform rename prompt. */}
+      <PromptSheet
+        visible={renameTarget !== null}
+        title={t("chat.renameDialog")}
+        initialValue={renameTarget?.name ?? ""}
+        onSubmit={(name) => {
+          const d = renameTarget;
+          if (d && name.trim()) {
+            void (async () => {
+              await setDialogName(storage, d.id, name.trim());
+              await reload();
+            })();
+          }
+        }}
+        onClose={() => setRenameTarget(null)}
+      />
     </SheetShell>
   );
 }
