@@ -56,6 +56,7 @@ import {
 import { soraSource } from "./avatar-assets";
 import { TText } from "./font";
 import { getLocale, type StringKey, t } from "./i18n";
+import { useAiName } from "./persona/use-ai-name";
 import { DUR } from "./motion";
 import { musicStore } from "./music/instance";
 import {
@@ -999,6 +1000,7 @@ function AlbumGlow({ track }: { track: Track | null }) {
 
 function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngine> }) {
   const colors = useColors();
+  const aiName = useAiName();
   const { nowPlaying, status, error, toggle, seek, advance, goPrev } = engine;
   const prev = async () => {
     await goPrev();
@@ -1015,7 +1017,7 @@ function NowPlayingSection({ engine }: { engine: ReturnType<typeof usePlayerEngi
               size={34}
             />
             <TText style={{ color: colors.muted, fontSize: 11.5, letterSpacing: 1 }}>
-              {status.playing ? t("music.djWorking") : t("music.nowPlaying")}
+              {status.playing ? t("music.djWorking", { name: aiName }) : t("music.nowPlaying")}
             </TText>
           </View>
           <View style={{ marginVertical: 10 }}>

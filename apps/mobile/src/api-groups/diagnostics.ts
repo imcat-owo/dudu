@@ -4,7 +4,7 @@
  * Learned from Kelivo's log viewer: the app records what it actually
  * sent to the model (sanitized) and what came back, so debugging is
  * "look at the log" instead of "guess". For her it's invisible; for
- * 小梦 it's the first place to look when something breaks.
+ * the developer it's the first place to look when something breaks.
  *
  * Privacy: Authorization headers are ALWAYS redacted before storage.
  * Ring buffer (default 200 entries), auto-pruned by age (default 7d).

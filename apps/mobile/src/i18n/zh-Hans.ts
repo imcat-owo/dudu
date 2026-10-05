@@ -39,6 +39,9 @@ const zhHans = {
   "app.name": "嘟嘟",
   "app.tagline": "给你的一天，留个小房间。",
 
+  // ---- ai identity ----
+  "ai.defaultName": "嘟嘟",
+
   // ---- auth / login ----
   "auth.welcome": "回来了？嘟嘟在这儿。",
   "auth.accessKeyLabel": "工作区访问密钥",
@@ -149,7 +152,7 @@ const zhHans = {
   "music.together.listening": "一起听歌中",
   "music.together.off": "自己听",
   "music.nowPlaying": "正在播放",
-  "music.djWorking": "小梦打碟中",
+  "music.djWorking": "{name}打碟中",
   "music.nothingPlaying": "安安静静的。点一首，或者跟我说「放首歌」。",
   "music.noAudio": "这首还没音频，放不了。在歌曲菜单里点「编辑」，给它加上音频吧。",
   "music.noAudioShort": "没音频，放不了",
@@ -1334,7 +1337,7 @@ const zhHans = {
   "apigroup.delete": "删除",
   "apigroup.deleteConfirm": "确定删除「{name}」？",
   "apigroup.empty": "还没配 API 分组。加一个，我才能替你办事。",
-  "apigroup.noActive": "先给小梦接上模型",
+  "apigroup.noActive": "先给{name}接上模型",
   "apigroup.onboardBody":
     "嘟嘟要连上模型才能陪你聊天。点下面的按钮，把模型服务商给你的地址、钥匙和模型名填进来就行，存在你手机里，很安全。",
   "apigroup.validation.nameRequired": "请填写名称",
@@ -1712,7 +1715,7 @@ const zhHans = {
     "本地 Linux 沙箱需要原生 iSH 模块，此版本尚未内置。做法沿用 OpenMinis 的 iSH 方案。",
   "sandbox.cloud.noConfig": "请先填写服务器连接信息。",
   "sandbox.relayNote":
-    "云端连接要在你的服务器上先装一个传话员（小梦会帮你装好）。填完下面点保存并连接就行啦。",
+    "云端连接要在你的服务器上先装一个传话员（{name}会帮你装好）。填完下面点保存并连接就行啦。",
   "sandbox.servers": "服务器",
   "sandbox.addServer": "添加服务器",
   "sandbox.serverName": "名字",
@@ -1722,7 +1725,7 @@ const zhHans = {
   "sandbox.deleteServer": "删除服务器",
   "sandbox.deleteServerConfirm": "「{name}」删掉就连不上了，存的连接信息也会一起清空，确定要删吗？",
   "sandbox.noServerSelected": "还没选服务器，点一台开始。",
-  "sandbox.relayMissing": "这台服务器上的传话员还没装好，跟小梦说一声，他帮你装上。",
+  "sandbox.relayMissing": "这台服务器上的传话员还没装好，跟{name}说一声，他帮你装上。",
   "sandbox.secretKeepHint": "留空就保持原来的，不用重填。",
   "sandbox.command.timeout": "命令执行超过 2 分钟，已超时。",
   "sandbox.docker.listFailed": "无法列出容器。",
@@ -1872,12 +1875,12 @@ const zhHans = {
   "persona.title": "人设",
   "persona.list": "人设列表",
   "persona.pickerTitle": "用谁陪你聊",
-  "persona.pickerNone": "默认（小梦）",
+  "persona.pickerNone": "默认（{name}）",
   "persona.pickerHint": "换个人设，AI 的说话方式会跟着变。",
   "persona.create": "新建人设",
   "persona.edit": "编辑人设",
   "persona.name": "名字",
-  "persona.namePlaceholder": "比如：小梦",
+  "persona.namePlaceholder": "给你的AI起个名字",
   "persona.description": "简介",
   "persona.descriptionPlaceholder": "一句话介绍这个人设",
   "persona.avatar": "头像",

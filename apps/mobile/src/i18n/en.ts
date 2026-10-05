@@ -34,6 +34,9 @@ export const enStrings: Record<StringKey, string> = {
   "app.name": "Dudu",
   "app.tagline": "A little room for your day.",
 
+  // ---- ai identity ----
+  "ai.defaultName": "Dudu",
+
   // ---- auth / login ----
   "auth.welcome": "You made it. Dudu is here.",
   "auth.accessKeyLabel": "Workspace access key",
@@ -153,7 +156,7 @@ export const enStrings: Record<StringKey, string> = {
   "music.together.listening": "Listening together",
   "music.together.off": "Solo",
   "music.nowPlaying": "Now playing",
-  "music.djWorking": "Dudu is DJing",
+  "music.djWorking": "{name} is DJing",
   "music.nothingPlaying": "Quiet in here. Pick a song, or tell me to play one.",
   "music.noAudio":
     'This song has no audio attached yet. Open the song menu, tap "Edit", and add audio to play it.',
@@ -1388,7 +1391,7 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.delete": "Delete",
   "apigroup.deleteConfirm": 'Delete "{name}"',
   "apigroup.empty": "No API group yet. Add one so I can get things done for you.",
-  "apigroup.noActive": "Connect a model first",
+  "apigroup.noActive": "Connect a model for {name} first",
   "apigroup.onboardBody":
     "Dudu needs a model connected to chat with you. Tap the button below and fill in the address, key and model name from your model provider — stored safely on your phone.",
   "apigroup.validation.nameRequired": "Name is required",
@@ -1781,7 +1784,7 @@ export const enStrings: Record<StringKey, string> = {
     "The local Linux sandbox needs the native iSH module, which is not bundled in this build yet. It follows OpenMinis's iSH approach.",
   "sandbox.cloud.noConfig": "Fill in the server connection first.",
   "sandbox.relayNote":
-    "Cloud mode needs a 传话员 (tiny relay) installed on your server first (小梦 can set it up for you). Fill in the form below, then save and connect.",
+    "Cloud mode needs a 传话员 (tiny relay) installed on your server first ({name} can set it up for you). Fill in the form below, then save and connect.",
   "sandbox.servers": "Servers",
   "sandbox.addServer": "Add server",
   "sandbox.serverName": "Name",
@@ -1793,7 +1796,7 @@ export const enStrings: Record<StringKey, string> = {
     'Deleting "{name}" will disconnect it and wipe its saved connection info. Are you sure?',
   "sandbox.noServerSelected": "No server selected — tap one to start.",
   "sandbox.relayMissing":
-    "This server's 传话员 (relay) isn't installed yet — tell 小梦 and he'll set it up for you.",
+    "This server's 传话员 (relay) isn't installed yet — tell {name} and he'll set it up for you.",
   "sandbox.secretKeepHint": "Leave blank to keep the current one.",
   "sandbox.command.timeout": "Command timed out after 2 minutes.",
   "sandbox.docker.listFailed": "Could not list containers.",
@@ -1954,12 +1957,12 @@ export const enStrings: Record<StringKey, string> = {
   "persona.title": "Personas",
   "persona.list": "Personas",
   "persona.pickerTitle": "Who's chatting with you",
-  "persona.pickerNone": "Default (Xiao Meng)",
+  "persona.pickerNone": "Default ({name})",
   "persona.pickerHint": "Switch persona to change how the AI talks.",
   "persona.create": "New persona",
   "persona.edit": "Edit persona",
   "persona.name": "Name",
-  "persona.namePlaceholder": "e.g. Xiao Meng",
+  "persona.namePlaceholder": "Name your AI",
   "persona.description": "Bio",
   "persona.descriptionPlaceholder": "One-line intro",
   "persona.avatar": "Avatar",

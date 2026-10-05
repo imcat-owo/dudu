@@ -40,6 +40,7 @@ import ViewShot, { type ViewShotRef } from "react-native-view-shot";
 import { getExtrasPrefs, requestNewChat } from "../extras/prefs";
 import { TText } from "../font";
 import { t } from "../i18n";
+import { getAiDisplayName } from "../persona/ai-name";
 import { personaStore } from "../persona/stores";
 import type { Persona } from "../persona/types";
 import { radii } from "../theme/radii";
@@ -387,10 +388,14 @@ export interface ExportableMessage {
   content: string;
 }
 
-export function buildDialogMarkdown(messages: ExportableMessage[], title: string): string {
+export function buildDialogMarkdown(
+  messages: ExportableMessage[],
+  title: string,
+  aiName: string,
+): string {
   const lines: string[] = [`# ${title}`, ""];
   for (const m of messages) {
-    const who = m.role === "user" ? "她" : m.role === "assistant" ? "小梦" : m.role;
+    const who = m.role === "user" ? "她" : m.role === "assistant" ? aiName : m.role;
     lines.push(`**${who}**`, "", m.content.trim(), "");
   }
   return lines.join("\n").trim() + "\n";
@@ -429,6 +434,7 @@ function contentText(content: unknown): string {
 export async function searchAllDialogs(query: string, limit = 30): Promise<MessageHit[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
+  const aiName = await getAiDisplayName(t, personaStore);
   const dialogs = await listDialogs(storage);
   const hits: MessageHit[] = [];
   for (const d of dialogs) {
@@ -464,7 +470,7 @@ export async function searchAllDialogs(query: string, limit = 30): Promise<Messa
         threadId: d.id,
         threadName: d.name,
         messageId: id,
-        snippet: `${role === "user" ? "她" : "小梦"}: …${text.slice(start, idx + q.length + 40)}…`,
+        snippet: `${role === "user" ? "她" : aiName}: …${text.slice(start, idx + q.length + 40)}…`,
       });
       if (hits.length >= limit) return hits;
     }
@@ -952,7 +958,7 @@ export function DialogSettingsSheet({
                   }}
                   {...(activePersonaId === null ? { primary: true } : {})}
                 >
-                  {t("persona.pickerNone")}
+                  {t("persona.pickerNone", { name: t("ai.defaultName") })}
                 </Button>
                 {personas.map((p) => (
                   <Button

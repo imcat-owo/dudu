@@ -226,16 +226,25 @@ describe("buildLocalSystemPrompt", () => {
     assert.ok(prompt.includes("[perm.aiDesc.photos]"));
   });
 
-  it("opens with the identity block (P1-1: 小梦, boyfriend, 嘟嘟腔)", () => {
+  it("opens with the identity block (P1-1: dynamic AI name, boyfriend, 嘟嘟腔)", () => {
     const tools = createLocalTools({ now: () => new Date() });
-    const prompt = buildLocalSystemPrompt(tools, (k) => `[${k}]`);
-    assert.ok(prompt.includes("小梦"), "identity names him 小梦");
+    const prompt = buildLocalSystemPrompt(tools, (k) => `[${k}]`, undefined, undefined, {
+      aiName: "阿茶",
+    });
+    assert.ok(prompt.includes("阿茶"), "identity uses the user's AI name");
+    assert.ok(!prompt.includes("小梦"), "identity has no hardcoded name");
     assert.ok(prompt.includes("boyfriend"), "identity states the relationship");
     assert.ok(prompt.includes("嘟嘟"), "identity names the app");
     assert.ok(
       prompt.indexOf("Who you are") < prompt.indexOf("Your tools:"),
       "identity comes before the tool list",
     );
+  });
+
+  it("falls back to ai.defaultName when no aiName is given", () => {
+    const prompt = buildLocalSystemPrompt([], (k) => `[${k}]`);
+    assert.ok(prompt.includes("[ai.defaultName]"), "identity falls back to the default name");
+    assert.ok(!prompt.includes("小梦"), "identity has no hardcoded name");
   });
 
   it("includes the incognito section when incognito (P1-4)", () => {

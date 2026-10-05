@@ -93,6 +93,9 @@ import {
 } from "./chat/dialog-ui";
 import { composeGreeting } from "./chat/greeting";
 import { GroupMeetingCard } from "./chat/group-meeting-card";
+import { getAiDisplayName } from "./persona/ai-name";
+import { personaStore } from "./persona/stores";
+import { useAiName } from "./persona/use-ai-name";
 import { generateOneShot } from "./chat/group-meeting-tools";
 import {
   defaultThreadMeta,
@@ -397,6 +400,8 @@ export function ChatScreen({
   const mode = useChatMode();
   // Local mode has no backend threads — force the simple local path.
   const richThreads = mode === "local" ? false : threadsEnabled;
+  // The AI's display name: the name she gave it (active persona), else the default.
+  const aiName = useAiName();
   const selection = thread || { id: "local", existing: false };
   // Local multi-dialog (gap fill A): the thread id comes from the dialog
   // list selection. "local" is the legacy default -> the main dialog.
@@ -708,7 +713,8 @@ export function ChatScreen({
       if (runLock.current || agent.isRunning || !isReady || !loaded)
         throw new Error(t("chat.notReady"));
       // Local mode needs an API group before it can talk.
-      if (mode === "local" && !activeGroup) throw new Error(t("apigroup.noActive"));
+      if (mode === "local" && !activeGroup)
+        throw new Error(t("apigroup.noActive", { name: await getAiDisplayName(t, personaStore) }));
       runLock.current = true;
       setBusy(true);
       setError("");
@@ -1160,6 +1166,7 @@ export function ChatScreen({
           .filter((m) => m.role === "user" || m.role === "assistant")
           .map((m) => ({ role: m.role, content: messageText(m) })),
         dialogTitle,
+        await getAiDisplayName(t, personaStore),
       );
       await shareDialogMarkdown(md, dialogTitle);
     } catch (e) {
@@ -1190,7 +1197,7 @@ export function ChatScreen({
       const picked = visible
         .filter((m) => selectedIds.has(m.id))
         .map((m) => ({ role: m.role, content: messageText(m) }));
-      const md = buildDialogMarkdown(picked, dialogTitle);
+      const md = buildDialogMarkdown(picked, dialogTitle, await getAiDisplayName(t, personaStore));
       await shareDialogMarkdown(md, dialogTitle);
       cancelSelect();
     } catch (e) {
@@ -1678,7 +1685,9 @@ export function ChatScreen({
       )}
       {mode === "local" && !activeGroup && loaded && (
         <Card style={{ margin: 16 }}>
-          <TText style={{ fontWeight: "700", marginBottom: 4 }}>{t("apigroup.noActive")}</TText>
+          <TText style={{ fontWeight: "700", marginBottom: 4 }}>
+            {t("apigroup.noActive", { name: aiName })}
+          </TText>
           {/* P2-1: first-run mini-onboarding — plain words, not a bare form. */}
           <TText style={[s.small, { color: colors.muted, marginBottom: 12 }]}>
             {t("apigroup.onboardBody")}

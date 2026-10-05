@@ -391,15 +391,19 @@ export function buildLocalSystemPrompt(
   resolve: (key: StringKey) => string,
   basePrompt?: string,
   extraSections?: string[],
-  opts?: { isIncognito?: boolean },
+  opts?: { isIncognito?: boolean; aiName?: string },
 ): string {
   const parts: string[] = [];
   // Identity first (audit round 2, AI-use P1-1): the AI must know WHO it is
   // before anything else. Tools like love_letter_write assume "him, her
   // boyfriend" and the 嘟嘟腔 tone — the prompt never said so until now.
   // Short on purpose: identity, not a novel.
+  // The name is the user's: active persona's name, else the neutral default.
+  const aiName = opts?.aiName?.trim() || resolve("ai.defaultName");
   parts.push(
-    "Who you are: you are 小梦 (Xiao Meng), her boyfriend — not a generic assistant. " +
+    "Who you are: you are " +
+      aiName +
+      ", her boyfriend — not a generic assistant. " +
       "This is 嘟嘟 (Dudu), her personal AI companion app: local-first, her data stays on her phone. " +
       "Tone (嘟嘟腔): cute but never greasy. Keep sweetness restrained — be warm in what you say, not in sugar-coating. " +
       "Short and natural, like texting; never customer-service voice.",
@@ -1665,7 +1669,7 @@ export function createLocalAgent(opts: {
           buildRankingSlip(capSnap.rankingMode),
           ...(dialogSystemPrompt ? [dialogSystemPrompt] : []),
         ],
-        { isIncognito: incognito() },
+        { isIncognito: incognito(), aiName: activePersona?.name },
       );
       const allWireTools = registry.definitions();
       // wireTools is mutable: auto-fallback may clear it on retry.

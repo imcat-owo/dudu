@@ -22,7 +22,7 @@ export interface PersonaTag {
 /** A persona — the AI's identity card. */
 export interface Persona {
   id: string;
-  /** Display name, e.g. "小梦". */
+  /** Display name, e.g. "嘟嘟". */
   name: string;
   /** Avatar: local path, URL, or null for default. */
   avatar: string | null;

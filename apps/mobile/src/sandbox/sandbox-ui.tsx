@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { TText } from "../font";
 import { type StringKey, t } from "../i18n";
+import { useAiName } from "../persona/use-ai-name";
 import { radii } from "../theme/radii";
 import {
   Button,
@@ -464,6 +465,7 @@ function Terminal({ backend }: { backend: SandboxBackend }) {
 
 export function SandboxSheet({ onClose }: { onClose: () => void }) {
   const colors = useColors();
+  const aiName = useAiName();
   const [ready, setReady] = useState(false);
   const [activeId, setActiveId] = useState<SandboxBackendId>("cloud");
   const [tick, setTick] = useState(0);
@@ -634,7 +636,9 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
           ))}
           {error ? <ErrorNotice error={error} /> : null}
           {relayMissing ? (
-            <TText style={{ fontSize: 12, color: colors.muted }}>{t("sandbox.relayMissing")}</TText>
+            <TText style={{ fontSize: 12, color: colors.muted }}>
+              {t("sandbox.relayMissing", { name: aiName })}
+            </TText>
           ) : null}
 
           {state === "error" || state === "unavailable" ? (
@@ -679,7 +683,7 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
                     {t("sandbox.addServer")}
                   </Button>
                   <TText style={{ fontSize: 11, color: colors.muted }}>
-                    {t("sandbox.relayNote")}
+                    {t("sandbox.relayNote", { name: aiName })}
                   </TText>
                 </View>
               )}
