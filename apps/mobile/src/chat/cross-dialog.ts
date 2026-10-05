@@ -37,6 +37,7 @@
 import type { LocalTool } from "../api-groups/local-tools";
 import { ToolError } from "../api-groups/local-tools";
 import { planGateStore } from "../api-groups/plan-gate";
+import type { AgentCliDeps, DialogSummary } from "../mcp/agent-cli";
 import { sharedKeyedChain as exclusiveFor } from "../util/write-chain";
 import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace";
 
@@ -417,6 +418,57 @@ export async function readDialog(
     role: m.role as "user" | "assistant",
     text: textOf(m.content),
   }));
+}
+
+/**
+ * Persona-isolated deps for the `dudu` agent CLI tool (B5).
+ *
+ * The dudu tool's list/search/read must never cross persona boundaries:
+ * - list/search only ever see the current persona's dialogs
+ *   (listDialogs already filters by personaId).
+ * - read resolves the ref (id or name) within the current persona's dialogs
+ *   ONLY, so a foreign dialog id is indistinguishable from an unknown one —
+ *   fail closed, no existence/content leak.
+ *
+ * getPersonaId is called lazily on every invocation — never captured at
+ * module load or agent construction — so a persona switch mid-session takes
+ * effect immediately.
+ */
+export function createIsolatedDuduDeps(
+  storage: CrossDialogStorage,
+  getPersonaId: () => Promise<string>,
+): AgentCliDeps {
+  async function ownDialogs(): Promise<DialogInfo[]> {
+    return listDialogs(storage, await getPersonaId());
+  }
+  function toSummary(d: DialogInfo): DialogSummary {
+    return { id: d.id, name: d.name, messageCount: d.messageCount, updatedAt: d.lastActiveAt };
+  }
+  return {
+    listDialogs: async () => (await ownDialogs()).map(toSummary),
+    searchDialogs: async (query: string) => {
+      const q = query.toLowerCase();
+      return (await ownDialogs())
+        .filter((d) => d.name.toLowerCase().includes(q))
+        .map(toSummary);
+    },
+    readDialog: async (id: string, limit: number) => {
+      const dialogs = await ownDialogs();
+      const needle = id.trim();
+      const lower = needle.toLowerCase();
+      const byId = dialogs.find((d) => d.id === needle);
+      const byName = dialogs.filter((d) => d.name.toLowerCase() === lower);
+      const match = byId ?? (byName.length === 1 ? byName[0] : undefined);
+      if (!match) {
+        if (byName.length > 1) {
+          throw new Error(`Multiple dialogs named "${needle}" — use the dialog id instead.`);
+        }
+        throw new Error(`No dialog "${needle}" found among this persona's dialogs.`);
+      }
+      const messages = await readDialog(storage, match.id, limit);
+      return messages.map((m) => `${m.role}: ${m.text}`).join("\n");
+    },
+  };
 }
 
 /**

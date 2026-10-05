@@ -17,7 +17,7 @@ import { createBackupTools } from "../backup-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools";
-import { createCrossDialogTools, listDialogs, readDialog } from "../chat/cross-dialog";
+import { createCrossDialogTools, createIsolatedDuduDeps, DEFAULT_PERSONA_ID } from "../chat/cross-dialog";
 import { sharedKeyedChain } from "../util/write-chain";
 import { createAgentCliTools } from "../mcp/agent-cli";
 import { createAskUserTools } from "../mcp/ask-user";
@@ -200,6 +200,20 @@ export interface LocalChatMessage {
 export function contentToText(content: string | ChatContentBlock[]): string {
   if (typeof content === "string") return content;
   return content.map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
+}
+
+/**
+ * Current persona id for cross-persona isolation (B5). Resolved lazily at
+ * each tool call — never captured at module load or agent construction —
+ * so a persona switch mid-session takes effect immediately. Falls back to
+ * the default persona when none is selected or storage hiccups.
+ */
+async function currentPersonaId(): Promise<string> {
+  try {
+    return (await personaStore.getActiveId().catch(() => null)) ?? DEFAULT_PERSONA_ID;
+  } catch {
+    return DEFAULT_PERSONA_ID;
+  }
 }
 export const MAX_TOOL_ITERATIONS = 10;
 
@@ -1267,33 +1281,7 @@ export function createLocalAgent(opts: {
             );
           },
         }),
-        ...createAgentCliTools({
-          listDialogs: async () => {
-            const dialogs = await listDialogs(AsyncStorage);
-            return dialogs.map((d) => ({
-              id: d.id,
-              name: d.name,
-              messageCount: d.messageCount,
-              updatedAt: d.lastActiveAt,
-            }));
-          },
-          readDialog: async (id, limit) => {
-            const messages = await readDialog(AsyncStorage, id, limit);
-            return messages.map((m) => `${m.role}: ${m.text}`).join("\n");
-          },
-          searchDialogs: async (query) => {
-            const dialogs = await listDialogs(AsyncStorage);
-            const q = query.toLowerCase();
-            return dialogs
-              .filter((d) => d.name.toLowerCase().includes(q))
-              .map((d) => ({
-                id: d.id,
-                name: d.name,
-                messageCount: d.messageCount,
-                updatedAt: d.lastActiveAt,
-              }));
-          },
-        }),
+        ...createAgentCliTools(createIsolatedDuduDeps(AsyncStorage, currentPersonaId)),
         ...createInteractiveTerminalTools(() => {
           try {
             return sandboxManager.activeBackend();
