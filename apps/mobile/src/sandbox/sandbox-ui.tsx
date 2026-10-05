@@ -5,8 +5,10 @@
  * Mounted from AppearanceScreen (same place as DevicePermissionsSheet).
  */
 import {
+  Check,
   ChevronRight,
   Cloud,
+  Copy,
   Cpu,
   LoaderCircle,
   MonitorSmartphone,
@@ -22,6 +24,7 @@ import {
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
+import { writeClipboard } from "../device-permissions";
 import { TText } from "../font";
 import { type StringKey, t } from "../i18n";
 import { useAiName } from "../persona/use-ai-name";
@@ -38,6 +41,11 @@ import {
 } from "../ui";
 import { sandboxManager } from "./manager";
 import { newServerId, type SandboxServer } from "./servers";
+import {
+  relayCaddySnippet,
+  relayInstallScript,
+  relaySystemdUnit,
+} from "./relay-install";
 import type {
   SandboxBackend,
   SandboxBackendId,
@@ -463,6 +471,107 @@ function Terminal({ backend }: { backend: SandboxBackend }) {
   );
 }
 
+/**
+ * D18: the REAL path from "relay missing" to "relay running". The old copy
+ * ("跟{name}说一声，他帮你装上") was a dead end — the AI has no way onto
+ * her server either. These are the exact install commands from
+ * sandbox-relay/README.md, as copyable text she pastes into her server's
+ * terminal herself. The Caddy snippet is pre-filled with this server's host.
+ */
+function RelayInstallSteps({ host }: { host: string }) {
+  const colors = useColors();
+  const [open, setOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copy = async (key: string, text: string) => {
+    try {
+      await writeClipboard(text);
+    } catch {
+      // Clipboard unavailable: she can still read the commands on screen.
+    }
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey((c) => (c === key ? null : c)), 1500);
+  };
+
+  const blocks = [
+    { key: "relay", label: t("sandbox.relayInstall.stepRelay"), text: relayInstallScript() },
+    {
+      key: "caddy",
+      label: t("sandbox.relayInstall.stepCaddy"),
+      text: relayCaddySnippet(host),
+      note: t("sandbox.relayInstall.caddyNote"),
+    },
+    { key: "systemd", label: t("sandbox.relayInstall.stepSystemd"), text: relaySystemdUnit() },
+  ];
+
+  return (
+    <View style={{ gap: 8 }}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+        accessibilityRole="button"
+      >
+        <TText style={{ fontSize: 13, fontWeight: "600", color: colors.blueDark }}>
+          {open ? t("sandbox.relayInstall.hideSteps") : t("sandbox.relayInstall.showSteps")}
+        </TText>
+      </Pressable>
+      {open ? (
+        <View style={{ gap: 10 }}>
+          <TText style={{ fontSize: 12, color: colors.muted }}>
+            {t("sandbox.relayInstall.runOnServer")}
+          </TText>
+          {blocks.map((b) => {
+            const copied = copiedKey === b.key;
+            return (
+              <View key={b.key} style={{ gap: 6 }}>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <TText style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
+                    {b.label}
+                  </TText>
+                  <Pressable
+                    onPress={() => copy(b.key, b.text)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                    accessibilityLabel={t("common.copy")}
+                    hitSlop={8}
+                  >
+                    {copied ? (
+                      <Check size={14} color={colors.green} />
+                    ) : (
+                      <Copy size={14} color={colors.muted} />
+                    )}
+                    <TText style={{ fontSize: 12, color: copied ? colors.green : colors.muted }}>
+                      {copied ? t("sandbox.relayInstall.copied") : t("common.copy")}
+                    </TText>
+                  </Pressable>
+                </View>
+                <ScrollView
+                  horizontal
+                  style={{
+                    backgroundColor: colors.canvas,
+                    borderRadius: radii.sm,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                    padding: 10,
+                  }}
+                >
+                  <TText style={{ fontSize: 11, color: colors.text, fontFamily: "Menlo" }}>
+                    {b.text}
+                  </TText>
+                </ScrollView>
+                {b.note ? (
+                  <TText style={{ fontSize: 11, color: colors.muted }}>{b.note}</TText>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function SandboxSheet({ onClose }: { onClose: () => void }) {
   const colors = useColors();
   const aiName = useAiName();
@@ -636,9 +745,14 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
           ))}
           {error ? <ErrorNotice error={error} /> : null}
           {relayMissing ? (
-            <TText style={{ fontSize: 12, color: colors.muted }}>
-              {t("sandbox.relayMissing", { name: aiName })}
-            </TText>
+            <Card style={{ gap: 10 }}>
+              <TText style={{ fontSize: 13, color: colors.text }}>
+                {t("sandbox.relayMissing")}
+              </TText>
+              <RelayInstallSteps
+                host={servers.find((s) => s.id === activeServerId)?.config.host ?? ""}
+              />
+            </Card>
           ) : null}
 
           {state === "error" || state === "unavailable" ? (
