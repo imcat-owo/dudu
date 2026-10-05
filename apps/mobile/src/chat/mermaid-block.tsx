@@ -26,9 +26,7 @@ function escapeHtml(code: string): string {
   return code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function buildHtml(code: string, dark: boolean): string {
-  const bg = dark ? "#1c1c1e" : "#f7f5f0";
-  const fg = dark ? "#ececec" : "#2b2b2b";
+function buildHtml(code: string, bg: string, fg: string, dark: boolean): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -83,7 +81,10 @@ export function MermaidBlock({ code }: { code: string }) {
   const [showCode, setShowCode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const html = useMemo(() => buildHtml(code, dark), [code, dark]);
+  const html = useMemo(
+    () => buildHtml(code, colors.canvas, colors.text, dark),
+    [code, colors.canvas, colors.text, dark],
+  );
 
   const onMessage = (e: WebViewMessageEvent) => {
     try {
@@ -138,7 +139,7 @@ export function MermaidBlock({ code }: { code: string }) {
   return (
     <View
       style={{
-        backgroundColor: dark ? "#1c1c1e" : "#f7f5f0",
+        backgroundColor: colors.canvas,
         borderRadius: radii.md,
         marginVertical: 4,
         overflow: "hidden",

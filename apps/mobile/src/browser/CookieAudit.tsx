@@ -8,21 +8,16 @@
 
 import { Cookie, RefreshCw, Trash2, X } from "lucide-react-native";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Modal, ScrollView, TouchableOpacity, View } from "react-native";
+import { TText } from "../font";
 import { useStrings } from "../i18n";
+import { useColors } from "../ui";
 import { browserController } from "./controller";
 import { CLEAR_COOKIES_JS, type CookieItem, parseCookies } from "./cookies";
 
 export function CookieAuditButton() {
   const { t } = useStrings();
+  const colors = useColors();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -32,7 +27,7 @@ export function CookieAuditButton() {
         accessibilityLabel={t("browser.cookieAudit")}
         accessibilityRole="button"
       >
-        <Cookie size={18} />
+        <Cookie size={18} color={colors.text} />
       </TouchableOpacity>
       <CookieAuditSheet open={open} onClose={() => setOpen(false)} />
     </>
@@ -41,6 +36,7 @@ export function CookieAuditButton() {
 
 function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useStrings();
+  const colors = useColors();
   const [cookies, setCookies] = useState<CookieItem[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -95,7 +91,9 @@ function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, paddingTop: 60, paddingHorizontal: 16 }}>
+      <View
+        style={{ flex: 1, paddingTop: 60, paddingHorizontal: 16, backgroundColor: colors.canvas }}
+      >
         <View
           style={{
             flexDirection: "row",
@@ -104,19 +102,21 @@ function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => voi
             marginBottom: 8,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "600" }}>{t("browser.cookieAudit")}</Text>
+          <TText style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
+            {t("browser.cookieAudit")}
+          </TText>
           <TouchableOpacity
             onPress={onClose}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel={t("common.close")}
             accessibilityRole="button"
           >
-            <X size={20} />
+            <X size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
-        <Text style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+        <TText style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
           {t("browser.cookieAuditDesc")}
-        </Text>
+        </TText>
 
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <TouchableOpacity
@@ -129,13 +129,13 @@ function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => voi
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderRadius: 10,
-              backgroundColor: "#f0f0f0",
+              backgroundColor: colors.secondaryBg,
               opacity: loading ? 0.5 : 1,
             }}
             accessibilityRole="button"
           >
-            <RefreshCw size={14} />
-            <Text style={{ fontSize: 14 }}>{t("browser.cookieRefresh")}</Text>
+            <RefreshCw size={14} color={colors.text} />
+            <TText style={{ fontSize: 14, color: colors.text }}>{t("browser.cookieRefresh")}</TText>
           </TouchableOpacity>
           {cookies && cookies.length > 0 && (
             <TouchableOpacity
@@ -148,36 +148,38 @@ function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => voi
                 paddingHorizontal: 12,
                 paddingVertical: 8,
                 borderRadius: 10,
-                backgroundColor: "#ffe8e8",
+                backgroundColor: colors.errorBg,
                 opacity: loading ? 0.5 : 1,
               }}
               accessibilityRole="button"
             >
-              <Trash2 size={14} />
-              <Text style={{ fontSize: 14 }}>{t("browser.cookieClear")}</Text>
+              <Trash2 size={14} color={colors.danger} />
+              <TText style={{ fontSize: 14, color: colors.danger }}>
+                {t("browser.cookieClear")}
+              </TText>
             </TouchableOpacity>
           )}
         </View>
 
-        {loading && <ActivityIndicator style={{ marginTop: 24 }} />}
+        {loading && <ActivityIndicator style={{ marginTop: 24 }} color={colors.muted} />}
         {!loading && error !== "" && (
-          <Text style={{ fontSize: 14, color: "#a00", marginTop: 12 }}>{error}</Text>
+          <TText style={{ fontSize: 14, color: colors.danger, marginTop: 12 }}>{error}</TText>
         )}
         {!loading && error === "" && cookies === null && (
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 12 }}>
+          <TText style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>
             {t("browser.cookieRefresh")}
-          </Text>
+          </TText>
         )}
         {!loading && error === "" && cookies !== null && cookies.length === 0 && (
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 12 }}>
+          <TText style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>
             {cleared ? t("browser.cookieCleared") : t("browser.cookiesEmpty")}
-          </Text>
+          </TText>
         )}
         {!loading && cookies !== null && cookies.length > 0 && (
           <>
-            <Text style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+            <TText style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>
               {t("browser.cookieCount", { n: cookies.length })}
-            </Text>
+            </TText>
             <ScrollView style={{ flex: 1 }}>
               {cookies.map((c) => (
                 <View
@@ -186,25 +188,31 @@ function CookieAuditSheet({ open, onClose }: { open: boolean; onClose: () => voi
                     paddingVertical: 10,
                     paddingHorizontal: 12,
                     borderRadius: 10,
-                    backgroundColor: "#f7f7f7",
+                    backgroundColor: colors.card,
                     marginBottom: 8,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "600" }} numberOfLines={1}>
+                  <TText
+                    style={{ fontSize: 14, fontWeight: "600", color: colors.text }}
+                    numberOfLines={1}
+                  >
                     {c.name}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: "#555", marginTop: 4 }} numberOfLines={3}>
+                  </TText>
+                  <TText
+                    style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}
+                    numberOfLines={3}
+                  >
                     {c.value || "—"}
-                  </Text>
+                  </TText>
                 </View>
               ))}
             </ScrollView>
           </>
         )}
 
-        <Text style={{ fontSize: 12, color: "#999", marginTop: 12, marginBottom: 24 }}>
+        <TText style={{ fontSize: 12, color: colors.muted, marginTop: 12, marginBottom: 24 }}>
           {t("browser.cookieNote")}
-        </Text>
+        </TText>
       </View>
     </Modal>
   );

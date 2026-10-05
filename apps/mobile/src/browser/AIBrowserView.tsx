@@ -14,9 +14,12 @@
 
 import { Plus, X } from "lucide-react-native";
 import { useEffect, useRef } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
+import { TText } from "../font";
+import { useStrings } from "../i18n";
+import { useColors } from "../ui";
 import { CookieAuditButton } from "./CookieAudit";
 import { type BrowserWebViewRef, browserController } from "./controller";
 import { browserTabStore, useBrowserTabs } from "./tabs";
@@ -74,6 +77,8 @@ function TabWebView({ tabId, url, visible }: { tabId: string; url: string; visib
 
 export default function AIBrowserView({ visible }: { visible: boolean }) {
   const { tabs, activeId } = useBrowserTabs();
+  const { t } = useStrings();
+  const colors = useColors();
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
   // The AI's pending navigation goes to the active tab.
@@ -110,19 +115,19 @@ export default function AIBrowserView({ visible }: { visible: boolean }) {
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   borderRadius: 12,
-                  backgroundColor: tab.id === activeId ? "#e8e8e8" : "#f5f5f5",
+                  backgroundColor: tab.id === activeId ? colors.card : colors.inputBg,
                   maxWidth: 160,
                 }}
               >
-                <Text numberOfLines={1} style={{ fontSize: 12, flex: 1 }}>
-                  {tab.title || "New Tab"}
-                </Text>
+                <TText numberOfLines={1} style={{ fontSize: 12, flex: 1, color: colors.text }}>
+                  {tab.title || t("browser.newTab")}
+                </TText>
                 {tabs.length > 1 && (
                   <TouchableOpacity
                     onPress={() => browserTabStore.closeTab(tab.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <X size={12} />
+                    <X size={12} color={colors.muted} />
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
@@ -134,7 +139,7 @@ export default function AIBrowserView({ visible }: { visible: boolean }) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="New tab"
         >
-          <Plus size={18} />
+          <Plus size={18} color={colors.text} />
         </TouchableOpacity>
         <CookieAuditButton />
       </View>

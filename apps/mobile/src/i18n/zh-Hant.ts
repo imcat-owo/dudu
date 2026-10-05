@@ -833,6 +833,7 @@ const zhHant = {
   "browser.cookieAudit": "Cookie 審計",
   "browser.cookieAuditDesc": "看看這個標籤頁存了哪些小餅乾。",
   "browser.cookiesEmpty": "這個頁面沒有存小餅乾，乾乾淨淨。",
+  "browser.newTab": "新標籤頁",
   "browser.cookieRefresh": "重新讀取",
   "browser.cookieClear": "清空",
   "browser.cookieClearConfirm": "把這個頁面 JS 能碰到的 cookie 都清掉？",

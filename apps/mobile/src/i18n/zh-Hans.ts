@@ -830,6 +830,7 @@ const zhHans = {
   "browser.cookieAudit": "Cookie 审计",
   "browser.cookieAuditDesc": "看看这个标签页存了哪些小饼干。",
   "browser.cookiesEmpty": "这个页面没有存小饼干，干干净净。",
+  "browser.newTab": "新标签页",
   "browser.cookieRefresh": "重新读取",
   "browser.cookieClear": "清空",
   "browser.cookieClearConfirm": "把这个页面 JS 能碰到的 cookie 都清掉？",

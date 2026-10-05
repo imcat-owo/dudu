@@ -3,6 +3,7 @@ import { Component, type ReactNode } from "react";
 import { Pressable, useColorScheme, View } from "react-native";
 import { TText } from "./font";
 import { t } from "./i18n";
+import { CRASH_PALETTE } from "./theme/crash-palette";
 import { radii } from "./theme/radii";
 
 interface ErrorBoundaryProps {
@@ -59,21 +60,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void }) {
   // Deliberately NOT using the theme provider: this is the last-resort crash
   // screen — if the theme system itself is what crashed, depending on it
-  // would blank the fallback too. useColorScheme() alone is safe.
+  // would blank the fallback too. useColorScheme() alone is safe, and the
+  // palette lives in theme/crash-palette.ts as static tokens (not inline hex).
   const dark = useColorScheme() === "dark";
-  const bg = dark ? "#1C1C1E" : "#F6F4F1";
-  const fg = dark ? "#F5F2EC" : "#2B2620";
-  const muted = dark ? "#A8A29A" : "#8A8378";
-  const iconBg = dark ? "#2C2C2E" : "#FFFFFF";
-  const buttonBg = dark ? "#E8E2D6" : "#2B2620";
-  const buttonFg = dark ? "#2B2620" : "#F6F4F1";
+  const p = CRASH_PALETTE[dark ? "dark" : "light"];
   return (
     <View
       accessibilityRole="alert"
       accessibilityLabel={label ? `${t("error.crashTitle")} — ${label}` : t("error.crashTitle")}
       style={{
         flex: 1,
-        backgroundColor: bg,
+        backgroundColor: p.bg,
         alignItems: "center",
         justifyContent: "center",
         padding: 32,
@@ -85,21 +82,21 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
           width: 72,
           height: 72,
           borderRadius: radii.xl,
-          backgroundColor: iconBg,
+          backgroundColor: p.iconBg,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 6,
         }}
       >
-        <HeartCrack size={34} strokeWidth={1.6} color={muted} />
+        <HeartCrack size={34} strokeWidth={1.6} color={p.muted} />
       </View>
-      <TText style={{ fontSize: 19, fontWeight: "600", color: fg, textAlign: "center" }}>
+      <TText style={{ fontSize: 19, fontWeight: "600", color: p.fg, textAlign: "center" }}>
         {t("error.crashTitle")}
       </TText>
       <TText
         style={{
           fontSize: 14,
-          color: muted,
+          color: p.muted,
           textAlign: "center",
           lineHeight: 21,
           maxWidth: 300,
@@ -116,15 +113,15 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
-          backgroundColor: buttonBg,
+          backgroundColor: p.buttonBg,
           paddingHorizontal: 22,
           paddingVertical: 12,
           borderRadius: radii.xl,
           opacity: pressed ? 0.75 : 1,
         })}
       >
-        <RotateCcw size={16} color={buttonFg} />
-        <TText style={{ fontSize: 15, fontWeight: "600", color: buttonFg }}>
+        <RotateCcw size={16} color={p.buttonFg} />
+        <TText style={{ fontSize: 15, fontWeight: "600", color: p.buttonFg }}>
           {t("common.retry")}
         </TText>
       </Pressable>

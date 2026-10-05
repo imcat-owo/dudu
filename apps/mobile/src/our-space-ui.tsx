@@ -55,6 +55,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useReduceMotion } from "./extras/reduce-motion";
 import { TText } from "./font";
 import { WebView } from "react-native-webview";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
@@ -402,6 +403,7 @@ function StatusView() {
   const v = useOurSpaceVersion();
   const colors = useColors();
   const { tokens } = useTheme();
+  const reduceMotion = useReduceMotion();
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [now, setNow] = useState(Date.now());
   const pulse = useRef(new Animated.Value(1)).current;
@@ -413,8 +415,13 @@ function StatusView() {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
+  // Living-presence dot pulse. Reduce Motion: parked at full opacity.
   useEffect(() => {
     if (!status) return;
+    if (reduceMotion) {
+      pulse.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 0.55, duration: 1600, useNativeDriver: true }),
@@ -426,7 +433,7 @@ function StatusView() {
       loop.stop();
       pulse.setValue(1);
     };
-  }, [status, pulse]);
+  }, [status, pulse, reduceMotion]);
 
   useEffect(() => {
     void taskProgressStore.load().catch(() => null);

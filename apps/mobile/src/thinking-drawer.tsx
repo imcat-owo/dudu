@@ -44,6 +44,7 @@ import {
 } from "react-native";
 import type { DrawerActionStatus, DrawerToolAction } from "./activity-drawer-model";
 import { ThinkingBody } from "./extras/message-ui";
+import { useReduceMotion } from "./extras/reduce-motion";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { DUR, SPRING } from "./motion";
@@ -94,14 +95,20 @@ export function ThinkingStatus({
   onOpen: () => void;
 }) {
   const { tokens } = useTheme();
+  const reduceMotion = useReduceMotion();
   // 0 → 1 → 0 "breath". Drives the brand-color halo ping + a gentle button
   // scale — livelier than a plain opacity blink, still subtle (motion.ts:
   // purposeful motion only; the halo answers "the AI is working right now").
   // Ambient loop: keeps its physical 900ms period, not a transition token.
+  // Reduce Motion: the loop stays parked — a static halo, no breathing.
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!streaming || !thinking) return;
+    if (reduceMotion) {
+      pulse.setValue(0);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -123,7 +130,7 @@ export function ThinkingStatus({
       loop.stop();
       pulse.setValue(0);
     };
-  }, [streaming, pulse, thinking]);
+  }, [streaming, pulse, thinking, reduceMotion]);
 
   if (!thinking) return null;
   return (
@@ -310,6 +317,7 @@ export function ThinkingDrawer({
   onClose: () => void;
 }) {
   const { tokens } = useTheme();
+  const reduceMotion = useReduceMotion();
   const translateY = useRef(new Animated.Value(SCREEN.height)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
   const slideX = useRef(new Animated.Value(0)).current;
@@ -319,8 +327,13 @@ export function ThinkingDrawer({
   // Drag-handle "breathing": a slow, calm paw-print pulse. Subtle on purpose —
   // the handle is chrome, not content (motion.ts: purposeful motion only).
   // Ambient loop: keeps its physical 1400ms period, not a transition token.
+  // Reduce Motion: parked — the handle stays still.
   const breathe = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (reduceMotion) {
+      breathe.setValue(0);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(breathe, {
@@ -339,7 +352,7 @@ export function ThinkingDrawer({
     );
     loop.start();
     return () => loop.stop();
-  }, [breathe]);
+  }, [breathe, reduceMotion]);
 
   const hasActions = actions.length > 0;
   // Live lookup: the selected action re-reads from `actions` every render,

@@ -861,6 +861,7 @@ export const enStrings: Record<StringKey, string> = {
   "browser.cookieAudit": "Cookie Audit",
   "browser.cookieAuditDesc": "See what cookies this tab has stored.",
   "browser.cookiesEmpty": "No cookies on this page. Squeaky clean.",
+  "browser.newTab": "New Tab",
   "browser.cookieRefresh": "Reload",
   "browser.cookieClear": "Clear",
   "browser.cookieClearConfirm": "Clear all JS-accessible cookies for this page?",

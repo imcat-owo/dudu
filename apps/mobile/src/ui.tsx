@@ -39,6 +39,9 @@ import type { SurfaceId, SurfaceTokens } from "./theme/types";
  * - sky/green/lavender/orange are pastel tints mixed from the card background
  *   toward the theme's accent/success/warning hues — they keep their old hue
  *   identity but follow the active theme and light/dark mode.
+ * - tapePink/tapeBlue/tapeMint/tapeYellow/tapeLavender are the washi-tape
+ *   pastels (journal-decor): same HCT-hue derivation, mixed toward the card
+ *   background so tape stays recognizable yet theme-aware.
  * - danger is an HCT-derived error red, clamped to 4.5:1 contrast on cards.
  * - Text colors come from tokens only, never pure black/white (derive() clamps).
  */
@@ -54,6 +57,11 @@ export type UIPalette = {
   green: string;
   lavender: string;
   orange: string;
+  tapePink: string;
+  tapeBlue: string;
+  tapeMint: string;
+  tapeYellow: string;
+  tapeLavender: string;
   danger: string;
   /** Foreground for content drawn on `blue` (accent surface fg). */
   onBlue: string;
@@ -103,6 +111,10 @@ export function paletteFromTokens(
     hexFromArgb(Hct.from(hue, chroma, mode === "dark" ? 78 : 45).toInt());
   const danger = clampFg(cardBg, vivid(12, 60));
   const pastel = (vividColor: string): string => mix(cardBg, vividColor, 0.16);
+  // Washi-tape pastels: fixed hue identity, mixed toward the card background
+  // so they read as the same decoration in every theme and mode.
+  const tape = (hue: number): string =>
+    mix(cardBg, hexFromArgb(Hct.from(hue, 38, mode === "dark" ? 74 : 84).toInt()), 0.5);
   return {
     canvas: tokens.canvas.bg,
     card: cardBg,
@@ -115,6 +127,11 @@ export function paletteFromTokens(
     lavender: pastel(tokens.aiBubble.accent),
     green: pastel(vivid(148, 52)),
     orange: pastel(vivid(72, 75)),
+    tapePink: tape(355),
+    tapeBlue: tape(232),
+    tapeMint: tape(158),
+    tapeYellow: tape(82),
+    tapeLavender: tape(292),
     danger,
     onBlue: tokens.accent.fg,
     inputBg: tokens.input.bg,

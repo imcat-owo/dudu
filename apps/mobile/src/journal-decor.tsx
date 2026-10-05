@@ -41,16 +41,8 @@ export function PaperGrain({ opacity = 0.5 }: { opacity?: number }) {
   );
 }
 
-/** Pastel washi tape colors. Keep muted — tape is decoration, not the star. */
-export const TAPE_COLORS = {
-  pink: "#f4a7b9",
-  blue: "#9cc5e8",
-  mint: "#a8d8b9",
-  yellow: "#f6d998",
-  lavender: "#c3b2e0",
-} as const;
-
-export type TapeColor = keyof typeof TAPE_COLORS;
+/** Washi-tape color names. The actual colors are theme tokens (colors.tape*). */
+export type TapeColor = "pink" | "blue" | "mint" | "yellow" | "lavender";
 
 /**
  * A strip of washi tape. Position it absolutely over a card corner, e.g.
@@ -67,12 +59,23 @@ export function WashiTape({
   style?: ViewStyle;
   width?: number;
 }) {
+  const colors = useColors();
+  // Tape hues come from the theme palette (tape*), so the decoration follows
+  // the active theme instead of pinning pastel hex. Keep muted — tape is
+  // decoration, not the star.
+  const tapeBg = {
+    pink: colors.tapePink,
+    blue: colors.tapeBlue,
+    mint: colors.tapeMint,
+    yellow: colors.tapeYellow,
+    lavender: colors.tapeLavender,
+  }[color];
   const tapeStyle = useMemo<ViewStyle>(
     () => ({
       position: "absolute",
       width,
       height: 26,
-      backgroundColor: TAPE_COLORS[color],
+      backgroundColor: tapeBg,
       opacity: 0.62,
       borderRadius: 2,
       transform: [{ rotate: `${rotate}deg` }],
@@ -85,7 +88,7 @@ export function WashiTape({
       // Soft shadow so it sits "on" the paper (tiered card shadow).
       ...shadows.card,
     }),
-    [color, rotate, width],
+    [tapeBg, rotate, width],
   );
   return <View pointerEvents="none" style={[tapeStyle, style]} aria-hidden />;
 }
