@@ -40,12 +40,8 @@ import {
   useStyles,
 } from "../ui";
 import { sandboxManager } from "./manager";
+import { relayCaddySnippet, relayInstallScript, relaySystemdUnit } from "./relay-install";
 import { newServerId, type SandboxServer } from "./servers";
-import {
-  relayCaddySnippet,
-  relayInstallScript,
-  relaySystemdUnit,
-} from "./relay-install";
 import type {
   SandboxBackend,
   SandboxBackendId,
@@ -525,7 +521,11 @@ function RelayInstallSteps({ host }: { host: string }) {
             return (
               <View key={b.key} style={{ gap: 6 }}>
                 <View
-                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
                 >
                   <TText style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
                     {b.label}

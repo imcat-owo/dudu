@@ -161,7 +161,9 @@ function sshSetupTool(manager: SandboxManager): LocalTool {
         const hint = msg.includes("sandbox.relay.unreachable")
           ? " The relay (传话员) isn't installed on that server yet — the install steps are shown in the sandbox settings screen, and the sandbox_relay_install_guide tool has the exact commands."
           : "";
-        throw new ToolError(`Server "${server.name}" is saved, but connecting failed: ${msg}.${hint}`);
+        throw new ToolError(
+          `Server "${server.name}" is saved, but connecting failed: ${msg}.${hint}`,
+        );
       }
       return `Server "${server.name}" (${host}:${port}) saved and connected.`;
     },

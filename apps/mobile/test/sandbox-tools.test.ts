@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AiAuthRequest } from "../src/ai-authorization.js";
 import { ToolError } from "../src/api-groups/local-tools.js";
+import type { SshDockerBackend } from "../src/sandbox/backend-ssh-docker.js";
 import { SandboxManager } from "../src/sandbox/manager.js";
 import {
   RELAY_DOWNLOAD_URL,
@@ -10,7 +11,6 @@ import {
   relayInstallScript,
 } from "../src/sandbox/relay-install.js";
 import { sandboxTools } from "../src/sandbox/sandbox-tools.js";
-import type { SshDockerBackend } from "../src/sandbox/backend-ssh-docker.js";
 
 function memorySecure() {
   const m = new Map<string, string>();
@@ -143,7 +143,8 @@ describe("sandbox_ssh_setup (D14)", () => {
       /Missing "host"/,
     );
     await assert.rejects(
-      () => tool.run({ host: "h", username: "root", authType: "key", secret: KEY, port: 99999 }, ctx),
+      () =>
+        tool.run({ host: "h", username: "root", authType: "key", secret: KEY, port: 99999 }, ctx),
       /Bad port/,
     );
     await assert.rejects(
@@ -200,7 +201,10 @@ describe("sandbox_ssh_setup (D14)", () => {
     const { ctx } = makeCtx(true);
     await assert.rejects(
       () =>
-        tool.run({ host: "cloud.example.com", username: "root", authType: "key", secret: KEY }, ctx),
+        tool.run(
+          { host: "cloud.example.com", username: "root", authType: "key", secret: KEY },
+          ctx,
+        ),
       /is saved, but connecting failed.*sandbox_relay_install_guide/,
     );
     // Saved despite the failed connect — nothing silently dropped.
