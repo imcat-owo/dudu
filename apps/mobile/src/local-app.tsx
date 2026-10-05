@@ -235,6 +235,22 @@ export function LocalApp() {
     void import("./voice/cache-cleanup").then((m) => m.cleanVoiceCache()).catch(() => {});
   }, []);
 
+  // Auto-snapshot scheduler (D26): the settings switch is real now. Check on
+  // cold start and on every foreground — one check per event, no timers,
+  // never blocks startup, never throws.
+  useEffect(() => {
+    const run = () => {
+      void import("./backup/snapshot-scheduler")
+        .then((m) => m.runScheduledSnapshot())
+        .catch(() => {});
+    };
+    run();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") run();
+    });
+    return () => sub.remove();
+  }, []);
+
   // B2: share-extension intake in local mode (P1 silent drop). Drain the App
   // Group queue on cold start — the same consumePendingShare the cloud shell
   // uses — and again on every foreground, mirroring App.tsx. Best-effort.
