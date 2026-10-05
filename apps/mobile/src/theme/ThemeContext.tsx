@@ -31,7 +31,13 @@ import { type FontSizeOption, setFontSizeOption } from "../app-settings";
 import { applyCssOverrides } from "./css";
 import { clampFg, deriveSurfaces, type ResolvedMode, resolveMode } from "./derive";
 import { defaultPreset } from "./presets";
-import { registerThemeApplyHandler, registerThemeReloadHandler } from "./tools";
+import {
+  registerThemeApplyHandler,
+  registerThemeCommitHandler,
+  registerThemeReloadHandler,
+  registerThemeRollbackHandler,
+  registerThemeStageHandler,
+} from "./tools";
 import { isThemeBundle, type SurfaceId, type SurfaceTokens, type ThemeBundle } from "./types";
 
 export const THEME_STORAGE_KEY = "dudu.theme.bundle.v1";
@@ -419,7 +425,7 @@ export function ThemeProvider({
     [apiToken, archiveCurrent, bumpTransition, maybeApplyBundleFontSize],
   );
 
-  // Wire the AI theme tools (set_theme, set_ai_avatar) to immediate apply.
+  // Wire the AI theme tools (set_theme, set_ai_avatar, ...) to immediate apply.
   // The tools pass a partial patch; we merge it into the current bundle.
   useEffect(() => {
     registerThemeApplyHandler(async (patch) => {
@@ -427,7 +433,20 @@ export function ThemeProvider({
       const merged = { ...current, ...patch } as ThemeBundle;
       return applyBundle(merged);
     });
-  }, [applyBundle]);
+    // Try-on wiring for the AI tools (preview_theme / confirm_theme /
+    // rollback_theme): stage in memory only, commit persists, rollback
+    // restores the last confirmed bundle.
+    registerThemeStageHandler(async (patch) => {
+      const base = stagedRef.current ?? confirmedRef.current;
+      const merged = { ...base, ...patch } as ThemeBundle;
+      return stageBundle(merged) ? "ok" : "invalid";
+    });
+    registerThemeCommitHandler(async () => {
+      const staged = stagedRef.current;
+      if (!staged) return "nothing-staged";
+      return applyBundle(staged);
+    });
+  }, [applyBundle, stageBundle]);
 
   /**
    * Re-read the theme bundle from local storage and apply it. Used after a
@@ -495,6 +514,14 @@ export function ThemeProvider({
       }
     }
   }, [apiToken]);
+
+  // Wire the AI rollback_theme tool (one-click rollback to last confirmed).
+  useEffect(() => {
+    registerThemeRollbackHandler(async () => {
+      await rollback();
+      return "ok";
+    });
+  }, [rollback]);
 
   const effective = staged ?? confirmed;
   const resolvedMode = resolveMode(effective.mode, systemScheme === "dark");

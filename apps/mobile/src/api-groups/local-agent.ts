@@ -82,7 +82,12 @@ import { skillStore } from "../skills/instance";
 import { createSkillTools } from "../skills/tools";
 import { ambientVideoStore } from "../sora-ambient-video-instance";
 import { getAiThemeMode } from "../theme/ai-mode";
-import { createThemeTools, createWallpaperTools, requestThemeReload } from "../theme/tools";
+import {
+  createCreativeThemeTools,
+  createThemeTools,
+  createWallpaperTools,
+  requestThemeReload,
+} from "../theme/tools";
 import { createVideoTools, type VideoBackend } from "../video/tools";
 import {
   describeImage,
@@ -991,10 +996,18 @@ export function createLocalAgent(opts: {
       // Storage failure => default "stable" (fail open for theming, which
       // is harmless and reversible).
       const aiThemeMode = await getAiThemeMode(AsyncStorage).catch(() => "stable" as const);
+      // Creative CSS tools are gated on the creative AI theme mode
+      // (ai-mode.ts); stable mode sees the 10 stable/try-on tools only.
       const themeTools =
         aiThemeMode === "off"
           ? []
-          : [...createWallpaperTools(AsyncStorage), ...createThemeTools(AsyncStorage)];
+          : aiThemeMode === "creative"
+            ? [
+                ...createWallpaperTools(AsyncStorage),
+                ...createThemeTools(AsyncStorage),
+                ...createCreativeThemeTools(AsyncStorage),
+              ]
+            : [...createWallpaperTools(AsyncStorage), ...createThemeTools(AsyncStorage)];
       let tools: LocalTool[] = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
