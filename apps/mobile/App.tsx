@@ -13,7 +13,7 @@ import {
   SquareCheck,
   X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -49,7 +49,7 @@ import { FontProvider } from "./src/font";
 import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
 import { LocalApp } from "./src/local-app";
-import { appLockStore } from "./src/platform/app-lock";
+import { AppLockGate } from "./src/platform/app-lock-gate";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
 import { tokenStore } from "./src/session-store";
 import { Splash } from "./src/splash";
@@ -112,19 +112,25 @@ export default function App() {
       </SafeAreaProvider>
     );
   }
+  // B1: the app-lock gate wraps BOTH modes — local is the default and must
+  // not bypass the lock. Single source of truth lives in AppLockGate.
   if (mode === "local") {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
         <ErrorBoundary label="app">
-          <LocalApp />
+          <AppLockGate>
+            <LocalApp />
+          </AppLockGate>
         </ErrorBoundary>
       </SafeAreaProvider>
     );
   }
   return (
     <ErrorBoundary label="app">
-      <CloudApp />
+      <AppLockGate>
+        <CloudApp />
+      </AppLockGate>
     </ErrorBoundary>
   );
 }
@@ -350,13 +356,6 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
     })();
     return () => unsub();
   }, []);
-  // Batch 6 (H8): app lock — gate the UI when locked.
-  // The store is loaded once on mount; background/foreground transitions
-  // are driven from the AppState listener below.
-  const lockState = useSyncExternalStore(appLockStore.subscribe, appLockStore.getState);
-  useEffect(() => {
-    void appLockStore.load();
-  }, []);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 5500);
@@ -422,14 +421,9 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
   useEffect(() => {
     const listener = AppState.addEventListener("change", (state) => {
       if (state === "active") {
-        // Batch 6 (H8): re-evaluate the lock on foreground (emits on change).
-        appLockStore.onForeground();
         void refresh().catch((e) => setError(String(e)));
         void maybeSnapshot();
         void maybeShareIntake();
-      } else if (state === "background") {
-        // Batch 6 (H8): lock immediately if configured for lock-on-exit.
-        appLockStore.onBackground();
       }
     });
     return () => listener.remove();
@@ -461,34 +455,6 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
           </>
         )}
       </SafeAreaView>
-    );
-  // Batch 6 (H8): app lock gate — when locked, show the lock screen
-  // instead of the workspace. Biometrics never leave the device.
-  if (lockState.enabled && lockState.locked)
-    return (
-      <SafeAreaProvider>
-        <SafeAreaView
-          style={{
-            flex: 1,
-            backgroundColor: colors.canvas,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-            gap: 16,
-          }}
-        >
-          <Mascot size={56} />
-          <Text style={{ fontSize: 22, color: colors.text, fontWeight: "500" }}>
-            {t("platform.applock.locked.title")}
-          </Text>
-          <Text style={[s.muted, { textAlign: "center" }]}>
-            {t("platform.applock.locked.hint")}
-          </Text>
-          <Button primary onPress={() => void appLockStore.authenticate()}>
-            {t("platform.applock.unlock")}
-          </Button>
-        </SafeAreaView>
-      </SafeAreaProvider>
     );
   return (
     <WorkspaceContext.Provider
