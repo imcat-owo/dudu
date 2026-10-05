@@ -43,6 +43,7 @@ import {
   View,
 } from "react-native";
 import type { DrawerActionStatus, DrawerToolAction } from "./activity-drawer-model";
+import { ThinkingBody } from "./extras/message-ui";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { DUR, SPRING } from "./motion";
@@ -616,17 +617,8 @@ export function ThinkingDrawer({
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
               >
-                <TText
-                  selectable
-                  style={{
-                    fontSize: 13,
-                    lineHeight: 20,
-                    color: tokens.text.fg,
-                    opacity: 0.85,
-                  }}
-                >
-                  {thinking}
-                </TText>
+                {/* Batch 7 I14: reasoning markdown is optional. */}
+                <ThinkingBody text={thinking} />
               </ScrollView>
             </>
           )}

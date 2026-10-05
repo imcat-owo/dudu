@@ -25,6 +25,7 @@ import {
   MonitorSmartphone,
   Moon,
   RotateCcw,
+  Search,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -38,29 +39,30 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Image, PanResponder, Pressable, ScrollView, TextInput, View } from "react-native";
 import { type FontSizeOption, useFontSizeSetting } from "./app-settings";
 import { soraSource } from "./avatar-assets";
-import { BackupSection } from "./backup-ui";
 import { ImportSection } from "./backup/import-ui";
 import { RemoteBackupSection } from "./backup/remote-ui";
 import { SnapshotSection } from "./backup/snapshot-ui";
 import { StorageSection } from "./backup/storage-ui";
+import { BackupSection } from "./backup-ui";
 import { ColorWheel } from "./color-wheel";
 import { DevicePermissionsSheet } from "./device-permissions-ui";
+import { ChatComfortSection } from "./extras/prefs-ui";
+import { matchSettingsQuery } from "./extras/settings-search";
 import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
-import { ProfileSection } from "./memory/profile-ui";
-import { PersonaSection } from "./persona/persona-ui";
-import { AppLockSection } from "./platform/app-lock-ui";
-import { ScheduledTasksSection } from "./platform/scheduled-tasks-ui";
-import { GoogleFontsSection } from "./theme/google-fonts-ui";
-import { WebAppsSection } from "./theme/web-apps-ui";
 import { KnowledgeSheet } from "./knowledge/knowledge-ui";
 import { MASCOT_COUNT } from "./mascot";
 import { mascotSource, mascotUri } from "./mascot-assets";
+import { ProfileSection } from "./memory/profile-ui";
 import { NativeAppsSheet } from "./native-apps-ui";
+import { PersonaSection } from "./persona/persona-ui";
+import { AppLockSection } from "./platform/app-lock-ui";
+import { ScheduledTasksSection } from "./platform/scheduled-tasks-ui";
 import { SandboxSheet } from "./sandbox/sandbox-ui";
 import { SkillsSheet } from "./skills-ui";
 import { type AiThemeMode, getAiThemeMode, setAiThemeMode } from "./theme/ai-mode";
 import { deriveSurfaces, makeThemeBundle, normalizeHex } from "./theme/derive";
+import { GoogleFontsSection } from "./theme/google-fonts-ui";
 import { PRESETS } from "./theme/presets";
 import { radii } from "./theme/radii";
 import { useTheme } from "./theme/ThemeContext";
@@ -71,6 +73,7 @@ import {
   type ThemeBundle,
   type ThemeMode,
 } from "./theme/types";
+import { WebAppsSection } from "./theme/web-apps-ui";
 import { ShareSection } from "./theme-share-ui";
 import { Button, Card, Field, SectionHeading, useColors } from "./ui";
 
@@ -78,6 +81,106 @@ type Tokens = Record<SurfaceId, SurfaceTokens>;
 
 const CUSTOMS_KEY = "dudu.theme.customPresets.v1";
 const APPEARANCE_DIR = "dudu/appearance";
+
+/**
+ * Batch 7 I2 — settings search index. Each settings section registers its
+ * title key + universal technical keyword aliases (terms like "TTS"/"MCP"
+ * need no translation). The search field filters sections by these.
+ */
+const SETTINGS_SECTIONS: Array<{ id: string; titleKey: StringKey; keywords: string[] }> = [
+  {
+    id: "appearance",
+    titleKey: "appearance.title",
+    keywords: [
+      "theme",
+      "wallpaper",
+      "font",
+      "avatar",
+      "dark",
+      "light",
+      "color",
+      "壁纸",
+      "字体",
+      "头像",
+      "配色",
+    ],
+  },
+  {
+    id: "themeShare",
+    titleKey: "appearance.shareLabel",
+    keywords: ["theme", "share", "QR", "JSON", "import", "export", "导入", "导出"],
+  },
+  { id: "aiTheme", titleKey: "appearance.aiModeLabel", keywords: ["AI", "theme", "换肤"] },
+  { id: "history", titleKey: "appearance.historyLabel", keywords: ["history", "记录"] },
+  {
+    id: "perm",
+    titleKey: "perm.sheetTitle",
+    keywords: [
+      "permission",
+      "bluetooth",
+      "location",
+      "notification",
+      "clipboard",
+      "权限",
+      "蓝牙",
+      "定位",
+      "通知",
+    ],
+  },
+  {
+    id: "napp",
+    titleKey: "napp.title",
+    keywords: ["native", "music", "health", "calendar", "reminder", "siri", "日历", "音乐", "健康"],
+  },
+  { id: "skill", titleKey: "skill.title", keywords: ["skill", "MCP", "技能"] },
+  { id: "kb", titleKey: "kb.title", keywords: ["knowledge", "vector", "知识库", "向量"] },
+  {
+    id: "sandbox",
+    titleKey: "sandbox.title",
+    keywords: ["sandbox", "terminal", "docker", "iSH", "沙箱", "终端"],
+  },
+  {
+    id: "backup",
+    titleKey: "backup.title",
+    keywords: ["backup", "restore", "snapshot", "备份", "恢复", "快照", "iCloud"],
+  },
+  { id: "persona", titleKey: "persona.title", keywords: ["persona", "人设", "worldbook"] },
+  { id: "profile", titleKey: "profile.title", keywords: ["profile", "memory", "记忆"] },
+  { id: "fonts", titleKey: "fonts.download", keywords: ["font", "google", "字体"] },
+  { id: "webapps", titleKey: "webapps.title", keywords: ["web", "app", "网页"] },
+  {
+    id: "tasks",
+    titleKey: "platform.tasks.title",
+    keywords: ["task", "schedule", "reminder", "定时", "提醒"],
+  },
+  {
+    id: "applock",
+    titleKey: "platform.applock.title",
+    keywords: ["lock", "faceid", "biometric", "锁"],
+  },
+  {
+    id: "comfort",
+    titleKey: "extras.sectionTitle",
+    keywords: [
+      "chat",
+      "haptic",
+      "scroll",
+      "markdown",
+      "translate",
+      "stats",
+      "scan",
+      "audit",
+      "token",
+      "聊天",
+      "震动",
+      "滚动",
+      "翻译",
+      "统计",
+      "扫码",
+      "审计",
+    ],
+  },
+];
 
 /** Picker palette data — the colors the user chooses from. Not UI chrome. */
 const SWATCHES = [
@@ -321,6 +424,18 @@ export function AppearanceScreen() {
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
   const [sandboxOpen, setSandboxOpen] = useState(false);
+  // Batch 7 I2: settings search query.
+  const [query, setQuery] = useState("");
+  const visibleSectionIds = useMemo(() => {
+    const q = query.trim();
+    if (!q) return null; // null = show everything
+    return new Set(
+      SETTINGS_SECTIONS.filter((s) => matchSettingsQuery(q, t(s.titleKey), s.keywords)).map(
+        (s) => s.id,
+      ),
+    );
+  }, [query]);
+  const showSection = (id: string) => visibleSectionIds === null || visibleSectionIds.has(id);
 
   // Load user-saved custom presets (after the built-ins).
   useEffect(() => {
@@ -537,288 +652,115 @@ export function AppearanceScreen() {
     <View style={{ gap: 26 }}>
       {notice ? <TText style={{ color: fg, fontSize: 13 }}>{notice}</TText> : null}
 
-      {staging ? (
-        <View
-          style={{
-            backgroundColor: tokens.accent.bg,
-            borderRadius: radii.md,
-            padding: 14,
-            gap: 10,
-          }}
+      {/* Batch 7 I2: settings search. */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          backgroundColor: colors.card,
+          borderRadius: radii.lg,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+        }}
+      >
+        <Search size={16} color={colors.muted} />
+        <TextInput
+          accessibilityLabel={t("extras.search.placeholder")}
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t("extras.search.placeholder")}
+          placeholderTextColor={colors.muted}
+          style={{ flex: 1, color: colors.text, fontSize: 15 }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+      </View>
+      {visibleSectionIds !== null && visibleSectionIds.size === 0 ? (
+        <TText
+          style={{ color: colors.muted, fontSize: 14, textAlign: "center", paddingVertical: 24 }}
         >
-          <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "600" }}>
-            {t("appearance.tryOn")}
-          </TText>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Button
-              small
-              primary
-              onPress={() => {
-                void applyBundle(bundle).then((result) => {
-                  setNotice(
-                    result === "ok"
-                      ? t("appearance.applied")
-                      : result === "local-only"
-                        ? t("appearance.appliedLocal")
-                        : t("appearance.saveFailed"),
-                  );
-                });
-              }}
-            >
-              {t("appearance.apply")}
-            </Button>
-            <Button
-              small
-              icon={X}
-              onPress={() => {
-                void discardStage().then(() => {
-                  setNotice(t("appearance.discarded"));
-                });
-              }}
-            >
-              {t("appearance.discard")}
-            </Button>
-          </View>
-        </View>
+          {t("extras.search.noResult")}
+        </TText>
       ) : null}
 
-      <View>
-        <SectionHeading title={t("appearance.modeLabel")} />
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {(
-            [
-              { mode: "system", icon: MonitorSmartphone, label: t("appearance.mode.system") },
-              { mode: "light", icon: Sun, label: t("appearance.mode.light") },
-              { mode: "dark", icon: Moon, label: t("appearance.mode.dark") },
-            ] as const
-          ).map((item) => {
-            const selected = bundle.mode === item.mode;
-            const Icon = item.icon;
-            return (
-              <Pressable
-                key={item.mode}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                accessibilityLabel={item.label}
-                onPress={() => setMode(item.mode)}
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  gap: 6,
-                  paddingVertical: 12,
-                  borderRadius: radii.md,
-                  backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
-                }}
-              >
-                <Icon size={20} color={selected ? tokens.accent.fg : fg} />
-                <TText
-                  style={{
-                    color: selected ? tokens.accent.fg : fg,
-                    fontSize: 12,
-                    fontWeight: selected ? "600" : "400",
+      {showSection("appearance") && (
+        <>
+          {" "}
+          {staging ? (
+            <View
+              style={{
+                backgroundColor: tokens.accent.bg,
+                borderRadius: radii.md,
+                padding: 14,
+                gap: 10,
+              }}
+            >
+              <TText style={{ color: tokens.accent.fg, fontSize: 14, fontWeight: "600" }}>
+                {t("appearance.tryOn")}
+              </TText>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Button
+                  small
+                  primary
+                  onPress={() => {
+                    void applyBundle(bundle).then((result) => {
+                      setNotice(
+                        result === "ok"
+                          ? t("appearance.applied")
+                          : result === "local-only"
+                            ? t("appearance.appliedLocal")
+                            : t("appearance.saveFailed"),
+                      );
+                    });
                   }}
                 >
-                  {item.label}
-                </TText>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View>
-        <SectionHeading title={t("appearance.fontSizeLabel")} />
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {(
-            [
-              { option: "system", label: t("appearance.fontSize.system"), preview: 11 },
-              { option: "small", label: t("appearance.fontSize.small"), preview: 10 },
-              { option: "standard", label: t("appearance.fontSize.standard"), preview: 13 },
-              { option: "large", label: t("appearance.fontSize.large"), preview: 16 },
-            ] as const
-          ).map((item) => {
-            const selected = fontOption === item.option;
-            return (
-              <Pressable
-                key={item.option}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                accessibilityLabel={item.label}
-                onPress={() => void setFontOption(item.option as FontSizeOption)}
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  gap: 4,
-                  paddingVertical: 10,
-                  borderRadius: radii.md,
-                  backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
-                }}
-              >
-                <TText
-                  style={{
-                    color: selected ? tokens.accent.fg : fg,
-                    fontSize: item.preview,
-                    fontWeight: "700",
+                  {t("appearance.apply")}
+                </Button>
+                <Button
+                  small
+                  icon={X}
+                  onPress={() => {
+                    void discardStage().then(() => {
+                      setNotice(t("appearance.discarded"));
+                    });
                   }}
                 >
-                  A
-                </TText>
-                <TText
-                  style={{
-                    color: selected ? tokens.accent.fg : fg,
-                    fontSize: 11,
-                    fontWeight: selected ? "600" : "400",
-                  }}
-                >
-                  {item.label}
-                </TText>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View>
-        <SectionHeading title={t("appearance.fontLabel")} />
-        <Card style={{ gap: 10 }}>
-          <TText style={{ color: fg, fontSize: 13 }}>
-            {t("appearance.fontCurrent")}：{fontName ?? t("appearance.fontSystem")}
-          </TText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            <Button small busy={fontBusy} onPress={() => void pickFontFile()}>
-              {t("appearance.fontUpload")}
-            </Button>
-            {fontName ? (
-              <Button small danger onPress={() => void restoreSystemFont()}>
-                {t("appearance.fontRestore")}
-              </Button>
-            ) : null}
-          </View>
-          <TText style={{ color: tokens.text.accent, fontSize: 12 }}>
-            {t("appearance.fontNote")}
-          </TText>
-        </Card>
-      </View>
-
-      <View style={{ gap: 8 }}>
-        <SectionHeading title={t("appearance.presetsLabel")} />{" "}
-        <TText style={{ color: colors.muted, fontSize: 12 }}>{t("appearance.presetsHint")}</TText>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-          {[...PRESETS, ...customs].map((preset) => (
-            <ThemeGalleryCard
-              key={preset.id}
-              preset={preset}
-              selected={bundle.id === preset.id}
-              accent={tokens.accent.accent}
-              muted={colors.muted}
-              onPress={() => tryPreset(preset)}
-            />
-          ))}
-        </View>
-      </View>
-
-      <View>
-        <SectionHeading title={t("appearance.customLabel")} />
-        <Card style={{ gap: 14 }}>
-          {(
-            [
-              { key: "primary", label: t("appearance.primary") },
-              { key: "secondary", label: t("appearance.secondary") },
-              { key: "accent", label: t("appearance.accent") },
-            ] as const
-          ).map((row) => (
-            <View key={row.key} style={{ gap: 8 }}>
-              <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>{row.label}</TText>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {SWATCHES.map((hex) => {
-                  const selected = validHex(draft[row.key]) === hex;
-                  return (
-                    <Pressable
-                      key={hex}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: selected }}
-                      accessibilityLabel={`${row.label} ${hex}`}
-                      onPress={() => commitColor(row.key, hex, true)}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: radii.lg,
-                        backgroundColor: hex,
-                        borderWidth: selected ? 3 : 1,
-                        borderColor: selected
-                          ? tokens.accent.accent
-                          : (tokens.card.border ?? tokens.card.bg),
-                      }}
-                    />
-                  );
-                })}
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <TextInput
-                  value={draft[row.key]}
-                  onChangeText={(text) => commitColor(row.key, text)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder={t("appearance.hexHint")}
-                  placeholderTextColor={tokens.text.accent}
-                  accessibilityLabel={t("a11y.hexInput", { label: row.label })}
-                  style={{
-                    flex: 1,
-                    color: fg,
-                    fontSize: 14,
-                    paddingVertical: 9,
-                    paddingHorizontal: 12,
-                    borderRadius: radii.sm,
-                    borderWidth: 1,
-                    borderColor: tokens.input.border ?? tokens.card.border ?? tokens.card.bg,
-                    backgroundColor: tokens.input.bg,
-                  }}
-                />
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: radii.lg,
-                    backgroundColor: validHex(draft[row.key]) ?? tokens.card.bg,
-                    borderWidth: 1,
-                    borderColor: tokens.card.border ?? tokens.card.bg,
-                  }}
-                />
+                  {t("appearance.discard")}
+                </Button>
               </View>
             </View>
-          ))}
-
-          <View style={{ gap: 8 }}>
-            <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
-              {t("appearance.wheelHint")}
-            </TText>
+          ) : null}
+          <View>
+            <SectionHeading title={t("appearance.modeLabel")} />
             <View style={{ flexDirection: "row", gap: 8 }}>
               {(
                 [
-                  { key: "primary", label: t("appearance.primary") },
-                  { key: "secondary", label: t("appearance.secondary") },
-                  { key: "accent", label: t("appearance.accent") },
+                  { mode: "system", icon: MonitorSmartphone, label: t("appearance.mode.system") },
+                  { mode: "light", icon: Sun, label: t("appearance.mode.light") },
+                  { mode: "dark", icon: Moon, label: t("appearance.mode.dark") },
                 ] as const
-              ).map((slot) => {
-                const selected = wheelSlot === slot.key;
+              ).map((item) => {
+                const selected = bundle.mode === item.mode;
+                const Icon = item.icon;
                 return (
                   <Pressable
-                    key={slot.key}
+                    key={item.mode}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
-                    accessibilityLabel={slot.label}
-                    onPress={() => setWheelSlot(slot.key)}
+                    accessibilityLabel={item.label}
+                    onPress={() => setMode(item.mode)}
                     style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 14,
-                      borderRadius: radii.lg,
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: radii.md,
                       backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
-                      borderWidth: 1,
-                      borderColor: selected
-                        ? tokens.accent.accent
-                        : (tokens.card.border ?? tokens.card.bg),
                     }}
                   >
+                    <Icon size={20} color={selected ? tokens.accent.fg : fg} />
                     <TText
                       style={{
                         color: selected ? tokens.accent.fg : fg,
@@ -826,248 +768,534 @@ export function AppearanceScreen() {
                         fontWeight: selected ? "600" : "400",
                       }}
                     >
-                      {slot.label}
+                      {item.label}
                     </TText>
                   </Pressable>
                 );
               })}
             </View>
-            <ColorWheel
-              color={validHex(draft[wheelSlot]) ?? "#808080"}
-              onChange={(hex) => commitColor(wheelSlot, hex)}
-            />
           </View>
-
-          <View style={{ gap: 8 }}>
-            <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
-              {t("appearance.preview")}
-            </TText>
-            <View style={{ gap: 8 }}>
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  maxWidth: "85%",
-                  backgroundColor: tokens.aiBubble.bg,
-                  borderRadius: tokens.aiBubble.radius ?? 16,
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                }}
-              >
-                <TText style={{ color: tokens.aiBubble.fg, fontSize: 14 }}>
-                  {t("appearance.sampleAi")}
-                </TText>
-              </View>
-              <View
-                style={{
-                  alignSelf: "flex-end",
-                  maxWidth: "85%",
-                  backgroundColor: tokens.userBubble.bg,
-                  borderRadius: tokens.userBubble.radius ?? 16,
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                }}
-              >
-                <TText style={{ color: tokens.userBubble.fg, fontSize: 14 }}>
-                  {t("appearance.sampleUser")}
-                </TText>
-              </View>
+          <View>
+            <SectionHeading title={t("appearance.fontSizeLabel")} />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(
+                [
+                  { option: "system", label: t("appearance.fontSize.system"), preview: 11 },
+                  { option: "small", label: t("appearance.fontSize.small"), preview: 10 },
+                  { option: "standard", label: t("appearance.fontSize.standard"), preview: 13 },
+                  { option: "large", label: t("appearance.fontSize.large"), preview: 16 },
+                ] as const
+              ).map((item) => {
+                const selected = fontOption === item.option;
+                return (
+                  <Pressable
+                    key={item.option}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={item.label}
+                    onPress={() => void setFontOption(item.option as FontSizeOption)}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 4,
+                      paddingVertical: 10,
+                      borderRadius: radii.md,
+                      backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
+                    }}
+                  >
+                    <TText
+                      style={{
+                        color: selected ? tokens.accent.fg : fg,
+                        fontSize: item.preview,
+                        fontWeight: "700",
+                      }}
+                    >
+                      A
+                    </TText>
+                    <TText
+                      style={{
+                        color: selected ? tokens.accent.fg : fg,
+                        fontSize: 11,
+                        fontWeight: selected ? "600" : "400",
+                      }}
+                    >
+                      {item.label}
+                    </TText>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
-
-          <Field
-            label={t("appearance.nameLabel")}
-            value={customName}
-            onChangeText={setCustomName}
-            placeholder={t("appearance.namePlaceholder")}
-          />
-          <Button busy={busy} primary onPress={() => void saveCustom()}>
-            {t("appearance.save")}
-          </Button>
-        </Card>
-      </View>
-
-      <View>
-        <SectionHeading title={t("appearance.wallpaperLabel")} />
-        <Card style={{ gap: 14 }}>
-          {bundle.wallpaper ? (
-            <View style={{ borderRadius: radii.md, overflow: "hidden" }}>
-              <Image
-                source={{ uri: bundle.wallpaper.uri }}
-                style={{ width: "100%", height: 140 }}
-                resizeMode="cover"
-              />
-              <View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: colors.scrim,
-                  opacity: bundle.wallpaper.dim,
-                }}
-              />
-            </View>
-          ) : null}
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Button small icon={ImagePlus} onPress={() => void pickWallpaper()}>
-              {t("appearance.pickWallpaper")}
-            </Button>
-            {bundle.wallpaper ? (
-              <Button small danger icon={Trash2} onPress={removeWallpaper}>
-                {t("appearance.removeWallpaper")}
-              </Button>
-            ) : null}
-          </View>
-          {bundle.wallpaper ? (
-            <View style={{ gap: 6 }}>
-              <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
-                {t("appearance.dimLabel")} · {Math.round(bundle.wallpaper.dim * 100)}%
+          <View>
+            <SectionHeading title={t("appearance.fontLabel")} />
+            <Card style={{ gap: 10 }}>
+              <TText style={{ color: fg, fontSize: 13 }}>
+                {t("appearance.fontCurrent")}：{fontName ?? t("appearance.fontSystem")}
               </TText>
-              <DimSlider value={bundle.wallpaper.dim} onChange={setDim} tokens={tokens} />
-            </View>
-          ) : null}
-        </Card>
-      </View>
-
-      <View>
-        <SectionHeading title={t("appearance.avatarLabel")} />
-        <Card style={{ gap: 16 }}>
-          <AvatarRow
-            label={t("appearance.myAvatar")}
-            uri={bundle.avatar?.user}
-            tokens={tokens}
-            fallback={
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: radii.xl,
-                  backgroundColor: tokens.card.bg,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1,
-                  borderColor: tokens.card.border ?? tokens.card.bg,
-                }}
-              >
-                <User size={22} color={fg} />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                <Button small busy={fontBusy} onPress={() => void pickFontFile()}>
+                  {t("appearance.fontUpload")}
+                </Button>
+                {fontName ? (
+                  <Button small danger onPress={() => void restoreSystemFont()}>
+                    {t("appearance.fontRestore")}
+                  </Button>
+                ) : null}
               </View>
-            }
-            onPick={() => void pickAvatar("user")}
-            onRestore={() => restoreAvatar("user")}
-            canRestore={!!bundle.avatar?.user}
-          />
-          <StickerPicker
-            selectedUri={bundle.avatar?.user}
-            tokens={tokens}
-            onSelect={(index) => pickSticker("user", index)}
-          />
-          <AvatarRow
-            label={t("appearance.aiAvatar")}
-            uri={bundle.avatar?.assistant}
-            tokens={tokens}
-            fallback={
-              <Image
-                source={soraSource()}
-                resizeMode="cover"
-                style={{ width: 48, height: 48, borderRadius: radii.xl }}
+              <TText style={{ color: tokens.text.accent, fontSize: 12 }}>
+                {t("appearance.fontNote")}
+              </TText>
+            </Card>
+          </View>
+          <View style={{ gap: 8 }}>
+            <SectionHeading title={t("appearance.presetsLabel")} />{" "}
+            <TText style={{ color: colors.muted, fontSize: 12 }}>
+              {t("appearance.presetsHint")}
+            </TText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              {[...PRESETS, ...customs].map((preset) => (
+                <ThemeGalleryCard
+                  key={preset.id}
+                  preset={preset}
+                  selected={bundle.id === preset.id}
+                  accent={tokens.accent.accent}
+                  muted={colors.muted}
+                  onPress={() => tryPreset(preset)}
+                />
+              ))}
+            </View>
+          </View>
+          <View>
+            <SectionHeading title={t("appearance.customLabel")} />
+            <Card style={{ gap: 14 }}>
+              {(
+                [
+                  { key: "primary", label: t("appearance.primary") },
+                  { key: "secondary", label: t("appearance.secondary") },
+                  { key: "accent", label: t("appearance.accent") },
+                ] as const
+              ).map((row) => (
+                <View key={row.key} style={{ gap: 8 }}>
+                  <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>{row.label}</TText>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {SWATCHES.map((hex) => {
+                      const selected = validHex(draft[row.key]) === hex;
+                      return (
+                        <Pressable
+                          key={hex}
+                          accessibilityRole="radio"
+                          accessibilityState={{ checked: selected }}
+                          accessibilityLabel={`${row.label} ${hex}`}
+                          onPress={() => commitColor(row.key, hex, true)}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: radii.lg,
+                            backgroundColor: hex,
+                            borderWidth: selected ? 3 : 1,
+                            borderColor: selected
+                              ? tokens.accent.accent
+                              : (tokens.card.border ?? tokens.card.bg),
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <TextInput
+                      value={draft[row.key]}
+                      onChangeText={(text) => commitColor(row.key, text)}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={t("appearance.hexHint")}
+                      placeholderTextColor={tokens.text.accent}
+                      accessibilityLabel={t("a11y.hexInput", { label: row.label })}
+                      style={{
+                        flex: 1,
+                        color: fg,
+                        fontSize: 14,
+                        paddingVertical: 9,
+                        paddingHorizontal: 12,
+                        borderRadius: radii.sm,
+                        borderWidth: 1,
+                        borderColor: tokens.input.border ?? tokens.card.border ?? tokens.card.bg,
+                        backgroundColor: tokens.input.bg,
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radii.lg,
+                        backgroundColor: validHex(draft[row.key]) ?? tokens.card.bg,
+                        borderWidth: 1,
+                        borderColor: tokens.card.border ?? tokens.card.bg,
+                      }}
+                    />
+                  </View>
+                </View>
+              ))}
+
+              <View style={{ gap: 8 }}>
+                <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+                  {t("appearance.wheelHint")}
+                </TText>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {(
+                    [
+                      { key: "primary", label: t("appearance.primary") },
+                      { key: "secondary", label: t("appearance.secondary") },
+                      { key: "accent", label: t("appearance.accent") },
+                    ] as const
+                  ).map((slot) => {
+                    const selected = wheelSlot === slot.key;
+                    return (
+                      <Pressable
+                        key={slot.key}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected }}
+                        accessibilityLabel={slot.label}
+                        onPress={() => setWheelSlot(slot.key)}
+                        style={{
+                          paddingVertical: 8,
+                          paddingHorizontal: 14,
+                          borderRadius: radii.lg,
+                          backgroundColor: selected ? tokens.accent.bg : tokens.card.bg,
+                          borderWidth: 1,
+                          borderColor: selected
+                            ? tokens.accent.accent
+                            : (tokens.card.border ?? tokens.card.bg),
+                        }}
+                      >
+                        <TText
+                          style={{
+                            color: selected ? tokens.accent.fg : fg,
+                            fontSize: 12,
+                            fontWeight: selected ? "600" : "400",
+                          }}
+                        >
+                          {slot.label}
+                        </TText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <ColorWheel
+                  color={validHex(draft[wheelSlot]) ?? "#808080"}
+                  onChange={(hex) => commitColor(wheelSlot, hex)}
+                />
+              </View>
+
+              <View style={{ gap: 8 }}>
+                <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+                  {t("appearance.preview")}
+                </TText>
+                <View style={{ gap: 8 }}>
+                  <View
+                    style={{
+                      alignSelf: "flex-start",
+                      maxWidth: "85%",
+                      backgroundColor: tokens.aiBubble.bg,
+                      borderRadius: tokens.aiBubble.radius ?? 16,
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                    }}
+                  >
+                    <TText style={{ color: tokens.aiBubble.fg, fontSize: 14 }}>
+                      {t("appearance.sampleAi")}
+                    </TText>
+                  </View>
+                  <View
+                    style={{
+                      alignSelf: "flex-end",
+                      maxWidth: "85%",
+                      backgroundColor: tokens.userBubble.bg,
+                      borderRadius: tokens.userBubble.radius ?? 16,
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                    }}
+                  >
+                    <TText style={{ color: tokens.userBubble.fg, fontSize: 14 }}>
+                      {t("appearance.sampleUser")}
+                    </TText>
+                  </View>
+                </View>
+              </View>
+
+              <Field
+                label={t("appearance.nameLabel")}
+                value={customName}
+                onChangeText={setCustomName}
+                placeholder={t("appearance.namePlaceholder")}
               />
-            }
-            onPick={() => void pickAvatar("assistant")}
-            onRestore={() => restoreAvatar("assistant")}
-            canRestore={!!bundle.avatar?.assistant}
-          />
-          <StickerPicker
-            selectedUri={bundle.avatar?.assistant}
-            tokens={tokens}
-            onSelect={(index) => pickSticker("assistant", index)}
-          />
-        </Card>
-      </View>
+              <Button busy={busy} primary onPress={() => void saveCustom()}>
+                {t("appearance.save")}
+              </Button>
+            </Card>
+          </View>
+          <View>
+            <SectionHeading title={t("appearance.wallpaperLabel")} />
+            <Card style={{ gap: 14 }}>
+              {bundle.wallpaper ? (
+                <View style={{ borderRadius: radii.md, overflow: "hidden" }}>
+                  <Image
+                    source={{ uri: bundle.wallpaper.uri }}
+                    style={{ width: "100%", height: 140 }}
+                    resizeMode="cover"
+                  />
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: colors.scrim,
+                      opacity: bundle.wallpaper.dim,
+                    }}
+                  />
+                </View>
+              ) : null}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Button small icon={ImagePlus} onPress={() => void pickWallpaper()}>
+                  {t("appearance.pickWallpaper")}
+                </Button>
+                {bundle.wallpaper ? (
+                  <Button small danger icon={Trash2} onPress={removeWallpaper}>
+                    {t("appearance.removeWallpaper")}
+                  </Button>
+                ) : null}
+              </View>
+              {bundle.wallpaper ? (
+                <View style={{ gap: 6 }}>
+                  <TText style={{ color: fg, fontSize: 13, fontWeight: "600" }}>
+                    {t("appearance.dimLabel")} · {Math.round(bundle.wallpaper.dim * 100)}%
+                  </TText>
+                  <DimSlider value={bundle.wallpaper.dim} onChange={setDim} tokens={tokens} />
+                </View>
+              ) : null}
+            </Card>
+          </View>
+          <View>
+            <SectionHeading title={t("appearance.avatarLabel")} />
+            <Card style={{ gap: 16 }}>
+              <AvatarRow
+                label={t("appearance.myAvatar")}
+                uri={bundle.avatar?.user}
+                tokens={tokens}
+                fallback={
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: radii.xl,
+                      backgroundColor: tokens.card.bg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1,
+                      borderColor: tokens.card.border ?? tokens.card.bg,
+                    }}
+                  >
+                    <User size={22} color={fg} />
+                  </View>
+                }
+                onPick={() => void pickAvatar("user")}
+                onRestore={() => restoreAvatar("user")}
+                canRestore={!!bundle.avatar?.user}
+              />
+              <StickerPicker
+                selectedUri={bundle.avatar?.user}
+                tokens={tokens}
+                onSelect={(index) => pickSticker("user", index)}
+              />
+              <AvatarRow
+                label={t("appearance.aiAvatar")}
+                uri={bundle.avatar?.assistant}
+                tokens={tokens}
+                fallback={
+                  <Image
+                    source={soraSource()}
+                    resizeMode="cover"
+                    style={{ width: 48, height: 48, borderRadius: radii.xl }}
+                  />
+                }
+                onPick={() => void pickAvatar("assistant")}
+                onRestore={() => restoreAvatar("assistant")}
+                canRestore={!!bundle.avatar?.assistant}
+              />
+              <StickerPicker
+                selectedUri={bundle.avatar?.assistant}
+                tokens={tokens}
+                onSelect={(index) => pickSticker("assistant", index)}
+              />
+            </Card>
+          </View>
+          <View>
+            <SectionHeading title={t("appearance.safetyTitle")} />
+            <Card style={{ gap: 12 }}>
+              <TText style={{ color: fg, fontSize: 13 }}>{t("appearance.rollbackNote")}</TText>
+              <Button small icon={RotateCcw} onPress={() => void rollback()}>
+                {t("appearance.rollback")}
+              </Button>
+            </Card>
+          </View>
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("appearance.safetyTitle")} />
-        <Card style={{ gap: 12 }}>
-          <TText style={{ color: fg, fontSize: 13 }}>{t("appearance.rollbackNote")}</TText>
-          <Button small icon={RotateCcw} onPress={() => void rollback()}>
-            {t("appearance.rollback")}
-          </Button>
-        </Card>
-      </View>
+      {showSection("themeShare") && (
+        <>
+          {" "}
+          <ShareSection />
+        </>
+      )}
 
-      <ShareSection />
+      {showSection("aiTheme") && (
+        <>
+          {" "}
+          <AiThemeModeSection />
+        </>
+      )}
 
-      <AiThemeModeSection />
+      {showSection("history") && (
+        <>
+          {" "}
+          <HistorySection />
+        </>
+      )}
 
-      <HistorySection />
+      {showSection("perm") && (
+        <>
+          {" "}
+          <View>
+            <SectionHeading title={t("perm.sheetTitle")} />
+            <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+              {t("perm.intro")}
+            </TText>
+            <Button icon={ShieldCheck} onPress={() => setPermOpen(true)}>
+              {t("perm.sheetTitle")}
+            </Button>
+          </View>
+          {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("perm.sheetTitle")} />
-        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
-          {t("perm.intro")}
-        </TText>
-        <Button icon={ShieldCheck} onPress={() => setPermOpen(true)}>
-          {t("perm.sheetTitle")}
-        </Button>
-      </View>
-      {permOpen ? <DevicePermissionsSheet onClose={() => setPermOpen(false)} /> : null}
+      {showSection("napp") && (
+        <>
+          {" "}
+          <View>
+            <SectionHeading title={t("napp.title")} />
+            <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+              {t("napp.intro")}
+            </TText>
+            <Button icon={Smartphone} onPress={() => setNappOpen(true)}>
+              {t("napp.title")}
+            </Button>
+          </View>
+          {nappOpen ? <NativeAppsSheet onClose={() => setNappOpen(false)} /> : null}
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("napp.title")} />
-        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
-          {t("napp.intro")}
-        </TText>
-        <Button icon={Smartphone} onPress={() => setNappOpen(true)}>
-          {t("napp.title")}
-        </Button>
-      </View>
-      {nappOpen ? <NativeAppsSheet onClose={() => setNappOpen(false)} /> : null}
+      {showSection("skill") && (
+        <>
+          {" "}
+          <View>
+            <SectionHeading title={t("skill.title")} />
+            <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+              {t("skill.intro")}
+            </TText>
+            <Button icon={Sparkles} onPress={() => setSkillsOpen(true)}>
+              {t("skill.title")}
+            </Button>
+          </View>
+          {skillsOpen ? <SkillsSheet onClose={() => setSkillsOpen(false)} /> : null}
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("skill.title")} />
-        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
-          {t("skill.intro")}
-        </TText>
-        <Button icon={Sparkles} onPress={() => setSkillsOpen(true)}>
-          {t("skill.title")}
-        </Button>
-      </View>
-      {skillsOpen ? <SkillsSheet onClose={() => setSkillsOpen(false)} /> : null}
+      {showSection("kb") && (
+        <>
+          {" "}
+          <View>
+            <SectionHeading title={t("kb.title")} />
+            <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+              {t("kb.subtitle")}
+            </TText>
+            <Button icon={BookOpen} onPress={() => setKbOpen(true)}>
+              {t("kb.title")}
+            </Button>
+          </View>
+          {kbOpen ? <KnowledgeSheet onClose={() => setKbOpen(false)} /> : null}
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("kb.title")} />
-        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
-          {t("kb.subtitle")}
-        </TText>
-        <Button icon={BookOpen} onPress={() => setKbOpen(true)}>
-          {t("kb.title")}
-        </Button>
-      </View>
-      {kbOpen ? <KnowledgeSheet onClose={() => setKbOpen(false)} /> : null}
+      {showSection("sandbox") && (
+        <>
+          {" "}
+          <View>
+            <SectionHeading title={t("sandbox.title")} />
+            <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
+              {t("sandbox.backend.cloud")} / {t("sandbox.backend.local")}
+            </TText>
+            <Button icon={Terminal} onPress={() => setSandboxOpen(true)}>
+              {t("sandbox.title")}
+            </Button>
+          </View>
+          {sandboxOpen ? <SandboxSheet onClose={() => setSandboxOpen(false)} /> : null}
+        </>
+      )}
 
-      <View>
-        <SectionHeading title={t("sandbox.title")} />
-        <TText style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>
-          {t("sandbox.backend.cloud")} / {t("sandbox.backend.local")}
-        </TText>
-        <Button icon={Terminal} onPress={() => setSandboxOpen(true)}>
-          {t("sandbox.title")}
-        </Button>
-      </View>
-      {sandboxOpen ? <SandboxSheet onClose={() => setSandboxOpen(false)} /> : null}
-
-      <BackupSection />
-      <RemoteBackupSection />
-      <SnapshotSection />
-      <ImportSection />
-      <StorageSection />
-      <PersonaSection />
-      <ProfileSection />
-      <GoogleFontsSection />
-      <WebAppsSection />
-      <ScheduledTasksSection />
-      <AppLockSection />
+      {showSection("backup") && (
+        <>
+          {" "}
+          <BackupSection />
+          <RemoteBackupSection />
+          <SnapshotSection />
+          <ImportSection />
+          <StorageSection />
+        </>
+      )}
+      {showSection("persona") && (
+        <>
+          {" "}
+          <PersonaSection />
+        </>
+      )}
+      {showSection("profile") && (
+        <>
+          {" "}
+          <ProfileSection />
+        </>
+      )}
+      {showSection("fonts") && (
+        <>
+          {" "}
+          <GoogleFontsSection />
+        </>
+      )}
+      {showSection("webapps") && (
+        <>
+          {" "}
+          <WebAppsSection />
+        </>
+      )}
+      {showSection("tasks") && (
+        <>
+          {" "}
+          <ScheduledTasksSection />
+        </>
+      )}
+      {showSection("applock") && (
+        <>
+          {" "}
+          <AppLockSection />
+        </>
+      )}
+      {showSection("comfort") && (
+        <>
+          {" "}
+          <ChatComfortSection />
+        </>
+      )}
     </View>
   );
 }

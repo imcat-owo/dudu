@@ -16,6 +16,7 @@ import {
   EyeOff,
   FileText,
   GitBranch,
+  Languages,
   List,
   ListChecks,
   MessagesSquare,
@@ -155,6 +156,18 @@ import {
   VoiceRecorderButton,
 } from "./voice-message";
 import { useWorkspace } from "./workspace";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { useExtrasPrefs, getExtrasPrefs } from "./extras/prefs";
+import { hapticSend, hapticReceive, hapticError } from "./extras/haptics";
+import { announce } from "./extras/voiceover";
+import { observeMessages } from "./extras/message-meta";
+import { estimateTokens, formatTokenCount } from "./extras/token-estimate";
+import {
+  TranslationCard,
+  TranslateLanguageSheet,
+  startMessageTranslation,
+} from "./extras/translate-ui";
+import { UserMessageBody, MessageMetaRow } from "./extras/message-ui";
 
 /** Batch 3: voice correction learning — persistent confusion map (AsyncStorage). */
 const correctionStore = createCorrectionStore(AsyncStorage);
@@ -385,11 +398,50 @@ export function ChatScreen({
   const { agent, isReady } = useChatAgent({ agentId, threadId });
   const renderToolCall = useSafeRenderToolCall();
   const { active: activeGroup } = useApiGroups();
+  // Batch 7 (小功能 I): chat-comfort prefs — display, haptics, scroll, etc.
+  const { prefs } = useExtrasPrefs();
+  // Latest model name for the I11 message meta (ref: the subscription
+  // effect below doesn't re-run when the group changes).
+  const activeModelRef = useRef<string | undefined>(undefined);
+  activeModelRef.current = activeGroup?.model;
   const [draft, setDraft] = useState("");
+  // Batch 7 I6: debounced token estimate of the draft (Kelivo's
+  // DraftTokenCounter equivalent — 200ms coalescing).
+  const [draftTokens, setDraftTokens] = useState(0);
+  useEffect(() => {
+    if (!draft) {
+      setDraftTokens(0);
+      return;
+    }
+    const timer = setTimeout(() => setDraftTokens(estimateTokens(draft)), 200);
+    return () => clearTimeout(timer);
+  }, [draft]);
   const [focused, setFocused] = useState(false);
   const [inputHeight, setInputHeight] = useState(44);
   const [showResults, setShowResults] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Batch 7: generation flag + side effects (keep-awake I8, haptic I9,
+  // VoiceOver announcement I5). Placed after `busy` is declared.
+  const generating = busy || agent.isRunning;
+  useEffect(() => {
+    if (!getExtrasPrefs().keepScreenOnWhileGenerating || !generating) {
+      void deactivateKeepAwake("dudu-chat").catch(() => {});
+      return;
+    }
+    void activateKeepAwakeAsync("dudu-chat").catch(() => {});
+    return () => {
+      void deactivateKeepAwake("dudu-chat").catch(() => {});
+    };
+  }, [generating]);
+  const prevGeneratingRef = useRef(generating);
+  useEffect(() => {
+    const was = prevGeneratingRef.current;
+    prevGeneratingRef.current = generating;
+    if (was && !generating) {
+      hapticReceive();
+      announce(t("a11y.replyDone"));
+    }
+  }, [generating]);
   // (greeting effect lives below useIncognito, so it can gate on it)
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -410,6 +462,8 @@ export function ChatScreen({
   const [activityId, setActivityId] = useState<string | null>(null);
   const { settings: voiceSettings, stt: sttConfig } = useVoiceConfig();
   const list = useRef<ScrollView>(null);
+  // Batch 7 I7: keep the keyboard up after enter-to-send.
+  const inputRef = useRef<TextInput>(null);
   const [queue] = useState(() => new ConversationQueue());
   const choiceCompletions = useRef(
     new Map<string, { resolve: () => void; reject: (error: unknown) => void }>(),
@@ -417,6 +471,23 @@ export function ChatScreen({
   const outbox = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getSnapshot);
   const followLatest = useRef(true);
   const [awayFromLatest, setAwayFromLatest] = useState(false);
+  // Batch 7 I12: last manual scroll-away time, for idle-resume of
+  // auto-scroll (Kelivo's autoScrollIdleSeconds).
+  const lastUserScrollAt = useRef(0);
+  // Batch 7 I12: while generating and scrolled away, resume auto-follow
+  // after the configured idle seconds.
+  useEffect(() => {
+    if (!prefs.autoScroll || !generating || !awayFromLatest) return;
+    const idleMs = prefs.autoScrollIdleSeconds * 1000;
+    const timer = setInterval(() => {
+      if (Date.now() - lastUserScrollAt.current >= idleMs) {
+        followLatest.current = true;
+        setAwayFromLatest(false);
+        list.current?.scrollToEnd({ animated: true });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [prefs.autoScroll, prefs.autoScrollIdleSeconds, generating, awayFromLatest]);
   const runLock = useRef(false);
   const [saveError, setSaveError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -434,6 +505,8 @@ export function ChatScreen({
   const [threadMeta, setThreadMeta] = useState<ThreadMeta | null>(null);
   const [menuMessage, setMenuMessage] = useState<AgentMessage | null>(null);
   const [menuActions, setMenuActions] = useState<MessageAction[]>([]);
+  // Batch 7 I1: message chosen for translation (language sheet target).
+  const [translateFor, setTranslateFor] = useState<AgentMessage | null>(null);
   const [dialogListOpen, setDialogListOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [phrasesOpen, setPhrasesOpen] = useState(false);
@@ -511,6 +584,9 @@ export function ChatScreen({
         if (active && richThreads && messages.length) setLoaded(true);
         // P1-11: on-device history save failures surface here, not silently.
         if (active) setHistorySaveFailed(historySaveFailed ?? false);
+        // Batch 7 I11: record per-message display metadata (receive time,
+        // producing model) for the optional "model · time" row.
+        if (active) observeMessages(messages, activeModelRef.current);
         // Gap fill A2: keep the version/thread meta in step so the version
         // switcher and dialog settings always reflect the stored state.
         if (active && mode === "local") {
@@ -643,7 +719,12 @@ export function ChatScreen({
       })
     )
       return;
-    void queue.flush(runQueued).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    void queue
+      .flush(runQueued)
+      .catch((e) => {
+        hapticError();
+        setError(e instanceof Error ? e.message : String(e));
+      });
   }, [agent, isReady, loaded, mode, activeGroup, queue, runQueued]);
   const enqueue = useCallback(
     (text: string) => {
@@ -810,6 +891,8 @@ export function ChatScreen({
           : "");
     }
     enqueue(outgoing);
+    // Batch 7 I9: light tap on send.
+    hapticSend();
     // Batch 3: she's talking now — stop any auto-read playback.
     stopAutoRead();
     // Batch 3: correction learning — if she edited the STT transcription,
@@ -1210,6 +1293,14 @@ export function ChatScreen({
           void Clipboard.setStringAsync(text).catch(() => {});
         },
       });
+      // Batch 7 I1: one-tap translation — pick a language, the translation
+      // streams in under the message (TranslationCard).
+      actions.push({
+        key: "translate",
+        label: t("chat.translateMessage"),
+        icon: Languages,
+        onPress: () => setTranslateFor(m),
+      });
       actions.push({
         key: "recall",
         label: t("chat.recallMemory"),
@@ -1565,12 +1656,15 @@ export function ChatScreen({
         contentContainerStyle={{ gap: 8, paddingTop: 10, paddingBottom: 16, flexGrow: 1 }}
         onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
           const nearEnd = contentSize.height - contentOffset.y - layoutMeasurement.height < 100;
-          followLatest.current = nearEnd;
+          // Batch 7 I12: auto-scroll is configurable; a manual scroll-away
+          // stamps the time for idle-resume.
+          if (!nearEnd && followLatest.current) lastUserScrollAt.current = Date.now();
+          followLatest.current = prefs.autoScroll && nearEnd;
           setAwayFromLatest(visible.length > 0 && !nearEnd);
         }}
         scrollEventThrottle={100}
         onContentSizeChange={() => {
-          if (active && visible.length > 0 && followLatest.current)
+          if (active && visible.length > 0 && prefs.autoScroll && followLatest.current)
             list.current?.scrollToEnd({ animated: false });
         }}
         keyboardShouldPersistTaps="handled"
@@ -1737,10 +1831,16 @@ export function ChatScreen({
                 }}
               >
                 {user ? (
-                  <TText style={[s.text, { color: bubble.fg }]}>{text}</TText>
+                  // Batch 7 I13/I14: collapsible long user messages,
+                  // optional user markdown.
+                  <UserMessageBody text={text} color={bubble.fg} />
                 ) : (
                   <View>
-                    <AssistantResponse content={text} />
+                    {prefs.markdownAssistant ? (
+                      <AssistantResponse content={text} />
+                    ) : (
+                      <TText style={[s.text, { color: bubble.fg }]}>{text}</TText>
+                    )}
                     <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
                       <SpeakButton text={text} bubbleFg={bubble.fg} />
                     </View>
@@ -1797,12 +1897,17 @@ export function ChatScreen({
                       gap: 8,
                     }}
                   >
-                    {!user && <ChatAvatar who="assistant" />}
+                    {/* Batch 7 I11: avatars are optional. */}
+                    {!user && prefs.showAvatars && <ChatAvatar who="assistant" />}
                     {/* Gap fill A1/A3/A4/A5/A24/A26: long-press opens the
                         message action sheet (local mode). Inner pressables
                         (speak button, trace tag) keep working. */}
                     <Pressable
                       style={{ maxWidth: "80%" }}
+                      // Batch 7 I5: the bubble reads as one element.
+                      accessibilityLabel={t("a11y.messageFrom", {
+                        who: user ? t("a11y.me") : t("app.name"),
+                      })}
                       onPress={() => {
                         if (selecting) toggleSelect(message.id);
                       }}
@@ -1881,9 +1986,21 @@ export function ChatScreen({
                         textBubble
                       )}
                     </Pressable>
-                    {user && <ChatAvatar who="user" />}
+                    {/* Batch 7 I11: avatars are optional. */}
+                    {user && prefs.showAvatars && <ChatAvatar who="user" />}
                   </View>
                 )}
+                {/* Batch 7 I1/I11: translation card + "model · time" row.
+                    Each renders null when empty, so no phantom spacing. */}
+                {hasBubble && (
+                  <TranslationCard
+                    messageId={message.id}
+                    user={user}
+                    bubbleFg={bubble.fg}
+                    bubbleBg={bubble.bg}
+                  />
+                )}
+                {hasBubble && <MessageMetaRow messageId={message.id} user={user} />}
                 {!!toolActions.length && (
                   <View style={{ paddingHorizontal: 4 }}>
                     <ToolActionsStatus
@@ -2547,6 +2664,7 @@ export function ChatScreen({
               </Pressable>
             )}
             <TextInput
+              ref={inputRef}
               accessibilityLabel={t("a11y.messageInput")}
               value={draft}
               onChangeText={setDraft}
@@ -2581,6 +2699,19 @@ export function ChatScreen({
               }}
               multiline
               editable
+              // Batch 7 I7: mobile enter-to-send (Kelivo defaults to true on
+              // iOS). Web keeps its existing handler.
+              returnKeyType={prefs.enterToSendMobile ? "send" : "default"}
+              blurOnSubmit={prefs.enterToSendMobile ? true : false}
+              onSubmitEditing={
+                prefs.enterToSendMobile
+                  ? () => {
+                      send();
+                      // Keep her in the flow: re-focus so she can keep typing.
+                      setTimeout(() => inputRef.current?.focus(), 60);
+                    }
+                  : undefined
+              }
               onKeyPress={
                 Platform.OS === "web"
                   ? (event) => {
@@ -2628,6 +2759,21 @@ export function ChatScreen({
               )}
             </Pressable>
           </View>
+          {/* Batch 7 I6: live draft token estimate. */}
+          {prefs.draftTokenCount && draft.length > 0 && (
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                paddingRight: 56,
+                marginTop: 2,
+              }}
+            >
+              <TText style={{ fontSize: 11, color: colors.muted }}>
+                ~{formatTokenCount(draftTokens)} {t("extras.tokensUnit")}
+              </TText>
+            </View>
+          )}
         </GlassView>
       </KeyboardAvoidingView>
       <ThinkingDrawer
@@ -2657,6 +2803,18 @@ export function ChatScreen({
         actions={menuActions}
         preview={menuMessage ? messageText(menuMessage).slice(0, 80) : undefined}
       />
+      {/* Batch 7 I1: translation target-language sheet. */}
+      {translateFor && (
+        <TranslateLanguageSheet
+          initial={getExtrasPrefs().translateTargetLang}
+          onPick={(code) => {
+            const target = translateFor;
+            setTranslateFor(null);
+            startMessageTranslation(target.id, messageText(target), activeGroup, code);
+          }}
+          onClose={() => setTranslateFor(null)}
+        />
+      )}
       {mode === "local" && (
         <>
           <DialogListSheet

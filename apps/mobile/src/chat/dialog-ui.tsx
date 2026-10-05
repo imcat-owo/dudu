@@ -37,6 +37,7 @@ import {
   View,
 } from "react-native";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
+import { getExtrasPrefs, requestNewChat } from "../extras/prefs";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { personaStore } from "../persona/stores";
@@ -568,11 +569,19 @@ export function DialogListSheet({
         onPress: async () => {
           await deleteDialog(storage, d.id);
           await reload();
-          // Deleting the dialog she's looking at: move her to a fresh one
-          // instead of leaving her in a ghost.
+          // Deleting the dialog she's looking at: move her somewhere sane.
           if (d.id === currentId) {
             onClose();
-            onNew();
+            // Batch 7 I10: new blank chat, or the most active remaining
+            // dialog when the pref is off.
+            if (getExtrasPrefs().newChatAfterDelete) {
+              onNew();
+            } else {
+              const remaining = (await listDialogs(storage)).filter((x) => x.id !== d.id);
+              const target = remaining[0];
+              if (target) onSelect(target.id);
+              else onNew();
+            }
           }
         },
       },
@@ -596,7 +605,15 @@ export function DialogListSheet({
             await reload();
             if (ids.includes(currentId)) {
               onClose();
-              onNew();
+              // Batch 7 I10: same rule as single delete.
+              if (getExtrasPrefs().newChatAfterDelete) {
+                onNew();
+              } else {
+                const remaining = (await listDialogs(storage)).filter((x) => !ids.includes(x.id));
+                const target = remaining[0];
+                if (target) onSelect(target.id);
+                else onNew();
+              }
             }
           } finally {
             setBusy(false);
@@ -917,12 +934,21 @@ export function DialogSettingsSheet({
         {personas.length > 0 ? (
           <>
             <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("persona.pickerTitle")}</TText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 4 }}
+            >
               <View style={{ flexDirection: "row", gap: 8, paddingVertical: 4 }}>
                 <Button
                   key="__none__"
                   onPress={() => {
-                    void personaStore.setActiveId(null).then(() => setActivePersonaId(null));
+                    void personaStore.setActiveId(null).then(() => {
+                      setActivePersonaId(null);
+                      // Batch 7 I10: persona switch → fresh chat when the
+                      // pref is on (local-app listens and swaps the thread).
+                      if (getExtrasPrefs().newChatOnPersonaSwitch) requestNewChat();
+                    });
                   }}
                   {...(activePersonaId === null ? { primary: true } : {})}
                 >
@@ -932,7 +958,10 @@ export function DialogSettingsSheet({
                   <Button
                     key={p.id}
                     onPress={() => {
-                      void personaStore.setActiveId(p.id).then(() => setActivePersonaId(p.id));
+                      void personaStore.setActiveId(p.id).then(() => {
+                        setActivePersonaId(p.id);
+                        if (getExtrasPrefs().newChatOnPersonaSwitch) requestNewChat();
+                      });
                     }}
                     {...(activePersonaId === p.id ? { primary: true } : {})}
                   >

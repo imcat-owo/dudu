@@ -36,6 +36,7 @@ import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
 import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
 import { ErrorBoundary } from "./error-boundary";
+import { extrasPrefsReady, subscribeNewChat } from "./extras/prefs";
 import { FontProvider, TText } from "./font";
 import { GlassView } from "./glass";
 import { type StringKey, t } from "./i18n";
@@ -135,6 +136,24 @@ export function LocalApp() {
   // so each dialog gets its own agent/history lifecycle.
   const [localThreadId, setLocalThreadId] = useState("local-main");
   const newLocalThread = () => setLocalThreadId(`local-${Date.now().toString(36)}`);
+  // Batch 7 I10: new-chat behavior prefs.
+  useEffect(() => {
+    // On launch: start fresh when the pref is on (prefs load async).
+    let alive = true;
+    void extrasPrefsReady().then((p) => {
+      if (alive && p.newChatOnLaunch) newLocalThread();
+    });
+    // Cross-component "start a new chat" signal (dialog delete, persona
+    // switch) — fired by dialog-ui.tsx when the matching pref is on.
+    const unsub = subscribeNewChat(() => {
+      if (alive) newLocalThread();
+    });
+    return () => {
+      alive = false;
+      unsub();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Detail sheets in local mode. Only crossDialogTrace is wired today —
   // the promised cross-dialog audit log must be openable in the mode she
   // actually uses (P1-2). Other detail types stay unhandled (no-op).
