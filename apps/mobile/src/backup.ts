@@ -247,19 +247,22 @@ function stripApiGroup(g: unknown): {
   group: unknown;
   hadKey: boolean;
   hadHeaders: boolean;
+  hadApiKeys: boolean;
   sanitized: boolean;
 } {
   if (typeof g !== "object" || g === null)
-    return { group: g, hadKey: false, hadHeaders: false, sanitized: false };
+    return { group: g, hadKey: false, hadHeaders: false, hadApiKeys: false, sanitized: false };
   const o = g as Record<string, unknown>;
   const hadKey = typeof o.apiKey === "string" && o.apiKey.length > 0;
   const hadHeaders =
     typeof o.headers === "object" &&
     o.headers !== null &&
     Object.keys(o.headers as Record<string, unknown>).length > 0;
-  const { apiKey: _ak, headers: _h, ...rest } = o;
+  // B2: the key pool holds raw secrets — never into a backup file.
+  const hadApiKeys = Array.isArray(o.apiKeys) && o.apiKeys.length > 0;
+  const { apiKey: _ak, headers: _h, apiKeys: _aks, ...rest } = o;
   const { config, sanitized } = sanitizeConfigUrls(rest);
-  return { group: config, hadKey, hadHeaders, sanitized };
+  return { group: config, hadKey, hadHeaders, hadApiKeys, sanitized };
 }
 
 function stripVoiceConfig(
@@ -411,8 +414,8 @@ export async function collectBackup(
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed)) {
       groups = parsed.map((g) => {
-        const { group, hadKey, hadHeaders, sanitized } = stripApiGroup(g);
-        if (hadKey) apiKeys += 1;
+        const { group, hadKey, hadHeaders, hadApiKeys, sanitized } = stripApiGroup(g);
+        if (hadKey || hadApiKeys) apiKeys += 1;
         if (hadHeaders) headersExcluded += 1;
         if (sanitized) urlsSanitized += 1;
         return group;

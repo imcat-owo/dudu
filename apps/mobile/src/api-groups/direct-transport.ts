@@ -16,6 +16,10 @@
  */
 
 import { type ApiGroup, normalizeBaseUrl } from "./types";
+import { resolveKeySecret, selectKeyId, recordKeyResult } from "./api-keys";
+import { oauthStore } from "./oauth";
+import { logDiag, sanitizeHeaders, sanitizeBodyPreview } from "./diagnostics";
+import { recordUsage } from "./pricing";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -72,17 +76,92 @@ export class GroupError extends Error {
 }
 
 function endpointFor(group: ApiGroup): string {
+  // B14: Azure OpenAI mode — full deployment URL + api-version.
+  const azure = group.azure;
+  if (azure?.enabled && azure.deploymentUrl.trim()) {
+    const base = azure.deploymentUrl.trim().replace(/\/+$/, "");
+    const ver = azure.apiVersion.trim() || "2024-10-01-preview";
+    return `${base}/chat/completions?api-version=${encodeURIComponent(ver)}`;
+  }
   return `${normalizeBaseUrl(group.baseUrl)}/chat/completions`;
 }
 
-function requestHeaders(group: ApiGroup): Record<string, string> {
-  // Keyless local endpoints (Ollama-style) get no Authorization header —
-  // don't send `Bearer undefined`/empty. Custom headers keep their override
-  // precedence (spread last, as before).
+/**
+ * B1/B2: resolve the Authorization headers for a group.
+ * OAuth account wins when bound; then the key pool (rotation); then the
+ * legacy single key. Azure mode uses `api-key` instead of Bearer.
+ * Exported for balance.ts / diagnostics / tests.
+ */
+export interface ResolvedAuth {
+  headers: Record<string, string>;
+  /** Selected key id (B2), or null for OAuth/legacy. */
+  keyId: string | null;
+  oauth: boolean;
+}
+
+// Per-group round-robin cursors (B2). Module-level: survives across calls,
+// resets on reload (acceptable — rotation order isn't a promise).
+const keyCursors = new Map<string, { index: number }>();
+
+export async function resolveAuth(group: ApiGroup): Promise<ResolvedAuth> {
+  const isAzure = !!group.azure?.enabled && !!group.azure.deploymentUrl.trim();
+  // B1: OAuth account bound → fresh access token (auto-refreshes).
+  if (group.oauthAccountId) {
+    const token = await oauthStore.accessToken(group.oauthAccountId);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (isAzure) headers["api-key"] = token;
+    else headers.Authorization = `Bearer ${token}`;
+    return { headers: applyCustomHeaders(headers, group), keyId: null, oauth: true };
+  }
+  // B2: key pool with rotation.
+  let cursor = keyCursors.get(group.id);
+  if (!cursor) {
+    cursor = { index: 0 };
+    keyCursors.set(group.id, cursor);
+  }
+  const { keyId } = selectKeyId(group, cursor);
+  const secret = resolveKeySecret(group, keyId);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const key = group.apiKey?.trim();
-  if (key) headers.Authorization = `Bearer ${key}`;
-  return { ...headers, ...group.headers };
+  if (secret) {
+    if (isAzure) headers["api-key"] = secret;
+    else headers.Authorization = `Bearer ${secret}`;
+  }
+  return { headers: applyCustomHeaders(headers, group), keyId, oauth: false };
+}
+
+/** B15: custom User-Agent override, applied after the auth headers. */
+function applyCustomHeaders(
+  headers: Record<string, string>,
+  group: ApiGroup,
+): Record<string, string> {
+  const out = { ...headers, ...group.headers };
+  if (group.userAgent?.trim()) out["User-Agent"] = group.userAgent.trim();
+  return out;
+}
+
+/** B2: report a request outcome back to the key pool (auto-disable/recover). */
+export async function reportKeyOutcome(
+  groupId: string,
+  keyId: string | null,
+  ok: boolean,
+  error?: string,
+): Promise<void> {
+  if (!keyId) return;
+  try {
+    const { groupStore } = await import("./store");
+    const snap = groupStore.getSnapshot();
+    const group = snap.groups.find((g) => g.id === groupId);
+    if (!group?.apiKeys) return;
+    const key = group.apiKeys.find((k) => k.id === keyId);
+    if (!key) return;
+    const updated = recordKeyResult(key, ok, group, Date.now(), error);
+    await groupStore.upsert({
+      ...group,
+      apiKeys: group.apiKeys.map((k) => (k.id === keyId ? updated : k)),
+    });
+  } catch {
+    // Key stats must never break the app.
+  }
 }
 
 function requestBody(
@@ -91,6 +170,7 @@ function requestBody(
   stream: boolean,
   tools?: WireToolDef[],
   maxTokens?: number,
+  opts?: { dialogId?: string },
 ): string {
   const body: Record<string, unknown> = { model: group.model, messages, stream };
   if (tools && tools.length > 0) {
@@ -100,6 +180,24 @@ function requestBody(
   }
   // A27: per-turn output cap — her key, her spend ceiling.
   if (maxTokens && maxTokens > 0) body.max_tokens = Math.floor(maxTokens);
+  // B11: sampling parameters. Null = don't send, use the vendor default.
+  const sampling = group.sampling;
+  if (sampling?.temperature != null) body.temperature = sampling.temperature;
+  if (sampling?.topP != null) body.top_p = sampling.topP;
+  if (sampling?.maxTokens != null && !(maxTokens && maxTokens > 0)) {
+    body.max_tokens = Math.floor(sampling.maxTokens);
+  }
+  // B7: prompt caching — opt-in. Kelivo sends prompt_cache_key for
+  // OpenAI-compatible endpoints; servers that support it bill less.
+  if (group.caching?.enabled && opts?.dialogId) {
+    body.prompt_cache_key = `dudu:${opts.dialogId}`;
+  }
+  // B9: ask for usage in the final SSE chunk so we can record spend.
+  if (stream) body.stream_options = { include_usage: true };
+  // B6: custom body extras merged last (gateway-specific parameters win).
+  if (group.bodyExtras && Object.keys(group.bodyExtras).length > 0) {
+    Object.assign(body, group.bodyExtras);
+  }
   return JSON.stringify(body);
 }
 
@@ -167,6 +265,29 @@ export function parseSseThinking(data: string): string | null {
   const thinking = delta.thinking;
   if (typeof thinking === "string" && thinking) return thinking;
   return null;
+}
+
+/**
+ * Parse `usage` from an SSE data payload (sent when stream_options.
+ * include_usage is true). Returns null when absent. Never throws.
+ */
+export function parseSseUsage(
+  data: string,
+): { inputTokens: number; outputTokens: number } | null {
+  if (data === "[DONE]") return null;
+  let payload: unknown;
+  try {
+    payload = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const usage = (payload as { usage?: unknown }).usage;
+  if (typeof usage !== "object" || usage === null) return null;
+  const u = usage as Record<string, unknown>;
+  const inputTokens = typeof u.prompt_tokens === "number" ? u.prompt_tokens : 0;
+  const outputTokens = typeof u.completion_tokens === "number" ? u.completion_tokens : 0;
+  if (inputTokens === 0 && outputTokens === 0) return null;
+  return { inputTokens, outputTokens };
 }
 
 /** Incremental SSE line parser — feed it text chunks, it emits deltas. */
@@ -299,17 +420,35 @@ function statusError(group: ApiGroup, status: number, body: string): GroupError 
  * connection close). Rejects with GroupError on transport/API failures.
  * The AbortSignal cancels the request mid-stream.
  */
-export function streamChat(
+export async function streamChat(
   group: ApiGroup,
   messages: ChatMessage[],
   callbacks: SseCallbacks,
-  opts?: { maxTokens?: number },
+  opts?: { maxTokens?: number; dialogId?: string },
 ): Promise<void> {
+  const startedAt = Date.now();
+  // B1/B2: resolve auth (OAuth token or rotated key) before opening the stream.
+  const auth = await resolveAuth(group);
+  const body = requestBody(group, messages, true, callbacks.tools, opts?.maxTokens, {
+    dialogId: opts?.dialogId,
+  });
   return new Promise((resolve, reject) => {
     const toolAcc = accumulateToolCalls();
+    let usage: { inputTokens: number; outputTokens: number } | null = null;
     const parser = createSseParser(group.name, callbacks.onToken, callbacks.onThinking, (d) =>
       toolAcc.push(d),
     );
+    // B9: capture usage frames (stream_options.include_usage).
+    const usageParser = {
+      push(chunk: string) {
+        for (const line of chunk.split("\n")) {
+          const t = line.trim();
+          if (!t.startsWith("data:")) continue;
+          const u = parseSseUsage(t.slice(5).trim());
+          if (u) usage = u;
+        }
+      },
+    };
     const xhr = new XMLHttpRequest();
     let settled = false;
     let seen = 0;
@@ -343,6 +482,35 @@ export function streamChat(
       } catch {
         // tool delivery is informational; the reply itself succeeded.
       }
+      // B2/B8/B9: bookkeeping — never breaks the reply.
+      void reportKeyOutcome(group.id, auth.keyId, true);
+      if (usage) {
+        void recordUsage({
+          at: Date.now(),
+          groupId: group.id,
+          groupName: group.name,
+          model: group.model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+        });
+      }
+      void logDiag({
+        at: Date.now(),
+        kind: "chat",
+        groupId: group.id,
+        groupName: group.name,
+        request: {
+          url: endpointFor(group),
+          model: group.model,
+          messageCount: messages.length,
+          bodyBytes: body.length,
+          bodyPreview: sanitizeBodyPreview(body),
+        },
+        response: {
+          ok: true,
+          ms: Date.now() - startedAt,
+        },
+      });
       callbacks.onDone();
       resolve();
     };
@@ -358,6 +526,26 @@ export function streamChat(
       } catch {
         // already gone
       }
+      // B2/B8: bookkeeping — never breaks error reporting.
+      void reportKeyOutcome(group.id, auth.keyId, false, e.message);
+      void logDiag({
+        at: Date.now(),
+        kind: "chat",
+        groupId: group.id,
+        groupName: group.name,
+        request: {
+          url: endpointFor(group),
+          model: group.model,
+          messageCount: messages.length,
+          bodyBytes: body.length,
+          bodyPreview: sanitizeBodyPreview(body),
+        },
+        response: {
+          ok: false,
+          ms: Date.now() - startedAt,
+          error: e.message.slice(0, 300),
+        },
+      });
       callbacks.onError(e);
       reject(e);
     };
@@ -395,7 +583,7 @@ export function streamChat(
     };
 
     xhr.open("POST", endpointFor(group));
-    for (const [k, v] of Object.entries(requestHeaders(group))) xhr.setRequestHeader(k, v);
+    for (const [k, v] of Object.entries(auth.headers)) xhr.setRequestHeader(k, v);
     // Absolute cap for the whole request (the ontimeout handler below was
     // previously dead code — timeout was never assigned). The 45s stall
     // watchdog above handles mid-stream hangs; this is the backstop.
@@ -406,7 +594,9 @@ export function streamChat(
       try {
         const text: string = xhr.responseText ?? "";
         if (text.length > seen) {
-          parser.push(text.slice(seen));
+          const chunk = text.slice(seen);
+          parser.push(chunk);
+          usageParser.push(chunk);
           seen = text.length;
           pokeStallTimer();
         }
@@ -425,7 +615,11 @@ export function streamChat(
       // Flush any trailing buffered text (some servers close without [DONE]).
       try {
         const text: string = xhr.responseText ?? "";
-        if (text.length > seen) parser.push(text.slice(seen));
+        if (text.length > seen) {
+          const chunk = text.slice(seen);
+          parser.push(chunk);
+          usageParser.push(chunk);
+        }
       } catch {
         // ignore — deltas already delivered
       }
@@ -442,7 +636,7 @@ export function streamChat(
     };
 
     try {
-      xhr.send(requestBody(group, messages, true, callbacks.tools, opts?.maxTokens));
+      xhr.send(body);
     } catch (e) {
       fail(e instanceof Error ? e : new Error(String(e)));
     }
@@ -452,10 +646,11 @@ export function streamChat(
     fallbackTimer = setTimeout(() => {
       if (settled || seen > 0) return;
       shelve();
+      const fallbackBody = requestBody(group, messages, false, callbacks.tools);
       void fetch(endpointFor(group), {
         method: "POST",
-        headers: requestHeaders(group),
-        body: requestBody(group, messages, false, callbacks.tools),
+        headers: auth.headers,
+        body: fallbackBody,
         signal: callbacks.signal,
       })
         .then(async (res) => {
@@ -537,6 +732,8 @@ export async function testConnection(
   opts: { timeoutMs?: number } = {},
 ): Promise<{ ok: true; models: string[] }> {
   const timeoutMs = opts.timeoutMs ?? TEST_CONNECTION_TIMEOUT_MS;
+  // B1/B2: test with the same auth the real requests use (OAuth/rotated key).
+  const auth = await resolveAuth(group);
   function testSignal(): { signal: AbortSignal; done: () => void } {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeoutMs);
@@ -548,7 +745,7 @@ export async function testConnection(
     const t = testSignal();
     try {
       const res = await fetch(`${normalizeBaseUrl(group.baseUrl)}/models`, {
-        headers: requestHeaders(group),
+        headers: auth.headers,
         signal: t.signal,
       });
       if (res.ok) {
@@ -567,7 +764,7 @@ export async function testConnection(
   try {
     res = await fetch(endpointFor(group), {
       method: "POST",
-      headers: requestHeaders(group),
+      headers: auth.headers,
       body: requestBody(group, [{ role: "user", content: "ping" }], false),
       signal: t.signal,
     });

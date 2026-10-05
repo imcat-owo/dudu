@@ -17,6 +17,78 @@ export type ApiVendor = "openai" | "anthropic" | "gemini" | "custom";
 /** Feature switch: "auto" = optimistic ON, downgrade only when proven. */
 export type FeatureSwitch = "on" | "off" | "auto";
 
+/** B2: key rotation strategy for a group's key pool. */
+export type KeyRotationStrategy = "roundRobin" | "priority" | "leastUsed" | "random";
+
+/** One API key inside a group's pool (B2). The key itself is a secret. */
+export interface ApiKeyEntry {
+  id: string;
+  /** User label, e.g. "主号". */
+  name: string;
+  /** Secret — SecureStore, never logged. */
+  key: string;
+  /** 1–10, smaller = higher priority (priority strategy). */
+  priority: number;
+  enabled: boolean;
+  /** Consecutive failures; auto-disabled at the threshold. */
+  consecutiveFailures: number;
+  /** Total successful requests (leastUsed strategy). */
+  totalRequests: number;
+  /** Unix ms when auto-disabled; null when healthy. */
+  disabledUntil: number | null;
+  lastError: string | null;
+  createdAt: number;
+}
+
+/** B7: prompt caching (server-side when the endpoint supports it). */
+export interface CachingConfig {
+  enabled: boolean;
+}
+
+/** B11: sampling parameters. Null = don't send, use the vendor default. */
+export interface SamplingConfig {
+  temperature: number | null;
+  topP: number | null;
+  maxTokens: number | null;
+}
+
+/** B10: vendor-native tools. "auto" = offer when the vendor is known to support it. */
+export interface NativeToolsConfig {
+  webSearch: FeatureSwitch;
+  codeExecution: FeatureSwitch;
+  imageGeneration: FeatureSwitch;
+}
+
+/** B14: Azure OpenAI mode — full deployment URL + api-version. */
+export interface AzureConfig {
+  enabled: boolean;
+  /** e.g. https://xxx.openai.azure.com/openai/deployments/gpt-4o */
+  deploymentUrl: string;
+  /** e.g. 2024-10-01-preview */
+  apiVersion: string;
+}
+
+/** B3: balance query config. */
+export interface BalanceConfig {
+  enabled: boolean;
+  /** Path appended to baseUrl, e.g. /dashboard/billing/credit_grants */
+  apiPath: string;
+  /** Dot path into the JSON result, e.g. total_available */
+  resultPath: string;
+}
+
+/** B5: proxy config. NOTE (honest): iOS React Native fetch/XHR uses the
+ * system network stack — per-app proxy cannot be applied. This type is
+ * intentionally NOT wired anywhere; see the B5 note in the batch report. */
+export interface ProxyConfig {
+  enabled: boolean;
+  type: "http" | "https" | "socks5";
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+}
+
 export interface ApiGroup {
   /** Stable id, generated on creation. */
   id: string;
@@ -39,6 +111,13 @@ export interface ApiGroup {
   embeddingModel?: string;
   /** Extra HTTP headers (for proxies/gateways). Values are secrets too. */
   headers: Record<string, string>;
+  /**
+   * B6: extra top-level body fields merged into every chat request
+   * (after the built-ins). For gateways that need custom parameters.
+   */
+  bodyExtras?: Record<string, unknown>;
+  /** B15: custom User-Agent override. When empty, the default is sent. */
+  userAgent?: string;
   /** Unix ms of creation — used for stable list ordering. */
   createdAt: number;
   /**
@@ -53,6 +132,28 @@ export interface ApiGroup {
    */
   toolsMode?: FeatureSwitch;
   thinkingMode?: FeatureSwitch;
+  // ---- Batch 2 (gap B) extensions — all optional, all backward compatible ----
+  /** B2: key pool. When non-empty, the legacy `apiKey` is ignored. */
+  apiKeys?: ApiKeyEntry[];
+  keyRotation?: KeyRotationStrategy;
+  /** B2: consecutive failures before a key is auto-disabled (default 3). */
+  keyAutoDisableAfter?: number;
+  /** B2: minutes before an auto-disabled key is retried (default 5). */
+  keyRecoverAfterMinutes?: number;
+  /** B1: OAuth account id (see oauth.ts). When set, the access token is used. */
+  oauthAccountId?: string;
+  /** B3: balance query. */
+  balance?: BalanceConfig;
+  /** B4: user-defined grouping tag (her own categories, separate from capability auto-groups). */
+  userGroup?: string;
+  /** B7: prompt caching. */
+  caching?: CachingConfig;
+  /** B11: sampling parameters. */
+  sampling?: SamplingConfig;
+  /** B10: vendor-native tools. */
+  nativeTools?: NativeToolsConfig;
+  /** B14: Azure OpenAI mode. */
+  azure?: AzureConfig;
 }
 
 /**
@@ -122,6 +223,7 @@ export function blankGroup(vendor: ApiVendor = "custom"): ApiGroup {
     apiKey: "",
     model: "",
     headers: {},
+    bodyExtras: {},
     createdAt: Date.now(),
   };
 }
