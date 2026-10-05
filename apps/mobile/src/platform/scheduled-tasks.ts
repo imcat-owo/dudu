@@ -104,7 +104,7 @@ export function advanceTask(task: ScheduledTask, from = Date.now()): number | nu
 async function loadNotifications(): Promise<{
   requestPermissionsAsync(): Promise<{ status: string }>;
   scheduleNotificationAsync(request: {
-    content: { title: string; body: string };
+    content: { title: string; body: string; data?: Record<string, unknown> };
     trigger: unknown;
   }): Promise<string>;
   cancelScheduledNotificationAsync(id: string): Promise<void>;
@@ -118,7 +118,7 @@ async function loadNotifications(): Promise<{
     return req("expo-notifications") as {
       requestPermissionsAsync(): Promise<{ status: string }>;
       scheduleNotificationAsync(request: {
-        content: { title: string; body: string };
+        content: { title: string; body: string; data?: Record<string, unknown> };
         trigger: unknown;
       }): Promise<string>;
       cancelScheduledNotificationAsync(id: string): Promise<void>;
@@ -126,6 +126,36 @@ async function loadNotifications(): Promise<{
   } catch {
     return null;
   }
+}
+
+/**
+ * D10: the notification content for a scheduled task. The `data` payload
+ * is what makes the tap land somewhere meaningful — local-app.tsx routes
+ * `kind: "scheduled_task"` to the tasks section, carrying the taskId so a
+ * future per-task anchor can use it. PURE — unit-tested.
+ */
+export function taskNotificationContent(task: ScheduledTask): {
+  title: string;
+  body: string;
+  data: { kind: "scheduled_task"; taskId: string };
+} {
+  return {
+    title: task.title,
+    body: task.message,
+    data: { kind: "scheduled_task", taskId: task.id },
+  };
+}
+
+/**
+ * D10: where a scheduled-task notification tap should land. PURE — tested.
+ * The tasks section of settings is the task's real page (there is no
+ * per-task detail screen).
+ */
+export function scheduledTaskDeepLink(): {
+  section: "appearance";
+  sectionId: string;
+} {
+  return { section: "appearance", sectionId: "tasks" };
 }
 
 type Listener = () => void;
@@ -165,7 +195,9 @@ function createScheduledTaskStore() {
       const { status } = await N.requestPermissionsAsync();
       if (status !== "granted") return ids;
       const id = await N.scheduleNotificationAsync({
-        content: { title: task.title, body: task.message },
+        // D10: data payload travels with the notification so the tap can
+        // deep-link to the tasks section (see local-app.tsx route()).
+        content: taskNotificationContent(task),
         trigger: { date: new Date(task.nextFireAt) },
       });
       ids.push(id);

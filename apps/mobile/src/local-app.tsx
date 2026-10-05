@@ -48,6 +48,7 @@ import { OurSpaceScreen, type OurSpaceStartPage } from "./our-space-ui";
 import type { FeedNudgePost } from "./outreach/feed-nudge";
 import type { NotificationPort, OutreachTriggerKind } from "./outreach/notify";
 import { notificationDeepLink } from "./outreach/notify";
+import { scheduledTaskDeepLink } from "./platform/scheduled-tasks";
 import { registerFontSizeHandler } from "./settings/tools";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
@@ -174,6 +175,12 @@ export function LocalApp() {
     page: OurSpaceStartPage;
     compose?: boolean;
   }>();
+  // D10: scheduled-task notification taps deep-link into the tasks section
+  // of settings (mirrors the spaceLink pattern above).
+  const [appearanceLink, setAppearanceLink] = useState<{
+    id: number;
+    sectionId: string;
+  }>();
 
   // Wire the AI "set_font_size" tool to immediate apply.
   useEffect(() => {
@@ -191,6 +198,15 @@ export function LocalApp() {
     const route = (data: unknown) => {
       try {
         const kind = (data as Record<string, unknown> | null | undefined)?.kind;
+        // D10: a scheduled-task notification tap lands on the tasks section
+        // of settings — the task's real page — instead of whatever was
+        // open last.
+        if (kind === "scheduled_task") {
+          const link = scheduledTaskDeepLink();
+          setAppearanceLink({ id: Date.now(), sectionId: link.sectionId });
+          setSection(link.section);
+          return;
+        }
         const known =
           kind === "anniversary" ||
           kind === "tell_later" ||
@@ -509,7 +525,10 @@ export function LocalApp() {
                         ) : section === "connections" ? (
                           <ApiSettingsScreen />
                         ) : (
-                          <AppearanceScreen />
+                          <AppearanceScreen
+                            focusSection={appearanceLink?.sectionId}
+                            deepLinkId={appearanceLink?.id}
+                          />
                         )}
                       </ErrorBoundary>
                     </View>

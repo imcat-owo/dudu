@@ -407,7 +407,20 @@ function ThemeGalleryCard({
   );
 }
 
-export function AppearanceScreen() {
+export function AppearanceScreen({
+  focusSection,
+  deepLinkId,
+}: {
+  /**
+   * D10: notification deep-link — jump straight to a settings subsection
+   * (e.g. "tasks" for a scheduled-task notification tap). Applied via the
+   * existing search filter; she can clear the search to see everything.
+   * deepLinkId re-applies the link when it arrives after mount (same
+   * pattern as OurSpaceScreen).
+   */
+  focusSection?: string;
+  deepLinkId?: number;
+} = {}) {
   const { bundle, staging, tokens, stageBundle, discardStage, applyBundle, rollback } = useTheme();
   const colors = useColors();
   const { option: fontOption, setOption: setFontOption } = useFontSizeSetting();
@@ -426,6 +439,14 @@ export function AppearanceScreen() {
   const [sandboxOpen, setSandboxOpen] = useState(false);
   // Batch 7 I2: settings search query.
   const [query, setQuery] = useState("");
+  // D10: a notification tap can request a subsection. Filter via the
+  // existing search mechanism so only that section shows; clearing the
+  // search restores the full list.
+  useEffect(() => {
+    if (deepLinkId == null || !focusSection) return;
+    const entry = SETTINGS_SECTIONS.find((s) => s.id === focusSection);
+    if (entry) setQuery(t(entry.titleKey));
+  }, [deepLinkId, focusSection]);
   const visibleSectionIds = useMemo(() => {
     const q = query.trim();
     if (!q) return null; // null = show everything
