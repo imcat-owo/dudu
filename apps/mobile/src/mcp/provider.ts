@@ -10,6 +10,7 @@
  * This module only builds the providers.
  */
 
+import { logDiag } from "../api-groups/diagnostics";
 import type { LocalTool } from "../api-groups/local-tools";
 import { createMcpClient } from "./client";
 import { mcpStore } from "./store";
@@ -86,7 +87,30 @@ export async function createMcpProviders(deps: McpProviderDeps): Promise<
         if (outcome.remember) {
           approvals[toolName] = outcome.allowed ? "allow" : "deny";
           // Persist so it sticks; the in-memory copy above already honors it.
-          await mcpStore.upsert({ ...server, toolApprovals: { ...approvals } }).catch(() => {});
+          // P3: never silently drop her "remember" choice — surface a persist
+          // failure in the diagnostics log instead of swallowing it.
+          await mcpStore.upsert({ ...server, toolApprovals: { ...approvals } }).catch((e) => {
+            void logDiag({
+              at: Date.now(),
+              kind: "mcp",
+              groupId: `mcp:${server.id}`,
+              groupName: server.name,
+              request: {
+                url: "",
+                model: "",
+                messageCount: 0,
+                bodyBytes: 0,
+                bodyPreview: "",
+              },
+              response: {
+                ok: false,
+                ms: 0,
+                error: `toolApprovals persist failed (${toolName}): ${
+                  e instanceof Error ? e.message : String(e)
+                }`.slice(0, 300),
+              },
+            });
+          });
         }
         return outcome.allowed;
       },
