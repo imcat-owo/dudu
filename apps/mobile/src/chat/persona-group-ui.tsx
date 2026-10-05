@@ -12,6 +12,7 @@
  * folded tool blocks) are new but token-driven.
  */
 
+import { Check, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Image, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { TText } from "../font";
@@ -324,9 +325,17 @@ function ToolFoldBlock({ tools }: { tools: NonNullable<PersonaGroupMessage["tool
       </TText>
       {open &&
         tools.map((tool) => (
-          <TText key={`${tool.name}:${tool.ok}`} style={[s.small, { color: colors.muted }]}>
-            {tool.ok ? "✓" : "✗"} {tool.name}
-          </TText>
+          <View
+            key={`${tool.name}:${tool.ok}`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+          >
+            {tool.ok ? (
+              <Check size={12} color={colors.green} />
+            ) : (
+              <X size={12} color={colors.danger} />
+            )}
+            <TText style={[s.small, { color: colors.muted }]}>{tool.name}</TText>
+          </View>
         ))}
     </Pressable>
   );
