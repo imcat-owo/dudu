@@ -14,10 +14,10 @@ UNCOMMITTED working file — do not commit.
 - H9 后台保活/任务通知兜底（iOS 限制多）
 - D1-STDIO（iOS 上 STDIO 跑不了，先做 HTTP/SSE）
 
-## Batch 1 — 聊天核心 A（✅ 构建+复审 PASS 2026-10-05；follow-up 小修进行中）
+## Batch 1 — 聊天核心 A（✅✅ 构建+复审+follow-up+复审 全 PASS 2026-10-05）
 复审：gap-batch1-review.md — A1–A10/A13–A18/A22/A24/A26/A27 全 PASS，对着 Kelivo 真源码学的，无自创。
-未做项判决：A11/A19/A20/A25 → PASS-SKIP（小众）；A12/A23 → PASS-SKIP；A21 Mermaid → P2 必须补（follow-up 在做）。
-Follow-up（进行中）：搜索滚动定位 / 追问气泡开关 / Mermaid / biome+prev-next a11y / fork 保留版本 / header 用量条 / 多选导出
+未做项判决：A11/A19/A20/A25 → PASS-SKIP（小众）；A12/A23 → PASS-SKIP；A21 Mermaid → P2 已补。
+Follow-up 全做完（ade53fb）+ 复审 PASS：搜索滚动定位 / 追问气泡开关 / Mermaid / biome+prev-next a11y / fork 保留版本 / header 用量条 / 多选导出。正式打勾。
 - [x] A1 重新生成回答（末条一键重答 + 长按菜单任意点重答；旧版本保留）
 - [x] A2 回答多版本切换（Kelivo 式 ‹1/3›；版本全持久化/备份/可搜索）
 - [x] A3 对话分支/fork（从任意消息另开对话；自评"分支对话✅"现为真）
