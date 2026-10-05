@@ -1,5 +1,5 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
   defaultThreadMeta,
   deleteMessageFrom,
@@ -9,21 +9,29 @@ import {
   loadThreadData,
   nextVersionIndex,
   saveThreadData,
+  scrollTargetForMessage,
   selectedIdFor,
+  selectionForMessageJump,
   splitForCompression,
   truncateForEdit,
   truncateForRegenerate,
-  versionsOf,
-  visibleMessages,
   type VersionedMessage,
   type VersionStore,
+  versionsOf,
+  visibleMessages,
 } from "../src/chat/thread-versions.js";
 
-function msg(id: string, role: "user" | "assistant", extra: Partial<VersionedMessage> = {}): VersionedMessage {
+function msg(
+  id: string,
+  role: "user" | "assistant",
+  extra: Partial<VersionedMessage> = {},
+): VersionedMessage {
   return { id, role, ...extra };
 }
 
-function memStore(initial: Record<string, string> = {}): VersionStore & { data: Record<string, string> } {
+function memStore(
+  initial: Record<string, string> = {},
+): VersionStore & { data: Record<string, string> } {
   const data: Record<string, string> = { ...initial };
   return {
     data,
@@ -48,7 +56,12 @@ describe("thread-versions envelope", () => {
   it("round-trips the v2 envelope", async () => {
     const store = memStore();
     const meta = { ...defaultThreadMeta(1000), selectedVersions: { g1: "b2" }, tokenBudget: 8000 };
-    await saveThreadData("t1", [msg("a", "user"), msg("b", "assistant", { groupId: "g1" })], meta, store);
+    await saveThreadData(
+      "t1",
+      [msg("a", "user"), msg("b", "assistant", { groupId: "g1" })],
+      meta,
+      store,
+    );
     const loaded = await loadThreadData("t1", store);
     assert.equal(loaded.messages.length, 2);
     assert.equal(loaded.upgraded, false);
@@ -66,7 +79,11 @@ describe("thread-versions envelope", () => {
     const store = memStore();
     await store.setItem(
       "dudu.local-chat.t1.v1",
-      JSON.stringify({ v: 2, messages: [], meta: { selectedVersions: { g: 42 }, tokenBudget: -5 } }),
+      JSON.stringify({
+        v: 2,
+        messages: [],
+        meta: { selectedVersions: { g: 42 }, tokenBudget: -5 },
+      }),
     );
     const { meta } = await loadThreadData("t1", store);
     assert.deepEqual(meta.selectedVersions, {});
@@ -119,14 +136,21 @@ describe("versions", () => {
 });
 
 describe("truncateForRegenerate", () => {
-  const messages = [msg("u1", "user"), msg("a1", "assistant", { groupId: "g1" }), msg("u2", "user")];
+  const messages = [
+    msg("u1", "user"),
+    msg("a1", "assistant", { groupId: "g1" }),
+    msg("u2", "user"),
+  ];
   const meta = defaultThreadMeta();
 
   it("keeps everything before the target and returns its group", () => {
     const r = truncateForRegenerate(messages, meta, "a1");
     assert.ok(r);
     // a1 itself stays as v0 of its group — the fresh reply becomes v1.
-    assert.deepEqual(r.kept.map((m) => m.id), ["u1", "a1"]);
+    assert.deepEqual(
+      r.kept.map((m) => m.id),
+      ["u1", "a1"],
+    );
     assert.equal(r.groupId, "g1");
   });
 
@@ -149,10 +173,7 @@ describe("truncateForRegenerate", () => {
     assert.ok(r);
     // Visible timeline before a1 is just [u1]; a1 itself stays as v0 and
     // v1 (a2) — an unselected version of the target group — must survive.
-    assert.deepEqual(
-      r.kept.map((m) => m.id).sort(),
-      ["a1", "a2", "u1"],
-    );
+    assert.deepEqual(r.kept.map((m) => m.id).sort(), ["a1", "a2", "u1"]);
     assert.equal(r.groupId, "g1");
   });
 
@@ -170,7 +191,10 @@ describe("truncateForRegenerate", () => {
     // g2's visible version (a3) is after the target: the whole group goes,
     // including its unselected version a2. The target a1 itself stays as
     // v0 of its group — the fresh reply will become v1.
-    assert.deepEqual(r.kept.map((m) => m.id), ["u1", "a1"]);
+    assert.deepEqual(
+      r.kept.map((m) => m.id),
+      ["u1", "a1"],
+    );
   });
 });
 
@@ -181,7 +205,10 @@ describe("truncateForEdit", () => {
   it("keeps everything before the edited user message", () => {
     const r = truncateForEdit(messages, meta, "u1");
     assert.ok(r);
-    assert.deepEqual(r.kept.map((m) => m.id), []);
+    assert.deepEqual(
+      r.kept.map((m) => m.id),
+      [],
+    );
     assert.equal(r.target.id, "u1");
   });
 
@@ -201,10 +228,7 @@ describe("truncateForEdit", () => {
     const m2 = { ...defaultThreadMeta(), selectedVersions: { g1: "a1" } };
     const r = truncateForEdit(ms, m2, "u2");
     assert.ok(r);
-    assert.deepEqual(
-      r.kept.map((m) => m.id).sort(),
-      ["a1", "a2", "u1"],
-    );
+    assert.deepEqual(r.kept.map((m) => m.id).sort(), ["a1", "a2", "u1"]);
     assert.equal(r.target.id, "u2");
   });
 
@@ -220,7 +244,10 @@ describe("truncateForEdit", () => {
     const m2 = { ...defaultThreadMeta(), selectedVersions: { g1: "a2" } };
     const r = truncateForEdit(ms, m2, "u2");
     assert.ok(r);
-    assert.deepEqual(r.kept.map((m) => m.id), ["u1"]);
+    assert.deepEqual(
+      r.kept.map((m) => m.id),
+      ["u1"],
+    );
     assert.equal(r.target.id, "u2");
   });
 });
@@ -233,7 +260,10 @@ describe("deleteMessageFrom", () => {
     ];
     const meta = { ...defaultThreadMeta(), selectedVersions: { g1: "a2" } };
     const { messages: kept, meta: next } = deleteMessageFrom(messages, meta, "a2", false);
-    assert.deepEqual(kept.map((m) => m.id), ["a1"]);
+    assert.deepEqual(
+      kept.map((m) => m.id),
+      ["a1"],
+    );
     assert.equal(next.selectedVersions.g1, "a1");
   });
 
@@ -249,19 +279,25 @@ describe("deleteMessageFrom", () => {
       "a1",
       true,
     );
-    assert.deepEqual(kept.map((m) => m.id), ["u1"]);
+    assert.deepEqual(
+      kept.map((m) => m.id),
+      ["u1"],
+    );
     assert.deepEqual(next.selectedVersions, {});
   });
 
   it("deleting a user message leaves versions alone", () => {
     const messages = [msg("u1", "user"), msg("a1", "assistant", { groupId: "g1" })];
     const { messages: kept } = deleteMessageFrom(messages, defaultThreadMeta(), "u1", true);
-    assert.deepEqual(kept.map((m) => m.id), ["a1"]);
+    assert.deepEqual(
+      kept.map((m) => m.id),
+      ["a1"],
+    );
   });
 });
 
 describe("forkSlice", () => {
-  it("copies resolved messages up to the anchor and collapses versions", () => {
+  it("preserves versions up to the anchor and carries selections over", () => {
     const messages = [
       msg("u1", "user"),
       msg("a1", "assistant", { groupId: "g1", versionIndex: 0 }),
@@ -271,13 +307,15 @@ describe("forkSlice", () => {
     const meta = { ...defaultThreadMeta(), selectedVersions: { g1: "a2" } };
     const forked = forkSlice(messages, meta, "u2");
     assert.ok(forked);
+    // All versions preserved — nothing folded.
     assert.deepEqual(
-      forked.map((m) => m.id),
-      ["u1", "a2", "u2"],
+      forked.messages.map((m) => m.id),
+      ["u1", "a1", "a2", "u2"],
     );
-    // Version identity collapsed: each message stands alone in the new thread.
-    assert.equal(forked[1].groupId, "a2");
-    assert.equal(forked[1].versionIndex, 0);
+    assert.equal(forked.messages[1].groupId, "g1");
+    assert.equal(forked.messages[2].versionIndex, 1);
+    // Selection carried over so the new thread shows the same messages.
+    assert.deepEqual(forked.selectedVersions, { g1: "a2" });
   });
 
   it("returns null for unknown anchors", () => {
@@ -301,14 +339,94 @@ describe("token estimates and compression split", () => {
     ];
     // keepTailCount=2 would cut between u2 and a2; boundary moves back to after a1.
     const { head, tail } = splitForCompression(messages, 2);
-    assert.deepEqual(head.map((m) => m.id), ["u1", "a1"]);
-    assert.deepEqual(tail.map((m) => m.id), ["u2", "a2", "u3"]);
+    assert.deepEqual(
+      head.map((m) => m.id),
+      ["u1", "a1"],
+    );
+    assert.deepEqual(
+      tail.map((m) => m.id),
+      ["u2", "a2", "u3"],
+    );
   });
 
   it("splitForCompression keeps everything when short", () => {
     const messages = [msg("u1", "user")];
     const { head, tail } = splitForCompression(messages, 10);
     assert.deepEqual(head, []);
-    assert.deepEqual(tail.map((m) => m.id), ["u1"]);
+    assert.deepEqual(
+      tail.map((m) => m.id),
+      ["u1"],
+    );
+  });
+});
+
+describe("P2-1 follow-up chips toggle", () => {
+  it("persists followUpChips:false through save/load", async () => {
+    const store = memStore();
+    const meta = { ...defaultThreadMeta(1000), followUpChips: false as const };
+    await saveThreadData("t1", [msg("a", "user")], meta, store);
+    const loaded = await loadThreadData("t1", store);
+    assert.equal(loaded.meta.followUpChips, false);
+  });
+
+  it("drops followUpChips:true (default on — not worth persisting)", async () => {
+    const store = memStore();
+    const meta = { ...defaultThreadMeta(1000), followUpChips: true as const };
+    await saveThreadData("t1", [msg("a", "user")], meta, store);
+    const loaded = await loadThreadData("t1", store);
+    assert.equal(loaded.meta.followUpChips, undefined);
+  });
+
+  it("sanitizes hostile followUpChips values", async () => {
+    const store = memStore();
+    await store.setItem(
+      "dudu.local-chat.t1.v1",
+      JSON.stringify({ v: 2, messages: [], meta: { followUpChips: "yes" } }),
+    );
+    const { meta } = await loadThreadData("t1", store);
+    assert.equal(meta.followUpChips, undefined);
+  });
+
+  it("defaults to chips on", () => {
+    assert.equal(defaultThreadMeta().followUpChips, undefined);
+  });
+});
+
+describe("P2-2 search-hit jump", () => {
+  const messages = [
+    msg("u1", "user"),
+    msg("a1", "assistant", { groupId: "g1", versionIndex: 0 }),
+    msg("a2", "assistant", { groupId: "g1", versionIndex: 1 }),
+    msg("u2", "user"),
+  ];
+
+  it("selects the hit version when it is not the selected one", () => {
+    const meta = { ...defaultThreadMeta(), selectedVersions: { g1: "a2" } };
+    const sel = selectionForMessageJump(messages, meta, "a1");
+    assert.deepEqual(sel, { g1: "a1" });
+  });
+
+  it("returns null when the hit is already the selected version", () => {
+    const meta = { ...defaultThreadMeta(), selectedVersions: { g1: "a2" } };
+    assert.equal(selectionForMessageJump(messages, meta, "a2"), null);
+  });
+
+  it("returns null for unknown message ids", () => {
+    assert.equal(selectionForMessageJump(messages, defaultThreadMeta(), "zzz"), null);
+  });
+
+  it("returns null when the group has no recorded selection", () => {
+    assert.equal(selectionForMessageJump(messages, defaultThreadMeta(), "a1"), null);
+  });
+
+  it("scrollTargetForMessage leaves 90px of context and clamps at 0", () => {
+    assert.equal(scrollTargetForMessage(500), 410);
+    assert.equal(scrollTargetForMessage(50), 0);
+    assert.equal(scrollTargetForMessage(0), 0);
+  });
+
+  it("scrollTargetForMessage returns null without a laid-out offset", () => {
+    assert.equal(scrollTargetForMessage(undefined), null);
+    assert.equal(scrollTargetForMessage(Number.NaN), null);
   });
 });

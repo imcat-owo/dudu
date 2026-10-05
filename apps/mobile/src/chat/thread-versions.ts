@@ -41,6 +41,11 @@ export interface ThreadMeta {
   maxTokens?: number;
   /** Auto-title (A7) already attempted for this thread. */
   autoTitleDone?: boolean;
+  /**
+   * Follow-up suggestion chips (A6/P2-1): show the "接着问" chips after
+   * each reply. Default true; false hides them (and skips generating them).
+   */
+  followUpChips?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -81,6 +86,7 @@ function sanitizeMeta(raw: unknown, now: number): ThreadMeta {
       ? { tokenBudget: Math.floor(raw.tokenBudget) }
       : {}),
     ...(raw.autoTitleDone === true ? { autoTitleDone: true } : {}),
+    ...(raw.followUpChips === false ? { followUpChips: false } : {}),
     createdAt: typeof raw.createdAt === "number" ? raw.createdAt : now,
     updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : now,
   };
@@ -183,10 +189,7 @@ export function selectedIdFor<T extends VersionedMessage>(
  * The messages the user actually sees: non-assistant messages plus the
  * selected version of each assistant group, in original order.
  */
-export function visibleMessages<T extends VersionedMessage>(
-  messages: T[],
-  meta: ThreadMeta,
-): T[] {
+export function visibleMessages<T extends VersionedMessage>(messages: T[], meta: ThreadMeta): T[] {
   const selected = new Map<string, string>();
   for (const m of messages) {
     if (m.role !== "assistant") continue;
@@ -320,28 +323,52 @@ export function deleteMessageFrom<T extends VersionedMessage>(
 }
 
 /**
- * Branch/fork: the resolved (visible) messages up to and including the
- * given message, re-keyed as a fresh thread. Version groups collapse to
- * the selected version — a branch is a clean line, not a version tree.
+ * Branch/fork: all stored messages up to and including the anchor, as a
+ * fresh thread. Version groups are PRESERVED — every version keeps its
+ * groupId/versionIndex, and the returned selectedVersions carries the
+ * original selections over so the new thread shows the same messages.
  * Returns null when the anchor message is not found.
  */
 export function forkSlice<T extends VersionedMessage>(
   messages: T[],
   meta: ThreadMeta,
   anchorId: string,
-): T[] | null {
-  const visible = visibleMessages(messages, meta);
-  const idx = visible.findIndex((m) => m.id === anchorId);
+): { messages: T[]; selectedVersions: Record<string, string> } | null {
+  const idx = messages.findIndex((m) => m.id === anchorId);
   if (idx < 0) return null;
-  return visible.slice(0, idx + 1).map((m) => {
-    // Collapse version identity: in the new thread each message stands alone.
-    const copy = { ...m } as T & { groupId?: string; versionIndex?: number };
-    copy.groupId = m.id;
-    copy.versionIndex = 0;
-    return copy as T;
-  });
+  const sliced = messages.slice(0, idx + 1);
+  const groups = new Set<string>();
+  for (const m of sliced) groups.add(groupIdOf(m));
+  const selectedVersions: Record<string, string> = {};
+  for (const [g, sel] of Object.entries(meta.selectedVersions)) {
+    if (groups.has(g)) selectedVersions[g] = sel;
+  }
+  return { messages: sliced, selectedVersions };
 }
 
+/**
+ * P2-2: search-hit jump — when the hit message is an unselected version,
+ * returns the selectedVersions update that makes it render; null when the
+ * hit is already visible or unknown.
+ */
+export function selectionForMessageJump<T extends VersionedMessage>(
+  messages: T[],
+  meta: ThreadMeta,
+  targetId: string,
+): Record<string, string> | null {
+  const hit = messages.find((m) => m.id === targetId);
+  if (!hit) return null;
+  const g = groupIdOf(hit);
+  const current = meta.selectedVersions[g];
+  if (current && current !== targetId) return { ...meta.selectedVersions, [g]: targetId };
+  return null;
+}
+
+/** P2-2: ScrollView y for a laid-out message (90px of context above it). */
+export function scrollTargetForMessage(y: number | undefined): number | null {
+  if (y == null || !Number.isFinite(y)) return null;
+  return Math.max(0, y - 90);
+}
 /** Rough token estimate for context-usage display (A13): ~4 chars per token. */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);

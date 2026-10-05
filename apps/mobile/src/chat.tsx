@@ -5,15 +5,19 @@ import {
   useRenderTool,
   useRenderToolCall,
 } from "@copilotkit/react-native/headless";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import {
   ArrowDown,
   ArrowUp,
   Camera,
+  Check,
   Copy,
   EyeOff,
   FileText,
   GitBranch,
   List,
+  ListChecks,
   MessagesSquare,
   Pencil,
   Play,
@@ -46,8 +50,6 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Clipboard from "expo-clipboard";
 import { messageToolActions } from "./activity-drawer-model";
 import { ArtifactCard } from "./agent-ui";
 import { useAgentWorkspace } from "./agent-workspace";
@@ -58,21 +60,47 @@ import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
 import { PlanGateCard } from "./api-groups/plan-gate-card";
-import { GroupMeetingCard } from "./chat/group-meeting-card";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
 import { BackgroundUpdates } from "./background-updates";
 import { BrowserRunContext, BrowserToolCard } from "./browser-tool-card";
+import { listDialogs, setDialogName } from "./chat/cross-dialog";
+import {
+  buildDialogMarkdown,
+  DialogListSheet,
+  DialogSettingsSheet,
+  FollowUpChips,
+  type MessageAction,
+  MessageActionSheet,
+  QuickPhrasesSheet,
+  RoundShotModal,
+  type ShotRound,
+  SlashCommandList,
+  shareDialogMarkdown,
+  UsageIndicator,
+  VersionSwitcher,
+} from "./chat/dialog-ui";
+import { composeGreeting } from "./chat/greeting";
+import { GroupMeetingCard } from "./chat/group-meeting-card";
+import { generateOneShot } from "./chat/group-meeting-tools";
+import {
+  defaultThreadMeta,
+  forkSlice,
+  saveThreadData,
+  scrollTargetForMessage,
+  selectionForMessageJump,
+  type ThreadMeta,
+  type VersionedMessage,
+  versionsOf,
+} from "./chat/thread-versions";
 import { ChatAvatar } from "./chat-avatar";
 import { computeCanSend } from "./chat-send-gate";
 import { BrowserThreadCard } from "./computer";
 import { ConversationQueue, canFlushQueue, type QueuedMessage } from "./conversation-queue";
-import { composeGreeting } from "./chat/greeting";
 import { TText } from "./font";
 import { GlassView } from "./glass";
-import { t, type StringKey } from "./i18n";
-import { describeHerMoment } from "./our-space/her-rhythm";
+import { type StringKey, t } from "./i18n";
 import {
   buildImageUrl,
   encodeImageMessage,
@@ -85,7 +113,10 @@ import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
+import { memoryStore } from "./memory/instance";
+import { searchMemories } from "./memory/search";
 import { resolveAssistantText } from "./message-text";
+import { describeHerMoment } from "./our-space/her-rhythm";
 import { supportsSection } from "./section-support";
 import { radii } from "./theme/radii";
 import { shadows } from "./theme/shadows";
@@ -95,32 +126,6 @@ import { FileThreadCard, TaskThreadCard } from "./thread-artifacts";
 import { type Selection, useMuseThread } from "./threads";
 import { Button, Card, CheckRow, ErrorNotice, useColors, useStyles } from "./ui";
 import { type AgentMessage, loadThread, useChatAgent } from "./use-chat-agent";
-import { generateOneShot } from "./chat/group-meeting-tools";
-import { listDialogs, setDialogName } from "./chat/cross-dialog";
-import {
-  defaultThreadMeta,
-  forkSlice,
-  saveThreadData,
-  versionsOf,
-  type ThreadMeta,
-  type VersionedMessage,
-} from "./chat/thread-versions";
-import {
-  buildDialogMarkdown,
-  DialogListSheet,
-  DialogSettingsSheet,
-  FollowUpChips,
-  MessageActionSheet,
-  QuickPhrasesSheet,
-  RoundShotModal,
-  shareDialogMarkdown,
-  SlashCommandList,
-  VersionSwitcher,
-  type MessageAction,
-  type ShotRound,
-} from "./chat/dialog-ui";
-import { memoryStore } from "./memory/instance";
-import { searchMemories } from "./memory/search";
 import {
   encodeUserMessageWithImages,
   parseUserMessageWithImages,
@@ -356,7 +361,11 @@ export function ChatScreen({
   const selection = thread || { id: "local", existing: false };
   // Local multi-dialog (gap fill A): the thread id comes from the dialog
   // list selection. "local" is the legacy default -> the main dialog.
-  const threadId = richThreads ? selection.id : selection.id === "local" ? "local-main" : selection.id;
+  const threadId = richThreads
+    ? selection.id
+    : selection.id === "local"
+      ? "local-main"
+      : selection.id;
   const agentId = `dudu-${threadId}`;
   const { agent, isReady } = useChatAgent({ agentId, threadId });
   const renderToolCall = useSafeRenderToolCall();
@@ -412,6 +421,14 @@ export function ChatScreen({
   const [phrasesOpen, setPhrasesOpen] = useState(false);
   const [shotRound, setShotRound] = useState<ShotRound | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
+  // P3-4: multi-select export — pick messages, then export just those.
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // P2-2: search-hit jump — message id → ScrollView y offset, recorded on
+  // layout; highlightId flashes the target row once we land on it.
+  const messageYRef = useRef(new Map<string, number>());
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const pendingScrollRef = useRef<string | null>(null);
   const followUpForRef = useRef<string | null>(null);
   const autoTitleDoneRef = useRef(false);
   useEffect(() => {
@@ -710,7 +727,9 @@ export function ChatScreen({
       if (cmd === "remember" && args) {
         setDraft("");
         // A real memory write into the same store the AI uses — not a fake.
-        void memoryStore.addMemory(args, { actor: "user", source: "slash-command" }).catch(() => {});
+        void memoryStore
+          .addMemory(args, { actor: "user", source: "slash-command" })
+          .catch(() => {});
         return;
       }
       if (cmd === "search" && args) {
@@ -870,8 +889,7 @@ export function ChatScreen({
 
   const [dialogTitle, setDialogTitle] = useState(threadId);
 
-  const messageText = (m: AgentMessage): string =>
-    typeof m.content === "string" ? m.content : "";
+  const messageText = (m: AgentMessage): string => (typeof m.content === "string" ? m.content : "");
 
   const groupOf = (m: AgentMessage): string =>
     typeof m.groupId === "string" && m.groupId ? m.groupId : m.id;
@@ -893,6 +911,56 @@ export function ChatScreen({
     });
   }
 
+  /**
+   * P2-2: jump to a search-hit message. The dialog switch is async (messages
+   * load from storage), so we stash the target id and let an effect scroll
+   * once the new thread has laid out. If the hit is an unselected version,
+   * we select it first so it actually renders.
+   */
+  function jumpToMessage(id: string, messageId?: string) {
+    if (messageId) pendingScrollRef.current = messageId;
+    onSwitchThread?.(id);
+  }
+
+  useEffect(() => {
+    const target = pendingScrollRef.current;
+    if (!target) return;
+    messageYRef.current.clear();
+    // Make sure the hit version is the selected one (pure helper, tested).
+    if (agent.getThreadMeta && agent.setThreadMeta) {
+      const sel = selectionForMessageJump(
+        allMessages as VersionedMessage[],
+        agent.getThreadMeta(),
+        target,
+      );
+      if (sel) agent.setThreadMeta({ ...agent.getThreadMeta(), selectedVersions: sel });
+    }
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      const y = scrollTargetForMessage(messageYRef.current.get(target));
+      if (y != null) {
+        followLatest.current = false;
+        list.current?.scrollTo({ y, animated: true });
+        setHighlightId(target);
+        pendingScrollRef.current = null;
+        clearInterval(timer);
+      } else if (tries > 20) {
+        pendingScrollRef.current = null;
+        clearInterval(timer);
+      }
+    }, 150);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
+
+  // Highlight flash fades on its own.
+  useEffect(() => {
+    if (!highlightId) return;
+    const t = setTimeout(() => setHighlightId(null), 2600);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+
   /** Export this dialog as markdown via the share sheet (A18). */
   async function doExport() {
     try {
@@ -908,15 +976,49 @@ export function ChatScreen({
     }
   }
 
+  /** P3-4: multi-select export — toggle one message in the selection. */
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** P3-4: leave select mode without exporting. */
+  function cancelSelect() {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  }
+
+  /** P3-4: export only the selected messages, in dialog order. */
+  async function exportSelected() {
+    if (selectedIds.size === 0) return;
+    try {
+      const picked = visible
+        .filter((m) => selectedIds.has(m.id))
+        .map((m) => ({ role: m.role, content: messageText(m) }));
+      const md = buildDialogMarkdown(picked, dialogTitle);
+      await shareDialogMarkdown(md, dialogTitle);
+      cancelSelect();
+    } catch (e) {
+      setError(t("chat.exportFailed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
   /** Branch: fork everything up to this message into a new dialog (A3). */
   async function doBranch(m: AgentMessage) {
     if (!onSwitchThread) return;
     try {
       const meta = agent.getThreadMeta?.() ?? defaultThreadMeta();
-      const slice = forkSlice(allMessages as unknown as VersionedMessage[], meta, m.id);
-      if (!slice?.length) return;
+      const forked = forkSlice(allMessages as unknown as VersionedMessage[], meta, m.id);
+      if (!forked || forked.messages.length === 0) return;
       const newId = `local-${Date.now().toString(36)}`;
-      await saveThreadData(newId, slice, defaultThreadMeta(), AsyncStorage);
+      // P3-2: versions are preserved — carry the selections so the new
+      // dialog shows the same messages she branched from.
+      const newMeta = { ...defaultThreadMeta(), selectedVersions: forked.selectedVersions };
+      await saveThreadData(newId, forked.messages, newMeta, AsyncStorage);
       await setDialogName(AsyncStorage, newId, t("chat.branchDefaultName"));
       onSwitchThread(newId);
     } catch (e) {
@@ -935,23 +1037,19 @@ export function ChatScreen({
         Alert.alert(t("chat.recallMemory"), t("chat.recallMemoryNone"));
         return;
       }
-      Alert.alert(
-        t("chat.recallMemory"),
-        hits.map((h) => `· ${h.record.content}`).join("\n"),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("common.delete"),
-            style: "destructive",
-            onPress: () => {
-              void (async () => {
-                for (const h of hits) await memoryStore.deleteMemory(h.record.id, "user");
-                Alert.alert(t("chat.recalledMemory"));
-              })();
-            },
+      Alert.alert(t("chat.recallMemory"), hits.map((h) => `· ${h.record.content}`).join("\n"), [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              for (const h of hits) await memoryStore.deleteMemory(h.record.id, "user");
+              Alert.alert(t("chat.recalledMemory"));
+            })();
           },
-        ],
-      );
+        },
+      ]);
     } catch (e) {
       setError(t("chat.exportFailed", { error: e instanceof Error ? e.message : String(e) }));
     }
@@ -992,10 +1090,16 @@ export function ChatScreen({
           label: t("chat.editAndResend"),
           icon: Pencil,
           onPress: () => {
-            Alert.prompt(t("chat.editMessage"), undefined, (newText) => {
-              if (newText === undefined || !newText.trim() || newText === text) return;
-              void agent.editAndRegenerate?.(m.id, newText).catch((e) => setError(String(e)));
-            }, "plain-text", text);
+            Alert.prompt(
+              t("chat.editMessage"),
+              undefined,
+              (newText) => {
+                if (newText === undefined || !newText.trim() || newText === text) return;
+                void agent.editAndRegenerate?.(m.id, newText).catch((e) => setError(String(e)));
+              },
+              "plain-text",
+              text,
+            );
           },
         });
       }
@@ -1043,6 +1147,16 @@ export function ChatScreen({
         onPress: () => void recallMemory(m),
       });
     }
+    // P3-4: multi-select export — enters select mode with this message picked.
+    actions.push({
+      key: "select",
+      label: t("chat.selectMessages"),
+      icon: ListChecks,
+      onPress: () => {
+        setSelectedIds(new Set([m.id]));
+        setSelecting(true);
+      },
+    });
     if (isUser || vs.length <= 1) {
       actions.push({
         key: "delete",
@@ -1055,7 +1169,8 @@ export function ChatScreen({
             {
               text: t("common.delete"),
               style: "destructive",
-              onPress: () => void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
+              onPress: () =>
+                void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
             },
           ]);
         },
@@ -1071,7 +1186,8 @@ export function ChatScreen({
             {
               text: t("common.delete"),
               style: "destructive",
-              onPress: () => void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
+              onPress: () =>
+                void agent.deleteMessage?.(m.id, false).catch((e) => setError(String(e))),
             },
           ]);
         },
@@ -1087,7 +1203,8 @@ export function ChatScreen({
             {
               text: t("common.delete"),
               style: "destructive",
-              onPress: () => void agent.deleteMessage?.(m.id, true).catch((e) => setError(String(e))),
+              onPress: () =>
+                void agent.deleteMessage?.(m.id, true).catch((e) => setError(String(e))),
             },
           ]);
         },
@@ -1114,6 +1231,9 @@ export function ChatScreen({
 
   async function makeFollowUps(last: AgentMessage) {
     // Bonus affordance: never surfaces errors, never blocks.
+    // P2-1: per-dialog toggle — when she turns the chips off, don't even
+    // spend the API call generating them.
+    if (threadMeta?.followUpChips === false) return;
     try {
       if (!activeGroup) return;
       const text = messageText(last).trim();
@@ -1158,7 +1278,10 @@ export function ChatScreen({
         sample,
         { timeoutMs: 25000 },
       );
-      const clean = title.trim().replace(/^["'「『]+|["'」』]+$/g, "").slice(0, 24);
+      const clean = title
+        .trim()
+        .replace(/^["'「『]+|["'」』]+$/g, "")
+        .slice(0, 24);
       if (clean && active) {
         await setDialogName(AsyncStorage, threadId, clean);
         setDialogTitle(clean);
@@ -1312,6 +1435,15 @@ export function ChatScreen({
           </Pressable>
         </View>
       </View>
+      {/* P3-3: compact context-usage indicator under the header. Tapping
+          opens the dialog settings where the full usage card lives. */}
+      {mode === "local" && (
+        <UsageIndicator
+          tokens={agent.getContextUsage?.().tokens ?? 0}
+          budget={threadMeta?.tokenBudget}
+          onPress={() => setSettingsOpen(true)}
+        />
+      )}
       {incognitoOn && (
         <View
           style={{
@@ -1528,7 +1660,45 @@ export function ChatScreen({
               </View>
             );
             return (
-              <View key={message.id} style={{ gap: 6 }}>
+              <View
+                key={message.id}
+                onLayout={(e) => messageYRef.current.set(message.id, e.nativeEvent.layout.y)}
+                style={[
+                  { gap: 6, paddingLeft: selecting ? 30 : 0 },
+                  highlightId === message.id && {
+                    backgroundColor: colors.line,
+                    borderRadius: radii.lg,
+                  },
+                ]}
+              >
+                {/* P3-4: multi-select checkbox. */}
+                {selecting && (
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selectedIds.has(message.id) }}
+                    accessibilityLabel={t("chat.selectMessage")}
+                    onPress={() => toggleSelect(message.id)}
+                    hitSlop={8}
+                    style={{ position: "absolute", left: 2, top: 10, zIndex: 2 }}
+                  >
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        borderWidth: 2,
+                        borderColor: selectedIds.has(message.id) ? colors.blueDark : colors.muted,
+                        backgroundColor: selectedIds.has(message.id)
+                          ? colors.blueDark
+                          : "transparent",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {selectedIds.has(message.id) && <Check size={13} color={colors.canvas} />}
+                    </View>
+                  </Pressable>
+                )}
                 {hasBubble && (
                   <View
                     style={{
@@ -1544,7 +1714,12 @@ export function ChatScreen({
                         (speak button, trace tag) keep working. */}
                     <Pressable
                       style={{ maxWidth: "80%" }}
-                      onLongPress={() => openMessageMenu(message)}
+                      onPress={() => {
+                        if (selecting) toggleSelect(message.id);
+                      }}
+                      onLongPress={() => {
+                        if (!selecting) openMessageMenu(message);
+                      }}
                       delayLongPress={450}
                     >
                       {/* Cross-dialog delivery marker (vision feature 2):
@@ -1610,9 +1785,7 @@ export function ChatScreen({
                             />
                           ))}
                           {!!userImages.text.trim() && (
-                            <TText style={[s.text, { color: bubble.fg }]}>
-                              {userImages.text}
-                            </TText>
+                            <TText style={[s.text, { color: bubble.fg }]}>{userImages.text}</TText>
                           )}
                         </View>
                       ) : (
@@ -1683,58 +1856,63 @@ export function ChatScreen({
                 {/* Gap fill A1/A2/A6 (local mode): version switcher under
                     multi-version replies, a regenerate button under the last
                     reply, and follow-up chips after it. */}
-                {mode === "local" && !user && message.role === "assistant" && (() => {
-                  const vs = versionsOfMessage(message);
-                  const vIdx = vs.findIndex((v) => v.id === message.id);
-                  const isLast = index === visible.length - 1;
-                  const idle = !busy && !agent.isRunning;
-                  return (
-                    <>
-                      {vs.length > 1 && vIdx >= 0 && (
-                        <View style={{ paddingHorizontal: 4 }}>
-                          <VersionSwitcher
-                            current={vIdx + 1}
-                            total={vs.length}
-                            onPrev={() => switchVersion(message, -1)}
-                            onNext={() => switchVersion(message, 1)}
-                          />
-                        </View>
-                      )}
-                      {isLast && idle && (
-                        <View style={{ paddingHorizontal: 4, alignItems: "flex-start" }}>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={t("chat.regenerate")}
-                            onPress={() =>
-                              void agent.regenerateAt?.(message.id).catch((e) => setError(String(e)))
-                            }
-                            style={({ pressed }) => ({
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 6,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              borderRadius: radii.lg,
-                              backgroundColor: pressed ? colors.line : colors.card,
-                              borderWidth: 1,
-                              borderColor: colors.line,
-                            })}
-                          >
-                            <RotateCcw size={12} color={colors.muted} />
-                            <TText style={{ fontSize: 12, color: colors.muted }}>
-                              {t("chat.regenerate")}
-                            </TText>
-                          </Pressable>
-                        </View>
-                      )}
-                      {isLast && followUps.length > 0 && (
-                        <View style={{ paddingHorizontal: 4 }}>
-                          <FollowUpChips suggestions={followUps} onPick={(sug) => enqueue(sug)} />
-                        </View>
-                      )}
-                    </>
-                  );
-                })()}
+                {mode === "local" &&
+                  !user &&
+                  message.role === "assistant" &&
+                  (() => {
+                    const vs = versionsOfMessage(message);
+                    const vIdx = vs.findIndex((v) => v.id === message.id);
+                    const isLast = index === visible.length - 1;
+                    const idle = !busy && !agent.isRunning;
+                    return (
+                      <>
+                        {vs.length > 1 && vIdx >= 0 && (
+                          <View style={{ paddingHorizontal: 4 }}>
+                            <VersionSwitcher
+                              current={vIdx + 1}
+                              total={vs.length}
+                              onPrev={() => switchVersion(message, -1)}
+                              onNext={() => switchVersion(message, 1)}
+                            />
+                          </View>
+                        )}
+                        {isLast && idle && (
+                          <View style={{ paddingHorizontal: 4, alignItems: "flex-start" }}>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={t("chat.regenerate")}
+                              onPress={() =>
+                                void agent
+                                  .regenerateAt?.(message.id)
+                                  .catch((e) => setError(String(e)))
+                              }
+                              style={({ pressed }) => ({
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: radii.lg,
+                                backgroundColor: pressed ? colors.line : colors.card,
+                                borderWidth: 1,
+                                borderColor: colors.line,
+                              })}
+                            >
+                              <RotateCcw size={12} color={colors.muted} />
+                              <TText style={{ fontSize: 12, color: colors.muted }}>
+                                {t("chat.regenerate")}
+                              </TText>
+                            </Pressable>
+                          </View>
+                        )}
+                        {isLast && followUps.length > 0 && threadMeta?.followUpChips !== false && (
+                          <View style={{ paddingHorizontal: 4 }}>
+                            <FollowUpChips suggestions={followUps} onPick={(sug) => enqueue(sug)} />
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
               </View>
             );
           })
@@ -2124,6 +2302,33 @@ export function ChatScreen({
               }}
             />
           )}
+          {/* P3-4: multi-select export bar. Replaces the composer row while
+              selecting — export and cancel are both real, no dead ends. */}
+          {selecting && (
+            <View
+              style={[
+                s.row,
+                {
+                  gap: 8,
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.line,
+                },
+              ]}
+            >
+              <TText style={{ flex: 1, fontSize: 13, color: colors.muted }}>
+                {t("chat.selectedCount", { count: selectedIds.size })}
+              </TText>
+              <Button small onPress={cancelSelect}>
+                {t("common.cancel")}
+              </Button>
+              <Button small primary disabled={selectedIds.size === 0} onPress={exportSelected}>
+                {t("chat.exportSelected")}
+              </Button>
+            </View>
+          )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             {/* A17: quick phrases (local mode). */}
             {mode === "local" && (
@@ -2296,7 +2501,7 @@ export function ChatScreen({
             visible={dialogListOpen}
             onClose={() => setDialogListOpen(false)}
             currentId={threadId}
-            onSelect={(id) => onSwitchThread?.(id)}
+            onSelect={(id, messageId) => jumpToMessage(id, messageId)}
             onNew={() => onNewThread?.()}
           />
           <DialogSettingsSheet

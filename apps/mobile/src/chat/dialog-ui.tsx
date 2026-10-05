@@ -8,9 +8,11 @@
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
   Pencil,
   Pin,
   PinOff,
@@ -21,10 +23,8 @@ import {
   Sparkles,
   Trash2,
   X,
-  Camera,
-  type LucideIcon,
 } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,21 +32,22 @@ import {
   Pressable,
   ScrollView,
   Share,
+  Switch,
   TextInput,
   View,
 } from "react-native";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
-import { Button, Card, useColors, useStyles } from "../ui";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { radii } from "../theme/radii";
+import { Button, Card, useColors, useStyles } from "../ui";
 import {
+  type CrossDialogStorage,
+  type DialogInfo,
   deleteDialog,
   listDialogs,
   setDialogName,
   setDialogPinned,
-  type CrossDialogStorage,
-  type DialogInfo,
 } from "./cross-dialog";
 import type { ThreadMeta } from "./thread-versions";
 
@@ -91,6 +92,76 @@ function SheetShell({
         {children}
       </View>
     </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// P3-3: compact context-usage indicator for the dialog header.
+// ---------------------------------------------------------------------------
+
+/** 12345 -> "12.3k", 900 -> "900". Keeps the header readout tiny. */
+function compactTokens(n: number): string {
+  if (n >= 10000) return `${Math.round(n / 1000)}k`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(Math.max(0, Math.round(n)));
+}
+
+export function UsageIndicator({
+  tokens,
+  budget,
+  onPress,
+}: {
+  tokens: number;
+  budget?: number;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const pct = budget && budget > 0 ? Math.min(100, (tokens / budget) * 100) : 0;
+  const hot = budget != null && budget > 0 && tokens > budget * 0.9;
+  const usedLabel = compactTokens(tokens);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        budget
+          ? t("chat.usageIndicator", { used: usedLabel, budget: compactTokens(budget) })
+          : t("chat.usageIndicatorNoBudget", { used: usedLabel })
+      }
+      onPress={onPress}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 4,
+      }}
+    >
+      {budget ? (
+        <View
+          style={{
+            flex: 1,
+            height: 3,
+            borderRadius: 2,
+            backgroundColor: colors.line,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              height: 3,
+              borderRadius: 2,
+              width: `${pct}%`,
+              backgroundColor: hot ? colors.danger : colors.blueDark,
+            }}
+          />
+        </View>
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
+      <TText style={{ fontSize: 10, color: colors.muted }}>
+        {budget ? `${usedLabel} / ${compactTokens(budget)}` : usedLabel}
+      </TText>
+    </Pressable>
   );
 }
 
@@ -175,9 +246,7 @@ export function MessageActionSheet({
           }}
         >
           <View style={{ alignItems: "center", paddingVertical: 10 }}>
-            <View
-              style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line }}
-            />
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line }} />
           </View>
           {preview ? (
             <TText
@@ -227,15 +296,15 @@ export function VersionSwitcher({
 }) {
   const colors = useColors();
   if (total < 2) return null;
-  const btn = (label: string, fn: () => void, disabled: boolean) => (
+  const btn = (dir: "prev" | "next", fn: () => void, disabled: boolean) => (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={t(dir === "prev" ? "chat.versionPrev" : "chat.versionNext")}
       disabled={disabled}
       onPress={fn}
       style={{ padding: 6, opacity: disabled ? 0.3 : 1 }}
     >
-      {label === "prev" ? (
+      {dir === "prev" ? (
         <ChevronLeft size={16} color={colors.muted} />
       ) : (
         <ChevronRight size={16} color={colors.muted} />
@@ -343,7 +412,11 @@ function contentText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
-      .map((b) => (typeof b === "object" && b !== null && "text" in b ? String((b as { text: unknown }).text) : ""))
+      .map((b) =>
+        typeof b === "object" && b !== null && "text" in b
+          ? String((b as { text: unknown }).text)
+          : "",
+      )
       .join("");
   }
   return "";
@@ -371,7 +444,9 @@ export async function searchAllDialogs(query: string, limit = 30): Promise<Messa
     }
     const arr = Array.isArray(parsed)
       ? parsed
-      : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { messages?: unknown }).messages)
+      : typeof parsed === "object" &&
+          parsed !== null &&
+          Array.isArray((parsed as { messages?: unknown }).messages)
         ? (parsed as { messages: unknown[] }).messages
         : [];
     for (const m of arr) {
@@ -408,7 +483,8 @@ export function DialogListSheet({
   visible: boolean;
   onClose: () => void;
   currentId: string;
-  onSelect: (id: string) => void;
+  /** P2-2: search-hit taps pass (threadId, messageId) so chat can scroll to the message. */
+  onSelect: (id: string, messageId?: string) => void;
   onNew: () => void;
 }) {
   const colors = useColors();
@@ -576,7 +652,15 @@ export function DialogListSheet({
         </View>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <View style={{ flex: 1 }}>
-            <Button small primary onPress={() => { onClose(); onNew(); }} icon={Plus}>
+            <Button
+              small
+              primary
+              onPress={() => {
+                onClose();
+                onNew();
+              }}
+              icon={Plus}
+            >
               {t("chat.newDialog")}
             </Button>
           </View>
@@ -616,7 +700,7 @@ export function DialogListSheet({
                   key={`${h.threadId}:${h.messageId}`}
                   onPress={() => {
                     onClose();
-                    onSelect(h.threadId);
+                    onSelect(h.threadId, h.messageId);
                   }}
                   style={({ pressed }) => ({
                     paddingVertical: 10,
@@ -762,16 +846,14 @@ export function DialogSettingsSheet({
   const colors = useColors();
   const s = useStyles();
   const [systemPrompt, setSystemPrompt] = useState(meta.systemPrompt ?? "");
-  const [budget, setBudget] = useState(
-    meta.tokenBudget ? String(meta.tokenBudget) : "",
-  );
-  const [maxTokens, setMaxTokens] = useState(
-    meta.maxTokens ? String(meta.maxTokens) : "",
-  );
+  const [budget, setBudget] = useState(meta.tokenBudget ? String(meta.tokenBudget) : "");
+  const [maxTokens, setMaxTokens] = useState(meta.maxTokens ? String(meta.maxTokens) : "");
   const [keepTail, setKeepTail] = useState("6");
   const [customPrompt, setCustomPrompt] = useState("");
   const [compressing, setCompressing] = useState(false);
   const [notice, setNotice] = useState("");
+  // P2-1: follow-up chips toggle (A6). Default on; false hides + skips them.
+  const [chipsOn, setChipsOn] = useState(meta.followUpChips !== false);
 
   useEffect(() => {
     if (visible) {
@@ -781,6 +863,7 @@ export function DialogSettingsSheet({
       setKeepTail("6");
       setCustomPrompt("");
       setNotice("");
+      setChipsOn(meta.followUpChips !== false);
     }
   }, [visible]);
 
@@ -792,6 +875,7 @@ export function DialogSettingsSheet({
       systemPrompt: systemPrompt.trim() ? systemPrompt.trim() : undefined,
       tokenBudget: Number.isFinite(n) && n > 0 ? n : undefined,
       maxTokens: Number.isFinite(mt) && mt > 0 ? mt : undefined,
+      followUpChips: chipsOn ? undefined : false,
     });
     onClose();
   };
@@ -815,13 +899,9 @@ export function DialogSettingsSheet({
   return (
     <SheetShell title={t("chat.dialogSettings")} onClose={onClose}>
       <ScrollView style={{ paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-        <TText style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-          {dialogName}
-        </TText>
+        <TText style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>{dialogName}</TText>
 
-        <TText style={{ fontWeight: "700", marginBottom: 6 }}>
-          {t("chat.dialogSystemPrompt")}
-        </TText>
+        <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("chat.dialogSystemPrompt")}</TText>
         <TextInput
           value={systemPrompt}
           onChangeText={setSystemPrompt}
@@ -844,9 +924,7 @@ export function DialogSettingsSheet({
           {t("chat.dialogSystemPromptHint")}
         </TText>
 
-        <TText style={{ fontWeight: "700", marginBottom: 6 }}>
-          {t("chat.dialogTokenBudget")}
-        </TText>
+        <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("chat.dialogTokenBudget")}</TText>
         <TextInput
           value={budget}
           onChangeText={setBudget}
@@ -867,9 +945,7 @@ export function DialogSettingsSheet({
           {t("chat.dialogTokenBudgetHint")}
         </TText>
 
-        <TText style={{ fontWeight: "700", marginBottom: 6 }}>
-          {t("chat.dialogMaxTokens")}
-        </TText>
+        <TText style={{ fontWeight: "700", marginBottom: 6 }}>{t("chat.dialogMaxTokens")}</TText>
         <TextInput
           value={maxTokens}
           onChangeText={setMaxTokens}
@@ -890,9 +966,34 @@ export function DialogSettingsSheet({
           {t("chat.dialogMaxTokensHint")}
         </TText>
 
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 4,
+          }}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <TText style={{ fontWeight: "700" }}>{t("chat.followUpChips")}</TText>
+            <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+              {t("chat.followUpChipsHint")}
+            </TText>
+          </View>
+          <Switch
+            accessibilityLabel={t("chat.followUpChips")}
+            value={chipsOn}
+            onValueChange={setChipsOn}
+          />
+        </View>
+        <View style={{ height: 12 }} />
+
         <Card style={{ marginBottom: 16 }}>
           <TText style={{ fontWeight: "700", marginBottom: 4 }}>
-            {t("chat.contextUsage", { used: usage.tokens.toLocaleString(), budget: budgetNum.toLocaleString() })}
+            {t("chat.contextUsage", {
+              used: usage.tokens.toLocaleString(),
+              budget: budgetNum.toLocaleString(),
+            })}
           </TText>
           <View
             style={{
@@ -908,8 +1009,7 @@ export function DialogSettingsSheet({
                 height: 6,
                 borderRadius: 3,
                 width: `${Math.min(100, (usage.tokens / budgetNum) * 100)}%`,
-                backgroundColor:
-                  usage.tokens > budgetNum * 0.9 ? colors.danger : colors.blueDark,
+                backgroundColor: usage.tokens > budgetNum * 0.9 ? colors.danger : colors.blueDark,
               }}
             />
           </View>
@@ -1018,7 +1118,7 @@ export function QuickPhrasesSheet({
       setDraft("");
       void loadQuickPhrases().then(setPhrases);
     }
-  }, [visible ]);
+  }, [visible]);
 
   const add = async () => {
     const p = draft.trim();
@@ -1114,11 +1214,31 @@ export interface SlashCommand {
 export function slashCommands(): SlashCommand[] {
   return [
     { name: "img", label: t("chat.slash.img"), hint: t("chat.slash.imgHint"), icon: Camera },
-    { name: "search", label: t("chat.slash.search"), hint: t("chat.slash.searchHint"), icon: Search },
-    { name: "remember", label: t("chat.slash.recall"), hint: t("chat.slash.recallHint"), icon: Sparkles },
+    {
+      name: "search",
+      label: t("chat.slash.search"),
+      hint: t("chat.slash.searchHint"),
+      icon: Search,
+    },
+    {
+      name: "remember",
+      label: t("chat.slash.recall"),
+      hint: t("chat.slash.recallHint"),
+      icon: Sparkles,
+    },
     { name: "new", label: t("chat.slash.new"), hint: t("chat.slash.newHint"), icon: Plus },
-    { name: "compress", label: t("chat.slash.compress"), hint: t("chat.slash.compressHint"), icon: Scissors },
-    { name: "export", label: t("chat.slash.export"), hint: t("chat.slash.exportHint"), icon: ShareIcon },
+    {
+      name: "compress",
+      label: t("chat.slash.compress"),
+      hint: t("chat.slash.compressHint"),
+      icon: Scissors,
+    },
+    {
+      name: "export",
+      label: t("chat.slash.export"),
+      hint: t("chat.slash.exportHint"),
+      icon: ShareIcon,
+    },
     { name: "clear", label: t("chat.slash.clear"), hint: t("chat.slash.clearHint"), icon: Trash2 },
   ];
 }

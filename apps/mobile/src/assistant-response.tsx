@@ -2,16 +2,25 @@ import { useCallback, useMemo, useState } from "react";
 import { Linking, type TextStyle } from "react-native";
 import Markdown, { type MarkdownStyles, type RenderRules } from "react-native-markdown-renderer";
 import { assistantMarkdown, isSafeAssistantUrl } from "./assistant-markdown";
+import { MermaidBlock } from "./chat/mermaid-block";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { useTheme } from "./theme/ThemeContext";
 import { ErrorNotice, useColors } from "./ui";
 
-const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles) => (
-  <TText key={node.key} selectable style={styles.codeBlock as TextStyle}>
-    {node.content.replace(/\n$/, "")}
-  </TText>
-);
+const renderCodeBlock: RenderRules["fence"] = (node, _children, _parent, styles) => {
+  // A21: ```mermaid fences render as diagrams (Kelivo does the same);
+  // everything else stays a plain code block.
+  const lang = (node.sourceInfo || "").trim().toLowerCase();
+  if (lang === "mermaid") {
+    return <MermaidBlock key={node.key} code={node.content} />;
+  }
+  return (
+    <TText key={node.key} selectable style={styles.codeBlock as TextStyle}>
+      {node.content.replace(/\n$/, "")}
+    </TText>
+  );
+};
 
 export function AssistantResponse({ content }: { content: string }) {
   const colors = useColors();
