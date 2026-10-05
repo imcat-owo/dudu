@@ -10,6 +10,7 @@
  */
 
 import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { buildImageUrl } from "../image/protocol";
 import { getOnThisDay } from "./on-this-day";
 import type { OurSpaceStore, TimelineKind } from "./store";
 import { daysTogether, resolveTogetherSince } from "./together";
@@ -905,6 +906,67 @@ export function createTaskProgressTools(
         });
         await taskStore.saveIndex();
         return `Task card updated: "${task.name}" ${Math.round(task.progress * 100)}% (${task.status}).`;
+      },
+    },
+    {
+      name: "task_card_set_background",
+      description:
+        "Change a background task's progress-card background image in Our Space. Use ONLY when she explicitly asks to change a card's background (e.g. '把那张卡片的背景换掉'). Never call unprompted, and never overwrite a background she set herself unless she asked for this exact change. Exactly one of uri / prompt / clear must be given: uri = an image URI she shared in dialog; prompt = a text prompt to AI-generate a background (same generator the card menu uses); clear = true resets to the theme default.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Task card id (the same id used in task_progress_update).",
+          },
+          uri: {
+            type: "string",
+            description: "Image URI to use as the background (she shared it in dialog).",
+          },
+          prompt: {
+            type: "string",
+            description: "Text prompt to AI-generate a background image.",
+          },
+          clear: {
+            type: "boolean",
+            description: "true = remove the custom background, back to theme default.",
+          },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "our-space",
+      run: async (args) => {
+        const id = strArg(args, "id");
+        if (!id) throw new ToolError("id is required.");
+        const task = taskStore.get(id);
+        if (!task) {
+          throw new ToolError(
+            `No task card with id "${id}". Create it with task_progress_update first, or check the id.`,
+          );
+        }
+        const uri = strArg(args, "uri");
+        const prompt = strArg(args, "prompt");
+        const clear = args.clear === true;
+        const given = [uri !== "", prompt !== "", clear].filter(Boolean).length;
+        if (given !== 1) {
+          throw new ToolError("Give exactly one of: uri, prompt, or clear=true.");
+        }
+        let bg: string | null;
+        let note: string;
+        if (clear) {
+          bg = null;
+          note = "cleared, back to theme default";
+        } else if (uri !== "") {
+          bg = uri;
+          note = "set from the image she shared";
+        } else {
+          bg = buildImageUrl(prompt, { width: 800, height: 500, seed: Date.now() % 1000000 });
+          note = `generated from prompt "${prompt}"`;
+        }
+        await taskStore.setBackground(id, bg);
+        await taskStore.saveIndex();
+        return `Task card "${task.name}" background ${note}.`;
       },
     },
     {
