@@ -141,3 +141,70 @@ describe("wiring: auto-read triggers and stops", () => {
     __resetAutoReadForTests();
   });
 });
+
+describe("D34: alarm-set copy is honest about notification fallback", () => {
+  it("alarmSetOkKey picks the notif copy when not via AlarmKit", async () => {
+    const { alarmSetOkKey } = await import("../src/voice/tools.js");
+    assert.equal(alarmSetOkKey(true), "voice.alarmSetOk");
+    assert.equal(alarmSetOkKey(false), "voice.alarmSetOkNotif");
+  });
+
+  it("the notif copy exists in all locales and disclaims system alarm", async () => {
+    const { enStrings } = await import("../src/i18n/en.js");
+    const { zhHansStrings } = await import("../src/i18n/zh-Hans.js");
+    const { zhHantStrings } = await import("../src/i18n/zh-Hant.js");
+    const copies = [
+      enStrings["voice.alarmSetOkNotif"],
+      zhHansStrings["voice.alarmSetOkNotif"],
+      zhHantStrings["voice.alarmSetOkNotif"],
+    ];
+    for (const c of copies) {
+      assert.ok(c && c.length > 10, "notif copy must exist in every locale");
+    }
+    assert.match(enStrings["voice.alarmSetOkNotif"], /not a system alarm/i);
+    assert.match(zhHansStrings["voice.alarmSetOkNotif"], /非系统闹钟/);
+    assert.match(zhHantStrings["voice.alarmSetOkNotif"], /非系統鬧鐘/);
+  });
+
+  it("alarmDeleteFail copy exists in all locales", async () => {
+    const { enStrings } = await import("../src/i18n/en.js");
+    const { zhHansStrings } = await import("../src/i18n/zh-Hans.js");
+    const { zhHantStrings } = await import("../src/i18n/zh-Hant.js");
+    for (const pack of [enStrings, zhHansStrings, zhHantStrings]) {
+      assert.ok(pack["voice.alarmDeleteFail"]?.includes("{msg}"), "alarmDeleteFail must interpolate {msg}");
+      assert.ok(pack["voice.autoReadUnavailable"]?.length > 10, "autoReadUnavailable must exist");
+    }
+  });
+});
+
+describe("D35: auto-read synthesis failure is visible, not silent", () => {
+  it("maybeAutoReadAssistantMessage calls onError when synthesis fails", async () => {
+    __resetAutoReadForTests();
+    const errors: string[] = [];
+    const deps = makeAutoReadDeps({
+      synthesize: async () => {
+        throw new Error("tts backend exploded");
+      },
+      onError: (msg: string) => {
+        errors.push(msg);
+      },
+    });
+    const ok = await maybeAutoReadAssistantMessage("你好呀", deps);
+    assert.equal(ok, false);
+    assert.equal(deps.played.length, 0);
+    assert.deepEqual(errors, ["tts backend exploded"]);
+    __resetAutoReadForTests();
+  });
+
+  it("no onError wired = old behavior preserved (no crash)", async () => {
+    __resetAutoReadForTests();
+    const deps = makeAutoReadDeps({
+      synthesize: async () => {
+        throw new Error("boom");
+      },
+    });
+    const ok = await maybeAutoReadAssistantMessage("你好呀", deps);
+    assert.equal(ok, false);
+    __resetAutoReadForTests();
+  });
+});

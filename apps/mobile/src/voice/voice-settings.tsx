@@ -20,8 +20,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Switch, View } from "react-native";
 import { useApiGroups } from "../api-groups/store";
+import { useChatMode } from "../api-groups/mode";
 import { TText } from "../font";
 import { getLocale, t } from "../i18n";
+import { useIncognito } from "../incognito";
 import { radii } from "../theme/radii";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
 import type { Alarm } from "./alarms";
@@ -557,6 +559,11 @@ function MicModeSection() {
   const s = useStyles();
   const { settings, loaded } = useVoiceConfig();
   const [error, setError] = useState("");
+  // D35: auto-read only fires in local non-incognito chat — gray the
+  // switch out with an honest hint when it can't do anything.
+  const mode = useChatMode();
+  const { incognito } = useIncognito();
+  const autoReadBlocked = mode === "cloud" || incognito;
 
   async function setMode(m: MicMode) {
     setError("");
@@ -630,8 +637,18 @@ function MicModeSection() {
             <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
               {t("voice.autoReadDesc")}
             </TText>
+            {/* D35: when blocked, say so instead of letting the switch lie. */}
+            {autoReadBlocked && (
+              <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+                {t("voice.autoReadUnavailable")}
+              </TText>
+            )}
           </View>
-          <Switch value={settings.autoRead} onValueChange={(v) => void setAutoRead(v)} />
+          <Switch
+            value={settings.autoRead && !autoReadBlocked}
+            disabled={autoReadBlocked}
+            onValueChange={(v) => void setAutoRead(v)}
+          />
         </View>
       </View>
     </Card>

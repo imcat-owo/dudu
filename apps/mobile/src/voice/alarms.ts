@@ -302,7 +302,10 @@ export function createAlarmStore(deps: AlarmDeps) {
     async cancel(id: string): Promise<void> {
       const alarms = await load();
       const target = alarms.find((a) => a.id === id);
-      if (target) await cancelNative(target);
+      // D33: deleting a non-existent alarm must fail loudly — the tool
+      // used to report "deleted" and the alarm kept ringing.
+      if (!target) throw new AlarmError("找不到这个闹钟，可能已经被删了");
+      await cancelNative(target);
       await save(alarms.filter((a) => a.id !== id));
     },
 

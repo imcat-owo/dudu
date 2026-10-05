@@ -30,6 +30,13 @@ export interface AutoReadDeps {
   synthesize: (text: string, cfg: TtsConfig) => Promise<string>;
   createPlayer: (uri: string) => AudioPlayerLike;
   setAudioMode: (mode: { playsInSilentMode: boolean }) => Promise<void>;
+  /**
+   * D35: called when TTS synthesis fails. Without this the failure was
+   * swallowed (`catch { return false }`) and she never knew why nothing
+   * played. The caller decides how to make it visible (chat shows a
+   * transient error notice).
+   */
+  onError?: (error: string) => void;
 }
 
 let currentPlayer: AudioPlayerLike | null = null;
@@ -81,7 +88,10 @@ export async function maybeAutoReadAssistantMessage(
   let uri: string;
   try {
     uri = await deps.synthesize(clean, deps.getTtsConfig());
-  } catch {
+  } catch (e) {
+    // D35: never swallow a synthesis failure — tell the caller so the
+    // UI can show it instead of silently not playing anything.
+    deps.onError?.(e instanceof Error ? e.message : String(e));
     return false;
   }
   if (token !== autoReadToken) return false;

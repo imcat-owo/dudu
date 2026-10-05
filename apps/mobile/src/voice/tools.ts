@@ -295,6 +295,14 @@ export function createVoiceMessageTools(
  * The native AlarmKit module and expo-notifications are loaded lazily
  * (they don't exist in the node test env).
  */
+/**
+ * D34: honest result copy — a scheduled-notification fallback is not a
+ * system alarm, so it must not claim "闹钟定好了，到点叫你".
+ */
+export function alarmSetOkKey(viaAlarmKit: boolean): string {
+  return viaAlarmKit ? "voice.alarmSetOk" : "voice.alarmSetOkNotif";
+}
+
 export function createAlarmTools(
   backend: AlarmBackend,
   locale: PodcastLocale = "zh-Hans",
@@ -355,7 +363,9 @@ export function createAlarmTools(
           const alarm = await store.schedule(fireAt, label);
           const d = new Date(alarm.fireAt);
           const when = `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-          return t("voice.alarmSetOk") + `（${when}，${alarm.label}）`;
+          // D34: be honest about what was actually scheduled — a
+          // notification fallback is not a system alarm.
+          return t(alarmSetOkKey(alarm.viaAlarmKit)) + `（${when}，${alarm.label}）`;
         } catch (e) {
           throw new ToolError(
             t("voice.alarmSetFail", { msg: e instanceof Error ? e.message : String(e) }),
@@ -398,7 +408,15 @@ export function createAlarmTools(
       run: async (args) => {
         const id = strArg(args, "id").trim();
         if (!id) throw new ToolError("id is required.");
-        await store.cancel(id);
+        // D33: store.cancel throws on unknown ids — surface it honestly
+        // instead of reporting a phantom success.
+        try {
+          await store.cancel(id);
+        } catch (e) {
+          throw new ToolError(
+            t("voice.alarmDeleteFail", { msg: e instanceof Error ? e.message : String(e) }),
+          );
+        }
         return t("voice.alarmDelete") + " done.";
       },
     },

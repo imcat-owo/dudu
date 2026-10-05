@@ -293,3 +293,26 @@ describe("alarms: disabled records survive list cleanup", () => {
     assert.equal(list[0].enabled, true);
   });
 });
+
+describe("alarms: D33 cancel unknown id fails loudly", () => {
+  it("store.cancel throws AlarmError on unknown id (no phantom success)", async () => {
+    const backend = memBackend();
+    const store = createAlarmStore({ backend, ...kitDeps(newLog()) });
+    await assert.rejects(() => store.cancel("no-such-id"), /找不到这个闹钟/);
+    // Storage untouched — nothing was "deleted".
+    assert.equal(await backend.getItem("dudu.alarms.v1"), null);
+  });
+
+  it("cancel_alarm tool reports failure honestly on unknown id", async () => {
+    const backend = {
+      getItem: async () => null,
+      setItem: async () => {},
+      removeItem: async () => {},
+    };
+    const { createAlarmTools } = await import("../src/voice/tools.js");
+    const tools = createAlarmTools(backend, "zh-Hans");
+    const cancel = tools.find((t) => t.name === "cancel_alarm");
+    assert.ok(cancel, "cancel_alarm must exist");
+    await assert.rejects(() => cancel.run({ id: "no-such-id" }, {} as never), /没删掉/);
+  });
+});
