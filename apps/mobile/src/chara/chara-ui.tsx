@@ -142,8 +142,7 @@ export function CharaImportButton({ onImported }: { onImported?: () => void }) {
             <ScrollView style={{ flex: 1, marginVertical: 12 }}>
               <TText style={{ fontSize: 16, fontWeight: "600" }}>{d.name}</TText>
               <TText style={{ color: colors.muted, marginTop: 4 }}>
-                {t("chara.specVersion")}: {spec} · {t("chara.creator")}:{" "}
-                {d.creator || "?"}
+                {t("chara.specVersion")}: {spec} · {t("chara.creator")}: {d.creator || "?"}
               </TText>
               {d.description ? (
                 <TText style={{ marginTop: 8 }} numberOfLines={6}>
