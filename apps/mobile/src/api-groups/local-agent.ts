@@ -81,6 +81,7 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools";
 import { createProductionInitiativeTools } from "../initiative/instances";
+import { createProductionOpenAppTools } from "../openapp/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
@@ -1075,6 +1076,9 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createProductionInitiativeTools(),
+        // Aru-gap 轻控制： open_app whitelist tool. threadId = the dialog
+        // she's in (watchdog return target).
+        ...createProductionOpenAppTools(opts.threadId),
         ...createTaskProgressTools(taskProgressStore),
         ...createAmbientVideoTools(ambientVideoStore),
         ...createPodcastTools(

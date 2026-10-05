@@ -44,7 +44,8 @@ describe("createAiAuthStore", () => {
     const store = createAiAuthStore(memoryBackend());
     const snap = store.getSnapshot();
     for (const p of Object.values(snap)) assert.equal(p, "ask");
-    assert.equal(Object.keys(snap).length, 6);
+    assert.equal(Object.keys(snap).length, 7);
+    assert.equal(snap.open_apps, "ask");
   });
 
   it("setPreference updates memory and persists", async () => {

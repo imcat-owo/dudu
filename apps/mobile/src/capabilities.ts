@@ -24,7 +24,10 @@ export type CapabilityId =
   | "location"
   | "clipboard"
   | "notifications"
-  | "sandbox";
+  | "sandbox"
+  /** AI opening another app via URL scheme (Aru-gap 轻控制）. No iOS system
+   *  dialog — the AI authorization popup is the gate. */
+  | "open_apps";
 
 /** Every capability in this registry crosses the app boundary. */
 export type CapabilityScope = "out-of-app";
@@ -86,10 +89,17 @@ export const CAPABILITIES: Record<CapabilityId, CapabilityDef> = {
     aiDescriptionKey: "perm.aiDesc.sandbox",
     whyKey: "perm.why.sandbox",
   },
+  open_apps: {
+    id: "open_apps",
+    scope: "out-of-app",
+    nameKey: "perm.kind.open_apps",
+    aiDescriptionKey: "perm.aiDesc.open_apps",
+    whyKey: "perm.why.open_apps",
+  },
 };
 
-/** Device permissions with iOS system prompts (sandbox is AI-only, not a device permission). */
-export type DeviceCapabilityId = Exclude<CapabilityId, "sandbox">;
+/** Device permissions with iOS system prompts (sandbox/open_apps are AI-only, not device permissions). */
+export type DeviceCapabilityId = Exclude<CapabilityId, "sandbox" | "open_apps">;
 
 /** Device permissions shown in the iOS settings UI (sandbox has its own UI). */
 export const CAPABILITY_ORDER: DeviceCapabilityId[] = [
@@ -100,8 +110,8 @@ export const CAPABILITY_ORDER: DeviceCapabilityId[] = [
   "notifications",
 ];
 
-/** All capabilities the AI knows about (device + sandbox). */
-export const AI_CAPABILITY_ORDER: CapabilityId[] = [...CAPABILITY_ORDER, "sandbox"];
+/** All capabilities the AI knows about (device + sandbox + open_apps). */
+export const AI_CAPABILITY_ORDER: CapabilityId[] = [...CAPABILITY_ORDER, "sandbox", "open_apps"];
 
 export function isCapabilityId(raw: string | null | undefined): raw is CapabilityId {
   return (
@@ -110,7 +120,8 @@ export function isCapabilityId(raw: string | null | undefined): raw is Capabilit
     raw === "location" ||
     raw === "clipboard" ||
     raw === "notifications" ||
-    raw === "sandbox"
+    raw === "sandbox" ||
+    raw === "open_apps"
   );
 }
 

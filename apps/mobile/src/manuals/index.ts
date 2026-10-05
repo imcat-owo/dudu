@@ -35,6 +35,7 @@ import { MEDIA_MANUAL } from "./media";
 import { MEMORY_MANUAL } from "./memory";
 import { MUSIC_ROOM_MANUAL } from "./music-room";
 import { NATIVE_APPS_MANUAL } from "./native-apps";
+import { OPEN_APP_MANUAL } from "./openapp";
 import { OUR_SPACE_MANUAL } from "./our-space";
 import { OUTREACH_MANUAL } from "./outreach";
 import { PERMISSIONS_MANUAL } from "./permissions";
@@ -78,6 +79,7 @@ export const MANUALS: ManualEntry[] = [
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,
+  OPEN_APP_MANUAL,
   SKILLS_MANUAL,
   KNOWLEDGE_MANUAL,
   MEDIA_MANUAL,

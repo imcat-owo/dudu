@@ -56,6 +56,8 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionProactiveSend");
     case "feed_nudge":
       return t("crossDialog.actionFeedNudge");
+    case "openapp_return":
+      return t("crossDialog.actionOpenAppReturn");
   }
 }
 

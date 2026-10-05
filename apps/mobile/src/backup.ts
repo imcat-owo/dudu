@@ -167,6 +167,9 @@ const EXTENSION_KEYS = [
   "dudu.initiative.v1.fired",
   "dudu.initiative.v1.sends",
   "dudu.initiative.v1.dailyCap",
+  // Open-app watchdog （轻控制）: handled-tap ledger (idempotency — a
+  // restored backup must not double-greet a tapped notification).
+  "dudu.openapp.v1.handledTaps",
   "dudu.sandbox.activeBackend.v1",
   "dudu.ambientvideo.v1.overrides",
   "dudu.theme.aiMode.v1",

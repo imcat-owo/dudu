@@ -1830,6 +1830,27 @@ export const enStrings: Record<StringKey, string> = {
   "perm.aiDesc.sandbox":
     "Sandbox: run shell commands in her cloud Docker containers or the local Linux sandbox. This runs real code on her machines — you MUST ask her first every time and only proceed with her permission.",
   "perm.why.sandbox": "So the AI can run commands and code for her in the sandbox.",
+  "perm.kind.open_apps": "Open other apps",
+  "perm.aiDesc.open_apps":
+    "Open other apps: jump out of 嘟嘟 to a whitelisted app (maps, music, shop, Shortcuts…). This leaves 嘟嘟 — you MUST ask her first every time (the tool pops the approval) and only proceed with her permission.",
+  "perm.why.open_apps":
+    "So the AI can take her to other apps (maps, music, shops) when she asks — always with her tap to confirm.",
+  "openapp.auth.action": "Open {app}",
+  "openapp.auth.reason": "You asked to visit {app} — this leaves 嘟嘟 and opens that app.",
+  "openapp.watch.title": "How's it going?",
+  "openapp.watch.body": "How's {app} treating you? Tap me and I'll bring you back to 嘟嘟.",
+  "openapp.result.opened": "Opened {app}. {watchdog}",
+  "openapp.result.watchdogArmed":
+    "Watchdog armed: in {minutes} minutes I'll remind her — tapping it brings her back to this dialog.",
+  "openapp.result.watchdogFailed":
+    "Watchdog failed to arm — if she wants to come back, she can switch back to 嘟嘟 herself.",
+  "openapp.result.webview": "Opened {url} in the in-app browser ({app}) — she never left 嘟嘟.",
+  "openapp.error.denied": "She didn't allow opening {app} — I stayed put.",
+  "openapp.error.notInstalled": "{app} doesn't seem to be installed — couldn't open it.",
+  "openapp.error.unknownEntry":
+    "No such fixed path ({entry}). I can only use the whitelisted entries — I can't invent URLs.",
+  "openapp.error.noWebVersion":
+    "{app} has no web version — it can only be opened by jumping out (needs her approval).",
   "sandbox.title": "Sandbox",
   "sandbox.backend.cloud": "Cloud Docker",
   "sandbox.backend.local": "Local Linux (iSH)",
@@ -2012,6 +2033,7 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.actionMeetingEnd": "Meeting ended",
   "crossDialog.actionProactiveSend": "Reached out",
   "crossDialog.actionFeedNudge": "Reacted to her post",
+  "crossDialog.actionOpenAppReturn": "Welcomed her back from another app",
   "crossDialog.fromDialogTag": 'From dialog "{name}"',
   "crossDialog.sendTagVisible": "Show source tag in target dialog",
   "crossDialog.sendTagVisibleDetail":

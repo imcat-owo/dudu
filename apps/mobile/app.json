@@ -20,7 +20,25 @@
         "NSRemindersUsageDescription": "嘟嘟 想用提醒事项，到点提醒你。",
         "NSContactsUsageDescription": "嘟嘟 想看看通讯录，知道谁是谁。",
         "NSHealthShareUsageDescription": "嘟嘟 想读取步数、睡眠这些健康数据，更懂你。",
-        "NSHealthUpdateUsageDescription": "嘟嘟 想写入健康数据。"
+        "NSHealthUpdateUsageDescription": "嘟嘟 想写入健康数据。",
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "sms",
+          "mailto",
+          "weixin",
+          "alipay",
+          "taobao",
+          "openapp.jdmobile",
+          "bilibili",
+          "music",
+          "orpheus",
+          "qqmusic",
+          "iosamap",
+          "shortcuts",
+          "bear",
+          "things",
+          "drafts"
+        ]
       }
     },
     "android": {

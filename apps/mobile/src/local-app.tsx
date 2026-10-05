@@ -230,6 +230,18 @@ export function LocalApp() {
           setSection("chat");
           return;
         }
+        // Aru-gap 轻控制 (open_app watchdog): tapping the "bring me back"
+        // notification opens chat and triggers ONE welcome-back greeting
+        // for that jump (idempotent — a double tap greets once).
+        if (kind === "openapp-watch") {
+          void import("./openapp/instances")
+            .then(async (m) => {
+              await m.handleOpenAppWatchTap(data);
+            })
+            .catch(() => {});
+          setSection("chat");
+          return;
+        }
         const known =
           kind === "anniversary" ||
           kind === "tell_later" ||

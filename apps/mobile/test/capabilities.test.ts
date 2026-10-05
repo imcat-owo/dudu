@@ -9,7 +9,7 @@ import {
 } from "../src/capabilities.js";
 
 describe("capability registry", () => {
-  it("covers the 5 device capabilities + sandbox as AI-only", () => {
+  it("covers the 5 device capabilities + sandbox and open_apps as AI-only", () => {
     assert.deepEqual(CAPABILITY_ORDER, [
       "bluetooth",
       "photos",
@@ -17,8 +17,8 @@ describe("capability registry", () => {
       "clipboard",
       "notifications",
     ]);
-    assert.deepEqual(AI_CAPABILITY_ORDER, [...CAPABILITY_ORDER, "sandbox"]);
-    assert.equal(Object.keys(CAPABILITIES).length, 6);
+    assert.deepEqual(AI_CAPABILITY_ORDER, [...CAPABILITY_ORDER, "sandbox", "open_apps"]);
+    assert.equal(Object.keys(CAPABILITIES).length, 7);
   });
 
   it("every capability is out-of-app scope (the AI must ask her)", () => {
@@ -37,13 +37,14 @@ describe("capability registry", () => {
     }
   });
 
-  it("sandbox is not a device permission (has its own UI)", () => {
+  it("sandbox and open_apps are not device permissions (no iOS system dialog)", () => {
     assert.ok(!(CAPABILITY_ORDER as string[]).includes("sandbox"));
+    assert.ok(!(CAPABILITY_ORDER as string[]).includes("open_apps"));
   });
 });
 
 describe("isCapabilityId", () => {
-  it("accepts the 6 ids, rejects everything else", () => {
+  it("accepts the 7 ids, rejects everything else", () => {
     for (const id of AI_CAPABILITY_ORDER) assert.ok(isCapabilityId(id));
     assert.ok(!isCapabilityId("audio"));
     assert.ok(!isCapabilityId(""));
@@ -58,7 +59,7 @@ describe("buildCapabilityPromptSection", () => {
     const resolve = (key: string) => `[${key}]`;
     const section = buildCapabilityPromptSection(resolve as never);
     const lines = section.split("\n");
-    assert.equal(lines.length, 6);
+    assert.equal(lines.length, 7);
     for (const id of AI_CAPABILITY_ORDER) {
       const line = lines.find((l) => l.includes(`perm.kind.${id}`));
       assert.ok(line, `missing line for ${id}`);
