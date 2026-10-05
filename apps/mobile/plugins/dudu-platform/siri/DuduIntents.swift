@@ -16,7 +16,7 @@ import Foundation
 /// deep link parsing — so those are excluded here.
 private func encodeSiriPrompt(_ prompt: String) -> String {
   var allowed = CharacterSet.urlQueryAllowed
-  allowed.remove(charactersIn: "&=+?")
+  allowed.remove(charactersIn: "&=+?% ")
   return prompt.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
 }
 

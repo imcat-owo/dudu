@@ -45,7 +45,15 @@ describe("native-apps definitions", () => {
     const wired = NATIVE_APP_ORDER.filter((id) => NATIVE_APPS[id].wired);
     assert.deepEqual(
       wired.sort(),
-      ["apple-music", "calendar", "contacts", "device-info", "healthkit", "reminders", "siri"].sort(),
+      [
+        "apple-music",
+        "calendar",
+        "contacts",
+        "device-info",
+        "healthkit",
+        "reminders",
+        "siri",
+      ].sort(),
     );
   });
 
