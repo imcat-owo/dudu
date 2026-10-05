@@ -11,7 +11,7 @@
  * is a no-op (honest, not faked).
  */
 
-import { APP_GROUP_ID, SHARED_KEYS, getNativeModule } from "./types";
+import { APP_GROUP_ID, getNativeModule, SHARED_KEYS } from "./types";
 
 export type SharedItemKind = "text" | "url" | "image" | "file";
 

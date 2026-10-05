@@ -12,6 +12,8 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { type StringKey, t } from "../i18n";
+
 const KEYS = {
   enabled: "dudu.app-lock.enabled.v1",
   idleSeconds: "dudu.app-lock.idle-seconds.v1",
@@ -167,13 +169,15 @@ function createAppLockStore() {
   }
 
   /** Prompt for biometrics. Returns true on success. */
-  async function authenticate(promptKey = "platform.applock.prompt.unlock"): Promise<boolean> {
+  async function authenticate(
+    promptKey: StringKey = "platform.applock.prompt.unlock",
+  ): Promise<boolean> {
     try {
       const auth = await loadAuth();
       if (!auth) return false;
       const result = await auth.authenticateAsync({
-        promptMessage: promptKey,
-        cancelLabel: "common.cancel",
+        promptMessage: t(promptKey),
+        cancelLabel: t("common.cancel"),
         disableDeviceFallback: false,
       });
       if (result.success) {
@@ -237,7 +241,13 @@ function createAppLockStore() {
     lockNow,
     /** Test hook. */
     __resetForTests() {
-      state = { enabled: false, idleSeconds: -1, biometricKind: "none", enrolled: false, locked: false };
+      state = {
+        enabled: false,
+        idleSeconds: -1,
+        biometricKind: "none",
+        enrolled: false,
+        locked: false,
+      };
       lastUnlockedAt = 0;
       lastBackgroundAt = 0;
       emit();

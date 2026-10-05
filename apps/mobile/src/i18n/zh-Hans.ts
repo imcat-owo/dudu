@@ -810,7 +810,8 @@ const zhHans = {
   "browser.cookieClear": "清空",
   "browser.cookieClearConfirm": "把这个页面 JS 能碰到的 cookie 都清掉？",
   "browser.cookieCleared": "清掉了。",
-  "browser.cookieNote": "只能看到 JS 能读到的 cookie，HttpOnly 的既看不到也清不掉——那是网站自己的小秘密。",
+  "browser.cookieNote":
+    "只能看到 JS 能读到的 cookie，HttpOnly 的既看不到也清不掉——那是网站自己的小秘密。",
   "browser.cookieLoadFail": "没读到，页面可能还没加载完，稍后再试。",
   "browser.cookieCount": "{n} 个",
 
@@ -1424,7 +1425,8 @@ const zhHans = {
   "apigroup.extras.invalid": "这不是合法 JSON，我没敢存：{error}",
   "apigroup.extras.needObject": "得是个 JSON 对象",
   "apigroup.caching.title": "提示词缓存",
-  "apigroup.caching.desc": "服务端支持的话，重复的提示词直接读缓存，又快又省钱。只对 OpenAI 兼容接口有效。",
+  "apigroup.caching.desc":
+    "服务端支持的话，重复的提示词直接读缓存，又快又省钱。只对 OpenAI 兼容接口有效。",
   "apigroup.diag.title": "诊断日志",
   "apigroup.diag.desc": "每次请求的情况都记着，key 已经脱敏，看不到原文。",
   "apigroup.diag.view": "看看日志",
@@ -1965,7 +1967,8 @@ const zhHans = {
   // ---- GLOBAL.md ----
   "globalmd.title": "GLOBAL.md",
   "globalmd.hint": "你亲手写的偏好，AI 只读不改。比如：我不吃辣、回消息别太长。",
-  "globalmd.placeholder": "在这里写下你的偏好…\n\n比如：\n- 我不吃辣\n- 周末别叫我早起\n- 回消息简短点",
+  "globalmd.placeholder":
+    "在这里写下你的偏好…\n\n比如：\n- 我不吃辣\n- 周末别叫我早起\n- 回消息简短点",
   "globalmd.saved": "保存好了",
   "globalmd.empty": "还没写，写几句你的偏好吧",
 
@@ -2114,6 +2117,9 @@ const zhHans = {
   "platform.tasks.repeat.weekly": "每周",
   "platform.tasks.repeat.monthly": "每月",
   "platform.tasks.next": "下次",
+  "platform.tasks.deleteConfirm": "删掉这个提醒？",
+  "platform.tasks.timeHint": "24 小时制，比如 08:30",
+  "platform.tasks.invalidTime": "时间格式不对，写成 08:30 这样",
 
   // ---- platform: siri (H4) ----
   "platform.siri.title": "Siri 快捷指令",

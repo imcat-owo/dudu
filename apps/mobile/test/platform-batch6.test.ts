@@ -1,17 +1,18 @@
 /**
  * Batch 6 (H) platform tests.
  */
-import { describe, it } from "node:test";
+
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import {
-  computeNextFire,
   advanceTask,
+  computeNextFire,
   type ScheduledTask,
 } from "../src/platform/scheduled-tasks.js";
-import { parseSiriLink, buildSiriLink } from "../src/platform/siri-shortcuts.js";
+import { type PendingShare, shareToPrompt } from "../src/platform/share-intake.js";
+import { buildSiriLink, parseSiriLink } from "../src/platform/siri-shortcuts.js";
 import { buildWidgetData } from "../src/platform/widget-data.js";
-import { shareToPrompt, type PendingShare } from "../src/platform/share-intake.js";
 
 describe("scheduled tasks", () => {
   it("computes next daily fire tomorrow when time passed", () => {

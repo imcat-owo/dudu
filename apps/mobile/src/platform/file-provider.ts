@@ -66,7 +66,10 @@ export async function getSharedFileDir(): Promise<string | null> {
  * Publish a file (by absolute path) into the Files.app-visible directory.
  * Returns the published path, or null when the native side is missing.
  */
-export async function publishToFilesApp(sourcePath: string, fileName: string): Promise<string | null> {
+export async function publishToFilesApp(
+  sourcePath: string,
+  fileName: string,
+): Promise<string | null> {
   const dir = await getSharedFileDir();
   if (!dir) return null;
   const FS = loadFS();

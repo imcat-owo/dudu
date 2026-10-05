@@ -35,14 +35,22 @@ export interface HomekitScene {
 async function loadModule(): Promise<{
   listAccessories(): Promise<HomekitAccessory[]>;
   getCharacteristics(accessoryId: string): Promise<HomekitCharacteristic[]>;
-  setCharacteristic(accessoryId: string, type: string, value: string | number | boolean): Promise<boolean>;
+  setCharacteristic(
+    accessoryId: string,
+    type: string,
+    value: string | number | boolean,
+  ): Promise<boolean>;
   listScenes(): Promise<HomekitScene[]>;
   runScene(sceneId: string): Promise<boolean>;
 } | null> {
   return getNativeModule<{
     listAccessories(): Promise<HomekitAccessory[]>;
     getCharacteristics(accessoryId: string): Promise<HomekitCharacteristic[]>;
-    setCharacteristic(accessoryId: string, type: string, value: string | number | boolean): Promise<boolean>;
+    setCharacteristic(
+      accessoryId: string,
+      type: string,
+      value: string | number | boolean,
+    ): Promise<boolean>;
     listScenes(): Promise<HomekitScene[]>;
     runScene(sceneId: string): Promise<boolean>;
   }>("DuduHomeKit");
@@ -63,7 +71,9 @@ export async function listHomekitAccessories(): Promise<HomekitAccessory[]> {
   }
 }
 
-export async function getHomekitCharacteristics(accessoryId: string): Promise<HomekitCharacteristic[]> {
+export async function getHomekitCharacteristics(
+  accessoryId: string,
+): Promise<HomekitCharacteristic[]> {
   const mod = await loadModule();
   if (!mod) return [];
   try {

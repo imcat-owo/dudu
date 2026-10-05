@@ -49,6 +49,8 @@ import { TText, useFont } from "./font";
 import { type StringKey, t } from "./i18n";
 import { ProfileSection } from "./memory/profile-ui";
 import { PersonaSection } from "./persona/persona-ui";
+import { AppLockSection } from "./platform/app-lock-ui";
+import { ScheduledTasksSection } from "./platform/scheduled-tasks-ui";
 import { GoogleFontsSection } from "./theme/google-fonts-ui";
 import { WebAppsSection } from "./theme/web-apps-ui";
 import { KnowledgeSheet } from "./knowledge/knowledge-ui";
@@ -1064,6 +1066,8 @@ export function AppearanceScreen() {
       <ProfileSection />
       <GoogleFontsSection />
       <WebAppsSection />
+      <ScheduledTasksSection />
+      <AppLockSection />
     </View>
   );
 }

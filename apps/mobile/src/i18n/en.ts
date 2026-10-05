@@ -843,7 +843,8 @@ export const enStrings: Record<StringKey, string> = {
   "browser.cookieCleared": "Cleared.",
   "browser.cookieNote":
     "Only JS-readable cookies are shown. HttpOnly cookies are invisible and can't be cleared — those are the site's own secrets.",
-  "browser.cookieLoadFail": "Couldn't read them — the page may still be loading. Try again in a moment.",
+  "browser.cookieLoadFail":
+    "Couldn't read them — the page may still be loading. Try again in a moment.",
   "browser.cookieCount": "{n}",
 
   // ---- files screen ----
@@ -1649,7 +1650,8 @@ export const enStrings: Record<StringKey, string> = {
   "voice.ttsProviderModelDefault": "Default {model}",
   "voice.ttsVoiceHint": "Voice ID, check the provider docs",
   "voice.autoRead": "Auto-read AI replies",
-  "voice.autoReadDesc": "When on, AI replies are read aloud automatically. Handy when driving or doing chores.",
+  "voice.autoReadDesc":
+    "When on, AI replies are read aloud automatically. Handy when driving or doing chores.",
   "voice.sttPreset": "Transcription service",
   "voice.sttDashscope": "Alibaba Bailian",
   "voice.sttStepfun": "StepFun",
@@ -1666,7 +1668,8 @@ export const enStrings: Record<StringKey, string> = {
   "voice.alarmSetFail": "Couldn't set the alarm: {msg}",
   "voice.alarmNeedPermission": "Alarm permission is needed first.",
   "voice.correctionTitle": "Voice correction learning",
-  "voice.correctionDesc": "Corrections you make to transcriptions are remembered and auto-applied next time.",
+  "voice.correctionDesc":
+    "Corrections you make to transcriptions are remembered and auto-applied next time.",
   "voice.correctionEmpty": "No corrections learned yet.",
   "voice.correctionClear": "Clear learned corrections",
   "voice.ttsVoice": "Voice",
@@ -1911,7 +1914,8 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.appsEntry": "Cross-dialog trace",
   "crossDialog.appsEntryDetail": "What he did in your other dialogs",
   // ---- MCP ----
-  "mcp.intro": "Connect external MCP servers — maps, databases, anything. This is how capabilities grow.",
+  "mcp.intro":
+    "Connect external MCP servers — maps, databases, anything. This is how capabilities grow.",
   "mcp.name": "Name",
   "mcp.namePlaceholder": "e.g. Amap",
   "mcp.url": "Server URL",
@@ -1925,7 +1929,7 @@ export const enStrings: Record<StringKey, string> = {
   "mcp.oauth.authorize": "Authorize",
   "mcp.oauth.authorizing": "Authorizing…",
   "mcp.oauth.successTitle": "Authorized",
-  "mcp.oauth.success": "\"{name}\" is authorized. Its tools won't ask you to log in again.",
+  "mcp.oauth.success": '"{name}" is authorized. Its tools won\'t ask you to log in again.',
   "mcp.oauth.failedTitle": "Authorization failed",
   "mcp.askUser.title": "A few questions for you",
   "mcp.askUser.submit": "Done",
@@ -1961,7 +1965,7 @@ export const enStrings: Record<StringKey, string> = {
   "persona.useDefault": "Default",
   "persona.enabled": "Enabled",
   "persona.delete": "Delete persona",
-  "persona.deleteConfirm": "Delete \"{name}\"? Chats using it are unaffected.",
+  "persona.deleteConfirm": 'Delete "{name}"? Chats using it are unaffected.',
   "persona.setActive": "Set active",
   "persona.active": "Active persona",
   "persona.noPersonas": "No personas yet — create one",
@@ -2016,7 +2020,7 @@ export const enStrings: Record<StringKey, string> = {
   "worldbook.description": "Description",
   "worldbook.enabled": "Enabled",
   "worldbook.delete": "Delete world book",
-  "worldbook.deleteConfirm": "Delete \"{name}\"?",
+  "worldbook.deleteConfirm": 'Delete "{name}"?',
   "worldbook.noBooks": "No world books yet",
   "worldbook.entries": "Entries",
   "worldbook.entry.create": "New entry",
@@ -2042,8 +2046,10 @@ export const enStrings: Record<StringKey, string> = {
 
   // ---- GLOBAL.md ----
   "globalmd.title": "GLOBAL.md",
-  "globalmd.hint": "Preferences you write yourself — the AI only reads. e.g. I don't eat spicy food.",
-  "globalmd.placeholder": "Write your preferences here…\n\n e.g.:\n- I don't eat spicy food\n- Don't wake me early on weekends\n- Keep replies short",
+  "globalmd.hint":
+    "Preferences you write yourself — the AI only reads. e.g. I don't eat spicy food.",
+  "globalmd.placeholder":
+    "Write your preferences here…\n\n e.g.:\n- I don't eat spicy food\n- Don't wake me early on weekends\n- Keep replies short",
   "globalmd.saved": "Saved",
   "globalmd.empty": "Nothing written yet",
 
@@ -2070,7 +2076,7 @@ export const enStrings: Record<StringKey, string> = {
   "webapps.url": "URL",
   "webapps.urlPlaceholder": "https://…",
   "webapps.delete": "Delete",
-  "webapps.deleteConfirm": "Delete \"{name}\"?",
+  "webapps.deleteConfirm": 'Delete "{name}"?',
   "webapps.empty": "No web apps yet",
   "webapps.error.nameRequired": "Give it a name",
   "webapps.error.urlInvalid": "Bad URL — check it",
@@ -2101,7 +2107,8 @@ export const enStrings: Record<StringKey, string> = {
   "backup.remote.test": "Test connection",
   "backup.remote.testOk": "Connected",
   "backup.remote.testFailed": "Can't connect — check URL and credentials",
-  "backup.remote.securityNote": "Passwords stay in the phone's secure storage, never in backup files",
+  "backup.remote.securityNote":
+    "Passwords stay in the phone's secure storage, never in backup files",
 
   // ---- snapshots ----
   "snapshot.title": "Auto snapshots",
@@ -2175,7 +2182,8 @@ export const enStrings: Record<StringKey, string> = {
   "platform.applock.locked.title": "Dudu is locked",
   "platform.applock.locked.hint": "Show your face and I'll open up.",
   "platform.applock.unlock": "Unlock",
-  "platform.applock.noBiometric": "No Face ID or fingerprint enrolled — add one in system settings first.",
+  "platform.applock.noBiometric":
+    "No Face ID or fingerprint enrolled — add one in system settings first.",
   "platform.applock.enableFailed": "Verification failed — app lock wasn't enabled.",
 
   // ---- platform: scheduled tasks (H3) ----
@@ -2192,6 +2200,9 @@ export const enStrings: Record<StringKey, string> = {
   "platform.tasks.repeat.weekly": "Weekly",
   "platform.tasks.repeat.monthly": "Monthly",
   "platform.tasks.next": "Next",
+  "platform.tasks.deleteConfirm": "Delete this reminder?",
+  "platform.tasks.timeHint": "24-hour, e.g. 08:30",
+  "platform.tasks.invalidTime": "Time should look like 08:30",
 
   // ---- platform: siri (H4) ----
   "platform.siri.title": "Siri Shortcuts",

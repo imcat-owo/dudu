@@ -214,8 +214,9 @@ function createScheduledTaskStore() {
   }
 
   async function setEnabled(id: string, enabled: boolean): Promise<void> {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
+    const idx = tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const task = { ...tasks[idx] };
     if (enabled) {
       task.nextFireAt = computeNextFire({
         timeOfDay: task.timeOfDay,
@@ -228,6 +229,8 @@ function createScheduledTaskStore() {
       task.notificationIds = [];
     }
     task.enabled = enabled;
+    // New array reference so useSyncExternalStore subscribers re-render.
+    tasks = [...tasks.slice(0, idx), task, ...tasks.slice(idx + 1)];
     await persist();
   }
 
@@ -236,14 +239,15 @@ function createScheduledTaskStore() {
    * Advances recurring tasks; removes one-shot tasks.
    */
   async function markFired(id: string): Promise<void> {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-    const next = advanceTask(task);
+    const idx = tasks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const next = advanceTask(tasks[idx]);
     if (next == null) {
       tasks = tasks.filter((t) => t.id !== id);
     } else {
-      task.nextFireAt = next;
+      const task = { ...tasks[idx], nextFireAt: next };
       task.notificationIds = await scheduleNotification(task);
+      tasks = [...tasks.slice(0, idx), task, ...tasks.slice(idx + 1)];
     }
     await persist();
   }

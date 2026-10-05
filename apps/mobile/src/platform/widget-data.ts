@@ -8,7 +8,7 @@
  * extension isn't wired, this is a documented no-op.
  */
 
-import { SHARED_KEYS, getNativeModule } from "./types";
+import { getNativeModule, SHARED_KEYS } from "./types";
 
 export interface WidgetTaskSnapshot {
   id: string;

@@ -13,11 +13,12 @@ import {
   SquareCheck,
   X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ActivityIndicator,
   AppState,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -38,6 +39,7 @@ import { API_URL, createSession, MuseApi } from "./src/api";
 import { ApiSettingsScreen } from "./src/api-groups/api-settings";
 import { useChatMode } from "./src/api-groups/mode";
 import { AppearanceScreen } from "./src/appearance";
+import { getSnapshotStore } from "./src/backup/snapshot-stores";
 import { ChatScreen, WorkspaceTools } from "./src/chat";
 import { ComputerEntry } from "./src/computer";
 import { ComputerDraftProvider } from "./src/computer-drafts";
@@ -47,8 +49,8 @@ import { FontProvider } from "./src/font";
 import { t } from "./src/i18n";
 import { IncognitoProvider } from "./src/incognito";
 import { LocalApp } from "./src/local-app";
+import { appLockStore } from "./src/platform/app-lock";
 import { BrowserScreen, CalendarScreen, FilesScreen, MailScreen } from "./src/screens";
-import { getSnapshotStore } from "./src/backup/snapshot-stores";
 import { tokenStore } from "./src/session-store";
 import { Splash } from "./src/splash";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
@@ -284,15 +286,77 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
   useEffect(() => {
     void maybeSnapshot();
   }, [maybeSnapshot]);
+  // Batch 6 (H5/H6): push widget data + manage Live Activities when the
+  // background-task store changes. All best-effort, never breaks the app.
   useEffect(() => {
-    const listener = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void refresh().catch((e) => setError(String(e)));
-        void maybeSnapshot();
+    const liveIds = new Set<string>();
+    const sync = () => {
+      void (async () => {
+        try {
+          const { taskProgressStore } = await import("./src/our-space/task-progress-instance");
+          const { buildWidgetData, pushWidgetData } = await import("./src/platform/widget-data");
+          const { startLiveActivity, updateLiveActivity, endLiveActivity } = await import(
+            "./src/platform/live-activity"
+          );
+          const tasks = taskProgressStore.list();
+          void pushWidgetData(
+            buildWidgetData(
+              tasks.map((t) => ({
+                id: t.id,
+                title: t.name,
+                progress: t.progress,
+                status: t.status,
+                stageText: t.stage,
+              })),
+              0,
+            ),
+          );
+          // Live Activity mirrors running background tasks.
+          for (const task of tasks) {
+            const running = task.status !== "done" && task.status !== "stuck";
+            if (running && !liveIds.has(task.id)) {
+              liveIds.add(task.id);
+              void startLiveActivity(task.id, {
+                title: task.name,
+                progress: task.progress,
+                stageText: task.stage,
+                startedAt: task.createdAt,
+              });
+            } else if (running && liveIds.has(task.id)) {
+              void updateLiveActivity(task.id, {
+                title: task.name,
+                progress: task.progress,
+                stageText: task.stage,
+              });
+            } else if (!running && liveIds.has(task.id)) {
+              liveIds.delete(task.id);
+              void endLiveActivity(task.id);
+            }
+          }
+        } catch {
+          // ignore — widget/live sync is best-effort
+        }
+      })();
+    };
+    let unsub = () => {};
+    void (async () => {
+      try {
+        const { taskProgressStore } = await import("./src/our-space/task-progress-instance");
+        unsub = taskProgressStore.subscribe(sync);
+        sync();
+      } catch {
+        // ignore
       }
-    });
-    return () => listener.remove();
-  }, [refresh, maybeSnapshot]);
+    })();
+    return () => unsub();
+  }, []);
+  // Batch 6 (H8): app lock — gate the UI when locked.
+  // The store is loaded once on mount; background/foreground transitions
+  // are driven from the AppState listener below.
+  const lockState = useSyncExternalStore(appLockStore.subscribe, appLockStore.getState);
+  useEffect(() => {
+    void appLockStore.load();
+  }, []);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 5500);
@@ -305,6 +369,71 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
     setPrompt({ id: Date.now(), text });
     setSection("chat");
   }, []);
+  // Batch 6 (H2): share-extension intake — if the user shared something into
+  // Dudu from another app, turn it into a chat prompt. Fire-and-forget.
+  const maybeShareIntake = useCallback(async () => {
+    try {
+      const { takePendingShare, shareToPrompt } = await import("./src/platform/share-intake");
+      const pending = await takePendingShare();
+      if (!pending) return;
+      const { text, attachments } = shareToPrompt(pending);
+      const extra =
+        attachments.length > 0
+          ? `\n\n[${attachments.length} attachment(s) saved to the shared container]`
+          : "";
+      if (text || attachments.length > 0) ask(text + extra);
+    } catch {
+      // ignore — share intake is best-effort
+    }
+  }, [ask]);
+  useEffect(() => {
+    void maybeShareIntake();
+  }, [maybeShareIntake]);
+  // Batch 6 (H4): Siri Shortcuts deep links — dudu://siri?action=ask|open|new.
+  useEffect(() => {
+    let cancelled = false;
+    const handleUrl = (url: string | null) => {
+      if (!url || cancelled) return;
+      void (async () => {
+        try {
+          const { parseSiriLink } = await import("./src/platform/siri-shortcuts");
+          const launch = parseSiriLink(url);
+          if (!launch || cancelled) return;
+          if (launch.action === "ask" && launch.prompt) {
+            ask(launch.prompt);
+          } else {
+            // "open" (go to the dialog list) and "new" both land on chat;
+            // opening one specific thread by id needs the thread store,
+            // which Siri can't reach — chat list is the honest landing.
+            navigate("chat");
+          }
+        } catch {
+          // ignore malformed links
+        }
+      })();
+    };
+    void Linking.getInitialURL().then(handleUrl);
+    const sub = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, [ask, navigate]);
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        // Batch 6 (H8): re-evaluate the lock on foreground (emits on change).
+        appLockStore.onForeground();
+        void refresh().catch((e) => setError(String(e)));
+        void maybeSnapshot();
+        void maybeShareIntake();
+      } else if (state === "background") {
+        // Batch 6 (H8): lock immediately if configured for lock-on-exit.
+        appLockStore.onBackground();
+      }
+    });
+    return () => listener.remove();
+  }, [refresh, maybeSnapshot, maybeShareIntake]);
   if (!workspace)
     return (
       <SafeAreaView
@@ -332,6 +461,34 @@ function WorkspaceApp({ token, onLogout }: { token: string; onLogout: () => void
           </>
         )}
       </SafeAreaView>
+    );
+  // Batch 6 (H8): app lock gate — when locked, show the lock screen
+  // instead of the workspace. Biometrics never leave the device.
+  if (lockState.enabled && lockState.locked)
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: colors.canvas,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            gap: 16,
+          }}
+        >
+          <Mascot size={56} />
+          <Text style={{ fontSize: 22, color: colors.text, fontWeight: "500" }}>
+            {t("platform.applock.locked.title")}
+          </Text>
+          <Text style={[s.muted, { textAlign: "center" }]}>
+            {t("platform.applock.locked.hint")}
+          </Text>
+          <Button primary onPress={() => void appLockStore.authenticate()}>
+            {t("platform.applock.unlock")}
+          </Button>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   return (
     <WorkspaceContext.Provider
