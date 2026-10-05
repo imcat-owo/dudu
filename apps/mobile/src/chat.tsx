@@ -809,17 +809,26 @@ export function ChatScreen({
       enqueue(prompt.text);
   }, [active, prompt, isReady, loaded, enqueue, claimPrompt]);
   // Batch 4: ask_user — render the model's questions, collect her answers.
+  // D17: subscribe scoped to this dialog — a question asked in another
+  // dialog must never surface here. Resubscribe on thread switch so the
+  // new dialog replays its own pending request (if any).
   useEffect(() => {
-    const unsub = subscribeAskUserRequest((req) => {
-      setAskReq(req);
-      if (req) {
-        const init: Record<string, string | string[]> = {};
-        for (const q of req.questions) init[q.id] = q.kind === "multi" ? [] : "";
-        setAskAnswers(init);
-      }
-    });
+    // Drop any card from the previous dialog; the resubscribe below replays
+    // this dialog's own pending request (if any).
+    setAskReq(null);
+    const unsub = subscribeAskUserRequest(
+      (req) => {
+        setAskReq(req);
+        if (req) {
+          const init: Record<string, string | string[]> = {};
+          for (const q of req.questions) init[q.id] = q.kind === "multi" ? [] : "";
+          setAskAnswers(init);
+        }
+      },
+      { threadId },
+    );
     return unsub;
-  }, []);
+  }, [threadId]);
   useEffect(() => {
     const subscription = agent.onTransportError((failure) => setError(failure.message));
     return () => subscription.unsubscribe();
