@@ -46,6 +46,7 @@
       ],
       "expo-contacts",
       "./plugins/with-healthkit",
+      "./plugins/with-siri-intents",
       [
         "@wwdrew/expo-apple-music",
         {

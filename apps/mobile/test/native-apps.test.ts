@@ -13,6 +13,7 @@ import {
   checkDeviceInfoStatus,
   checkHealthKitStatus,
   checkRemindersStatus,
+  checkSiri,
   checkUnwired,
   formatBatteryState,
   getDeviceInfo,
@@ -40,11 +41,11 @@ describe("native-apps definitions", () => {
     }
   });
 
-  it("wired capabilities are the 6 with real packages", () => {
+  it("wired capabilities are the 6 with real packages + siri (prebuild intents)", () => {
     const wired = NATIVE_APP_ORDER.filter((id) => NATIVE_APPS[id].wired);
     assert.deepEqual(
       wired.sort(),
-      ["apple-music", "calendar", "contacts", "device-info", "healthkit", "reminders"].sort(),
+      ["apple-music", "calendar", "contacts", "device-info", "healthkit", "reminders", "siri"].sort(),
     );
   });
 
@@ -76,6 +77,10 @@ describe("native-apps checkers (node: no native modules)", () => {
   it("apple-music checker does not throw", async () => {
     const status = await checkAppleMusicStatus();
     assert.ok(["granted", "denied", "undetermined", "unavailable"].includes(status));
+  });
+
+  it("siri reports granted (intents bundled at prebuild, no auth needed)", async () => {
+    assert.equal(await checkSiri(), "granted");
   });
 });
 

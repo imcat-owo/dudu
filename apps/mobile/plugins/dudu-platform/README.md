@@ -1,9 +1,10 @@
 # Dudu platform native modules (Batch 6 — H)
 
 iOS system integrations. The TS side (`src/platform/`) is complete;
-these Swift files are reference implementations needing Xcode wiring.
-Nothing here is faked — unwired modules report unavailable and the TS
-side degrades honestly.
+Swift files are either wired automatically at prebuild (via a config
+plugin in `plugins/`) or documented below as reference implementations
+needing Xcode wiring. Nothing here is faked — unwired modules report
+unavailable and the TS side degrades honestly.
 
 ## Modules
 
@@ -11,7 +12,7 @@ side degrades honestly.
 |---|---|---|---|
 | DuduSharedData | shared/ | H2/H5/H7 | Expo module (app target) |
 | DuduShareViewController | share/ | H2 | App Extension target |
-| DuduIntents | siri/ | H4 | AppIntent (app target) |
+| DuduIntents | siri/ | H4 | AppIntent (app target, auto-wired by with-siri-intents.js) |
 | DuduWidget | widget/ | H5/H6 | Widget Extension target |
 | DuduLiveActivity | liveactivity/ | H6 | Expo module (app target) |
 | DuduFileProvider | fileprovider/ | H7 | File Provider extension target |
@@ -54,8 +55,13 @@ H8 (Face ID) needs NO native code — it's fully implemented in TS via
 4. Files written via `publishToFilesApp()` appear in the Files app.
 
 ### Siri Intents (H4)
-1. Add `DuduIntents.swift` to the app target.
-2. Add Siri capability; intents appear in Shortcuts automatically.
+1. Automatic: `plugins/with-siri-intents.js` (registered in `app.json`) copies
+   `DuduIntents.swift` into the generated iOS project and adds it to the app
+   target's Sources at prebuild. No manual Xcode step.
+2. AppIntents needs no entitlement and no user authorization — the three
+   intents (Ask Dudu / Open conversation / New chat) appear in the Shortcuts
+   app as soon as the app is installed; she adds them there and can then
+   invoke them via Siri.
 3. The intents deep-link (`dudu://siri?...`); the app routes via
    `parseSiriLink()` in `src/platform/siri-shortcuts.ts`.
 4. Register the `dudu` URL scheme if not already present.

@@ -107,6 +107,28 @@ describe("siri links", () => {
     assert.equal(parsed.prompt, "test prompt");
     assert.equal(parsed.dialogId, "d1");
   });
+
+  it("round-trips prompts with URL-hostile characters", () => {
+    for (const prompt of ["50% off & more?", "a+b=c", "你好，嘟嘟！", "emoji-free %100"]) {
+      const parsed = parseSiriLink(buildSiriLink({ action: "ask", prompt }));
+      assert.ok(parsed, prompt);
+      assert.equal(parsed.prompt, prompt);
+    }
+  });
+
+  it("parses single-encoded native URLs (no double-decode)", () => {
+    // The Swift side encodes the prompt value exactly once.
+    const raw = `dudu://siri?action=ask&prompt=${encodeURIComponent("50% & tea?")}`;
+    const l = parseSiriLink(raw);
+    assert.ok(l);
+    assert.equal(l.prompt, "50% & tea?");
+  });
+
+  it("does not throw on a stray percent from native", () => {
+    const l = parseSiriLink("dudu://siri?action=ask&prompt=100% legit");
+    assert.ok(l);
+    assert.equal(l.action, "ask");
+  });
 });
 
 describe("widget data", () => {

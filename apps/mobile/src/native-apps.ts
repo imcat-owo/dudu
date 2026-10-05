@@ -14,9 +14,11 @@
  * Capabilities with no Expo package are shown honestly as "needs native
  * module" — never faked:
  * - homekit: needs com.apple.developer.homekit entitlement + native module
- * - siri: App Intents need native code, no Expo package exists
  * - weather: WeatherKit needs paid developer account + server token
  * - shazam: ShazamKit needs native module, no Expo package exists
+ *
+ * siri used to be in that list; its App Intents are now bundled at prebuild
+ * by plugins/with-siri-intents.js, so it reports granted.
  *
  * PURE module: no React Native imports at the top level — native modules
  * are require()'d lazily inside functions so unit tests can run in node.
@@ -108,7 +110,7 @@ export const NATIVE_APPS: Record<NativeAppId, NativeAppDef> = {
     nameKey: "napp.siri.name",
     descKey: "napp.siri.desc",
     setupKey: "napp.siri.setup",
-    wired: false,
+    wired: true,
     icon: "Mic",
   },
   weather: {
@@ -576,6 +578,16 @@ export async function checkUnwired(): Promise<NativeAppStatus> {
   return "needs-setup";
 }
 
+/**
+ * Siri App Intents are bundled into the app target at prebuild
+ * (plugins/with-siri-intents.js) and need no user authorization —
+ * AppIntents appear in the Shortcuts app automatically. Nothing to
+ * request; the capability is simply there.
+ */
+export async function checkSiri(): Promise<NativeAppStatus> {
+  return "granted";
+}
+
 export const checkers: Record<NativeAppId, () => Promise<NativeAppStatus>> = {
   "apple-music": checkAppleMusicStatus,
   calendar: checkCalendarStatus,
@@ -584,7 +596,7 @@ export const checkers: Record<NativeAppId, () => Promise<NativeAppStatus>> = {
   healthkit: checkHealthKitStatus,
   "device-info": checkDeviceInfoStatus,
   homekit: checkUnwired,
-  siri: checkUnwired,
+  siri: checkSiri,
   weather: checkUnwired,
   shazam: checkUnwired,
 };
@@ -597,7 +609,7 @@ export const requesters: Record<NativeAppId, () => Promise<NativeAppStatus>> = {
   healthkit: requestHealthKit,
   "device-info": checkDeviceInfoStatus,
   homekit: checkUnwired,
-  siri: checkUnwired,
+  siri: checkSiri,
   weather: checkUnwired,
   shazam: checkUnwired,
 };

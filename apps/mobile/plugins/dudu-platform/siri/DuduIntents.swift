@@ -3,12 +3,22 @@
 // Three intents: ask Dudu, open a dialog, start a new chat.
 // Based on OpenMinis' SendPromptIntent pattern (AppIntents framework).
 //
-// Status: reference implementation — needs Xcode integration (see README.md).
+// Wired automatically at prebuild by plugins/with-siri-intents.js
+// (added to the app target's Sources). No manual Xcode step needed.
 
 import AppIntents
 import Foundation
 
 // MARK: - Ask Dudu
+
+/// Percent-encode a prompt for use as a single URL query value.
+/// `.urlQueryAllowed` leaves `& = + ?` unencoded, which would break the
+/// deep link parsing — so those are excluded here.
+private func encodeSiriPrompt(_ prompt: String) -> String {
+  var allowed = CharacterSet.urlQueryAllowed
+  allowed.remove(charactersIn: "&=+?")
+  return prompt.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+}
 
 struct AskDuduIntent: AppIntent {
   static var title: LocalizedStringResource = "Ask Dudu"
@@ -22,7 +32,7 @@ struct AskDuduIntent: AppIntent {
   @MainActor
   func perform() async throws -> some IntentResult & ProvidesDialog {
     // Deep-link into the app with the prompt; the app handles the rest.
-    let encoded = prompt.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    let encoded = encodeSiriPrompt(prompt)
     if let url = URL(string: "dudu://siri?action=ask&prompt=\(encoded)") {
       await UIApplication.shared.open(url)
     }

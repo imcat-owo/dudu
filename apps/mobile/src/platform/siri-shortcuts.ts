@@ -24,9 +24,11 @@ export function parseSiriLink(url: string): SiriLaunch | null {
     if (u.protocol !== "dudu:" || u.host !== "siri") return null;
     const action = u.searchParams.get("action") as SiriAction | null;
     if (action !== "ask" && action !== "open" && action !== "new") return null;
+    // URLSearchParams.get() already percent-decodes — do NOT decodeURIComponent
+    // again (that corrupts prompts containing % and throws on stray %).
     const prompt = u.searchParams.get("prompt") ?? undefined;
     const dialogId = u.searchParams.get("dialog") ?? undefined;
-    return { action, prompt: prompt ? decodeURIComponent(prompt) : undefined, dialogId };
+    return { action, prompt, dialogId };
   } catch {
     return null;
   }
@@ -36,7 +38,9 @@ export function parseSiriLink(url: string): SiriLaunch | null {
 export function buildSiriLink(launch: SiriLaunch): string {
   const params = new URLSearchParams();
   params.set("action", launch.action);
-  if (launch.prompt) params.set("prompt", encodeURIComponent(launch.prompt));
+  // URLSearchParams.set() percent-encodes — do NOT encodeURIComponent first
+  // (that double-encodes and breaks interop with single-encoded native URLs).
+  if (launch.prompt) params.set("prompt", launch.prompt);
   if (launch.dialogId) params.set("dialog", launch.dialogId);
   return `dudu://siri?${params.toString()}`;
 }

@@ -108,9 +108,6 @@ const OURSPACE_KEYS = [
   "dudu.ourspace.v2.replies",
   "dudu.ourspace.v2.anniversaries",
   "dudu.ourspace.v2.works",
-  // D12 romance: celebrated intimacy milestones + today's question state.
-  "dudu.romance.milestones.v1",
-  "dudu.romance.question.v1",
 ] as const;
 
 // Task progress cards (our-space/task-progress.ts) — enumerated by prefix.
