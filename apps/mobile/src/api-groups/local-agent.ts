@@ -26,6 +26,8 @@ import { crossDialogTraceStore, crossDialogVisibilityStore } from "../chat/cross
 import { createDialogTools } from "../chat/dialog-tools";
 import { groupMeetingStore } from "../chat/group-meeting-instance";
 import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools";
+import { personaGroupStore } from "../chat/persona-group-instance";
+import { createPersonaGroupTools } from "../chat/persona-group-tools";
 import {
   defaultThreadMeta,
   deleteMessageFrom,
@@ -88,7 +90,7 @@ import type { FeedNudgePost } from "../outreach/feed-nudge";
 import { buildOnThisDayInput } from "../outreach/on-this-day-input";
 import { buildOutreachSection } from "../outreach/prompt";
 import { renderGlobalMdBlock } from "../persona/global-md";
-import { globalMdStore, personaStore, worldBookStore } from "../persona/stores";
+import { globalMdStore, personaApiGroupPrefStore, personaStore, worldBookStore } from "../persona/stores";
 import { applyPersonaRegex, type Persona } from "../persona/types";
 import {
   evaluateWorldBooks,
@@ -1282,6 +1284,19 @@ export function createLocalAgent(opts: {
               .filter((m) => m.role === "user")
               .slice(-20)
               .map((m) => (typeof m.content === "string" ? m.content : "")),
+        }),
+        // Persona group chat (人设群聊, step 1): she chats with several of
+        // her personas in one shared group. The AI manages groups here;
+        // the turns are driven by the group chat UI. Every action is traced.
+        ...createPersonaGroupTools({
+          threadId: opts.threadId,
+          getPersonaId: currentPersonaId,
+          groups: personaGroupStore,
+          listPersonas: () => personaStore.list(),
+          listApiGroups: () => groupStore.getSnapshot().groups,
+          apiGroupPref: personaApiGroupPrefStore,
+          trace: crossDialogTraceStore,
+          isIncognito: incognito,
         }),
         ...createContextTools({
           setMessages: (msgs) => {

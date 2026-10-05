@@ -185,6 +185,9 @@ const EXTENSION_KEYS = [
   "dudu.persona.v1.list",
   "dudu.persona.v1.tags",
   "dudu.persona.v1.active",
+  // Persona group chat (人设群聊): per-persona API group preference + groups.
+  "dudu.persona.v1.api-group",
+  "dudu.persona-groups.v1",
   "dudu.worldbook.v1.list",
   "dudu.global-md.v1",
   "dudu.webapps.v1.list",

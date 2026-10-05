@@ -107,6 +107,7 @@ import {
 } from "./chat/dialog-ui";
 import { composeGreeting } from "./chat/greeting";
 import { GroupMeetingCard } from "./chat/group-meeting-card";
+import { PersonaGroupHost } from "./chat/persona-group-ui";
 import { PromptSheet } from "./chat/prompt-sheet";
 import { getAiDisplayName } from "./persona/ai-name";
 import { personaStore } from "./persona/stores";
@@ -572,6 +573,9 @@ export function ChatScreen({
   // Batch 7 I1: message chosen for translation (language sheet target).
   const [translateFor, setTranslateFor] = useState<AgentMessage | null>(null);
   const [dialogListOpen, setDialogListOpen] = useState(false);
+  // Persona group chat (人设群聊): the group host takes over the chat area
+  // while open (list sheet is a modal; the room fills this view).
+  const [groupHostOpen, setGroupHostOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [phrasesOpen, setPhrasesOpen] = useState(false);
   const [shotRound, setShotRound] = useState<ShotRound | null>(null);
@@ -1623,6 +1627,10 @@ export function ChatScreen({
     draft.trim().length > 0 || imageAttachments.length > 0 || fileAttachments.length > 0;
   return (
     <View style={{ flex: 1, backgroundColor: incognitoOn ? "rgba(61,58,51,0.06)" : undefined }}>
+      {groupHostOpen ? (
+        <PersonaGroupHost onClose={() => setGroupHostOpen(false)} />
+      ) : (
+      <>
       {bundle.wallpaper?.uri ? (
         <>
           <Image
@@ -1669,6 +1677,28 @@ export function ChatScreen({
               <List size={13} color={colors.muted} />
               <TText style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
                 {t("chat.dialogList")}
+              </TText>
+            </Pressable>
+          )}
+          {/* Persona group chat (人设群聊): her groups with her personas. */}
+          {mode === "local" && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("pgroup.title")}
+              onPress={() => setGroupHostOpen(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: radii.lg,
+                backgroundColor: colors.line,
+              }}
+            >
+              <MessagesSquare size={13} color={colors.muted} />
+              <TText style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+                {t("pgroup.title")}
               </TText>
             </Pressable>
           )}
@@ -3017,6 +3047,8 @@ export function ChatScreen({
             round={shotRound}
           />
         </>
+      )}
+      </>
       )}
     </View>
   );

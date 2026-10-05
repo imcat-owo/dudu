@@ -9,6 +9,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { createGlobalMdStore } from "./global-md";
+import { createPersonaApiGroupPrefStore } from "./api-group-pref";
 import { createPersonaStore } from "./store";
 import { createWorldBookStore } from "./world-book-store";
 
@@ -20,3 +21,7 @@ export const globalMdStore = createGlobalMdStore(AsyncStorage);
 
 /** App-wide singleton: world books (lorebooks). */
 export const worldBookStore = createWorldBookStore(AsyncStorage);
+
+/** App-wide singleton: per-persona API group preference. */
+export const personaApiGroupPrefStore =
+  createPersonaApiGroupPrefStore(AsyncStorage);

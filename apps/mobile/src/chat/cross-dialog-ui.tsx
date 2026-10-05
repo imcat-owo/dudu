@@ -58,6 +58,18 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionFeedNudge");
     case "openapp_return":
       return t("crossDialog.actionOpenAppReturn");
+    case "persona_group_create":
+      return t("crossDialog.actionPersonaGroupCreate");
+    case "persona_group_round":
+      return t("crossDialog.actionPersonaGroupRound");
+    case "persona_group_add_member":
+      return t("crossDialog.actionPersonaGroupAddMember");
+    case "persona_group_remove_member":
+      return t("crossDialog.actionPersonaGroupRemoveMember");
+    case "persona_group_set_model":
+      return t("crossDialog.actionPersonaGroupSetModel");
+    case "persona_group_archive":
+      return t("crossDialog.actionPersonaGroupArchive");
   }
 }
 

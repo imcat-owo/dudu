@@ -40,6 +40,7 @@ import { OPEN_APP_MANUAL } from "./openapp";
 import { OUR_SPACE_MANUAL } from "./our-space";
 import { OUTREACH_MANUAL } from "./outreach";
 import { PERMISSIONS_MANUAL } from "./permissions";
+import { PERSONA_GROUP_MANUAL } from "./persona-group";
 import { SANDBOX_MANUAL } from "./sandbox";
 import { SKILLS_MANUAL } from "./skills";
 import { THEMES_MANUAL } from "./themes";
@@ -81,6 +82,7 @@ export const MANUALS: ManualEntry[] = [
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,
   OPEN_APP_MANUAL,
+  PERSONA_GROUP_MANUAL,
   SKILLS_MANUAL,
   KNOWLEDGE_MANUAL,
   MEDIA_MANUAL,

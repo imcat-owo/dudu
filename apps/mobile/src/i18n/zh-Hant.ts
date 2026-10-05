@@ -1948,6 +1948,12 @@ const zhHant = {
   "crossDialog.actionProactiveSend": "主動找她",
   "crossDialog.actionFeedNudge": "給她的動態點了讚",
   "crossDialog.actionOpenAppReturn": "她從別的 App 回來了",
+  "crossDialog.actionPersonaGroupCreate": "建了人設群聊",
+  "crossDialog.actionPersonaGroupRound": "群聊一輪",
+  "crossDialog.actionPersonaGroupAddMember": "群聊加人",
+  "crossDialog.actionPersonaGroupRemoveMember": "群聊請人",
+  "crossDialog.actionPersonaGroupSetModel": "人設換模型",
+  "crossDialog.actionPersonaGroupArchive": "群聊歸檔",
   "crossDialog.fromDialogTag": "來自「{name}」對話框",
   "crossDialog.sendTagVisible": "在目標對話框顯示來源標記",
   "crossDialog.sendTagVisibleDetail":
@@ -2439,6 +2445,23 @@ const zhHant = {
   "a11y.replyDone": "嘟嘟回覆完了",
   "a11y.messageFrom": "{who}的訊息",
   "a11y.me": "我",
+
+  // ---- 人設群聊 ----
+  "pgroup.title": "群聊",
+  "pgroup.new": "新建群聊",
+  "pgroup.namePlaceholder": "群名，比如「週末計劃群」",
+  "pgroup.pickPersonas": "選 2-6 位人設進群",
+  "pgroup.create": "建群",
+  "pgroup.createFailed": "建群失敗，再試一次",
+  "pgroup.nameRequired": "先給群起個名字",
+  "pgroup.membersRequired": "至少選 2 位人設",
+  "pgroup.empty": "還沒有群聊",
+  "pgroup.emptyHint": "建一個，把幾位人設拉進群一起聊",
+  "pgroup.messageCount": "{n} 條訊息",
+  "pgroup.archive": "歸檔",
+  "pgroup.inputPlaceholder": "在群裡說點什麼… @ 某人",
+  "pgroup.sending": "發送中…",
+  "pgroup.toolsHide": "收起工具調用",
 } as const;
 
 // StringKey is defined in zh-Hans.ts (same keys).

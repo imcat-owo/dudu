@@ -1945,6 +1945,12 @@ const zhHans = {
   "crossDialog.actionProactiveSend": "主动找她",
   "crossDialog.actionFeedNudge": "给她的动态点了赞",
   "crossDialog.actionOpenAppReturn": "她从别的 App 回来了",
+  "crossDialog.actionPersonaGroupCreate": "建了人设群聊",
+  "crossDialog.actionPersonaGroupRound": "群聊一轮",
+  "crossDialog.actionPersonaGroupAddMember": "群聊加人",
+  "crossDialog.actionPersonaGroupRemoveMember": "群聊请人",
+  "crossDialog.actionPersonaGroupSetModel": "人设换模型",
+  "crossDialog.actionPersonaGroupArchive": "群聊归档",
   "crossDialog.fromDialogTag": "来自「{name}」对话框",
   "crossDialog.sendTagVisible": "在目标对话框显示来源标记",
   "crossDialog.sendTagVisibleDetail":
@@ -2436,6 +2442,23 @@ const zhHans = {
   "a11y.replyDone": "嘟嘟回复完了",
   "a11y.messageFrom": "{who}的消息",
   "a11y.me": "我",
+
+  // ---- persona group chat (人设群聊) ----
+  "pgroup.title": "群聊",
+  "pgroup.new": "新建群聊",
+  "pgroup.namePlaceholder": "群名，比如「周末计划群」",
+  "pgroup.pickPersonas": "选 2-6 位人设进群",
+  "pgroup.create": "建群",
+  "pgroup.createFailed": "建群失败，再试一次",
+  "pgroup.nameRequired": "先给群起个名字",
+  "pgroup.membersRequired": "至少选 2 位人设",
+  "pgroup.empty": "还没有群聊",
+  "pgroup.emptyHint": "建一个，把几位人设拉进群一起聊",
+  "pgroup.messageCount": "{n} 条消息",
+  "pgroup.archive": "归档",
+  "pgroup.inputPlaceholder": "在群里说点什么… @ 某人",
+  "pgroup.sending": "发送中…",
+  "pgroup.toolsHide": "收起工具调用",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

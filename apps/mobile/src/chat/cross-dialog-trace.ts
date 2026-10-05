@@ -31,7 +31,14 @@ export type CrossDialogAction =
   /** Feed nudge (C3) — the like + reply he left on her unacknowledged post. */
   | "feed_nudge"
   /** Open-app watchdog (Aru-gap 轻控制） — welcome-back after she taps the return notification. */
-  | "openapp_return";
+  | "openapp_return"
+  /** Persona group chat (人设群聊) — group management + rounds, same trace, same law. */
+  | "persona_group_create"
+  | "persona_group_round"
+  | "persona_group_add_member"
+  | "persona_group_remove_member"
+  | "persona_group_set_model"
+  | "persona_group_archive";
 
 export interface CrossDialogTraceEntry {
   /** Stable id, e.g. "cdt_...". */
