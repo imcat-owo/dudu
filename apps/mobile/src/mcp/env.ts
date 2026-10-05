@@ -116,7 +116,10 @@ export function createEnvStore(secure?: SecureBackend) {
     },
 
     async set(name: string, value: string): Promise<void> {
-      const clean = name.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+      const clean = name
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_]/g, "_");
       if (!clean) throw new Error("Invalid variable name");
       await ensureLoaded();
       await (await secureBackend()).setItem(VALUE_PREFIX + clean, value);

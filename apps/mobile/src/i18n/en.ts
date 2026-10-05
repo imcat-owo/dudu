@@ -834,6 +834,17 @@ export const enStrings: Record<StringKey, string> = {
   "browser.aiBrowserTitle": "AI Browser",
   "browser.aiBrowserDetail":
     "Dudu uses this browser to read pages, click buttons, and fill forms for you. You talk, it acts.",
+  "browser.cookieAudit": "Cookie Audit",
+  "browser.cookieAuditDesc": "See what cookies this tab has stored.",
+  "browser.cookiesEmpty": "No cookies on this page. Squeaky clean.",
+  "browser.cookieRefresh": "Reload",
+  "browser.cookieClear": "Clear",
+  "browser.cookieClearConfirm": "Clear all JS-accessible cookies for this page?",
+  "browser.cookieCleared": "Cleared.",
+  "browser.cookieNote":
+    "Only JS-readable cookies are shown. HttpOnly cookies are invisible and can't be cleared — those are the site's own secrets.",
+  "browser.cookieLoadFail": "Couldn't read them — the page may still be loading. Try again in a moment.",
+  "browser.cookieCount": "{n}",
 
   // ---- files screen ----
   "files.tagline": "Documents, with a little room to work.",

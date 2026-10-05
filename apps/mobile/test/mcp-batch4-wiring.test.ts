@@ -9,17 +9,21 @@
  * 4. Long-paste threshold logic.
  */
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-
-import { createAskUserTools, subscribeAskUserRequest, answerAskUserRequest, __pendingAskUserCount } from "../src/mcp/ask-user";
-import { createWebSearchTools } from "../src/mcp/web-search";
-import { createDelegateTools } from "../src/mcp/delegate";
+import { describe, it } from "node:test";
 import { createAgentCliTools } from "../src/mcp/agent-cli";
-import { createInteractiveTerminalTools } from "../src/sandbox/interactive-terminal";
+import {
+  __pendingAskUserCount,
+  answerAskUserRequest,
+  createAskUserTools,
+  subscribeAskUserRequest,
+} from "../src/mcp/ask-user";
+import { createDelegateTools } from "../src/mcp/delegate";
+import { pastePreview, shouldConvertPaste } from "../src/mcp/long-paste";
 import { mcpBackupPayload } from "../src/mcp/store";
-import { shouldConvertPaste, pastePreview } from "../src/mcp/long-paste";
 import { descOverrideStore } from "../src/mcp/tool-descriptions";
+import { createWebSearchTools } from "../src/mcp/web-search";
+import { createInteractiveTerminalTools } from "../src/sandbox/interactive-terminal";
 
 describe("Batch 4 wiring", () => {
   it("ask_user tool is registered with correct shape", () => {
@@ -39,9 +43,7 @@ describe("Batch 4 wiring", () => {
     try {
       const runPromise = tools[0].run(
         {
-          questions: [
-            { id: "q1", question: "Which?", kind: "single", options: ["A", "B"] },
-          ],
+          questions: [{ id: "q1", question: "Which?", kind: "single", options: ["A", "B"] }],
         },
         {} as never,
       );

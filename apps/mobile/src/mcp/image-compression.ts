@@ -41,9 +41,7 @@ async function loadManipulator(): Promise<{
 } | null> {
   try {
     // Optional dependency — not in package.json; falls back honestly if missing.
-    const mod = (await import(
-      /* webpackIgnore: true */ "expo-image-manipulator"
-    )) as unknown as {
+    const mod = (await import(/* webpackIgnore: true */ "expo-image-manipulator")) as unknown as {
       manipulateAsync: (
         uri: string,
         actions: Array<{ resize?: { width?: number; height?: number } }>,
@@ -69,11 +67,10 @@ export async function compressImage(
   const manip = await loadManipulator();
   if (!manip) return { uri, compressed: false };
   try {
-    const result = await manip.manipulateAsync(
-      uri,
-      [{ resize: { width: spec.maxEdge } }],
-      { compress: spec.quality, format: "jpeg" },
-    );
+    const result = await manip.manipulateAsync(uri, [{ resize: { width: spec.maxEdge } }], {
+      compress: spec.quality,
+      format: "jpeg",
+    });
     return { uri: result.uri, compressed: true };
   } catch {
     return { uri, compressed: false };

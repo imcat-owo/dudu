@@ -52,17 +52,15 @@ export function createAgentCliTools(deps: AgentCliDeps): LocalTool[] {
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const command = String(args["command"] ?? "");
-        const arg = String(args["arg"] ?? "").trim();
-        const limit = Math.min(Number(args["limit"] ?? 20), 50);
+        const command = String(args.command ?? "");
+        const arg = String(args.arg ?? "").trim();
+        const limit = Math.min(Number(args.limit ?? 20), 50);
 
         switch (command) {
           case "list": {
             const dialogs = await deps.listDialogs();
             if (dialogs.length === 0) return "No dialogs.";
-            return dialogs
-              .map((d) => `${d.id}\t${d.name}\t${d.messageCount} msgs`)
-              .join("\n");
+            return dialogs.map((d) => `${d.id}\t${d.name}\t${d.messageCount} msgs`).join("\n");
           }
           case "search": {
             if (!arg) throw new Error("dudu search: empty query");

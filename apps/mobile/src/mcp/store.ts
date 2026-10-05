@@ -11,7 +11,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
-import type { McpServerConfig, McpOAuthTokens } from "./types";
+import type { McpOAuthTokens, McpServerConfig } from "./types";
 
 const SERVERS_KEY = "dudu.mcp-servers.v1";
 const TOKENS_PREFIX = "dudu.mcp-tokens.";
@@ -164,7 +164,9 @@ export function createMcpStore(secure?: SecureBackend) {
         const raw = await (await secureBackend()).getItem(CREDS_PREFIX + serverId);
         if (!raw) return undefined;
         const c = JSON.parse(raw) as { clientId?: string; clientSecret?: string };
-        return typeof c.clientId === "string" ? { clientId: c.clientId, clientSecret: c.clientSecret } : undefined;
+        return typeof c.clientId === "string"
+          ? { clientId: c.clientId, clientSecret: c.clientSecret }
+          : undefined;
       } catch {
         return undefined;
       }
@@ -204,11 +206,7 @@ export function useMcpServers(): {
   servers: McpServerConfig[];
   loaded: boolean;
 } {
-  const snap = useSyncExternalStore(
-    mcpStore.subscribe,
-    mcpStore.getSnapshot,
-    mcpStore.getSnapshot,
-  );
+  const snap = useSyncExternalStore(mcpStore.subscribe, mcpStore.getSnapshot, mcpStore.getSnapshot);
   return { servers: snap.servers, loaded: snap.loaded };
 }
 

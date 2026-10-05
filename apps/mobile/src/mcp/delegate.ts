@@ -58,7 +58,7 @@ export function createDelegateTools(deps: DelegateDeps): LocalTool[] {
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const task = String(args["task"] ?? "").trim();
+        const task = String(args.task ?? "").trim();
         if (!task) throw new Error("delegate_task: empty task");
         if (running.size >= maxConcurrent) {
           throw new Error(
@@ -68,8 +68,8 @@ export function createDelegateTools(deps: DelegateDeps): LocalTool[] {
         const id = `sub_${Date.now()}_${++seq}`;
         running.add(id);
         try {
-          const allowedTools = Array.isArray(args["allowedTools"])
-            ? (args["allowedTools"] as unknown[]).map(String)
+          const allowedTools = Array.isArray(args.allowedTools)
+            ? (args.allowedTools as unknown[]).map(String)
             : undefined;
           const result = await deps.runSubtask(task, allowedTools);
           return result;

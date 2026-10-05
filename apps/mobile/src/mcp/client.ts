@@ -9,14 +9,9 @@
  * any call reaches the server.
  */
 
-import type {
-  McpServerConfig,
-  McpToolDefinition,
-  McpToolResult,
-  McpOAuthTokens,
-} from "./types";
-import { createTransport, type McpTransport } from "./transports";
 import { discoverAuthServer, refreshTokens } from "./oauth";
+import { createTransport, type McpTransport } from "./transports";
+import type { McpOAuthTokens, McpServerConfig, McpToolDefinition, McpToolResult } from "./types";
 
 const PROTOCOL_VERSION = "2025-06-18";
 const CLIENT_INFO = { name: "dudu", version: "1.0.0" };
@@ -31,7 +26,10 @@ export interface McpClientDeps {
   /** Persist refreshed tokens. */
   saveTokens: (t: McpOAuthTokens) => Promise<void>;
   /** Client id/secret remembered from DCR. */
-  getClientCreds: () => { clientId: string; clientSecret?: string } | undefined | Promise<{ clientId: string; clientSecret?: string } | undefined>;
+  getClientCreds: () =>
+    | { clientId: string; clientSecret?: string }
+    | undefined
+    | Promise<{ clientId: string; clientSecret?: string } | undefined>;
   /** Called when the server demands OAuth; the UI runs the browser flow and calls back with tokens. */
   onNeedsAuth: () => Promise<McpOAuthTokens>;
   /** Per-tool approval decision. */
@@ -49,16 +47,13 @@ export interface McpClient {
   readonly serverInfo: { name: string; version: string } | null;
 }
 
-export function createMcpClient(
-  config: McpServerConfig,
-  deps: McpClientDeps,
-): McpClient {
+export function createMcpClient(config: McpServerConfig, deps: McpClientDeps): McpClient {
   const transport: McpTransport = createTransport(config, deps.env);
   const timeoutMs = config.timeoutMs ?? 30000;
   let serverInfo: { name: string; version: string } | null = null;
   let oauthRefreshInFlight: Promise<McpOAuthTokens> | null = null;
 
-  function applyAuth() {
+  function _applyAuth() {
     // Sync path only; async refresh is handled in ensureFreshTokens.
     void 0;
   }
@@ -77,7 +72,8 @@ export function createMcpClient(
     if (!tokens) return;
     // Refresh if expiring within 60s.
     if (tokens.expiresAt - Date.now() > 60000) return;
-    if (!tokens.refreshToken) return;
+    const refreshToken = tokens.refreshToken;
+    if (!refreshToken) return;
     if (!oauthRefreshInFlight) {
       oauthRefreshInFlight = (async () => {
         const creds = await deps.getClientCreds();
@@ -87,7 +83,7 @@ export function createMcpClient(
           metadata,
           creds.clientId,
           creds.clientSecret,
-          tokens.refreshToken!,
+          refreshToken,
         );
         await deps.saveTokens(fresh);
         return fresh;

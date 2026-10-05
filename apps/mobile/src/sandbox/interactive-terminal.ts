@@ -52,16 +52,21 @@ export function createInteractiveTerminalTools(
       run: async (args, _ctx) => {
         const backend = getBackend();
         if (!backend) throw new Error("Sandbox backend not available.");
-        const container = (args["container"] as string) || undefined;
+        const container = (args.container as string) || undefined;
 
         // The backend exposes an interactive shell via its transport.
         // We use a dynamic access pattern to avoid coupling to internals.
-        const shell = await (backend as unknown as {
-          openShell?: (container?: string, onData?: (chunk: string) => void) => Promise<{
-            write: (data: string) => void;
-            close: () => void;
-          }>;
-        }).openShell?.(container, undefined);
+        const shell = await (
+          backend as unknown as {
+            openShell?: (
+              container?: string,
+              onData?: (chunk: string) => void,
+            ) => Promise<{
+              write: (data: string) => void;
+              close: () => void;
+            }>;
+          }
+        ).openShell?.(container, undefined);
 
         if (!shell) {
           throw new Error(
@@ -98,8 +103,8 @@ export function createInteractiveTerminalTools(
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const s = getSession(String(args["sessionId"]));
-        s.write(String(args["input"] ?? ""));
+        const s = getSession(String(args.sessionId));
+        s.write(String(args.input ?? ""));
         return "Sent.";
       },
     },
@@ -120,8 +125,8 @@ export function createInteractiveTerminalTools(
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const s = getSession(String(args["sessionId"]));
-        const timeoutMs = Math.min(Number(args["timeoutMs"] ?? 2000), 10000);
+        const s = getSession(String(args.sessionId));
+        const timeoutMs = Math.min(Number(args.timeoutMs ?? 2000), 10000);
         // The backend streams into session.buffer via its onData callback.
         // Wait briefly for output to arrive.
         const start = Date.now();
@@ -146,7 +151,7 @@ export function createInteractiveTerminalTools(
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const id = String(args["sessionId"]);
+        const id = String(args.sessionId);
         const s = sessions.get(id);
         if (s) {
           s.close();

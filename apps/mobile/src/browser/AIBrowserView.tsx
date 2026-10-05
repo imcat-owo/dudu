@@ -11,11 +11,13 @@
  * native module — needs a dev build, not Expo Go). captureScreenshot()
  * captures the rendered page as a PNG file for the AI's vision.
  */
+
+import { Plus, X } from "lucide-react-native";
 import { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
-import { X, Plus } from "lucide-react-native";
+import { CookieAuditButton } from "./CookieAudit";
 import { type BrowserWebViewRef, browserController } from "./controller";
 import { browserTabStore, useBrowserTabs } from "./tabs";
 
@@ -134,6 +136,7 @@ export default function AIBrowserView({ visible }: { visible: boolean }) {
         >
           <Plus size={18} />
         </TouchableOpacity>
+        <CookieAuditButton />
       </View>
       {/* Tab contents */}
       <View style={{ flex: 1 }}>

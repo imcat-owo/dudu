@@ -803,6 +803,16 @@ const zhHans = {
   "browser.startDetail": "在上面打开会话，把浏览收在一起。配置好浏览器 worker 后会有实时预览。",
   "browser.aiBrowserTitle": "AI 浏览器",
   "browser.aiBrowserDetail": "嘟嘟用这个浏览器帮你看网页、点按钮、填表单。你说话，它动手。",
+  "browser.cookieAudit": "Cookie 审计",
+  "browser.cookieAuditDesc": "看看这个标签页存了哪些小饼干。",
+  "browser.cookiesEmpty": "这个页面没有存小饼干，干干净净。",
+  "browser.cookieRefresh": "重新读取",
+  "browser.cookieClear": "清空",
+  "browser.cookieClearConfirm": "把这个页面 JS 能碰到的 cookie 都清掉？",
+  "browser.cookieCleared": "清掉了。",
+  "browser.cookieNote": "只能看到 JS 能读到的 cookie，HttpOnly 的既看不到也清不掉——那是网站自己的小秘密。",
+  "browser.cookieLoadFail": "没读到，页面可能还没加载完，稍后再试。",
+  "browser.cookieCount": "{n} 个",
 
   // ---- files screen ----
   "files.tagline": "文档，还有一点工作空间。",

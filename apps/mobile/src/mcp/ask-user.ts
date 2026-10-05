@@ -57,14 +57,14 @@ function validateQuestions(raw: unknown): AskUserQuestion[] {
   if (raw.length > 4) throw new Error("ask_user: at most 4 questions per call");
   return raw.map((q, i) => {
     const o = q as Record<string, unknown>;
-    const question = String(o["question"] ?? "").trim();
+    const question = String(o.question ?? "").trim();
     if (!question) throw new Error(`ask_user: question ${i + 1} has no text`);
-    const kind = o["kind"] === "multi" ? "multi" : "single";
-    const options = Array.isArray(o["options"])
-      ? (o["options"] as unknown[]).map((x) => String(x)).slice(0, 8)
+    const kind = o.kind === "multi" ? "multi" : "single";
+    const options = Array.isArray(o.options)
+      ? (o.options as unknown[]).map((x) => String(x)).slice(0, 8)
       : [];
     return {
-      id: String(o["id"] ?? `q${i + 1}`),
+      id: String(o.id ?? `q${i + 1}`),
       question,
       kind,
       options,
@@ -135,29 +135,30 @@ export function createAskUserTools(): LocalTool[] {
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const questions = validateQuestions(args["questions"]);
+        const questions = validateQuestions(args.questions);
         const id = `ask_${Date.now()}_${++seq}`;
-        const answers = await new Promise<Record<string, string | string[]>>(
-          (resolve, reject) => {
-            const req: AskUserRequest = {
-              id,
-              questions,
-              resolve,
-              reject,
-              createdAt: Date.now(),
-            };
-            pending.set(id, req);
-            emit(req);
-            // Safety: auto-cancel after 5 minutes so the loop can't hang forever.
-            const safetyTimer = setTimeout(() => {
+        const answers = await new Promise<Record<string, string | string[]>>((resolve, reject) => {
+          const req: AskUserRequest = {
+            id,
+            questions,
+            resolve,
+            reject,
+            createdAt: Date.now(),
+          };
+          pending.set(id, req);
+          emit(req);
+          // Safety: auto-cancel after 5 minutes so the loop can't hang forever.
+          const safetyTimer = setTimeout(
+            () => {
               if (pending.has(id)) cancelAskUserRequest(id);
-            }, 5 * 60 * 1000);
-            // Don't keep the process alive for this in tests.
-            if (typeof safetyTimer === "object" && "unref" in safetyTimer) {
-              (safetyTimer as unknown as { unref: () => void }).unref();
-            }
-          },
-        );
+            },
+            5 * 60 * 1000,
+          );
+          // Don't keep the process alive for this in tests.
+          if (typeof safetyTimer === "object" && "unref" in safetyTimer) {
+            (safetyTimer as unknown as { unref: () => void }).unref();
+          }
+        });
         return JSON.stringify({ answers });
       },
     },

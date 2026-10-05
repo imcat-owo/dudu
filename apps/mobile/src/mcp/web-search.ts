@@ -100,11 +100,13 @@ async function searchDuckDuckGo(query: string): Promise<SearchResponse> {
   if (!res.ok) throw new Error(`DuckDuckGo HTTP ${res.status}`);
   const html = await res.text();
   const results: SearchResult[] = [];
-  const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>.*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gs;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && results.length < 5) {
+  const re =
+    /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>.*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gs;
+  let m: RegExpExecArray | null = re.exec(html);
+  while (m && results.length < 5) {
     const strip = (s: string) => s.replace(/<[^>]+>/g, "").trim();
     results.push({ title: strip(m[2]), url: m[1], snippet: strip(m[3]).slice(0, 300) });
+    m = re.exec(html);
   }
   return { results };
 }
@@ -124,13 +126,13 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
       try {
         switch (provider) {
           case "tavily":
-            if (env["TAVILY_API_KEY"]) return await searchTavily(query, env["TAVILY_API_KEY"]);
+            if (env.TAVILY_API_KEY) return await searchTavily(query, env.TAVILY_API_KEY);
             break;
           case "serper":
-            if (env["SERPER_API_KEY"]) return await searchSerper(query, env["SERPER_API_KEY"]);
+            if (env.SERPER_API_KEY) return await searchSerper(query, env.SERPER_API_KEY);
             break;
           case "brave":
-            if (env["BRAVE_API_KEY"]) return await searchBrave(query, env["BRAVE_API_KEY"]);
+            if (env.BRAVE_API_KEY) return await searchBrave(query, env.BRAVE_API_KEY);
             break;
           case "duckduckgo":
             return await searchDuckDuckGo(query);
@@ -160,13 +162,11 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
         additionalProperties: false,
       },
       run: async (args, _ctx) => {
-        const query = String(args["query"] ?? "").trim();
+        const query = String(args.query ?? "").trim();
         if (!query) throw new Error("web_search: empty query");
         const { results, answer } = await run(query);
         if (results.length === 0) return "No results found.";
-        const lines = results.map(
-          (r, i) => `${i + 1}. [${r.title}](${r.url})\n   ${r.snippet}`,
-        );
+        const lines = results.map((r, i) => `${i + 1}. [${r.title}](${r.url})\n   ${r.snippet}`);
         return (answer ? `Summary: ${answer}\n\n` : "") + lines.join("\n\n");
       },
     },

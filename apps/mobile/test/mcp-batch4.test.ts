@@ -7,11 +7,11 @@
  * threshold, GitHub URL conversion, delegate concurrency, agent CLI.
  */
 
-import { describe, it } from "node:test";
 import assert from "node:assert";
+import { describe, it } from "node:test";
 
 // --- OAuth: PKCE ---
-import { pkceChallenge, parseWwwAuthenticate } from "../src/mcp/oauth";
+import { parseWwwAuthenticate, pkceChallenge } from "../src/mcp/oauth";
 
 describe("mcp oauth", () => {
   it("pkceChallenge produces a URL-safe S256 challenge", async () => {
@@ -21,7 +21,8 @@ describe("mcp oauth", () => {
   });
 
   it("parseWwwAuthenticate extracts resource_metadata", () => {
-    const h = 'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"';
+    const h =
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"';
     assert.strictEqual(
       parseWwwAuthenticate(h),
       "https://mcp.example.com/.well-known/oauth-protected-resource",
@@ -33,9 +34,9 @@ describe("mcp oauth", () => {
 
 // --- ask_user validation ---
 import {
-  createAskUserTools,
-  answerAskUserRequest,
   __pendingAskUserCount,
+  answerAskUserRequest,
+  createAskUserTools,
 } from "../src/mcp/ask-user";
 
 describe("ask_user", () => {
@@ -102,11 +103,17 @@ import { createDescOverrideStore } from "../src/mcp/tool-descriptions";
 
 describe("tool description overrides", () => {
   it("applies and clears overrides", async () => {
-    const fakeAsync = {
+    const _fakeAsync = {
       store: new Map<string, string>(),
-      async getItem(k: string) { return this.store.get(k) ?? null; },
-      async setItem(k: string, v: string) { this.store.set(k, v); },
-      async removeItem(k: string) { this.store.delete(k); },
+      async getItem(k: string) {
+        return this.store.get(k) ?? null;
+      },
+      async setItem(k: string, v: string) {
+        this.store.set(k, v);
+      },
+      async removeItem(k: string) {
+        this.store.delete(k);
+      },
     };
     // The store uses AsyncStorage directly; we test the pure apply logic.
     const store = createDescOverrideStore();
@@ -127,13 +134,15 @@ describe("image compression", () => {
   it("has 4 tiers with sane specs", () => {
     assert.deepStrictEqual(COMPRESSION_TIERS, ["original", "high", "medium", "low"]);
     assert.strictEqual(COMPRESSION_SPECS.original.maxEdge, null);
-    assert.ok(COMPRESSION_SPECS.low.maxEdge! < COMPRESSION_SPECS.high.maxEdge!);
+    const lowEdge = COMPRESSION_SPECS.low.maxEdge;
+    const highEdge = COMPRESSION_SPECS.high.maxEdge;
+    assert.ok(lowEdge !== null && highEdge !== null && lowEdge < highEdge);
     assert.ok(COMPRESSION_SPECS.low.quality < COMPRESSION_SPECS.high.quality);
   });
 });
 
 // --- long paste ---
-import { shouldConvertPaste, pastePreview } from "../src/mcp/long-paste";
+import { pastePreview, shouldConvertPaste } from "../src/mcp/long-paste";
 
 describe("long paste", () => {
   it("threshold triggers at 2000 chars", () => {
@@ -182,12 +191,14 @@ describe("github skill import", () => {
 });
 
 // --- delegate concurrency ---
-import { createDelegateTools, __runningSubtaskCount } from "../src/mcp/delegate";
+import { __runningSubtaskCount, createDelegateTools } from "../src/mcp/delegate";
 
 describe("delegate_task", () => {
   it("enforces max concurrency", async () => {
     let release!: () => void;
-    const gate = new Promise<void>((r) => { release = r; });
+    const gate = new Promise<string>((resolve) => {
+      release = () => resolve("done");
+    });
     const [tool] = createDelegateTools({
       maxConcurrent: 1,
       runSubtask: () => gate,
@@ -211,9 +222,7 @@ import { createAgentCliTools } from "../src/mcp/agent-cli";
 
 describe("dudu agent CLI", () => {
   const deps = {
-    listDialogs: async () => [
-      { id: "d1", name: "Chat", messageCount: 10, updatedAt: 1 },
-    ],
+    listDialogs: async () => [{ id: "d1", name: "Chat", messageCount: 10, updatedAt: 1 }],
     readDialog: async (id: string, limit: number) => `read ${id} limit ${limit}`,
     searchDialogs: async (q: string) =>
       q === "chat" ? [{ id: "d1", name: "Chat", messageCount: 10, updatedAt: 1 }] : [],
@@ -242,5 +251,30 @@ describe("dudu agent CLI", () => {
   it("rejects unknown commands", async () => {
     const [tool] = createAgentCliTools(deps);
     await assert.rejects(() => tool.run({ command: "nope" }, {} as never), /unknown command/);
+  });
+});
+
+// --- D4 cookie audit ---
+import { parseCookies } from "../src/browser/cookies";
+
+describe("cookie audit", () => {
+  it("parses document.cookie string", () => {
+    const cookies = parseCookies("a=1; b=hello world; c=");
+    assert.strictEqual(cookies.length, 3);
+    assert.strictEqual(cookies[0].name, "a");
+    assert.strictEqual(cookies[0].value, "1");
+    assert.strictEqual(cookies[1].name, "b");
+    assert.strictEqual(cookies[1].value, "hello world");
+  });
+
+  it("handles empty string", () => {
+    assert.deepStrictEqual(parseCookies(""), []);
+    assert.deepStrictEqual(parseCookies("   "), []);
+  });
+
+  it("handles values with equals signs", () => {
+    const cookies = parseCookies("token=abc=def==; x=1");
+    assert.strictEqual(cookies[0].name, "token");
+    assert.strictEqual(cookies[0].value, "abc=def==");
   });
 });

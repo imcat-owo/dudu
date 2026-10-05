@@ -56,5 +56,5 @@ export async function savePasteAsFile(text: string): Promise<PasteFile> {
 /** Preview line for the attachment chip. */
 export function pastePreview(text: string, maxLen = 120): string {
   const oneLine = text.replace(/\s+/g, " ").trim();
-  return oneLine.length > maxLen ? oneLine.slice(0, maxLen) + "…" : oneLine;
+  return oneLine.length > maxLen ? `${oneLine.slice(0, maxLen)}…` : oneLine;
 }

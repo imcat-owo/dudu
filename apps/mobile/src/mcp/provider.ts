@@ -11,9 +11,9 @@
  */
 
 import type { LocalTool } from "../api-groups/local-tools";
-import type { McpServerConfig, McpToolDefinition } from "./types";
 import { createMcpClient } from "./client";
 import { mcpStore } from "./store";
+import type { McpServerConfig, McpToolDefinition } from "./types";
 
 export interface McpProviderDeps {
   env: Record<string, string>;
@@ -104,9 +104,7 @@ export async function createMcpProviders(deps: McpProviderDeps): Promise<
         await ensureConnected();
         const result = await client.callTool(name, args);
         if (result.isError) {
-          throw new Error(
-            result.content.map((c) => c.text ?? "").join("\n") || "MCP tool error",
-          );
+          throw new Error(result.content.map((c) => c.text ?? "").join("\n") || "MCP tool error");
         }
         return result.content
           .map((c) => (c.type === "text" ? (c.text ?? "") : JSON.stringify(c)))

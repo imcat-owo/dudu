@@ -78,7 +78,7 @@ export function createDescOverrideStore() {
 
     async getOverride(toolName: string): Promise<string | undefined> {
       await ensureLoaded();
-      return (overrides ?? {})[toolName];
+      return overrides?.[toolName];
     },
 
     async getAll(): Promise<DescOverrides> {
@@ -90,9 +90,7 @@ export function createDescOverrideStore() {
     async apply<T extends { name: string; description: string }>(tools: T[]): Promise<T[]> {
       const ov = await this.getAll();
       if (Object.keys(ov).length === 0) return tools;
-      return tools.map((t) =>
-        ov[t.name] ? ({ ...t, description: ov[t.name] } as T) : t,
-      );
+      return tools.map((t) => (ov[t.name] ? ({ ...t, description: ov[t.name] } as T) : t));
     },
   };
 }

@@ -8,14 +8,14 @@
  * never displayed, never logged.
  */
 
-import { useState } from "react";
-import { Pressable, Switch, View, TextInput, Alert } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+import { Alert, Pressable, Switch, TextInput, View } from "react-native";
 import { TText } from "../font";
 import { t } from "../i18n";
 import { Button, Card, useColors } from "../ui";
-import { mcpStore, useMcpServers } from "./store";
 import { startAuthorization } from "./oauth";
+import { mcpStore, useMcpServers } from "./store";
 import type { McpServerConfig, McpTransportType } from "./types";
 
 export const MCP_OAUTH_REDIRECT = "dudu://oauth/mcp";
@@ -226,10 +226,7 @@ export default function McpSettings() {
       });
       Alert.alert(t("mcp.oauth.successTitle"), t("mcp.oauth.success", { name: server.name }));
     } catch (e) {
-      Alert.alert(
-        t("mcp.oauth.failedTitle"),
-        e instanceof Error ? e.message : String(e),
-      );
+      Alert.alert(t("mcp.oauth.failedTitle"), e instanceof Error ? e.message : String(e));
     } finally {
       setAuthorizing(null);
     }
@@ -250,7 +247,10 @@ export default function McpSettings() {
                 {s.transport === "http" ? "Streamable HTTP" : "SSE"} · {s.url}
               </TText>
             </View>
-            <Switch value={s.enabled} onValueChange={(v) => mcpStore.upsert({ ...s, enabled: v })} />
+            <Switch
+              value={s.enabled}
+              onValueChange={(v) => mcpStore.upsert({ ...s, enabled: v })}
+            />
           </View>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
             <Button small onPress={() => setEditing(s)}>

@@ -88,15 +88,13 @@ export async function discoverAuthServer(
       lastErr = e;
     }
   }
-  throw new Error(
-    `OAuth: no authorization server metadata found (${String(lastErr)})`,
-  );
+  throw new Error(`OAuth: no authorization server metadata found (${String(lastErr)})`);
 }
 
 function normalizeMetadata(meta: Record<string, unknown>): AuthorizationServerMetadata {
-  const issuer = meta["issuer"] as string;
-  const authorizationEndpoint = meta["authorization_endpoint"] as string;
-  const tokenEndpoint = meta["token_endpoint"] as string;
+  const issuer = meta.issuer as string;
+  const authorizationEndpoint = meta.authorization_endpoint as string;
+  const tokenEndpoint = meta.token_endpoint as string;
   if (!issuer || !authorizationEndpoint || !tokenEndpoint) {
     throw new Error("OAuth: incomplete authorization server metadata");
   }
@@ -104,8 +102,8 @@ function normalizeMetadata(meta: Record<string, unknown>): AuthorizationServerMe
     issuer,
     authorizationEndpoint,
     tokenEndpoint,
-    registrationEndpoint: meta["registration_endpoint"] as string | undefined,
-    scopesSupported: meta["scopes_supported"] as string[] | undefined,
+    registrationEndpoint: meta.registration_endpoint as string | undefined,
+    scopesSupported: meta.scopes_supported as string[] | undefined,
   };
 }
 
@@ -137,9 +135,9 @@ export async function registerClient(
   });
   if (!res.ok) throw new Error(`OAuth DCR failed: HTTP ${res.status}`);
   const data = (await res.json()) as Record<string, unknown>;
-  const clientId = data["client_id"] as string;
+  const clientId = data.client_id as string;
   if (!clientId) throw new Error("OAuth DCR: no client_id returned");
-  return { clientId, clientSecret: data["client_secret"] as string | undefined };
+  return { clientId, clientSecret: data.client_secret as string | undefined };
 }
 
 export interface AuthFlow {
@@ -169,6 +167,7 @@ export async function startAuthorization(
     clientId = reg.clientId;
     clientSecret = reg.clientSecret;
   }
+  const resolvedClientId: string = clientId;
   const pkce = createPkcePair();
   // pkce.challenge is a Promise in this impl — resolve it now.
   const challenge = await pkce.challenge;
@@ -188,7 +187,7 @@ export async function startAuthorization(
     authorizationUrl,
     state,
     pkce,
-    clientId,
+    clientId: resolvedClientId,
     clientSecret,
     metadata,
     redirectUri,
@@ -197,10 +196,18 @@ export async function startAuthorization(
       const code = url.searchParams.get("code");
       const returnedState = url.searchParams.get("state");
       const err = url.searchParams.get("error");
-      if (err) throw new Error(`OAuth: ${err} — ${url.searchParams.get("error_description") ?? ""}`);
+      if (err)
+        throw new Error(`OAuth: ${err} — ${url.searchParams.get("error_description") ?? ""}`);
       if (!code) throw new Error("OAuth: no authorization code in redirect");
       if (returnedState !== state) throw new Error("OAuth: state mismatch");
-      return exchangeCode(metadata, clientId!, clientSecret, code, pkce.verifier, redirectUri);
+      return exchangeCode(
+        metadata,
+        resolvedClientId,
+        clientSecret,
+        code,
+        pkce.verifier,
+        redirectUri,
+      );
     },
   };
 }
@@ -224,7 +231,7 @@ async function exchangeCode(
     "Content-Type": "application/x-www-form-urlencoded",
   };
   if (clientSecret) {
-    headers["Authorization"] = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    headers.Authorization = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
   }
   const res = await fetch(metadata.tokenEndpoint, {
     method: "POST",
@@ -254,7 +261,7 @@ export async function refreshTokens(
     "Content-Type": "application/x-www-form-urlencoded",
   };
   if (clientSecret) {
-    headers["Authorization"] = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    headers.Authorization = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
   }
   const res = await fetch(metadata.tokenEndpoint, {
     method: "POST",
@@ -269,14 +276,14 @@ export async function refreshTokens(
 }
 
 function normalizeTokens(data: Record<string, unknown>): McpOAuthTokens {
-  const accessToken = data["access_token"] as string;
+  const accessToken = data.access_token as string;
   if (!accessToken) throw new Error("OAuth: no access_token in response");
-  const expiresIn = Number(data["expires_in"] ?? 3600);
+  const expiresIn = Number(data.expires_in ?? 3600);
   return {
     accessToken,
-    refreshToken: data["refresh_token"] as string | undefined,
+    refreshToken: data.refresh_token as string | undefined,
     expiresAt: Date.now() + expiresIn * 1000,
-    tokenType: (data["token_type"] as string) ?? "Bearer",
+    tokenType: (data.token_type as string) ?? "Bearer",
   };
 }
 

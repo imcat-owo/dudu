@@ -65,10 +65,11 @@ async function readSseMessages(
       if (done) break;
       if (signal.aborted) break;
       buf += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buf.indexOf("\n\n")) >= 0) {
+      let idx = buf.indexOf("\n\n");
+      while (idx >= 0) {
         const chunk = buf.slice(0, idx);
         buf = buf.slice(idx + 2);
+        idx = buf.indexOf("\n\n");
         let data = "";
         for (const line of chunk.split("\n")) {
           if (line.startsWith(":")) continue; // comment / heartbeat
@@ -94,7 +95,11 @@ export function createHttpTransport(
   let nextId = 1;
   const pending = new Map<
     number | string,
-    { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (v: unknown) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
   >();
 
   function headers(): Record<string, string> {
@@ -103,7 +108,7 @@ export function createHttpTransport(
       Accept: "application/json, text/event-stream",
       ...expandEnvHeaders(config.headers, env),
     };
-    if (authHeader) h["Authorization"] = authHeader;
+    if (authHeader) h.Authorization = authHeader;
     if (sessionId) h["Mcp-Session-Id"] = sessionId;
     return h;
   }
@@ -176,7 +181,12 @@ export function createHttpTransport(
     },
     async request(req, timeoutMs): Promise<unknown> {
       const id = req.id ?? nextId++;
-      const payload: JsonRpcRequest = { jsonrpc: "2.0", id, method: req.method, params: req.params };
+      const payload: JsonRpcRequest = {
+        jsonrpc: "2.0",
+        id,
+        method: req.method,
+        params: req.params,
+      };
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
@@ -230,14 +240,18 @@ export function createSseTransport(
   let nextId = 1;
   const pending = new Map<
     number | string,
-    { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (v: unknown) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
   >();
 
   function headers(): Record<string, string> {
     const h: Record<string, string> = {
       ...expandEnvHeaders(config.headers, env),
     };
-    if (authHeader) h["Authorization"] = authHeader;
+    if (authHeader) h.Authorization = authHeader;
     return h;
   }
 
@@ -252,7 +266,7 @@ export function createSseTransport(
     }
   }
 
-  async function postMessage(payload: string, timeoutMs: number): Promise<void> {
+  async function postMessage(payload: string, _timeoutMs: number): Promise<void> {
     if (!messageUrl) throw new Error("MCP SSE: not connected");
     const res = await fetch(messageUrl, {
       method: "POST",
@@ -267,13 +281,14 @@ export function createSseTransport(
   return {
     async connect(): Promise<void> {
       sseCtrl = new AbortController();
+      const ctrl = sseCtrl;
       const endpointReady = new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error("MCP SSE: no endpoint event")), 15000);
         (async () => {
           try {
             const res = await fetch(config.url, {
               headers: { Accept: "text/event-stream", ...headers() },
-              signal: sseCtrl!.signal,
+              signal: ctrl.signal,
             });
             if (res.status === 401) throw new Error("MCP_UNAUTHORIZED");
             if (!res.ok || !res.body) throw new Error(`MCP SSE HTTP ${res.status}`);
@@ -297,7 +312,7 @@ export function createSseTransport(
                   }
                 }
               },
-              sseCtrl!.signal,
+              ctrl.signal,
             );
           } catch (e) {
             clearTimeout(timer);
@@ -309,7 +324,12 @@ export function createSseTransport(
     },
     async request(req, timeoutMs): Promise<unknown> {
       const id = req.id ?? nextId++;
-      const payload: JsonRpcRequest = { jsonrpc: "2.0", id, method: req.method, params: req.params };
+      const payload: JsonRpcRequest = {
+        jsonrpc: "2.0",
+        id,
+        method: req.method,
+        params: req.params,
+      };
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);

@@ -18,14 +18,11 @@ function toRawUrl(url: string): string {
   const u = url.trim();
   // Already raw.
   if (u.startsWith("https://raw.githubusercontent.com/")) return u;
-  const m = u.match(
-    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.+)$/,
-  );
+  const m = u.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.+)$/);
   if (!m) throw new Error("Not a GitHub file/folder URL");
   const [, owner, repo, kind, branch, path] = m;
   const cleanPath = path.replace(/\/$/, "");
-  const filePath =
-    kind === "blob" ? cleanPath : `${cleanPath}/SKILL.md`;
+  const filePath = kind === "blob" ? cleanPath : `${cleanPath}/SKILL.md`;
   return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
 }
 
