@@ -87,6 +87,7 @@ import {
   streamChat,
 } from "./direct-transport";
 import { classifyError, type ErrorClass } from "./error-classifier";
+import { loadModelSlots, type ModelSlotId } from "./model-slots";
 import {
   describeVia,
   findCapabilityGroup,
@@ -183,6 +184,24 @@ export function contentToText(content: string | ChatContentBlock[]): string {
   return content.map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
 }
 export const MAX_TOOL_ITERATIONS = 10;
+
+/**
+ * B13: swap in the dedicated slot model for a background task when the
+ * user configured one (small/cheap model for small jobs). Returns the
+ * group unchanged when no slot model is set or the lookup fails — never
+ * throws. v1 overrides the model on the same group; binding a slot to a
+ * different provider group is a follow-up.
+ */
+export async function withSlotModel(group: ApiGroup, slotId: ModelSlotId): Promise<ApiGroup> {
+  try {
+    const slots = await loadModelSlots();
+    const model = slots[slotId]?.model?.trim();
+    if (model && model !== group.model) return { ...group, model };
+  } catch {
+    // slot lookup is best-effort
+  }
+  return group;
+}
 
 /**
  * Parse a tool call's JSON arguments string. Never throws — malformed
@@ -730,8 +749,10 @@ export function createLocalAgent(opts: {
       .map((m) => `${m.role}: ${contentToText(m.content).slice(0, 2000)}`)
       .join("\n");
     let summary = "";
+    // B13: dedicated model slot — small/cheap model for compression when set.
+    const slotGroup = await withSlotModel(group, "compress");
     await streamChat(
-      group,
+      slotGroup,
       [
         {
           role: "user",
@@ -796,8 +817,10 @@ export function createLocalAgent(opts: {
       .map((m) => `${m.role}: ${contentToText(m.content).slice(0, 2000)}`)
       .join("\n");
     let summary = "";
+    // B13: dedicated model slot for summaries when set.
+    const slotGroup = await withSlotModel(group, "summary");
     await streamChat(
-      group,
+      slotGroup,
       [
         {
           role: "user",
