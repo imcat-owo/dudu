@@ -1,10 +1,8 @@
 /**
- * AIBrowserView — the WebView the AI drives.
+ * AIBrowserView — the WebView the AI drives, now with tabs for her.
  *
- * Mounts a real WebView and registers its ref with browserController.
- * The AI tools (browser_navigate/snapshot/click/input/screenshot/...)
- * drive it through the controller. She can see what's happening — the
- * view is visible when the browser tab is open.
+ * D4: Multi-tab UI. She can open tabs, switch between them, and see her
+ * history. The AI drives the ACTIVE tab through browserController.
  *
  * Message flow: injected JS posts results via
  * window.ReactNativeWebView.postMessage -> onMessage -> controller.
@@ -13,18 +11,20 @@
  * native module — needs a dev build, not Expo Go). captureScreenshot()
  * captures the rendered page as a PNG file for the AI's vision.
  */
-import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { useEffect, useRef } from "react";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
+import { X, Plus } from "lucide-react-native";
 import { type BrowserWebViewRef, browserController } from "./controller";
+import { browserTabStore, useBrowserTabs } from "./tabs";
 
-export default function AIBrowserView({ visible }: { visible: boolean }) {
+function TabWebView({ tabId, url, visible }: { tabId: string; url: string; visible: boolean }) {
   const webViewRef = useRef<WebView>(null);
   const shotRef = useRef<ViewShotRef>(null);
-  const [url, setUrl] = useState("about:blank");
 
   useEffect(() => {
+    if (!visible) return;
     const wvRef: BrowserWebViewRef = {
       injectJavaScript: (js: string) => webViewRef.current?.injectJavaScript(js),
       goBack: () => webViewRef.current?.goBack(),
@@ -37,24 +37,14 @@ export default function AIBrowserView({ visible }: { visible: boolean }) {
             "Screenshot not available — needs a dev build with react-native-view-shot (not Expo Go).",
           );
         }
-        // capture() resolves with a file URI (png).
         return shot.capture();
       },
     };
     browserController.setWebView(wvRef);
-    // Pick up any URL the AI requested before mount.
-    const pending = browserController.url;
-    if (pending) setUrl(pending);
     return () => {
       browserController.setWebView(null);
     };
-  }, []);
-
-  // When the AI navigates while mounted, update the source.
-  useEffect(() => {
-    const target = browserController.url;
-    if (target && target !== url) setUrl(target);
-  });
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -70,9 +60,87 @@ export default function AIBrowserView({ visible }: { visible: boolean }) {
           }}
           onNavigationStateChange={(nav) => {
             browserController.setUrl(nav.url);
+            browserTabStore.navigateTab(tabId, nav.url);
+            if (nav.title) browserTabStore.setTabTitle(tabId, nav.title);
+            browserTabStore.recordHistory(nav.url, nav.title || nav.url);
           }}
         />
       </ViewShot>
+    </View>
+  );
+}
+
+export default function AIBrowserView({ visible }: { visible: boolean }) {
+  const { tabs, activeId } = useBrowserTabs();
+  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
+
+  // The AI's pending navigation goes to the active tab.
+  useEffect(() => {
+    const pending = browserController.url;
+    if (pending && pending !== activeTab.url) {
+      browserTabStore.navigateTab(activeTab.id, pending);
+    }
+  });
+
+  if (!visible) return null;
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Tab bar */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 6,
+          paddingHorizontal: 8,
+          gap: 6,
+        }}
+      >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => browserTabStore.activateTab(tab.id)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 12,
+                  backgroundColor: tab.id === activeId ? "#e8e8e8" : "#f5f5f5",
+                  maxWidth: 160,
+                }}
+              >
+                <Text numberOfLines={1} style={{ fontSize: 12, flex: 1 }}>
+                  {tab.title || "New Tab"}
+                </Text>
+                {tabs.length > 1 && (
+                  <TouchableOpacity
+                    onPress={() => browserTabStore.closeTab(tab.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={12} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+        <TouchableOpacity
+          onPress={() => browserTabStore.openTab()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="New tab"
+        >
+          <Plus size={18} />
+        </TouchableOpacity>
+      </View>
+      {/* Tab contents */}
+      <View style={{ flex: 1 }}>
+        {tabs.map((tab) => (
+          <TabWebView key={tab.id} tabId={tab.id} url={tab.url} visible={tab.id === activeId} />
+        ))}
+      </View>
     </View>
   );
 }

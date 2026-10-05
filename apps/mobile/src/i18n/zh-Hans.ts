@@ -1822,6 +1822,17 @@ const zhHans = {
   "crossDialog.clearConfirm": "把留痕记录全部清空？清空后就看不到了。",
   "crossDialog.appsEntry": "跨对话框留痕",
   "crossDialog.appsEntryDetail": "他在别的对话框干了什么",
+  // ---- MCP ----
+  "mcp.intro": "接外部 MCP 服务器，高德地图、数据库什么的都能连。能力边界就靠这个扩。",
+  "mcp.name": "名字",
+  "mcp.namePlaceholder": "比如：高德地图",
+  "mcp.url": "服务器地址",
+  "mcp.transport": "传输方式",
+  "mcp.headers": "请求头",
+  "mcp.headersHint": "一行一个，比如 X-API-Key: ${MY_KEY}。${} 里写环境变量名。",
+  "mcp.useOAuth": "需要登录授权 (OAuth)",
+  "mcp.oauthScopes": "权限范围",
+  "mcp.addServer": "添加服务器",
 } as const;
 
 export type StringKey = keyof typeof zhHans;

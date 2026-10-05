@@ -1899,4 +1899,15 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.clearConfirm": "Clear all trace records? They'll be gone for good.",
   "crossDialog.appsEntry": "Cross-dialog trace",
   "crossDialog.appsEntryDetail": "What he did in your other dialogs",
+  // ---- MCP ----
+  "mcp.intro": "Connect external MCP servers — maps, databases, anything. This is how capabilities grow.",
+  "mcp.name": "Name",
+  "mcp.namePlaceholder": "e.g. Amap",
+  "mcp.url": "Server URL",
+  "mcp.transport": "Transport",
+  "mcp.headers": "Headers",
+  "mcp.headersHint": "One per line, e.g. X-API-Key: ${MY_KEY}. Use ${} for env var names.",
+  "mcp.useOAuth": "Requires OAuth login",
+  "mcp.oauthScopes": "Scopes",
+  "mcp.addServer": "Add server",
 };
