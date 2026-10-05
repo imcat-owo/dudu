@@ -76,6 +76,6 @@ E1-E5/F1-F3/G1-G4/G6 全做完，对着 Kelivo 真源码学的（World Book 激�
 H2 Share Extension（TS intake + 原生 ShareViewController）/ H3 用户定时任务（完整 TS，通知降级）/ H4 Siri Shortcuts（TS deep link + 原生 AppIntents）/ H5 Widget（TS 数据推送 + 原生 WidgetKit，对齐任务卡片）/ H6 Live Activity（TS 控制器 + 原生 ActivityKit）/ H7 Files.app（TS 发布/列表 + 原生 FileProvider）/ H8 Face ID 锁（纯 TS，expo-local-authentication）/ H10 HomeKit（TS 桥 + 原生模块）/ H11 Apple NLP（TS 桥 + 原生模块）
 H1 跳过（iOS 先行），H9 延期。原生模块需 Xcode 接线（见 plugins/dudu-platform/README.md）。
 
-## Batch 7 — 小功能 I（✅ 2026-10-05 构建完成，待复审）
+## Batch 7 — 小功能 I（✅✅ 构建+复审 全 PASS 2026-10-05）
 I1 翻译（消息长按→选语言→流式译文卡片+独立翻译页）/ I2 设置搜索（17分区可搜）/ I3 统计页（热力图/指标/模型排行，读真实用量账本）/ I4 扫码（独立扫一扫：导配置/主题试穿/链接/文本）/ I5 VoiceOver（跟随系统：回复播报+消息行标签）/ I6 草稿 token 计数（200ms防抖）/ I7 回车发送（iOS默认开）/ I8 生成时保持亮屏（expo-keep-awake）/ I9 触感反馈（总开关+发送/接收）/ I10 新聊天行为（启动/换人设/删除后）/ I11 显示开关（模型名/时间/头像）/ I12 自动滚动（可关+idle恢复秒数）/ I13 长消息折叠（默认500字）/ I14 Markdown按角色开关（用户/AI/思考）/ I15 配置审计（生效配置一览+复制JSON）
 新模块 src/extras/（prefs/store、token-estimate、haptics、voiceover、translate、message-meta、settings-search、stats、qr-scan-ui、stats-ui、translate-ui、config-audit-ui、prefs-ui、message-ui）。21个新测试全过，tsc干净，三语i18n对齐，零emoji。
