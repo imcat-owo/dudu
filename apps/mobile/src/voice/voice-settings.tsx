@@ -29,6 +29,8 @@ import { transcribeAudio } from "./stt";
 import { synthesizeSpeech } from "./tts";
 import {
   EDGE_TTS_CHINESE_VOICES,
+  STT_PRESET_DEFAULTS,
+  TTS_PROVIDER_DEFAULTS,
   type MicMode,
   type SttConfig,
   type TtsConfig,
@@ -47,7 +49,7 @@ function ProviderTabs<T extends string>({
 }) {
   const colors = useColors();
   return (
-    <View style={{ flexDirection: "row", gap: 8 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {options.map((o) => {
         const active = value === o.id;
         return (
@@ -57,8 +59,8 @@ function ProviderTabs<T extends string>({
             accessibilityState={{ selected: active }}
             onPress={() => onChange(o.id)}
             style={{
-              flex: 1,
-              padding: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
               borderRadius: radii.sm,
               borderWidth: 1,
               borderColor: active ? colors.blueDark : colors.line,
@@ -152,6 +154,10 @@ function TtsSection() {
         onChange={(v) => set("provider", v)}
         options={[
           { id: "edge-tts", label: t("voice.ttsEdge") },
+          { id: "minimax", label: t("voice.ttsMinimax") },
+          { id: "fish-audio", label: t("voice.ttsFishAudio") },
+          { id: "stepfun", label: t("voice.ttsStepfun") },
+          { id: "qwen", label: t("voice.ttsQwen") },
           { id: "custom", label: t("voice.ttsCustom") },
         ]}
       />
@@ -184,7 +190,7 @@ function TtsSection() {
               );
             })}
           </View>
-        ) : (
+        ) : cfg.provider === "custom" ? (
           <>
             <Field
               label={t("voice.ttsUrl")}
@@ -215,6 +221,45 @@ function TtsSection() {
               value={cfg.voice}
               onChangeText={(v) => set("voice", v)}
               placeholder="alloy"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </>
+        ) : (
+          <>
+            <Field
+              label={t("voice.ttsKey")}
+              value={cfg.providerKey ?? ""}
+              onChangeText={(v) => set("providerKey", v)}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              label={t("voice.ttsProviderUrl")}
+              value={cfg.providerUrl ?? ""}
+              onChangeText={(v) => set("providerUrl", v)}
+              placeholder={t("voice.ttsProviderUrlDefault", {
+                url: TTS_PROVIDER_DEFAULTS[cfg.provider as keyof typeof TTS_PROVIDER_DEFAULTS]?.baseUrl ?? "",
+              })}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              label={t("voice.ttsProviderModel")}
+              value={cfg.providerModel ?? ""}
+              onChangeText={(v) => set("providerModel", v)}
+              placeholder={t("voice.ttsProviderModelDefault", {
+                model: TTS_PROVIDER_DEFAULTS[cfg.provider as keyof typeof TTS_PROVIDER_DEFAULTS]?.model ?? "",
+              })}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Field
+              label={t("voice.ttsVoice")}
+              value={cfg.voice}
+              onChangeText={(v) => set("voice", v)}
+              placeholder={t("voice.ttsVoiceHint")}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -401,6 +446,8 @@ function SttSection() {
         onChange={(v) => set("provider", v)}
         options={[
           { id: "group", label: t("voice.sttGroup") },
+          { id: "dashscope", label: t("voice.sttDashscope") },
+          { id: "stepfun", label: t("voice.sttStepfun") },
           { id: "custom", label: t("voice.sttCustom") },
         ]}
       />
@@ -427,6 +474,26 @@ function SttSection() {
             value={cfg.customModel ?? ""}
             onChangeText={(v) => set("customModel", v)}
             placeholder="whisper-1"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+      )}
+      {(cfg.provider === "dashscope" || cfg.provider === "stepfun") && (
+        <View style={{ marginTop: 10, gap: 10 }}>
+          <Field
+            label={t("voice.ttsKey")}
+            value={cfg.presetKey ?? ""}
+            onChangeText={(v) => set("presetKey", v)}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Field
+            label={t("voice.sttPresetModel")}
+            value={cfg.presetModel ?? ""}
+            onChangeText={(v) => set("presetModel", v)}
+            placeholder={STT_PRESET_DEFAULTS[cfg.provider].model}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -495,6 +562,12 @@ function MicModeSection() {
     if (!ok) setError(t("voice.saveFailed"));
   }
 
+  async function setAutoRead(v: boolean) {
+    setError("");
+    const ok = await voiceStore.setSettings({ ...settings, autoRead: v });
+    if (!ok) setError(t("voice.saveFailed"));
+  }
+
   if (!loaded) return null;
   const modes: Array<{ id: MicMode; label: string; desc: string }> = [
     { id: "transcribe", label: t("voice.micTranscribe"), desc: t("voice.micTranscribeDesc") },
@@ -538,6 +611,26 @@ function MicModeSection() {
             </Pressable>
           );
         })}
+        <View
+          style={{
+            padding: 10,
+            borderRadius: radii.sm,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.card,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <TText style={{ fontWeight: "700", color: colors.text }}>{t("voice.autoRead")}</TText>
+            <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+              {t("voice.autoReadDesc")}
+            </TText>
+          </View>
+          <Switch value={settings.autoRead} onValueChange={(v) => void setAutoRead(v)} />
+        </View>
       </View>
     </Card>
   );

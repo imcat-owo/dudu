@@ -148,7 +148,7 @@ describe("voice store", () => {
   it("settings persist mic mode", async () => {
     const kv = fakeKv();
     const store = createVoiceStore(fakeSecure(), kv);
-    const ok = await store.setSettings({ micMode: "voice-message" });
+    const ok = await store.setSettings({ micMode: "voice-message", autoRead: false });
     assert.equal(ok, true);
     assert.equal(store.getSnapshot().settings.micMode, "voice-message");
     assert.ok(kv.data.get("dudu.voice-settings.v1")?.includes("voice-message"));
@@ -324,11 +324,11 @@ describe("voice store write serialization (P1-2)", () => {
   it("setSettings failure returns false and keeps the old mic mode", async () => {
     const kv = fakeKv();
     const store = createVoiceStore(fakeSecure(), kv);
-    assert.equal(await store.setSettings({ micMode: "voice-message" }), true);
+    assert.equal(await store.setSettings({ micMode: "voice-message", autoRead: false }), true);
     kv.setItem = async () => {
       throw new Error("disk full");
     };
-    const ok = await store.setSettings({ micMode: "transcribe" });
+    const ok = await store.setSettings({ micMode: "transcribe", autoRead: false });
     assert.equal(ok, false);
     assert.equal(store.getSnapshot().settings.micMode, "voice-message");
   });

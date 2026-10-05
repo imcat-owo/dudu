@@ -78,7 +78,7 @@ describe("getSnapshot returns a stable reference (P0-1)", () => {
     const store = createVoiceStore(memBackend());
     const s1 = store.getSnapshot();
     assert.equal(s1, store.getSnapshot(), "fresh literal");
-    await store.setSettings({ micMode: "voice-message" });
+    await store.setSettings({ micMode: "voice-message", autoRead: false });
     const s2 = store.getSnapshot();
     assert.equal(s2, store.getSnapshot(), "fresh literal after mutation");
     assert.notEqual(s1, s2, "mutation must produce a new snapshot");

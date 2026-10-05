@@ -11,6 +11,7 @@
  */
 
 import { edgeTtsSynthesize } from "./edge-tts";
+import { synthesizeWithProvider, type NetworkTtsProvider } from "./tts-providers";
 import type { TtsConfig } from "./types";
 
 export class TtsError extends Error {
@@ -133,6 +134,16 @@ async function synthesizeEdgeTts(text: string, voice: string, rate = 1.0): Promi
   return writeBytes(bytes, "mp3");
 }
 
+async function synthesizeNetworkProvider(text: string, cfg: TtsConfig): Promise<string> {
+  let audio;
+  try {
+    audio = await synthesizeWithProvider(cfg.provider as NetworkTtsProvider, text, cfg);
+  } catch (e) {
+    throw new TtsError(e instanceof Error ? e.message : "TTS provider failed");
+  }
+  return writeBytes(audio.bytes, audio.ext);
+}
+
 async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
   const url = `${(cfg.customUrl ?? "").trim().replace(/\/+$/, "")}/audio/speech`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -186,7 +197,7 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
   const fs = await loadFs();
   const dir = await cacheDir();
   const cacheKey = hashText(
-    `${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${cfg.rate ?? 1.0}|${clean}`,
+    `${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${cfg.providerModel ?? ""}|${cfg.providerUrl ?? ""}|${cfg.rate ?? 1.0}|${clean}`,
   );
   // Cache slot lookup: the stored extension follows the actual audio format
   // (sniffed from Content-Type), so scan for any `${cacheKey}.*` — the .mp3
@@ -212,7 +223,9 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
     const uri =
       cfg.provider === "edge-tts"
         ? await synthesizeEdgeTts(clean, cfg.voice, cfg.rate ?? 1.0)
-        : await synthesizeCustom(clean, cfg);
+        : cfg.provider === "custom"
+          ? await synthesizeCustom(clean, cfg)
+          : await synthesizeNetworkProvider(clean, cfg);
     // Move into the cache slot for next time (best-effort), keeping the real extension.
     const ext = uri.split(".").pop() ?? "mp3";
     const cachedUri = `${dir}${cacheKey}.${ext}`;

@@ -13,7 +13,7 @@
 
 import { GroupError } from "../api-groups/direct-transport";
 import type { ApiGroup } from "../api-groups/types";
-import type { SttConfig } from "./types";
+import { STT_PRESET_DEFAULTS, type SttConfig } from "./types";
 
 export class SttError extends Error {
   constructor(message: string) {
@@ -131,19 +131,40 @@ export async function transcribeAudioWithCandidates(
     }
   }
 
-  // Dedicated STT endpoint.
-  const customUrl = (stt.customUrl ?? "").trim();
-  if (stt.provider === "custom" && customUrl) {
-    try {
-      return await postTranscription(
-        customUrl,
-        stt.customKey,
-        (stt.customModel ?? "").trim() || "whisper-1",
-        audioUri,
-        "专用语音转写",
-      );
-    } catch (e) {
-      errors.push(e instanceof Error ? e.message : String(e));
+  // Dedicated STT endpoint (custom) or provider preset (dashscope/stepfun).
+  if (stt.provider === "custom") {
+    const customUrl = (stt.customUrl ?? "").trim();
+    if (customUrl) {
+      try {
+        return await postTranscription(
+          customUrl,
+          stt.customKey,
+          (stt.customModel ?? "").trim() || "whisper-1",
+          audioUri,
+          "专用语音转写",
+        );
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+      }
+    }
+  } else if (stt.provider === "dashscope" || stt.provider === "stepfun") {
+    const preset = STT_PRESET_DEFAULTS[stt.provider];
+    const key = (stt.presetKey ?? "").trim();
+    if (key) {
+      const label = stt.provider === "dashscope" ? "阿里百炼转写" : "StepFun 转写";
+      try {
+        return await postTranscription(
+          preset.baseUrl,
+          key,
+          (stt.presetModel ?? "").trim() || preset.model,
+          audioUri,
+          label,
+        );
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+      }
+    } else {
+      errors.push(`${stt.provider === "dashscope" ? "阿里百炼" : "StepFun"}：请先在语音设置里填写 Key`);
     }
   }
 

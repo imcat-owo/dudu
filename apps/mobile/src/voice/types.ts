@@ -12,9 +12,23 @@
  *   Implemented in ./edge-tts.ts (WebSocket protocol).
  * - "custom": any OpenAI-compatible `/audio/speech` endpoint — the user
  *   fills URL + key + model + voice herself.
+ * - "minimax": MiniMax TTS (speech-02-hd etc.), Chinese voices are
+ *   excellent. POST {baseUrl}/t2a_v2, SSE with hex audio.
+ * - "fish-audio": Fish Audio TTS, great for character voices.
+ *   POST {baseUrl}/v1/tts, Bearer + model header, raw audio bytes.
+ * - "stepfun": StepFun TTS, OpenAI-compatible /audio/speech.
+ * - "qwen": Alibaba DashScope Qwen TTS. POST
+ *   {baseUrl}/services/aigc/multimodal-generation/generation, SSE with
+ *   base64 PCM audio (converted to WAV).
  */
 
-export type TtsProvider = "edge-tts" | "custom";
+export type TtsProvider =
+  | "edge-tts"
+  | "custom"
+  | "minimax"
+  | "fish-audio"
+  | "stepfun"
+  | "qwen";
 
 export interface TtsConfig {
   provider: TtsProvider;
@@ -28,9 +42,29 @@ export interface TtsConfig {
   customKey?: string;
   /** Custom provider only: model id sent as `model`, e.g. "tts-1". */
   customModel?: string;
+  /**
+   * API key for minimax/fish-audio/stepfun/qwen. SecureStore-backed
+   * (the whole TtsConfig lives in SecureStore — see ./store.ts).
+   */
+  providerKey?: string;
+  /** Base URL override for minimax/fish-audio/stepfun/qwen. Defaults per provider. */
+  providerUrl?: string;
+  /** Model id for minimax/fish-audio/stepfun/qwen. Defaults per provider. */
+  providerModel?: string;
 }
 
 export const EDGE_TTS_DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural";
+
+/** Default base URLs per provider (user can override). */
+export const TTS_PROVIDER_DEFAULTS: Record<
+  Exclude<TtsProvider, "edge-tts" | "custom">,
+  { baseUrl: string; model: string }
+> = {
+  minimax: { baseUrl: "https://api.minimaxi.com/v1", model: "speech-2.8-turbo" },
+  "fish-audio": { baseUrl: "https://api.fish.audio", model: "s2.1-pro" },
+  stepfun: { baseUrl: "https://api.stepfun.com/v1", model: "stepaudio-2.5-tts" },
+  qwen: { baseUrl: "https://dashscope.aliyuncs.com/api/v1", model: "qwen3-tts-flash" },
+};
 
 /** A few curated high-quality Chinese voices for the picker. */
 export const EDGE_TTS_CHINESE_VOICES: Array<{ id: string; label: string }> = [
@@ -51,45 +85,81 @@ export type TtsValidationProblem =
   | "ttsUrlRequired"
   | "ttsUrlInvalid"
   | "ttsModelRequired"
-  | "voiceRequired";
+  | "voiceRequired"
+  | "ttsKeyRequired";
 export function validateTtsConfig(c: TtsConfig): TtsValidationProblem | null {
   if (c.provider === "edge-tts") {
     if (!c.voice.trim()) return "voiceRequired";
     return null;
   }
-  const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");
-  if (!url) return "ttsUrlRequired";
-  if (!/^https?:\/\//i.test(url)) return "ttsUrlInvalid";
-  if (!(c.customModel ?? "").trim()) return "ttsModelRequired";
-  if (!(c.voice ?? "").trim()) return "voiceRequired";
+  if (c.provider === "custom") {
+    const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");
+    if (!url) return "ttsUrlRequired";
+    if (!/^https?:\/\//i.test(url)) return "ttsUrlInvalid";
+    if (!(c.customModel ?? "").trim()) return "ttsModelRequired";
+    if (!(c.voice ?? "").trim()) return "voiceRequired";
+    return null;
+  }
+  // minimax / fish-audio / stepfun / qwen: key required, URL/model optional (have defaults).
+  if (!(c.providerKey ?? "").trim()) return "ttsKeyRequired";
+  const url = (c.providerUrl ?? "").trim();
+  if (url && !/^https?:\/\//i.test(url)) return "ttsUrlInvalid";
   return null;
 }
 
-export type SttProvider = "group" | "custom";
+export type SttProvider = "group" | "custom" | "dashscope" | "stepfun";
 
 export interface SttConfig {
   /**
    * "group": use the active API group's OpenAI-compatible
    * `/audio/transcriptions` endpoint (same base URL + key).
    * "custom": a dedicated STT endpoint the user fills in.
+   * "dashscope": Alibaba Bailian (DashScope) OpenAI-compatible endpoint —
+   *   good Chinese/dialect accuracy, user fills key + optional model.
+   * "stepfun": StepFun OpenAI-compatible endpoint — user fills key.
    */
   provider: SttProvider;
   customUrl?: string;
   customKey?: string;
   customModel?: string;
+  /** API key for dashscope/stepfun presets. SecureStore-backed. */
+  presetKey?: string;
+  /** Model override for dashscope/stepfun presets. Defaults per preset. */
+  presetModel?: string;
 }
+
+/** Defaults for the STT presets. */
+export const STT_PRESET_DEFAULTS: Record<
+  Exclude<SttProvider, "group" | "custom">,
+  { baseUrl: string; model: string }
+> = {
+  dashscope: {
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    model: "qwen3-asr-flash",
+  },
+  stepfun: { baseUrl: "https://api.stepfun.com/v1", model: "stepaudio-2.5-asr" },
+};
 
 export function blankSttConfig(): SttConfig {
   return { provider: "group" };
 }
 
-export type SttValidationProblem = "sttUrlRequired" | "sttUrlInvalid" | "sttModelRequired";
+export type SttValidationProblem =
+  | "sttUrlRequired"
+  | "sttUrlInvalid"
+  | "sttModelRequired"
+  | "sttKeyRequired";
 export function validateSttConfig(c: SttConfig): SttValidationProblem | null {
   if (c.provider === "group") return null;
-  const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");
-  if (!url) return "sttUrlRequired";
-  if (!/^https?:\/\//i.test(url)) return "sttUrlInvalid";
-  if (!(c.customModel ?? "").trim()) return "sttModelRequired";
+  if (c.provider === "custom") {
+    const url = (c.customUrl ?? "").trim().replace(/\/+$/, "");
+    if (!url) return "sttUrlRequired";
+    if (!/^https?:\/\//i.test(url)) return "sttUrlInvalid";
+    if (!(c.customModel ?? "").trim()) return "sttModelRequired";
+    return null;
+  }
+  // dashscope / stepfun presets: key required.
+  if (!(c.presetKey ?? "").trim()) return "sttKeyRequired";
   return null;
 }
 
@@ -98,10 +168,16 @@ export type MicMode = "voice-message" | "transcribe";
 
 export interface VoiceSettings {
   micMode: MicMode;
+  /**
+   * Auto-read AI replies: when true, each finished AI message is
+   * synthesized and played automatically. Default false — it's
+   * opt-in because it spends TTS quota on every reply.
+   */
+  autoRead: boolean;
 }
 
 export function defaultVoiceSettings(): VoiceSettings {
   // Transcribe by default: "recording must not be decorative" — the AI
   // should hear what the user says. Voice messages stay one toggle away.
-  return { micMode: "transcribe" };
+  return { micMode: "transcribe", autoRead: false };
 }
