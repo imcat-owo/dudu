@@ -52,6 +52,12 @@ export interface Persona {
   enabled: boolean;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Original chara_card JSON (SillyTavern character card) this persona was
+   * imported from, if any. Kept for lossless re-export and the "card extras"
+   * UI section. Optional — absent for natively created personas.
+   */
+  importedCardJson?: string;
 }
 
 /** One regex replacement rule for a persona. */

@@ -14,6 +14,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshFontSizeOption } from "../app-settings";
 import { createBackupTools } from "../backup-tools";
+import { createCharaTools } from "../chara/chara-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools";
@@ -1221,6 +1222,48 @@ export function createLocalAgent(opts: {
               if (fixed !== raw) await AsyncStorage.setItem(key, fixed).catch(() => {});
             }
             return restored;
+          },
+        }),
+        ...createCharaTools({
+          personaStore,
+          worldBookStore,
+          saveAvatarPng: async (bytes, name) => {
+            const FileSystem = await import("expo-file-system/legacy");
+            const { bytesToBase64 } = await import("../chara/png");
+            const dir = `${FileSystem.documentDirectory}persona-avatars/`;
+            await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+            const safe = name.replace(/[\\/:*?"<>|]/g, "").slice(0, 40) || "persona";
+            const path = `${dir}${safe}.png`;
+            await FileSystem.writeAsStringAsync(path, bytesToBase64(bytes), {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            return path;
+          },
+          resolveAvatarPng: async (avatar) => {
+            if (!avatar || !/\.png$/i.test(avatar)) return null;
+            try {
+              const FileSystem = await import("expo-file-system/legacy");
+              const { base64ToBytes } = await import("../chara/png");
+              const b64 = await FileSystem.readAsStringAsync(avatar, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              return base64ToBytes(b64);
+            } catch {
+              return null;
+            }
+          },
+          saveCardFile: async (filename, pngBase64) => {
+            const FileSystem = await import("expo-file-system/legacy");
+            const Sharing = await import("expo-sharing");
+            const path = `${FileSystem.cacheDirectory}${filename}`;
+            await FileSystem.writeAsStringAsync(path, pngBase64, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(path);
+              return `shared via system share sheet (${filename})`;
+            }
+            return `saved to app cache (${filename})`;
           },
         }),
         ...createTtsVoiceTools(voiceStore),

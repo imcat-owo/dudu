@@ -14,6 +14,7 @@ import { createPersonaStore } from "./store";
 import { blankPersona, type Persona, type PersonaTag } from "./types";
 import { createWorldBookStore } from "./world-book-store";
 import { blankWorldBook, type WorldBook } from "./world-book";
+import { CharaExportButton, CharaExtrasSection, CharaImportRow } from "../chara/chara-ui";
 
 const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
@@ -184,12 +185,14 @@ export function PersonaSection() {
             )}
             <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
               <Button onPress={() => setEditing(p)}>{t("common.edit")}</Button>
+              <CharaExportButton persona={p} />
               <Button onPress={() => deletePersona(p)}>{t("persona.delete")}</Button>
             </View>
           </View>
         );
       })}
       <Button onPress={() => setEditing(personaStore.blank())}>{t("persona.create")}</Button>
+      <CharaImportRow onImported={refresh} />
 
       <SectionHeading title={t("persona.tags")} />
       <TagManager tags={tags} onRefresh={refresh} />
@@ -394,6 +397,8 @@ function PersonaEditor({
           </View>
         </View>
       )}
+
+      <CharaExtrasSection persona={p} />
 
       <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
         <Button onPress={() => onSave(p)}>{t("common.save")}</Button>
