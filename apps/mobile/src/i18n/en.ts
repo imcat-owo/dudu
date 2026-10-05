@@ -1788,6 +1788,8 @@ export const enStrings: Record<StringKey, string> = {
   "sandbox.serverNamePlaceholder": 'Give it a name, e.g. "main box"',
   "sandbox.editServer": "Edit server",
   "sandbox.noServers": "No servers yet — add one to get started.",
+  "sandbox.deleteServer": "Delete server",
+  "sandbox.deleteServerConfirm": 'Deleting "{name}" will disconnect it and wipe its saved connection info. Are you sure?',
   "sandbox.noServerSelected": "No server selected — tap one to start.",
   "sandbox.relayMissing":
     "This server's 传话员 (relay) isn't installed yet — tell 小梦 and he'll set it up for you.",

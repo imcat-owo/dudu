@@ -308,6 +308,52 @@ describe("SandboxManager", () => {
     assert.equal(m2.serverList().length, 1);
   });
 
+  it("retries deleting a stale legacy key when the new store is already valid", async () => {
+    // Scenario: migration ran and wrote the new store, but the legacy
+    // deleteItem failed — the old key (with secret) lingers while the new
+    // store is valid, so migration never re-runs. Every init must retry.
+    const store = new Map<string, string>([
+      ["dudu.sandbox.servers.v1", JSON.stringify({ servers: [], activeServerId: null })],
+      [
+        "dudu.sandbox.sshConfig.v1",
+        JSON.stringify({
+          host: "stale.example.com",
+          port: 22,
+          username: "u",
+          authType: "password",
+          privateKey: null,
+          password: "old-secret",
+        }),
+      ],
+    ]);
+    let deleteCalls = 0;
+    const secure = {
+      getItem: async (k: string) => store.get(k) ?? null,
+      setItem: async (k: string, v: string) => {
+        store.set(k, v);
+      },
+      deleteItem: async (k: string) => {
+        deleteCalls++;
+        store.delete(k);
+      },
+    };
+    const m = SandboxManager.forTest({ secure });
+    await m.init();
+    assert.equal(deleteCalls, 1);
+    assert.ok(!store.has("dudu.sandbox.sshConfig.v1"));
+    // A failing delete stays best-effort: init must not crash.
+    store.set("dudu.sandbox.sshConfig.v1", "stale");
+    const failing = SandboxManager.forTest({
+      secure: {
+        ...secure,
+        deleteItem: async () => {
+          throw new Error("secure store busy");
+        },
+      },
+    });
+    await failing.init();
+  });
+
   it("switches the active server and falls back honestly when deleted", async () => {
     const store = new Map<string, string>();
     const secure = {

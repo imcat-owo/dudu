@@ -21,7 +21,7 @@ import {
   Unplug,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { TText } from "../font";
 import { type StringKey, t } from "../i18n";
 import { radii } from "../theme/radii";
@@ -553,19 +553,34 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const removeServer = async (id: string) => {
-    setError("");
-    setRelayMissing(false);
-    setBusy(true);
-    try {
-      await sandboxManager.deleteServer(id);
-      setEditing(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-      refresh();
-    }
+  /** Delete a server (and its secret) — always ask first. */
+  const removeServer = (server: SandboxServer) => {
+    Alert.alert(
+      t("sandbox.deleteServer"),
+      t("sandbox.deleteServerConfirm", { name: server.name }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () =>
+            void (async () => {
+              setError("");
+              setRelayMissing(false);
+              setBusy(true);
+              try {
+                await sandboxManager.deleteServer(server.id);
+                setEditing(null);
+              } catch (e) {
+                setError(e instanceof Error ? e.message : String(e));
+              } finally {
+                setBusy(false);
+                refresh();
+              }
+            })(),
+        },
+      ],
+    );
   };
 
   const onServerSaved = async (server: SandboxServer) => {
@@ -656,7 +671,7 @@ export function SandboxSheet({ onClose }: { onClose: () => void }) {
                         state={state}
                         onSelect={() => selectServer(s.id)}
                         onEdit={() => setEditing(s)}
-                        onDelete={() => removeServer(s.id)}
+                        onDelete={() => removeServer(s)}
                       />
                     ))
                   )}

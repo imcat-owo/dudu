@@ -1722,6 +1722,8 @@ const zhHant = {
   "sandbox.serverNamePlaceholder": "起個名字，比如「主力機」",
   "sandbox.editServer": "編輯伺服器",
   "sandbox.noServers": "還沒有伺服器，先加一台吧。",
+  "sandbox.deleteServer": "刪除伺服器",
+  "sandbox.deleteServerConfirm": "「{name}」刪掉就連不上了，存的連接信息也會一起清空，確定要刪嗎？",
   "sandbox.noServerSelected": "還沒選伺服器，點一台開始。",
   "sandbox.relayMissing": "這台伺服器上的傳話員還沒裝好，跟小夢說一聲，他幫你裝上。",
   "sandbox.secretKeepHint": "留空就保持原來的，不用重填。",

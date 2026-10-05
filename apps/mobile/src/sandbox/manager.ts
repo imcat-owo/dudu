@@ -163,6 +163,12 @@ export class SandboxManager {
       const parsed = rawStore ? parseServerStore(rawStore) : null;
       if (parsed) {
         this.serverStore = parsed;
+        // Retry stale legacy cleanup: if an earlier migration deleted the old
+        // single-server key from the new store but the deleteItem itself
+        // failed, the secret would linger in SecureStore forever (migration
+        // never re-runs once the new store is valid). Best-effort, no crash.
+        const legacyLeft = await this.secure.getItem(SSH_CONFIG_KEY).catch(() => null);
+        if (legacyLeft) await this.secure.deleteItem(SSH_CONFIG_KEY).catch(() => {});
       } else {
         // One-time migration: her old single-server config becomes the first
         // list entry (named after its host — she can rename it). The legacy

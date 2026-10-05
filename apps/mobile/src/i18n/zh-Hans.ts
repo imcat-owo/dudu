@@ -1719,6 +1719,8 @@ const zhHans = {
   "sandbox.serverNamePlaceholder": "起个名字，比如「主力机」",
   "sandbox.editServer": "编辑服务器",
   "sandbox.noServers": "还没有服务器，先加一台吧。",
+  "sandbox.deleteServer": "删除服务器",
+  "sandbox.deleteServerConfirm": "「{name}」删掉就连不上了，存的连接信息也会一起清空，确定要删吗？",
   "sandbox.noServerSelected": "还没选服务器，点一台开始。",
   "sandbox.relayMissing": "这台服务器上的传话员还没装好，跟小梦说一声，他帮你装上。",
   "sandbox.secretKeepHint": "留空就保持原来的，不用重填。",
