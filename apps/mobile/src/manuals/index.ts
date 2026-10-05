@@ -21,6 +21,7 @@
  * Adding a manual = one file in this dir + one entry in MANUALS below.
  */
 
+import { ABOUT_DUDU_MANUAL } from "./about-dudu";
 import { API_GROUPS_MANUAL } from "./api-groups";
 import { BACKUP_MANUAL } from "./backup";
 import { BROWSER_MANUAL } from "./browser";
@@ -90,6 +91,7 @@ export const MANUALS: ManualEntry[] = [
   BACKUP_MANUAL,
   CHARA_MANUAL,
   EXCHANGE_MANUAL,
+  ABOUT_DUDU_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {
