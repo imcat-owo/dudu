@@ -43,6 +43,9 @@ Then tell her what you saved, in one short line.
   enable / disable. The two seed examples (旅行规划， 日程安排） are
   clearly marked and she can delete them freely.
 - skill_delete only when she explicitly asks to remove one.
+- skill_import: when she sends a GitHub link to someone else's SKILL.md and
+  says 装上 / 把这个装上 — import it. Never go hunting for skills on your
+  own; only import what she points at.
 - Keep instructions concrete and short. A skill that says "do it well"
   is useless; a skill that says "ask budget first, then propose 3 options
   under it" is gold.

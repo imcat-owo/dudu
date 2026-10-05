@@ -12,7 +12,7 @@
  * folder/file name. She (or the AI) can rename after import.
  */
 
-import type { SkillStore } from "./store";
+import type { SkillAuthor, SkillStore } from "./store";
 
 function toRawUrl(url: string): string {
   const u = url.trim();
@@ -37,6 +37,7 @@ function nameFromUrl(rawUrl: string): string {
 export async function importSkillFromGithub(
   store: SkillStore,
   url: string,
+  opts?: { name?: string; createdBy?: SkillAuthor },
 ): Promise<{ id: string; name: string }> {
   const rawUrl = toRawUrl(url);
   const res = await fetch(rawUrl);
@@ -50,12 +51,12 @@ export async function importSkillFromGithub(
   // Strip frontmatter for the description (first line or two).
   const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
   const firstLine = body.split("\n").find((l) => l.trim().length > 0) ?? "";
-  const name = nameFromUrl(rawUrl);
+  const name = (opts?.name ?? "").trim() || nameFromUrl(rawUrl);
   const skill = await store.createSkill({
     name,
     description: firstLine.replace(/^#+\s*/, "").slice(0, 120) || `Imported from ${url}`,
     instructions: markdown,
-    createdBy: "her",
+    createdBy: opts?.createdBy ?? "her",
   });
   return { id: skill.id, name: skill.name };
 }

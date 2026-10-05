@@ -67,6 +67,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "skill_create",
       "skill_update",
       "skill_delete",
+      "skill_import",
       "music_track_add",
       "music_track_delete",
       "music_lyrics_add",

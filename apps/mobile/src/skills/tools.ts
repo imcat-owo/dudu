@@ -9,6 +9,7 @@
  */
 
 import type { LocalTool } from "../api-groups/local-tools";
+import { importSkillFromGithub } from "./github-import";
 import type { SkillAuthor, SkillStore } from "./store";
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -138,6 +139,46 @@ export function createSkillTools(store: SkillStore): LocalTool[] {
       run: async (args) => {
         const ok = await store.deleteSkill(strArg(args, "id"));
         return ok ? "已删除。" : "找不到这个 skill。用 skill_list 看看有哪些。";
+      },
+    },
+    {
+      name: "skill_import",
+      description:
+        "Import a skill（本事包）from a GitHub URL — someone else's SKILL.md becomes one of her skills, ready to use from the next turn. " +
+        "Accepts a GitHub blob/tree URL or a raw.githubusercontent.com URL pointing at a SKILL.md file. " +
+        "Only import when she asks for it (she sends the link, or says 装上这个） — never go hunting for skills on your own. " +
+        "If the URL doesn't point at a SKILL.md, say so honestly instead of guessing.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description:
+              "GitHub URL of the SKILL.md file or its folder, e.g. https://github.com/owner/repo/blob/main/skills/foo/SKILL.md",
+          },
+          name: {
+            type: "string",
+            description: "Optional rename — defaults to the skill folder/file name from the URL",
+          },
+        },
+        required: ["url"],
+        additionalProperties: false,
+      },
+      manualId: "skills",
+      run: async (args) => {
+        const url = strArg(args, "url");
+        if (!url) return "给我一个 GitHub 链接，我才能去装。";
+        const name = strArg(args, "name");
+        try {
+          const { id, name: saved } = await importSkillFromGithub(store, url, {
+            ...(name ? { name } : {}),
+            createdBy: "ai",
+          });
+          return `装好了，skill「${saved}」已就位（id: ${id}）。下次聊到相关话题我会按它来。`;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return `没装成：${msg}`;
+        }
       },
     },
   ];

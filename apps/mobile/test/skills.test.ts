@@ -105,12 +105,13 @@ describe("seed examples", () => {
 });
 
 describe("skill tools", () => {
-  it("all 5 tool names are registered once", () => {
+  it("all 6 tool names are registered once", () => {
     const tools = createSkillTools(new SkillStore(fakeStorage()));
     const names = tools.map((t) => t.name).sort();
     assert.deepEqual(names, [
       "skill_create",
       "skill_delete",
+      "skill_import",
       "skill_list",
       "skill_read",
       "skill_update",
@@ -151,6 +152,97 @@ describe("skill tools", () => {
     assert.ok(read, "skill_read exists");
     const out = await read.run({ id: "nope" }, {} as never);
     assert.ok(out.includes("找不到"));
+  });
+
+  it("skill_import installs end-to-end and the skill becomes usable", async () => {
+    // Fixture-based: no live network in this environment. The fetch is
+    // stubbed at the global boundary; everything below it (URL parsing,
+    // store write, index injection) runs for real.
+    const fixture = `---
+name: brew-guide
+description: Homebrew tips
+---
+
+# 泡茶指南
+
+第一步：温杯。
+第二步：投茶。
+`;
+    const realFetch = globalThis.fetch;
+    (globalThis as { fetch?: unknown }).fetch = async (url: unknown) => {
+      assert.ok(
+        String(url).startsWith(
+          "https://raw.githubusercontent.com/acme/teaskills/main/skills/brew/SKILL.md",
+        ),
+        `unexpected fetch url: ${url}`,
+      );
+      return { ok: true, status: 200, text: async () => fixture } as Response;
+    };
+    try {
+      const store = new SkillStore(fakeStorage());
+      const tools = createSkillTools(store);
+      const imp = tools.find((t) => t.name === "skill_import");
+      assert.ok(imp, "skill_import exists");
+      assert.equal(imp.manualId, "skills");
+
+      const out = await imp.run(
+        { url: "https://github.com/acme/teaskills/blob/main/skills/brew/SKILL.md" },
+        {} as never,
+      );
+      assert.ok(out.includes("装好了"), `expected success, got: ${out}`);
+      assert.ok(out.includes("brew"), `expected derived name, got: ${out}`);
+
+      // The skill is really in the store…
+      const all = await store.listSkills();
+      const mine = all.find((s) => s.name === "brew");
+      assert.ok(mine, "imported skill persisted");
+      assert.equal(mine.createdBy, "ai");
+      assert.ok(mine.instructions.includes("温杯"));
+
+      // …and it rides the next turn's system-prompt index (usable end-to-end).
+      const index = await store.buildSkillIndex();
+      assert.ok(index.includes("brew"), `skill missing from index: ${index}`);
+
+      // Optional rename path.
+      const out2 = await imp.run(
+        { url: "https://github.com/acme/teaskills/tree/main/skills/brew", name: "我的茶" },
+        {} as never,
+      );
+      assert.ok(out2.includes("我的茶"), `rename not honored: ${out2}`);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it("skill_import is honest about bad URLs and fetch failures", async () => {
+    const realFetch = globalThis.fetch;
+    (globalThis as { fetch?: unknown }).fetch = async () => ({
+      ok: false,
+      status: 404,
+      text: async () => "",
+    });
+    try {
+      const tools = createSkillTools(new SkillStore(fakeStorage()));
+      const imp = tools.find((t) => t.name === "skill_import");
+      assert.ok(imp, "skill_import exists");
+
+      const bad = await imp.run({ url: "not-a-github-url" }, {} as never);
+      assert.ok(bad.includes("没装成"), `expected honest failure, got: ${bad}`);
+
+      const missing = await imp.run(
+        { url: "https://github.com/acme/x/blob/main/skills/no/SKILL.md" },
+        {} as never,
+      );
+      assert.ok(
+        missing.includes("没装成") && missing.includes("404"),
+        `expected 404 honesty, got: ${missing}`,
+      );
+
+      const empty = await imp.run({}, {} as never);
+      assert.ok(empty.includes("GitHub 链接"), `expected missing-url hint, got: ${empty}`);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 
   it("every skill tool manualId resolves in the registry", () => {

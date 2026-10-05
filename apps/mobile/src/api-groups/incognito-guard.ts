@@ -84,6 +84,7 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "skill_create",
   "skill_update",
   "skill_delete",
+  "skill_import", // D8: imports a skill — a real store write, same as skill_create
   // Music room (persistent library changes; playback controls stay)
   "music_track_add",
   "music_track_delete",
