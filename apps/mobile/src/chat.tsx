@@ -555,6 +555,13 @@ export function ChatScreen({
     initial: string;
     onSubmit: (text: string) => void;
   } | null>(null);
+  // D35: transient auto-read failure notice — auto-clears after 8s.
+  const [autoReadError, setAutoReadError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!autoReadError) return;
+    const timer = setTimeout(() => setAutoReadError(null), 8000);
+    return () => clearTimeout(timer);
+  }, [autoReadError]);
   // Batch 7 I1: message chosen for translation (language sheet target).
   const [translateFor, setTranslateFor] = useState<AgentMessage | null>(null);
   const [dialogListOpen, setDialogListOpen] = useState(false);
@@ -1495,6 +1502,8 @@ export function ChatScreen({
           synthesize: synthesizeSpeech,
           createPlayer: (uri) => createAudioPlayer(uri),
           setAudioMode: (mode) => setAudioModeAsync(mode),
+          // D35: surface synthesis failures instead of swallowing them.
+          onError: (msg) => setAutoReadError(msg),
         });
       }
     }
@@ -2734,6 +2743,10 @@ export function ChatScreen({
               key={apprReq.id}
               request={apprReq}
             />
+          )}
+          {/* D35: auto-read synthesis failure — visible above the input, auto-clears. */}
+          {autoReadError && (
+            <ErrorNotice error={t("voice.speakFailed", { error: autoReadError })} />
           )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             {/* A17: quick phrases (local mode). */}

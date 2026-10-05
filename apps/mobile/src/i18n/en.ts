@@ -1686,6 +1686,8 @@ export const enStrings: Record<StringKey, string> = {
   "voice.autoRead": "Auto-read AI replies",
   "voice.autoReadDesc":
     "When on, AI replies are read aloud automatically. Handy when driving or doing chores.",
+  "voice.autoReadUnavailable":
+    "Auto-read only works in local mode — unavailable in cloud mode or incognito.",
   "voice.sttPreset": "Transcription service",
   "voice.sttDashscope": "Alibaba Bailian",
   "voice.sttStepfun": "StepFun",
@@ -1699,7 +1701,9 @@ export const enStrings: Record<StringKey, string> = {
   "voice.alarmDelete": "Delete",
   "voice.alarmSet": "Set alarm",
   "voice.alarmSetOk": "Alarm set. I'll wake you up on time.",
+  "voice.alarmSetOkNotif": "Reminder set as a notification (not a system alarm) — I'll notify you on time.",
   "voice.alarmSetFail": "Couldn't set the alarm: {msg}",
+  "voice.alarmDeleteFail": "Couldn't delete the alarm: {msg}",
   "voice.alarmNeedPermission": "Alarm permission is needed first.",
   "voice.alarmEdit": "Edit time",
   "voice.alarmEditDate": "Date",
