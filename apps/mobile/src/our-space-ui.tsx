@@ -35,6 +35,8 @@ import {
   MessageCircleQuestion,
   MessagesSquare,
   MoonStar,
+  Pencil,
+  Plus,
   ScrollText,
   Send,
   Sprout,
@@ -297,6 +299,20 @@ function DeleteEntryButton({ onDelete }: { onDelete: () => Promise<unknown> }) {
       accessibilityLabel={t("common.delete") as string}
     >
       <Trash2 size={15} color={colors.muted} strokeWidth={1.7} />
+    </PressableScale>
+  );
+}
+
+/** Small pencil button that opens the edit composer for an entry. */
+function EditEntryButton({ onEdit }: { onEdit: () => void }) {
+  const colors = useColors();
+  return (
+    <PressableScale
+      onPress={onEdit}
+      accessibilityRole="button"
+      accessibilityLabel={t("common.edit") as string}
+    >
+      <Pencil size={15} color={colors.muted} strokeWidth={1.7} />
     </PressableScale>
   );
 }
@@ -2354,10 +2370,151 @@ function AnniversaryPage() {
   const colors = useColors();
   const { tokens } = useTheme();
   const [items, setItems] = useState<Anniversary[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Anniversary | null>(null);
+  const [fTitle, setFTitle] = useState("");
+  const [fDate, setFDate] = useState("");
+  const [fDesc, setFDesc] = useState("");
+  const [fError, setFError] = useState("");
 
   useEffect(() => {
     void ourSpaceStore.listAnniversaries().then(setItems);
   }, [v]);
+
+  const openAdd = () => {
+    setFTitle("");
+    setFDate("");
+    setFDesc("");
+    setFError("");
+    setEditing(null);
+    setAdding(true);
+  };
+
+  const openEdit = (a: Anniversary) => {
+    setFTitle(a.title);
+    setFDate(a.date);
+    setFDesc(a.description);
+    setFError("");
+    setAdding(false);
+    setEditing(a);
+  };
+
+  const closeComposer = () => {
+    setAdding(false);
+    setEditing(null);
+    setFError("");
+  };
+
+  const saveAnniversary = async () => {
+    const title = fTitle.trim();
+    const date = fDate.trim();
+    if (!title) {
+      setFError(t("space.anniversary.titleRequired") as string);
+      return;
+    }
+    try {
+      if (editing) {
+        await ourSpaceStore.updateAnniversary(editing.id, { title, date, description: fDesc });
+      } else {
+        await ourSpaceStore.addAnniversary(title, date, fDesc);
+      }
+      closeComposer();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setFError(
+        (/date/i.test(msg)
+          ? t("space.anniversary.badDate")
+          : t("space.anniversary.titleRequired")) as string,
+      );
+    }
+  };
+
+  const addButton = (
+    <PressableScale
+      onPress={() => (adding || editing ? closeComposer() : openAdd())}
+      accessibilityRole="button"
+      accessibilityLabel={t("space.anniversary.add") as string}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.card,
+        }}
+      >
+        <Plus size={15} color={colors.text} strokeWidth={1.8} />
+        <TText style={{ color: colors.text, fontSize: 13.5, fontWeight: "600" }}>
+          {t("space.anniversary.add")}
+        </TText>
+      </View>
+    </PressableScale>
+  );
+
+  const composer =
+    adding || editing ? (
+      <SoftCard>
+        <TextInput
+          value={fTitle}
+          onChangeText={setFTitle}
+          placeholder={t("space.anniversary.titlePlaceholder") as string}
+          placeholderTextColor={colors.muted}
+          style={{ color: colors.text, fontSize: 16, fontWeight: "700", marginBottom: 10 }}
+        />
+        <TextInput
+          value={fDate}
+          onChangeText={setFDate}
+          placeholder={t("space.anniversary.datePlaceholder") as string}
+          placeholderTextColor={colors.muted}
+          keyboardType="numbers-and-punctuation"
+          style={{ color: colors.text, fontSize: 14, marginBottom: 10 }}
+        />
+        <TextInput
+          value={fDesc}
+          onChangeText={setFDesc}
+          placeholder={t("space.anniversary.descriptionPlaceholder") as string}
+          placeholderTextColor={colors.muted}
+          multiline
+          style={{
+            color: colors.text,
+            fontSize: 14,
+            lineHeight: 24,
+            minHeight: 60,
+            textAlignVertical: "top",
+          }}
+        />
+        {!!fError && (
+          <TText style={{ color: colors.danger, fontSize: 12.5, marginTop: 8 }}>{fError}</TText>
+        )}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <PressableScale onPress={() => void saveAnniversary()} accessibilityRole="button">
+            <View
+              style={{
+                paddingHorizontal: 18,
+                paddingVertical: 9,
+                borderRadius: radii.lg,
+                backgroundColor: colors.text,
+              }}
+            >
+              <TText style={{ color: colors.card, fontSize: 13.5, fontWeight: "700" }}>
+                {t("common.save")}
+              </TText>
+            </View>
+          </PressableScale>
+          <PressableScale onPress={closeComposer} accessibilityRole="button">
+            <View style={{ paddingHorizontal: 14, paddingVertical: 9 }}>
+              <TText style={{ color: colors.muted, fontSize: 13.5 }}>{t("common.cancel")}</TText>
+            </View>
+          </PressableScale>
+        </View>
+      </SoftCard>
+    ) : null;
 
   const dayCount = (dateStr: string): { label: string; past: boolean } => {
     const [y, m, d] = dateStr.split("-").map(Number);
@@ -2373,7 +2530,9 @@ function AnniversaryPage() {
 
   return (
     <View style={{ gap: 14 }}>
-      {items.length === 0 ? (
+      {addButton}
+      {composer}
+      {items.length === 0 && !adding && !editing ? (
         <EmptyState text={t("space.anniversary.empty")} />
       ) : (
         items.map((a, i) => {
@@ -2412,6 +2571,7 @@ function AnniversaryPage() {
                   >
                     {dc.label}
                   </TText>
+                  <EditEntryButton onEdit={() => openEdit(a)} />
                   <DeleteEntryButton onDelete={() => ourSpaceStore.deleteAnniversary(a.id)} />
                 </View>
               </SoftCard>
