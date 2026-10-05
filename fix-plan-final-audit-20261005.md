@@ -127,6 +127,16 @@
 - D13 MCP 审批卡片（B3 第二步，必做）：真正的 in-session 审批卡片（允许/拒绝/记住），她的选择被真实执行；做完 B3 第一步不算完，这一步才是收尾。
 - D14 沙箱 SSH 配置 AI 代填（E5 已拍板）：新增 AI 工具（如 `sandbox_ssh_setup`）——她在对话框里说"连我的云服务器"，AI 把 host/port/username/secret 填好、她点一下确认，不再让她对着四个裸输入框发呆（user P2-5）。
 - D15 环境变量存入小卡片（她 2026-10-05 新需求，不急、当前活做完再做）：①新增环境变量管理页（列表只显示名字不显示值；增/删/改走 envStore，底层已有 apps/mobile/src/mcp/env.ts + SecureStore + 脱敏，web-search/local-agent 已在用它读 key）；②新增表单式提问卡片工具（现有 ask_user 只能做选择题，不能填表单；AI 缺 key 时弹卡片：账号/密码/备注必填、URL 选填，提交后自动存进 envStore）。
+- D16 S3 备份能传不能恢复（缺小细节 P1，2026-10-05 核实成立）：remote.ts 有 s3Sign/s3Upload/s3Download、无 s3List，doList 的 S3 分支直接报"还没有备份"；用 s3Sign 实现 s3List()（ListObjectsV2），doList 调它。
+- D17 提问卡片串对话框（缺小细节 P2，核实成立）：ask-user.ts 的 pending 是全局 Map、subscribe 无 threadId；按 threadId 隔离，chat.tsx 订阅回调按当前 threadId 过滤。
+- D18 传话员没安装路径（缺小细节 P2，核实成立）：文案说"跟他说一声他帮你装"，但 4 个沙箱工具全要求 relay 已跑、安装步骤只在仓库 README 里；先改文案诚实，再二选一——App 内给可复制的服务器安装命令，或 AI 侧安装工具。
+- D19 "带 key 分享"导入丢 key 池（缺小细节 P2，核实成立）：encodeShare 写 payload.apiKeys，payloadToGroup 从不读回来；把 payload.apiKeys 映射回新分组的 apiKeys。
+- D20 ask_user 超时撒谎（缺小细节 P2，核实成立）：5 分钟安全定时器 reject 文案是"She dismissed the question."，锁屏没看到也被说成划掉了；改诚实文案。
+- D21 MCP 逐工具审批无管理 UI（缺小细节 P2，核实成立）：toolApprovals 有存有读、无界面，D13"记住"写了值她没地方看改；McpSettings 加按服务器的工具列表 + ask/allow/deny 选择器。
+- D22 语音闹钟/纠正无管理 UI + 12 个孤儿 i18n key（缺小细节 P2，核实成立）：补小管理页，或删掉孤儿 key。
+- D23 诊断日志"清空"清的是所有分组（缺小细节 P2，核实成立）：查看器按分组过滤但 onClear 调全清；clearDiagEntries 支持按 groupId，或按钮改名"清空全部日志"。
+- D24 远端备份空地址报错误导（缺小细节 P3，核实成立）：空地址点保存复用"连不上，检查地址和账号"，误导她去查网络；校验失败用"请先填地址"类文案。
+- （缺小细节第 3 条"说明书撒谎可以打字"已过期——当前文案已改掉不撒谎，不入计划；真缺口由 D15 覆盖。第 7 条 delegate allowedTools 摆设——修法取决于 E4 拍板，留 E 批。）
 
 > 注：施工对话框说后续还会发一份全 App "缺小细节"调研清单来核对补全，等那份。
 
