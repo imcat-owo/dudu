@@ -17,14 +17,15 @@ import { createBackupTools } from "../backup-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools";
-import { createCrossDialogTools, createIsolatedDuduDeps, DEFAULT_PERSONA_ID } from "../chat/cross-dialog";
+import { createCrossDialogTools, createIsolatedCrossDialogDeps, DEFAULT_PERSONA_ID } from "../chat/cross-dialog";
 import { sharedKeyedChain } from "../util/write-chain";
-import { createAgentCliTools } from "../mcp/agent-cli";
+import { createCrossDialogCliTools } from "../mcp/agent-cli";
 import { createAskUserTools } from "../mcp/ask-user";
-import { createDelegateTools } from "../mcp/delegate";
+import { createDelegateTools, resolveSubagentTools } from "../mcp/delegate";
 import { envStore } from "../mcp/env";
 import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
 import { createMcpProviders } from "../mcp/provider";
+import { requestMcpToolApproval } from "../mcp/tool-approval";
 import { descOverrideStore } from "../mcp/tool-descriptions";
 import { createWebSearchTools } from "../mcp/web-search";
 import {
@@ -1012,6 +1013,12 @@ export function createLocalAgent(opts: {
                 ...createCreativeThemeTools(AsyncStorage),
               ]
             : [...createWallpaperTools(AsyncStorage), ...createThemeTools(AsyncStorage)];
+      // D25: sub-agent tool source. runSubtask (inside the delegate tools
+      // below) only executes at call time — during a turn, long after this
+      // setup runs — so it reads the effective tool list + ToolContext
+      // through these bindings, which are filled right after tool assembly.
+      let subagentToolSource: () => LocalTool[] = () => [];
+      let subagentToolCtx: ToolContext = { authorize: async () => false };
       let tools: LocalTool[] = opts.tools ?? [
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
@@ -1187,7 +1194,7 @@ export function createLocalAgent(opts: {
         // other dialogs. Every action is traced (留痕) — see
         // src/chat/cross-dialog.ts for the hard constraints.
         // B5-followup: the current persona is resolved lazily per tool call
-        // (same pattern as createIsolatedDuduDeps), so the cross-dialog
+        // (same pattern as createIsolatedCrossDialogDeps), so the cross-dialog
         // tools never see another persona's dialogs.
         ...createCrossDialogTools({
           threadId: opts.threadId,
@@ -1301,17 +1308,31 @@ export function createLocalAgent(opts: {
         ...createAskUserTools({ threadId: opts.threadId }),
         ...createWebSearchTools(),
         ...createDelegateTools({
-          runSubtask: async (prompt) => {
-            // Isolated subtask: same model, fresh context (no parent history,
-            // no tools — the parent decomposes and the child reasons).
+          // D25: the sub-agent gets REAL tools. allowedTools selects by name
+          // from this agent's effective tool list; omitted = the default set
+          // (everything except delegate_task + ask_user — see
+          // resolveSubagentTools in mcp/delegate.ts). It reuses the parent's
+          // ToolContext: her authorization gate still applies, so
+          // already-granted capabilities run freely and new ones go through
+          // her as usual — the gate is at grant time, not per use.
+          runSubtask: async (prompt, allowedTools) => {
+            const subTools = resolveSubagentTools(subagentToolSource(), allowedTools);
             return generateOneShot(
               activeGroup,
-              "You are a focused sub-agent. Complete the task below concisely.",
+              "You are a focused sub-agent. Complete the task below concisely. You have tools — use them when they help, and return the finished result as text.",
               prompt,
+              {
+                tools: subTools.map((t) => ({
+                  name: t.name,
+                  description: t.description,
+                  parameters: t.parameters as unknown as Record<string, unknown>,
+                  run: (args) => t.run(args, subagentToolCtx),
+                })),
+              },
             );
           },
         }),
-        ...createAgentCliTools(createIsolatedDuduDeps(AsyncStorage, currentPersonaId)),
+        ...createCrossDialogCliTools(createIsolatedCrossDialogDeps(AsyncStorage, currentPersonaId)),
         ...createInteractiveTerminalTools(() => {
           try {
             return sandboxManager.activeBackend();
@@ -1432,14 +1453,20 @@ export function createLocalAgent(opts: {
         loadExternalTools: async () => {
           // Batch 4: MCP server tools — async providers. Per-tool approval
           // ("allow"/"deny") is enforced by the client via getApproval;
-          // "ask" fails closed here because no approval card UI exists in
-          // this build yet (a dedicated card UI is a follow-up). The denial
-          // error is worded honestly — it never claims she declined, because
-          // she was never asked. She can set tools to "allow" in MCP
-          // settings for trusted servers.
+          // "ask" raises the real in-session approval card (D13):
+          // she taps Allow / Deny / Remember-my-choice, and her choice
+          // takes real effect. Remembered choices persist into
+          // toolApprovals. A 5-minute no-answer timeout fails closed.
           const mcpProviders = await createMcpProviders({
             env: await envStore.getValues().catch(() => ({})),
-            requestApproval: async () => false,
+            requestApproval: (serverId, serverName, toolName, args) =>
+              requestMcpToolApproval({
+                threadId: opts.threadId,
+                serverId,
+                serverName,
+                toolName,
+                args,
+              }),
             runOAuthFlow: async (server) => {
               // The OAuth browser flow is driven from the MCP settings UI.
               // If we get here without tokens, the server needs re-auth.
@@ -1472,6 +1499,10 @@ export function createLocalAgent(opts: {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.
         authorize: async () => false,
       };
+      // D25: sub-agents (delegate_task) draw from the same effective tool
+      // list the model sees, and run under the same authorization gate.
+      subagentToolSource = () => effectiveTools;
+      subagentToolCtx = toolCtx;
       // Memory read path: profile + top-k relevant memories for this turn.
       // The last user message drives relevance; empty section when no memories.
       const lastUserText = contentToText(
