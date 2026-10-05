@@ -22,7 +22,7 @@
     "expo": "~54.0.0",
     "expo-audio": "~1.1.1",
     "expo-battery": "~10.0.7",
-    "expo-blur": "~5.0.1",
+    "expo-blur": "~15.0.7",
     "expo-calendar": "~15.0.7",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "8.0.8",
