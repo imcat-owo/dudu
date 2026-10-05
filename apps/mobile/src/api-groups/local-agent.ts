@@ -17,32 +17,48 @@ import { createBackupTools } from "../backup-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
 import { createContextTools } from "../chat/context-tools";
-import { createCrossDialogTools, createIsolatedCrossDialogDeps, DEFAULT_PERSONA_ID } from "../chat/cross-dialog";
-import { sharedKeyedChain } from "../util/write-chain";
-import { createCrossDialogCliTools } from "../mcp/agent-cli";
-import { createAskUserTools } from "../mcp/ask-user";
-import { createEnvFormTools } from "../mcp/env-form";
-import { createDelegateTools, resolveSubagentTools } from "../mcp/delegate";
-import { envStore } from "../mcp/env";
-import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
-import { createMcpProviders, listMcpToolsWithHonestErrors } from "../mcp/provider";
-import { requestMcpToolApproval } from "../mcp/tool-approval";
-import { descOverrideStore } from "../mcp/tool-descriptions";
-import { createWebSearchTools } from "../mcp/web-search";
 import {
-  crossDialogTraceStore,
-  crossDialogVisibilityStore,
-} from "../chat/cross-dialog-instance";
+  createCrossDialogTools,
+  createIsolatedCrossDialogDeps,
+  DEFAULT_PERSONA_ID,
+} from "../chat/cross-dialog";
+import { crossDialogTraceStore, crossDialogVisibilityStore } from "../chat/cross-dialog-instance";
 import { createDialogTools } from "../chat/dialog-tools";
 import { groupMeetingStore } from "../chat/group-meeting-instance";
 import { createGroupMeetingTools, generateOneShot } from "../chat/group-meeting-tools";
+import {
+  defaultThreadMeta,
+  deleteMessageFrom,
+  estimateMessagesTokens,
+  historyKey,
+  loadThreadData,
+  nextVersionIndex,
+  saveThreadData,
+  splitForCompression,
+  type ThreadMeta,
+  truncateForEdit,
+  truncateForRegenerate,
+  visibleMessages,
+} from "../chat/thread-versions";
 import { deviceTimeLine } from "../date-time";
+import { logPayload } from "../harness/session-log";
+import { createHarnessRegistryFromLocalTools } from "../harness/tool-registry";
+import { createAgentHarness } from "../harness/wiring";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools, type ImageOutputBackend } from "../image/tools";
 import { getKnowledgeStore } from "../knowledge/instance";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools";
 import { buildManualIndex, manualNote } from "../manuals/index";
+import { createCrossDialogCliTools } from "../mcp/agent-cli";
+import { createAskUserTools } from "../mcp/ask-user";
+import { createDelegateTools, resolveSubagentTools } from "../mcp/delegate";
+import { envStore } from "../mcp/env";
+import { createEnvFormTools } from "../mcp/env-form";
+import { createMcpProviders, listMcpToolsWithHonestErrors } from "../mcp/provider";
+import { requestMcpToolApproval } from "../mcp/tool-approval";
+import { descOverrideStore } from "../mcp/tool-descriptions";
+import { createWebSearchTools } from "../mcp/web-search";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index";
 import { memoryStore } from "../memory/instance";
 import type { MemoryStore } from "../memory/store";
@@ -64,20 +80,21 @@ import {
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools";
+import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
+import type { FeedNudgePost } from "../outreach/feed-nudge";
+import { buildOnThisDayInput } from "../outreach/on-this-day-input";
+import { buildOutreachSection } from "../outreach/prompt";
+import { renderGlobalMdBlock } from "../persona/global-md";
 import { globalMdStore, personaStore, worldBookStore } from "../persona/stores";
 import { applyPersonaRegex, type Persona } from "../persona/types";
-import { renderGlobalMdBlock } from "../persona/global-md";
 import {
   evaluateWorldBooks,
   groupWorldBookEntries,
   renderWorldBookBlock,
   type ScanMessage,
 } from "../persona/world-book";
-import type { OutreachTriggerKind } from "../outreach/engine";
-import type { FeedNudgePost } from "../outreach/feed-nudge";
-import { buildOnThisDayInput } from "../outreach/on-this-day-input";
-import { buildOutreachSection } from "../outreach/prompt";
+import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
 import { createFontSizeTools } from "../settings/tools";
@@ -91,6 +108,7 @@ import {
   createWallpaperTools,
   requestThemeReload,
 } from "../theme/tools";
+import { sharedKeyedChain } from "../util/write-chain";
 import { createVideoTools, type VideoBackend } from "../video/tools";
 import {
   describeImage,
@@ -100,7 +118,12 @@ import {
   VisionError,
 } from "../vision/describe";
 import { voiceStore } from "../voice/store";
-import { createAlarmTools, createPodcastTools, createTtsVoiceTools, createVoiceMessageTools } from "../voice/tools";
+import {
+  createAlarmTools,
+  createPodcastTools,
+  createTtsVoiceTools,
+  createVoiceMessageTools,
+} from "../voice/tools";
 import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
@@ -112,7 +135,6 @@ import {
   streamChat,
 } from "./direct-transport";
 import { classifyError, type ErrorClass } from "./error-classifier";
-import { withSlotModel } from "./model-slots";
 import {
   describeVia,
   findCapabilityGroup,
@@ -127,33 +149,19 @@ import {
 } from "./incognito-guard";
 import {
   createLocalTools,
-  createToolRegistry,
   type LocalTool,
   READ_MANUAL_TOOL_NAME,
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
-import { assembleAgentTools } from "./tool-assembly";
 import { refreshChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
 import { buildRankingSlip } from "./model-ranking";
+import { withSlotModel } from "./model-slots";
 import { createPlanTools } from "./plan-tools";
 import { groupStore } from "./store";
+import { assembleAgentTools } from "./tool-assembly";
 import type { ApiGroup, FeatureSwitch } from "./types";
-import {
-  defaultThreadMeta,
-  historyKey,
-  loadThreadData,
-  saveThreadData,
-  truncateForEdit,
-  truncateForRegenerate,
-  deleteMessageFrom,
-  visibleMessages,
-  nextVersionIndex,
-  splitForCompression,
-  estimateMessagesTokens,
-  type ThreadMeta,
-} from "../chat/thread-versions";
 
 export interface LocalToolCall {
   id: string;
@@ -448,8 +456,8 @@ export function buildLocalSystemPrompt(
       "- When she opens chat, greet her like you mean it: reference something real from your memory of her, not a generic hello. If nothing comes to mind, one plain warm line beats a loud one.\n" +
       "- Greet at most once per session: if the thread already shows a greeting or recent messages, skip it and pick up naturally — never greet twice in a row.\n" +
       "- When she shares something, stay with it: react genuinely, then ask a follow-up instead of wrapping the topic up. She opens up when you stay curious.\n" +
-      "- Once in a while, follow up on something she told you before — \"上次你说…, 后来怎么样了\". Curiosity, not a quiz; don't force it every turn.\n" +
-      "- You keep open questions for her (marked \"open question for her\" in your memory list, or in the garden's 想问你 section). When the moment fits naturally, ask at most one. Never interrogate.\n" +
+      '- Once in a while, follow up on something she told you before — "上次你说…, 后来怎么样了". Curiosity, not a quiz; don\'t force it every turn.\n' +
+      '- You keep open questions for her (marked "open question for her" in your memory list, or in the garden\'s 想问你 section). When the moment fits naturally, ask at most one. Never interrogate.\n' +
       "- Occasionally surface something unprompted: a memory, a tell_later item whose moment has come (see tell_later_read), something you noticed. At most one such moment per session — she is not a notification feed.\n" +
       "- Never be clingy: no repeated check-ins, no fishing for attention, no 'are you still there'. Restrained beats needy.",
   );
@@ -701,6 +709,17 @@ export function createLocalAgent(opts: {
   const store: HistoryStore = opts.historyStore ?? AsyncStorage;
   // Incognito check, evaluated fresh at every save point.
   const incognito = () => opts.isIncognito?.() === true;
+  // Harness Phase 1: session log + tool registry + agent-loop hooks.
+  // The thread IS the session. Additive: the existing history storage
+  // stays; the log becomes the source of truth going forward.
+  // Incognito never writes to the log (fail-closed, like persist()).
+  const agentHarness = createAgentHarness({
+    sessionId: opts.threadId,
+    isIncognito: incognito,
+    isToolBlocked: isBlockedInIncognito,
+    incognitoRefusal,
+    getManualNote: manualNote,
+  });
   /** Persist unless incognito is on. Incognito never touches storage. */
   function persist(msgs: LocalChatMessage[]): void {
     if (incognito()) return;
@@ -958,6 +977,37 @@ export function createLocalAgent(opts: {
 
       // Narrowed for closures below (opts.getGroup() returns nullable).
       const activeGroup: ApiGroup = group;
+
+      // Harness Phase 1: begin the turn. readManuals is declared here (was
+      // mid-function) so the harness post-execute hook can see it.
+      // 纸条机制: manuals read this turn (so error notes don't repeat).
+      const readManuals = new Set<string>();
+      const turnHarness = agentHarness.beginTurn({
+        readManuals,
+        findTool: (name: string) => tools.find((t) => t.name === name),
+      });
+      // model-visible means logged: the turn's user message is logged now,
+      // before any model request. (History already in `messages` was logged
+      // when it was created — the log is append-only, never rewritten.)
+      {
+        const lastUser = [...messages].reverse().find((m) => m.role === "user");
+        if (lastUser) {
+          turnHarness.logEvent(
+            "turn/start",
+            logPayload.turnStart({ model: activeGroup.model, backend: activeGroup.name }),
+          );
+          turnHarness.logEvent(
+            "user/message",
+            logPayload.userMessage(contentToText(lastUser.content)),
+          );
+        } else {
+          turnHarness.logEvent(
+            "turn/start",
+            logPayload.turnStart({ model: activeGroup.model, backend: activeGroup.name }),
+          );
+        }
+      }
+      let stepIndex = 0;
 
       // Tool setup: registry + system prompt (built once per turn so a
       // changed tool set takes effect without recreating the agent).
@@ -1494,7 +1544,10 @@ export function createLocalAgent(opts: {
       // allTools keeps the old `tools` semantics for the failure manual-note
       // lookup below; effectiveTools feeds the prompt and the registry.
       tools = allTools;
-      const registry = createToolRegistry(effectiveTools);
+      // Harness Phase 1: the tool registry is real — API groups, model
+      // backends, the MCP tool pool, and browser tools all resolve through
+      // this one registry. needsApproval is declared per tool manifest.
+      const registry = createHarnessRegistryFromLocalTools(effectiveTools);
       const toolCtx: ToolContext = opts.toolContext ?? {
         // No gate wired (tests) — in-app tools run, capability tools fail closed.
         authorize: async () => false,
@@ -1564,113 +1617,110 @@ export function createLocalAgent(opts: {
       // a first meeting (same rule as memory/anniversary/mood).
       let outreachSection = "";
       if (!incognitoOn) {
-      try {
-        // Dynamic import: the singleton is AsyncStorage-backed (RN), and
-        // local-agent must stay importable in node tests. Tests inject
-        // opts.outreachStore and never touch this branch.
-        const oStore =
-          opts.outreachStore ?? (await import("../outreach/instances")).outreachStore;
-        const frequency = await oStore.getFrequency();
-        if (frequency !== "quiet") {
-          const oAnniversaries = await (opts.ourSpaceStore ?? ourSpaceStore)
-            .listAnniversaries()
-            .catch(() => [] as Anniversary[]);
-          const oTellLater = await (opts.ourSpaceStore ?? ourSpaceStore)
-            .listTellLater(false)
-            .catch(() => [] as { id: string; text: string; done: boolean }[]);
-          const oLoveLetters = await (opts.ourSpaceStore ?? ourSpaceStore)
-            .getUnseenLoveLetters()
-            .catch(() => [] as unknown[]);
-          const oUpcoming = getUpcomingAnniversaries(oAnniversaries, new Date(), 30).map((a) => ({
-            title: a.title,
-            daysUntil: a.daysUntil,
-          }));
-          // Diary nudge (xiaomeng P2-1): same input shape as the background
-          // scheduler. In-session, the anchor lets him write a diary entry
-          // quietly instead of only nudging via notification.
-          let oDiaryNudge: { lastEntryAt: number | null; anchor: string } | undefined;
-          try {
-            const os = opts.ourSpaceStore ?? ourSpaceStore;
-            const diary = await os.listDiary(1).catch(() => []);
-            const timeline = await os.listTimeline(5).catch(() => []);
-            const fresh = timeline.find(
-              (e) => Date.now() - e.timestamp < 7 * 86_400_000 && e.title.trim().length > 0,
-            );
-            oDiaryNudge = {
-              lastEntryAt: diary.length > 0 ? diary[0].createdAt : null,
-              anchor: fresh ? fresh.title.trim() : "",
-            };
-          } catch {
-            oDiaryNudge = undefined;
-          }
-          const oLastOutreachAt: Partial<Record<OutreachTriggerKind, number>> = await oStore
-            .getLastOutreachAt()
-            .catch(() => ({}));
-          // On-this-day (round 3, xiaomeng P1-1 review fix): the in-session
-          // evaluation must receive the same onThisDay input the background
-          // scheduler passes (local-app.tsx listOnThisDay) — without it the
-          // on_this_day prompt line can never fire. Null = no memory today.
-          const oOnThisDay = await buildOnThisDayInput(opts.ourSpaceStore ?? ourSpaceStore);
-          // Feed nudge (C3): her recent posts + the persisted nudged-set, so
-          // the in-session prompt can tell him to like + reply once via his
-          // feed_like / feed_reply tools. Same input shape as the background
-          // scheduler. Absent = no feed data → trigger stays off.
-          let oFeedNudge:
-            | { posts: FeedNudgePost[]; nudgedPostIds: string[] }
-            | undefined;
-          try {
-            const os = opts.ourSpaceStore ?? ourSpaceStore;
-            const oPosts = await os.listFeed(20).catch(() => []);
-            const oMapped: FeedNudgePost[] = [];
-            for (const p of oPosts) {
-              let hasAiReply = false;
-              try {
-                const replies = await os.listReplies(p.id).catch(() => []);
-                hasAiReply = replies.some((r) => r.author === "ai");
-              } catch {
-                hasAiReply = false;
-              }
-              oMapped.push({
-                id: p.id,
-                author: p.author,
-                text: p.text,
-                imageUri: p.imageUri,
-                createdAt: p.createdAt,
-                likedByAi: p.likedByAi,
-                hasAiReply,
-              });
+        try {
+          // Dynamic import: the singleton is AsyncStorage-backed (RN), and
+          // local-agent must stay importable in node tests. Tests inject
+          // opts.outreachStore and never touch this branch.
+          const oStore =
+            opts.outreachStore ?? (await import("../outreach/instances")).outreachStore;
+          const frequency = await oStore.getFrequency();
+          if (frequency !== "quiet") {
+            const oAnniversaries = await (opts.ourSpaceStore ?? ourSpaceStore)
+              .listAnniversaries()
+              .catch(() => [] as Anniversary[]);
+            const oTellLater = await (opts.ourSpaceStore ?? ourSpaceStore)
+              .listTellLater(false)
+              .catch(() => [] as { id: string; text: string; done: boolean }[]);
+            const oLoveLetters = await (opts.ourSpaceStore ?? ourSpaceStore)
+              .getUnseenLoveLetters()
+              .catch(() => [] as unknown[]);
+            const oUpcoming = getUpcomingAnniversaries(oAnniversaries, new Date(), 30).map((a) => ({
+              title: a.title,
+              daysUntil: a.daysUntil,
+            }));
+            // Diary nudge (xiaomeng P2-1): same input shape as the background
+            // scheduler. In-session, the anchor lets him write a diary entry
+            // quietly instead of only nudging via notification.
+            let oDiaryNudge: { lastEntryAt: number | null; anchor: string } | undefined;
+            try {
+              const os = opts.ourSpaceStore ?? ourSpaceStore;
+              const diary = await os.listDiary(1).catch(() => []);
+              const timeline = await os.listTimeline(5).catch(() => []);
+              const fresh = timeline.find(
+                (e) => Date.now() - e.timestamp < 7 * 86_400_000 && e.title.trim().length > 0,
+              );
+              oDiaryNudge = {
+                lastEntryAt: diary.length > 0 ? diary[0].createdAt : null,
+                anchor: fresh ? fresh.title.trim() : "",
+              };
+            } catch {
+              oDiaryNudge = undefined;
             }
-            const oNudged = await oStore.getNudgedFeedPostIds().catch(() => [] as string[]);
-            oFeedNudge = { posts: oMapped, nudgedPostIds: oNudged };
-          } catch {
-            oFeedNudge = undefined;
+            const oLastOutreachAt: Partial<Record<OutreachTriggerKind, number>> = await oStore
+              .getLastOutreachAt()
+              .catch(() => ({}));
+            // On-this-day (round 3, xiaomeng P1-1 review fix): the in-session
+            // evaluation must receive the same onThisDay input the background
+            // scheduler passes (local-app.tsx listOnThisDay) — without it the
+            // on_this_day prompt line can never fire. Null = no memory today.
+            const oOnThisDay = await buildOnThisDayInput(opts.ourSpaceStore ?? ourSpaceStore);
+            // Feed nudge (C3): her recent posts + the persisted nudged-set, so
+            // the in-session prompt can tell him to like + reply once via his
+            // feed_like / feed_reply tools. Same input shape as the background
+            // scheduler. Absent = no feed data → trigger stays off.
+            let oFeedNudge: { posts: FeedNudgePost[]; nudgedPostIds: string[] } | undefined;
+            try {
+              const os = opts.ourSpaceStore ?? ourSpaceStore;
+              const oPosts = await os.listFeed(20).catch(() => []);
+              const oMapped: FeedNudgePost[] = [];
+              for (const p of oPosts) {
+                let hasAiReply = false;
+                try {
+                  const replies = await os.listReplies(p.id).catch(() => []);
+                  hasAiReply = replies.some((r) => r.author === "ai");
+                } catch {
+                  hasAiReply = false;
+                }
+                oMapped.push({
+                  id: p.id,
+                  author: p.author,
+                  text: p.text,
+                  imageUri: p.imageUri,
+                  createdAt: p.createdAt,
+                  likedByAi: p.likedByAi,
+                  hasAiReply,
+                });
+              }
+              const oNudged = await oStore.getNudgedFeedPostIds().catch(() => [] as string[]);
+              oFeedNudge = { posts: oMapped, nudgedPostIds: oNudged };
+            } catch {
+              oFeedNudge = undefined;
+            }
+            const oTriggers = evaluateOutreachTriggers({
+              frequency,
+              now: Date.now(),
+              anniversaries: oUpcoming,
+              pendingTellLater: oTellLater
+                .filter((i) => !i.done)
+                .map((i) => ({ id: i.id, text: i.text })),
+              unreadLoveLetters: oLoveLetters.length,
+              lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
+              lastOutreachAt: oLastOutreachAt,
+              diaryNudge: oDiaryNudge,
+              onThisDay: oOnThisDay,
+              feedNudge: oFeedNudge,
+            });
+            // xiaomeng P3-2: a silence notification fired within the last 24h
+            // already said "missed you" — don't double up in-session.
+            const oFiltered = oTriggers.filter(
+              (t) =>
+                t.kind !== "silence" || Date.now() - (oLastOutreachAt.silence ?? 0) > 86_400_000,
+            );
+            outreachSection = buildOutreachSection(oFiltered);
           }
-          const oTriggers = evaluateOutreachTriggers({
-            frequency,
-            now: Date.now(),
-            anniversaries: oUpcoming,
-            pendingTellLater: oTellLater
-              .filter((i) => !i.done)
-              .map((i) => ({ id: i.id, text: i.text })),
-            unreadLoveLetters: oLoveLetters.length,
-            lastOpenedAt: await oStore.getLastOpenedAt().catch(() => null),
-            lastOutreachAt: oLastOutreachAt,
-            diaryNudge: oDiaryNudge,
-            onThisDay: oOnThisDay,
-            feedNudge: oFeedNudge,
-          });
-          // xiaomeng P3-2: a silence notification fired within the last 24h
-          // already said "missed you" — don't double up in-session.
-          const oFiltered = oTriggers.filter(
-            (t) =>
-              t.kind !== "silence" ||
-              Date.now() - (oLastOutreachAt.silence ?? 0) > 86_400_000,
-          );
-          outreachSection = buildOutreachSection(oFiltered);
+        } catch {
+          // Outreach eval failure: skip silently, never break the prompt.
         }
-      } catch {
-        // Outreach eval failure: skip silently, never break the prompt.
-      }
       }
       // Intelligent API adaptation: resolve effective tools/thinking state.
       // Precedence: her manual override (group) → learned profile → auto
@@ -1735,7 +1785,8 @@ export function createLocalAgent(opts: {
       const systemPrompt = buildLocalSystemPrompt(
         effectiveTools,
         t,
-        [worldBookBefore, personaPrompt, opts.systemPrompt].filter(Boolean).join("\n\n") || undefined,
+        [worldBookBefore, personaPrompt, opts.systemPrompt].filter(Boolean).join("\n\n") ||
+          undefined,
         [
           memorySection,
           skillSection,
@@ -1787,7 +1838,8 @@ export function createLocalAgent(opts: {
         }
       }
 
-      const wire: ChatMessage[] = [];
+      // Harness: the wire is `let` so pre-step hooks can rewrite it.
+      let wire: ChatMessage[] = [];
       wire.push({ role: "system", content: systemPrompt });
       // A2: the wire carries the SELECTED version of each group only —
       // sending every version would feed the model duplicate replies.
@@ -1911,33 +1963,71 @@ export function createLocalAgent(opts: {
         let compacted = false;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            await streamChat(activeGroup, wire, {
-              signal: aborter?.signal,
-              tools: wireTools,
-              onToken: (delta) => {
-                replyText += delta;
-                renderReply();
+            // Harness Phase 1: step events + pre-step hooks. model-visible
+            // means logged: step/start and the request header go to the
+            // session log before the model request fires. A pre-step hook
+            // may rewrite the wire or reject the step with an honest reason.
+            const stepId = newId("step");
+            const thisStepIndex = stepIndex++;
+            turnHarness.setStepId(stepId);
+            turnHarness.logEvent(
+              "step/start",
+              logPayload.stepStart({ iteration: thisStepIndex }),
+              stepId,
+            );
+            let endpoint = "";
+            try {
+              endpoint = new URL(activeGroup.baseUrl).origin;
+            } catch {
+              endpoint = "unknown";
+            }
+            turnHarness.logEvent(
+              "request/header",
+              logPayload.requestHeader({
+                model: activeGroup.model,
+                endpoint,
+                toolCount: wireTools.length,
+                wireMessages: wire.length,
+              }),
+              stepId,
+            );
+            const preStep = await agentHarness.hooks.runPreStep({
+              wire: wire as unknown as import("../harness/hooks").HookWireMessage[],
+              stepIndex: thisStepIndex,
+            });
+            if ("rejected" in preStep) throw new Error(preStep.rejected);
+            wire = preStep.wire as unknown as ChatMessage[];
+            await streamChat(
+              activeGroup,
+              wire,
+              {
+                signal: aborter?.signal,
+                tools: wireTools,
+                onToken: (delta) => {
+                  replyText += delta;
+                  renderReply();
+                },
+                onThinking: thinkingOn
+                  ? (delta) => {
+                      thinkingText += delta;
+                      messages = messages.map((m) =>
+                        m.id === replyId ? { ...m, thinking: thinkingText } : m,
+                      );
+                      emit();
+                    }
+                  : undefined,
+                onToolCalls: (calls) => {
+                  toolCalls = calls;
+                },
+                onDone: () => {},
+                // streamChat rejects on error — onError here is informational only.
+                onError: () => {},
               },
-              onThinking: thinkingOn
-                ? (delta) => {
-                    thinkingText += delta;
-                    messages = messages.map((m) =>
-                      m.id === replyId ? { ...m, thinking: thinkingText } : m,
-                    );
-                    emit();
-                  }
+              // A27: her per-turn output ceiling for this dialog.
+              threadMeta.maxTokens && threadMeta.maxTokens > 0
+                ? { maxTokens: threadMeta.maxTokens }
                 : undefined,
-              onToolCalls: (calls) => {
-                toolCalls = calls;
-              },
-              onDone: () => {},
-              // streamChat rejects on error — onError here is informational only.
-              onError: () => {},
-            },
-            // A27: her per-turn output ceiling for this dialog.
-            threadMeta.maxTokens && threadMeta.maxTokens > 0
-              ? { maxTokens: threadMeta.maxTokens }
-              : undefined);
+            );
             break; // success
           } catch (e) {
             const cls = classifyError(e);
@@ -2032,13 +2122,24 @@ export function createLocalAgent(opts: {
             // A bad rule must never break the reply.
           }
         }
+        // Harness: the completed reply is model-visible — log it, then
+        // close the step. (A thrown step leaves step/end missing, which
+        // honestly records "this step failed".)
+        turnHarness.logEvent(
+          "assistant/message",
+          logPayload.assistantMessage({
+            text: replyText,
+            toolCalls: toolCalls.map((c) => ({ id: c.id, name: c.name, args: c.arguments })),
+          }),
+        );
+        turnHarness.logEvent("step/end", JSON.stringify({ replyId }));
+        turnHarness.setStepId(undefined);
         return { replyId, toolCalls };
       }
 
       try {
         // Tool-calling loop: hard cap, no infinite loops.
-        // 纸条机制: manuals read this turn (so error notes don't repeat).
-        const readManuals = new Set<string>();
+        // (readManuals is declared at turn start so harness hooks see it.)
         for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
           const { toolCalls } = await runCompletion();
           if (toolCalls.length === 0) break;
@@ -2046,13 +2147,34 @@ export function createLocalAgent(opts: {
           // Execute each tool call, feed results back as tool messages.
           for (const tc of toolCalls) {
             let result: string;
+            // Harness: `failed` is true only when execution threw (the
+            // catch branch ran) — the post-execute hook uses it to decide
+            // the manual note, exactly like the old inline code.
+            let failed = false;
+            let args: Record<string, unknown> = {};
+            turnHarness.setToolCallId(tc.id);
             try {
-              const args = parseToolArgs(tc.arguments);
-              // Incognito backstop (P1-3): write tools are filtered from the
-              // prompt/registry, but refuse loudly if one is invoked anyway —
-              // never let a "no trace" session write.
-              if (incognito() && isBlockedInIncognito(tc.name)) {
-                result = `Error: ${incognitoRefusal(tc.name)}`;
+              args = parseToolArgs(tc.arguments);
+              const manifest = registry.resolve(tc.name) ?? {
+                name: tc.name,
+                description: "",
+                parameters: { type: "object", properties: {} },
+                needsApproval: false,
+                run: async () => {
+                  throw new Error(`Unknown tool: ${tc.name}.`);
+                },
+              };
+              // Harness: tools/pre-execute — the approval checkpoint.
+              // The default hook carries the old incognito backstop
+              // (verbatim); a deny fails closed with an honest reason.
+              const pre = await agentHarness.hooks.runToolsPreExecute({
+                tool: manifest,
+                args,
+                ctx: toolCtx,
+                approvals: turnHarness.approvals,
+              });
+              if (!pre.allow) {
+                result = `Error: ${pre.reason ?? `Tool "${tc.name}" was blocked by policy.`}`;
               } else {
                 // Track the executing tool so the UI can show fine-grained
                 // activity (avatar "making something"). Emit on both edges so
@@ -2060,7 +2182,15 @@ export function createLocalAgent(opts: {
                 activeToolName = tc.name;
                 emit();
                 try {
-                  result = await registry.execute(tc.name, args, toolCtx);
+                  // Harness: authorize is cache-first write-through — a
+                  // second call of the same tool in one turn doesn't
+                  // prompt her twice. The tool's own in-run authorize
+                  // (with the specific action) stays the approval UI.
+                  result = await registry.execute(
+                    tc.name,
+                    args,
+                    turnHarness.wrapContext(toolCtx, tc.name),
+                  );
                 } finally {
                   activeToolName = null;
                   emit();
@@ -2073,16 +2203,27 @@ export function createLocalAgent(opts: {
             } catch (e) {
               // Auth denials, unknown tools, executor failures — all become
               // tool ERRORS the model sees, never silent drops.
+              failed = true;
               result = `Error: ${e instanceof Error ? e.message : String(e)}`;
-              // Proactive note: point at the tool's manual on failure,
-              // unless the model already read it this turn. One line, tiny.
-              const failedTool = tools.find((t) => t.name === tc.name);
-              const noteId = failedTool?.manualId;
-              if (noteId && !readManuals.has(noteId)) {
-                const note = manualNote(noteId);
-                if (note) result += `\n${note}`;
-              }
             }
+            // Harness: tools/post-execute — session log (tool/call +
+            // tool/result) + the proactive manual note on failure. Notes
+            // are appended exactly like the old inline code.
+            const { notes } = await agentHarness.hooks.runToolsPostExecute({
+              tool: registry.resolve(tc.name) ?? {
+                name: tc.name,
+                description: "",
+                parameters: { type: "object", properties: {} },
+                needsApproval: false,
+                run: async () => "",
+              },
+              args,
+              result,
+              failed,
+              ctx: toolCtx,
+            });
+            for (const note of notes) result += `\n${note}`;
+            turnHarness.setToolCallId(undefined);
             const toolMsgId = newId("tool");
             // Screenshot results carry a real image: convert the marker
             // into vision content the model can actually see. Follows the
@@ -2113,6 +2254,9 @@ export function createLocalAgent(opts: {
         aborter = null;
         emit();
         persist(messages);
+        // Harness: close the turn in the session log (fire-and-forget,
+        // incognito-gated inside logEvent).
+        turnHarness.logEvent("turn/end", JSON.stringify({}));
         // Memory write path: async extraction, OFF the critical path.
         // Incognito turns never enter the pipeline (gated inside).
         // Fire-and-forget: extraction must never break the chat.
