@@ -110,6 +110,8 @@
 
 ## D 批：P2 修补（文档诚实 + 小功能，可并行）
 
+**顺序（她 2026-10-05 18:07 亲定）**：C 批收尾 → D 批先修完 → 再做别的（Harness / Aru 5 功能 / 人设群聊 / E 批拍板事项）。她原话："先修，修好了才能做别的。"
+
 - D1 说明书/文档诚实化：知识章节改成"已上线、PDF 可索引"（user P2-9）；语音气泡节按 C1 后的真实能力重写（user P2-3）；Health 睡眠——补 `readSleep`（HealthKit SleepAnalysis）+ AI 工具（如 `napp_health_sleep`），说明书"睡眠"承诺保持（user P2-2，已拍板：补功能，不删文档）；备份节加一行"key 不备份，换手机后要重填"（user P2-6）；PROGRESS.md 的 Phase 2/3 表格更新（product P3-2）；自评报告更新（知识库 0/10→~7/10、HomeKit 已接、主题工具数按 B6 结论）（product P3-3）。
 - D2 首屏卡片加上"免 Key 登录"一键路（OAuth 四家已对上 Kelivo 真值）（user P2-1）。
 - D3 纪念日手动添加 UI（user P2-4）。
