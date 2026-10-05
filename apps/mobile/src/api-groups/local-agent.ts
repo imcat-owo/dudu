@@ -25,7 +25,6 @@ import { createDelegateTools } from "../mcp/delegate";
 import { envStore } from "../mcp/env";
 import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
 import { createMcpProviders } from "../mcp/provider";
-import { mcpStore } from "../mcp/store";
 import { descOverrideStore } from "../mcp/tool-descriptions";
 import { createWebSearchTools } from "../mcp/web-search";
 import {
@@ -126,6 +125,7 @@ import {
   type ToolContext,
   type ToolDeps,
 } from "./local-tools";
+import { assembleAgentTools } from "./tool-assembly";
 import { refreshChatMode } from "./mode";
 import { modelProfileStore } from "./model-profiles";
 import { buildRankingSlip } from "./model-ranking";
@@ -1395,28 +1395,26 @@ export function createLocalAgent(opts: {
           },
         }),
       ];
+      // Tool assembly (P0 fix): the registry MUST be built from the FINAL
+      // tool list — base tools + MCP server tools, minus incognito-blocked
+      // ones. The old order built the registry first and appended MCP tools
+      // afterwards, which left them invisible to definitions()/execute().
       // Incognito (P1-3): a session that promised zero trace must not even
-      // SEE the write tools — filter them before the prompt and registry are
-      // built. The tool loop below also refuses them loudly as a backstop.
-      const effectiveTools = incognito()
-        ? tools.filter((t) => !isBlockedInIncognito(t.name))
-        : tools;
-      const registry = createToolRegistry(effectiveTools);
-      const toolCtx: ToolContext = opts.toolContext ?? {
-        // No gate wired (tests) — in-app tools run, capability tools fail closed.
-        authorize: async () => false,
-      };
-      // Batch 4: MCP server tools — async providers, wired after toolCtx so
-      // per-tool approval can use the authorize gate. Applied before the
-      // incognito filter so incognito sessions never see them.
-      if (!opts.tools) {
-        try {
+      // SEE the write tools — and MCP server tools are never loaded at all
+      // in incognito, so the guarantee is structural, not order-dependent.
+      // The tool loop below also refuses blocked tools loudly as a backstop.
+      const { allTools, effectiveTools } = await assembleAgentTools({
+        baseTools: tools,
+        externalSupplied: !!opts.tools,
+        isIncognito: incognito(),
+        loadExternalTools: async () => {
+          // Batch 4: MCP server tools — async providers. Per-tool approval
+          // ("allow"/"deny") is enforced by the client via getApproval;
+          // "ask" fails closed here — a dedicated approval card UI is a
+          // follow-up; she can set tools to "allow" in MCP settings for
+          // trusted servers.
           const mcpProviders = await createMcpProviders({
             env: await envStore.getValues().catch(() => ({})),
-            // Per-tool approval: "allow"/"deny" are enforced by the client
-            // via getApproval. "ask" fails closed here — a dedicated
-            // approval card UI is a follow-up; she can set tools to
-            // "allow" in MCP settings for trusted servers.
             requestApproval: async () => false,
             runOAuthFlow: async (server) => {
               // The OAuth browser flow is driven from the MCP settings UI.
@@ -1438,13 +1436,18 @@ export function createLocalAgent(opts: {
               // Server unreachable — skip, don't break the whole agent.
             }
           }
-          tools = [...tools, ...mcpTools];
-        } catch {
-          // MCP unavailable — agent works without it.
-        }
-        // D8: apply editable tool description overrides before the model sees them.
-        tools = await descOverrideStore.apply(tools);
-      }
+          return mcpTools;
+        },
+        applyDescOverrides: (t) => descOverrideStore.apply(t),
+      });
+      // allTools keeps the old `tools` semantics for the failure manual-note
+      // lookup below; effectiveTools feeds the prompt and the registry.
+      tools = allTools;
+      const registry = createToolRegistry(effectiveTools);
+      const toolCtx: ToolContext = opts.toolContext ?? {
+        // No gate wired (tests) — in-app tools run, capability tools fail closed.
+        authorize: async () => false,
+      };
       // Memory read path: profile + top-k relevant memories for this turn.
       // The last user message drives relevance; empty section when no memories.
       const lastUserText = contentToText(
