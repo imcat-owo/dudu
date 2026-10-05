@@ -61,6 +61,11 @@ import {
   subscribeAskUserRequest,
   type AskUserRequest,
 } from "./mcp/ask-user";
+import { McpApprovalCard } from "./mcp/mcp-approval-card";
+import {
+  subscribeMcpApprovalRequest,
+  type McpApprovalRequest,
+} from "./mcp/tool-approval";
 import { shouldConvertPaste, savePasteAsFile, pastePreview } from "./mcp/long-paste";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
 import { capabilityStore } from "./api-groups/capability-store";
@@ -481,6 +486,8 @@ export function ChatScreen({
   // Batch 4: ask_user — the model pauses for her answers.
   const [askReq, setAskReq] = useState<AskUserRequest | null>(null);
   const [askAnswers, setAskAnswers] = useState<Record<string, string | string[]>>({});
+  // D13: MCP tool approval — the model pauses for her Allow / Deny.
+  const [apprReq, setApprReq] = useState<McpApprovalRequest | null>(null);
   // Thinking drawer: track the message id (not a text snapshot) so the
   // drawer content live-updates while thinking is still streaming in.
   const [activityId, setActivityId] = useState<string | null>(null);
@@ -828,6 +835,13 @@ export function ChatScreen({
       { threadId },
     );
     return unsub;
+  }, [threadId]);
+  // D13: MCP tool approval — subscribe scoped to this dialog, same
+  // isolation contract as ask_user (D17): a request raised in another
+  // dialog must never surface here.
+  useEffect(() => {
+    setApprReq(null);
+    return subscribeMcpApprovalRequest(setApprReq, { threadId });
   }, [threadId]);
   useEffect(() => {
     const subscription = agent.onTransportError((failure) => setError(failure.message));
@@ -2663,6 +2677,15 @@ export function ChatScreen({
                 </Button>
               </View>
             </View>
+          )}
+          {/* D13: MCP tool approval — the model is waiting for her decision.
+              Rendered after the ask_user card; only one of them is pending
+              at a time (the agent loop is sequential). */}
+          {apprReq && (
+            <McpApprovalCard
+              key={apprReq.id}
+              request={apprReq}
+            />
           )}
           <View style={[s.row, { gap: 7, alignItems: "flex-end" }]}>
             {/* A17: quick phrases (local mode). */}
