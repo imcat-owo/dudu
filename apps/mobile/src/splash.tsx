@@ -14,26 +14,41 @@
  *   1400ms Whole splash cross-fades out (400ms, ease-in)
  *   1800ms onDone() — app takes over
  *
- * Warm gray canvas (#FAF9F6) hardcoded: theme isn't loaded yet at boot.
+ * Launch palette: the theme provider isn't mounted yet at boot, so the canvas
+ * is derived straight from the default theme bundle's seed + the OS appearance
+ * (resolveMode honors a pinned light/dark bundle mode; with every built-in
+ * preset on "system" this simply follows iOS). A dark-mode launch therefore
+ * never flashes a light canvas. Zero hardcoded colors.
  * Zero emoji. Respects reduced motion implicitly — durations are short
  * and the animation is a single gentle bloom, no spinning/zooming.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AccessibilityInfo, Animated, Easing, Image, useColorScheme, View } from "react-native";
 import { soraSource } from "./avatar-assets";
 import { DUR, EASE, SPRING, STAGGER } from "./motion";
 import { BRAND_OCHRE } from "./theme/brand";
+import { deriveSurfaces, resolveMode } from "./theme/derive";
+import { defaultPreset } from "./theme/presets";
 import { radii } from "./theme/radii";
 
-const CANVAS = "#FAF9F6";
-const INK = "#3D3A33";
-const MUTED = "#8A8578";
 // Launch palette: theme provider isn't mounted yet at splash time, so the
 // brand color comes from the theme-independent brand constant.
 const ACCENT = BRAND_OCHRE;
 
 export function Splash({ onDone }: { onDone: () => void }) {
+  const systemDark = useColorScheme() === "dark";
+  // Derived from the theme system (default bundle seed + resolved mode),
+  // not hardcoded — see the header comment.
+  const launch = useMemo(
+    () => deriveSurfaces(defaultPreset.seed, resolveMode(defaultPreset.mode, systemDark)),
+    [systemDark],
+  );
+  const CANVAS = launch.canvas.bg;
+  const INK = launch.text.fg;
+  const MUTED = launch.text.accent;
+  const AVATAR_BG = launch.card.bg;
+  const SHIMMER = launch.accent.bg;
   const bloom = useRef(new Animated.Value(0)).current; // 0→1 avatar bloom
   const shimmerX = useRef(new Animated.Value(-1)).current; // -1→1 shimmer sweep
   const titleUp = useRef(new Animated.Value(0)).current; // 0→1 title rise
@@ -148,7 +163,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
             height: 148,
             borderRadius: 74,
             overflow: "hidden",
-            backgroundColor: "#EFE9DC",
+            backgroundColor: AVATAR_BG,
           }}
         >
           <Image source={soraSource()} style={{ width: 148, height: 148 }} resizeMode="cover" />
@@ -160,8 +175,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
               top: -40,
               bottom: -40,
               width: 44,
-              backgroundColor: "#FFFFFF",
-              opacity: 0.45,
+              backgroundColor: SHIMMER,
+              opacity: 0.35,
               transform: [{ translateX: shimmerTranslate }, { rotate: "18deg" }],
             }}
           />
