@@ -2228,6 +2228,12 @@ const zhHans = {
   "import.skipped": "（{skipped} 个已经搬过，跳过了）",
   "import.failed": "文件不对，换个备份文件试试",
   "import.noConversations": "文件里没有能搬的对话",
+  "import.auto": "自动识别",
+  "import.app.cherry": "Cherry Studio",
+  "import.app.chatbox": "ChatBox",
+  "import.app.sillytavern": "SillyTavern",
+  "import.doneFrom": "从 {app} 搬了 {conversations} 个对话，{messages} 条消息",
+  "import.unknownSource": "认不出这是哪家的文件，试试下面的按 App 选",
 
   // ---- storage ----
   "storage.title": "存储空间",

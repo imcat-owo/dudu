@@ -2231,6 +2231,12 @@ const zhHant = {
   "import.skipped": "（{skipped} 個已經搬過，跳過了）",
   "import.failed": "文件不對，換個備份文件試試",
   "import.noConversations": "文件裏沒有能搬的對話",
+  "import.auto": "自動識別",
+  "import.app.cherry": "Cherry Studio",
+  "import.app.chatbox": "ChatBox",
+  "import.app.sillytavern": "SillyTavern",
+  "import.doneFrom": "從 {app} 搬了 {conversations} 個對話，{messages} 條消息",
+  "import.unknownSource": "認不出這是哪家的文件，試試下面的按 App 選",
 
   // ---- storage ----
   "storage.title": "存儲空間",

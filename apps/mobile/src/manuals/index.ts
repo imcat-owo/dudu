@@ -26,6 +26,7 @@ import { BACKUP_MANUAL } from "./backup";
 import { BROWSER_MANUAL } from "./browser";
 import { COORDINATION_MANUAL } from "./coordination";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
+import { EXCHANGE_MANUAL } from "./exchange";
 import { GROUP_MEETING_MANUAL } from "./group-meeting";
 import { INCOGNITO_MANUAL } from "./incognito";
 import { INITIATIVE_MANUAL } from "./initiative";
@@ -84,6 +85,7 @@ export const MANUALS: ManualEntry[] = [
   KNOWLEDGE_MANUAL,
   MEDIA_MANUAL,
   BACKUP_MANUAL,
+  EXCHANGE_MANUAL,
 ];
 
 export function getManual(id: string): ManualEntry | undefined {

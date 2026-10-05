@@ -32,12 +32,17 @@ What is NEVER in a backup:
 Rules:
 - backup_create saves a dudu-backup-<date>.json file and returns a summary.
   Tell her where it went so she can keep a copy off-device.
-- backup_restore REPLACES current data. Confirm with her first ("this will
-  overwrite everything, ok?") unless she explicitly said "restore".
+- backup_restore takes an optional mode: 'overwrite' (default) REPLACES
+  current data — confirm with her first ("this will overwrite everything,
+  ok?") unless she explicitly said "restore". 'merge' only adds what's
+  missing and keeps her current data — the safer choice when she's unsure.
 - The tool validates the file BEFORE writing anything — a corrupt file fails
   safely, nothing is half-applied. If it fails, tell her plainly what was
   wrong, don't retry blindly.
 - backup_restore with no arguments uses the most recent saved backup file.
 - After ANY restore, remind her: re-enter API keys in settings.
+- exchange_import is the "move in from another app" tool (Cherry Studio,
+  ChatBox, SillyTavern, dudu-exchange v1). It only ADDS new threads —
+  never overwrites. Safe to use freely; tell her where the chats landed.
 `,
 };

@@ -17,9 +17,11 @@ import {
   type KnowledgeBackupTarget,
   markBackedUp,
   parseBackup,
+  type RestoreMode,
   type SecureKV,
   serializeBackup,
 } from "./backup";
+import { importExchange } from "./exchange/import";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -136,7 +138,7 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
     {
       name: "backup_restore",
       description:
-        "Restore app data from a backup. Use when she says '恢复备份' / '把数据恢复回来'. Either pass the backup JSON text directly in backup_json, or leave it empty to restore the most recent backup file saved on this device. The backup is validated BEFORE anything is written — a corrupt file fails safely without touching her data. After restore, API keys must be re-entered (they are never in backups). This overwrites current data; confirm with her first unless she explicitly asked.",
+        "Restore app data from a backup. Use when she says '恢复备份' / '把数据恢复回来'. Either pass the backup JSON text directly in backup_json, or leave it empty to restore the most recent backup file saved on this device. The backup is validated BEFORE anything is written — a corrupt file fails safely without touching her data. After restore, API keys must be re-entered (they are never in backups). mode: 'overwrite' (default) replaces everything — confirm with her first unless she explicitly asked; 'merge' only adds what's missing and keeps current data.",
       parameters: {
         type: "object",
         properties: {
@@ -144,6 +146,12 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
             type: "string",
             description:
               "Full text of a dudu-backup JSON file. Optional — when omitted, the most recent saved backup file is used.",
+          },
+          mode: {
+            type: "string",
+            enum: ["overwrite", "merge"],
+            description:
+              "Restore mode. 'overwrite' replaces all current data (confirm with her first). 'merge' only adds missing items and keeps her current data.",
           },
         },
         additionalProperties: false,
@@ -178,7 +186,9 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
           );
         }
         const knowledge = await deps.getKnowledgeStore().catch(() => null);
-        await applyBackup(parsed.backup, deps.kv, deps.secure, knowledge);
+        const rawMode = args.mode;
+        const mode: RestoreMode = rawMode === "merge" ? "merge" : "overwrite";
+        await applyBackup(parsed.backup, deps.kv, deps.secure, knowledge, { mode });
         const themeApplied = await deps.onRestored();
         // P2-5: restore her voice recordings and re-point message URIs at
         // this device's stable directory, so old voice bubbles keep playing.
@@ -193,7 +203,7 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
         const b = parsed.backup;
         const se = b.secretsExcluded;
         const out = [
-          `Restore complete from ${source} (exported at ${b.exportedAt}).`,
+          `Restore complete from ${source} (exported at ${b.exportedAt}, mode: ${mode}).`,
           `Restored: ${b.chat.threads.length} chat threads, ${b.apiGroups.length} API groups (without keys), knowledge ${b.knowledge ? `${b.knowledge.docs.length} docs` : "skipped"}.`,
           voiceRestored > 0
             ? `Voice message recordings restored: ${voiceRestored}.`
@@ -230,6 +240,57 @@ export function createBackupTools(deps: BackupToolDeps): LocalTool[] {
             `Saved backup files (${files.length}):`,
             ...files.slice(0, 5).map((f) => `- ${f.name}`),
           );
+        }
+        return lines.join("\n");
+      },
+    },
+    {
+      name: "exchange_import",
+      description:
+        "Import chat history from ANOTHER app's export file (Cherry Studio, ChatBox, SillyTavern, or a dudu-exchange v1 file). Use when she says '把我在别家的聊天记录搬进来' / '迁入旧数据'. Pass the export file's full text in exchange_json. The source is auto-detected; imported chats arrive as NEW threads — her current data is never touched or overwritten, and importing the same file twice skips what's already imported.",
+      parameters: {
+        type: "object",
+        properties: {
+          exchange_json: {
+            type: "string",
+            description: "Full text of the other app's export file (JSON or JSONL). Required.",
+          },
+        },
+        required: ["exchange_json"],
+        additionalProperties: false,
+      },
+      manualId: "exchange",
+      run: async (args) => {
+        const text = strArg(args, "exchange_json").trim();
+        if (!text) {
+          throw new ToolError(
+            "No exchange_json provided. Ask her for the other app's export file.",
+          );
+        }
+        const outcome = await importExchange(text, deps.kv);
+        if (!outcome.ok) {
+          const hints: Record<string, string> = {
+            empty: "The file is empty.",
+            "not-json": "Not a valid file.",
+            "bad-kind": "Not a dudu-exchange file.",
+            "unsupported-version":
+              "Exchange file is from a newer format version — update the app first.",
+            "invalid-shape": "Exchange file is corrupt.",
+            "unknown-source":
+              "Couldn't recognize which app this export came from. Supported: Cherry Studio, ChatBox, SillyTavern, dudu-exchange v1.",
+            "import-invalid-json": "The export file is corrupt.",
+            "import-no-conversations": "No importable chats found in this file.",
+          };
+          throw new ToolError(
+            `Import failed: ${hints[outcome.code] ?? outcome.code}${outcome.detail ? ` ${outcome.detail}` : ""} Nothing was changed.`,
+          );
+        }
+        const { result, adapter } = outcome;
+        const lines = [
+          `Imported from ${adapter.appName}: ${result.conversations} chats, ${result.messages} messages — added as new threads, current data untouched.`,
+        ];
+        if (result.skipped > 0) {
+          lines.push(`${result.skipped} already imported, skipped.`);
         }
         return lines.join("\n");
       },

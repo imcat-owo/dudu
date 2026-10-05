@@ -2320,6 +2320,13 @@ export const enStrings: Record<StringKey, string> = {
   "import.skipped": "({skipped} already imported, skipped)",
   "import.failed": "Bad file — try another backup",
   "import.noConversations": "No importable chats in this file",
+  "import.auto": "Auto-detect",
+  "import.app.cherry": "Cherry Studio",
+  "import.app.chatbox": "ChatBox",
+  "import.app.sillytavern": "SillyTavern",
+  "import.doneFrom": "Moved {conversations} chats, {messages} messages from {app}",
+  "import.unknownSource":
+    "Couldn't tell which app this file came from — try the per-app button",
 
   // ---- storage ----
   "storage.title": "Storage",
