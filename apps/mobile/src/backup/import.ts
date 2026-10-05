@@ -28,6 +28,8 @@ export interface ImportedConversation {
   messages: ImportedMessage[];
 }
 
+import { defaultThreadMeta } from "../chat/thread-versions.js";
+
 /** Result of an import. */
 export interface ImportResult {
   conversations: number;
@@ -199,15 +201,24 @@ export async function importConversations(
       continue;
     }
     const threadId = `import_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    // Dudu thread format: array of { role, content, createdAt }.
+    // Dudu thread format: the v2 envelope { v: 2, messages, meta } — the same
+    // shape saveThreadData writes. Every reader requires it:
+    // - chat screen / local-agent load via loadThreadData (needs v === 2)
+    // - dialog list, cross-dialog AI tools, search read .messages and need
+    //   id: string on every message (isVersionedMessage / isMessage).
+    // Without the envelope and ids, imported threads read back EMPTY.
+    const now = Date.now();
     const payload = {
+      v: 2,
       importedFrom: conv.sourceId,
       importedName: conv.name,
-      messages: conv.messages.map((m) => ({
+      messages: conv.messages.map((m, i) => ({
+        id: `import_${threadId}_${i}`,
         role: m.role,
         content: m.content,
         createdAt: m.createdAt,
       })),
+      meta: defaultThreadMeta(now),
     };
     await kv.setItem(`${chatPrefix}${threadId}${chatSuffix}`, JSON.stringify(payload));
     imported++;

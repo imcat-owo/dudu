@@ -20,6 +20,7 @@ import { detectAdapter, type ExchangeAdapter, getAdapter } from "./adapters.js";
 import {
   buildExchange,
   type DuduExchange,
+  type ExchangeConversation,
   type ExchangeParseError,
   parseExchange,
 } from "./types.js";

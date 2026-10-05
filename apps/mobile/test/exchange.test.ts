@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { KeyValueStore } from "../src/backup.js";
 import { type BackupToolDeps, createBackupTools } from "../src/backup-tools.js";
+import { loadThreadData } from "../src/chat/thread-versions.js";
 import { detectAdapter, EXCHANGE_ADAPTERS, getAdapter } from "../src/exchange/adapters.js";
 import { importExchange } from "../src/exchange/import.js";
 import {
@@ -187,6 +188,27 @@ describe("importExchange", () => {
       const keys = await kv.getAllKeys();
       assert.equal(keys.filter((k) => k.startsWith("dudu.local-chat.")).length, 1);
     }
+  });
+  it("imported thread is readable by the app's own thread reader (regression: no empty dialogs)", async () => {
+    const kv = fakeKV();
+    const out = await importExchange(CHERRY_JSON, kv);
+    assert.equal(out.ok, true);
+    const keys = await kv.getAllKeys();
+    const key = keys.find((k) => k.startsWith("dudu.local-chat.import_"));
+    assert.ok(key, "import wrote a thread key");
+    const threadId = key.slice("dudu.local-chat.".length, -".v1".length);
+    // The app's real reader (what the chat screen / local-agent uses).
+    const td = await loadThreadData(threadId, kv);
+    assert.equal(td.messages.length, 2, "imported messages must survive the real reader");
+    for (const m of td.messages) {
+      assert.equal(
+        typeof m.id,
+        "string",
+        "every message needs an id (readers filter id-less ones out)",
+      );
+    }
+    const contents = td.messages.map((m) => (m as { content?: unknown }).content);
+    assert.deepEqual(contents, ["hello", "hi there"]);
   });
   it("importing the same file twice skips everything the second time", async () => {
     const kv = fakeKV();
