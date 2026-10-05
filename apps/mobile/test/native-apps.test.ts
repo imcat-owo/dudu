@@ -16,10 +16,11 @@ import {
   checkUnwired,
   formatBatteryState,
   getDeviceInfo,
+  groupSleepSamples,
   NATIVE_APP_ORDER,
   NATIVE_APPS,
 } from "../src/native-apps.js";
-import { createNativeAppTools } from "../src/native-apps-tools.js";
+import { createNativeAppTools, formatSleepSession } from "../src/native-apps-tools.js";
 
 describe("native-apps definitions", () => {
   it("has 10 capabilities in a stable order", () => {
@@ -79,13 +80,14 @@ describe("native-apps checkers (node: no native modules)", () => {
 });
 
 describe("native-apps tools", () => {
-  it("creates 7 tools with unique names", () => {
+  it("creates 8 tools with unique names", () => {
     const tools = createNativeAppTools({});
-    assert.equal(tools.length, 7);
+    assert.equal(tools.length, 8);
     const names = tools.map((t) => t.name);
-    assert.equal(new Set(names).size, 7);
+    assert.equal(new Set(names).size, 8);
     assert.ok(names.every((n) => n.startsWith("napp_")));
     assert.ok(names.includes("napp_battery_status"));
+    assert.ok(names.includes("napp_health_sleep"));
   });
 
   it("all tools point at the native-apps manual", () => {
@@ -192,5 +194,171 @@ describe("native-apps manual", () => {
       assert.ok(tool.manualId, `tool ${tool.name} missing manualId`);
       assert.ok(getManual(tool.manualId), `manual ${tool.manualId} not found for ${tool.name}`);
     }
+  });
+});
+
+describe("groupSleepSamples", () => {
+  // One night, Asia/Shanghai: bed 23:12 → wake 07:30.
+  const NIGHT = [
+    {
+      startDate: "2026-10-04T23:12:00+08:00",
+      endDate: "2026-10-05T07:30:00+08:00",
+      value: "INBED",
+    },
+    { startDate: "2026-10-04T23:20:00+08:00", endDate: "2026-10-05T01:00:00+08:00", value: "CORE" },
+    { startDate: "2026-10-05T01:00:00+08:00", endDate: "2026-10-05T02:20:00+08:00", value: "DEEP" },
+    { startDate: "2026-10-05T02:20:00+08:00", endDate: "2026-10-05T03:00:00+08:00", value: "REM" },
+    {
+      startDate: "2026-10-05T03:00:00+08:00",
+      endDate: "2026-10-05T03:24:00+08:00",
+      value: "AWAKE",
+    },
+    { startDate: "2026-10-05T03:24:00+08:00", endDate: "2026-10-05T05:00:00+08:00", value: "CORE" },
+    { startDate: "2026-10-05T05:00:00+08:00", endDate: "2026-10-05T06:00:00+08:00", value: "REM" },
+    { startDate: "2026-10-05T06:00:00+08:00", endDate: "2026-10-05T07:20:00+08:00", value: "CORE" },
+    {
+      startDate: "2026-10-05T07:20:00+08:00",
+      endDate: "2026-10-05T07:30:00+08:00",
+      value: "AWAKE",
+    },
+  ];
+
+  it("groups one night and computes stages honestly", () => {
+    const [s] = groupSleepSamples(NIGHT);
+    assert.ok(s, "expected one session");
+    assert.equal(s.inBedMinutes, 498);
+    assert.equal(s.asleepMinutes, 456);
+    assert.equal(s.deepMinutes, 80);
+    assert.equal(s.coreMinutes, 276);
+    assert.equal(s.remMinutes, 100);
+    assert.equal(s.awakeMinutes, 34);
+    assert.equal(s.efficiency, 0.92);
+  });
+
+  it("does not double-count overlapping samples", () => {
+    const [s] = groupSleepSamples([
+      {
+        startDate: "2026-10-04T23:00:00+08:00",
+        endDate: "2026-10-05T07:00:00+08:00",
+        value: "INBED",
+      },
+      // Same INBED span reported twice (two sources) — must count once.
+      {
+        startDate: "2026-10-04T23:00:00+08:00",
+        endDate: "2026-10-05T07:00:00+08:00",
+        value: "INBED",
+      },
+      {
+        startDate: "2026-10-04T23:30:00+08:00",
+        endDate: "2026-10-05T06:30:00+08:00",
+        value: "ASLEEP",
+      },
+    ]);
+    assert.equal(s.inBedMinutes, 480);
+    assert.equal(s.asleepMinutes, 420);
+  });
+
+  it("splits nights separated by a long gap", () => {
+    const two = [
+      ...NIGHT,
+      {
+        startDate: "2026-10-03T23:00:00+08:00",
+        endDate: "2026-10-04T06:00:00+08:00",
+        value: "INBED",
+      },
+      {
+        startDate: "2026-10-03T23:30:00+08:00",
+        endDate: "2026-10-04T05:30:00+08:00",
+        value: "ASLEEP",
+      },
+    ];
+    const sessions = groupSleepSamples(two);
+    assert.equal(sessions.length, 2);
+    assert.equal(sessions[0].asleepMinutes, 360);
+    assert.equal(sessions[1].asleepMinutes, 456);
+  });
+
+  it("returns [] for empty input and null efficiency without INBED", () => {
+    assert.deepEqual(groupSleepSamples([]), []);
+    const [s] = groupSleepSamples([
+      {
+        startDate: "2026-10-04T23:30:00+08:00",
+        endDate: "2026-10-05T06:30:00+08:00",
+        value: "ASLEEP",
+      },
+    ]);
+    assert.equal(s.efficiency, null);
+  });
+});
+
+describe("napp_health_sleep", () => {
+  const SESSION = groupSleepSamples([
+    {
+      startDate: "2026-10-04T23:12:00+08:00",
+      endDate: "2026-10-05T07:30:00+08:00",
+      value: "INBED",
+    },
+    { startDate: "2026-10-04T23:20:00+08:00", endDate: "2026-10-05T01:00:00+08:00", value: "CORE" },
+    { startDate: "2026-10-05T01:00:00+08:00", endDate: "2026-10-05T02:20:00+08:00", value: "DEEP" },
+    { startDate: "2026-10-05T02:20:00+08:00", endDate: "2026-10-05T03:00:00+08:00", value: "REM" },
+    { startDate: "2026-10-05T03:24:00+08:00", endDate: "2026-10-05T05:00:00+08:00", value: "CORE" },
+    { startDate: "2026-10-05T05:00:00+08:00", endDate: "2026-10-05T06:00:00+08:00", value: "REM" },
+    { startDate: "2026-10-05T06:00:00+08:00", endDate: "2026-10-05T07:20:00+08:00", value: "CORE" },
+  ])[0];
+
+  function sleepTool(hooks: Parameters<typeof createNativeAppTools>[0]) {
+    const tools = createNativeAppTools(hooks);
+    const tool = tools.find((t) => t.name === "napp_health_sleep");
+    assert.ok(tool, "napp_health_sleep tool not found");
+    return tool;
+  }
+
+  it("fails honestly when not authorized", async () => {
+    const tool = sleepTool({ getAuthState: async () => "undetermined" });
+    await assert.rejects(() => tool.run({}, {} as never), /未授权/);
+  });
+
+  it("says so honestly when there is no sleep data", async () => {
+    const tool = sleepTool({
+      getAuthState: async () => "granted",
+      getSleepSessions: async () => [],
+    });
+    const result = await tool.run({}, {} as never);
+    assert.ok(result.includes("没有睡眠记录"), `unexpected: ${result}`);
+  });
+
+  it("fails honestly when the hook is missing", async () => {
+    const tool = sleepTool({ getAuthState: async () => "granted" });
+    await assert.rejects(() => tool.run({}, {} as never), /读不到/);
+  });
+
+  it("reports the most recent night with stages and efficiency", async () => {
+    const tool = sleepTool({
+      getAuthState: async () => "granted",
+      getSleepSessions: async () => [SESSION],
+    });
+    const result = await tool.run({}, {} as never);
+    assert.ok(result.includes("23:12"), `unexpected: ${result}`);
+    assert.ok(result.includes("07:30"), `unexpected: ${result}`);
+    assert.ok(result.includes("深睡1小时20分"), `unexpected: ${result}`);
+    assert.ok(result.includes("浅睡"), `unexpected: ${result}`);
+    assert.ok(result.includes("REM"), `unexpected: ${result}`);
+    assert.ok(result.includes("睡眠效率"), `unexpected: ${result}`);
+  });
+
+  it("formatSleepSession is honest when the device gives no stages", () => {
+    const text = formatSleepSession({
+      bedTime: "2026-10-04T15:00:00.000Z",
+      wakeTime: "2026-10-04T23:00:00.000Z",
+      inBedMinutes: 480,
+      asleepMinutes: 420,
+      deepMinutes: 0,
+      coreMinutes: 0,
+      remMinutes: 0,
+      awakeMinutes: 0,
+      efficiency: 0.88,
+    });
+    assert.ok(text.includes("没给深睡/浅睡分期"), `unexpected: ${text}`);
+    assert.ok(text.includes("88%"), `unexpected: ${text}`);
   });
 });

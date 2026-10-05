@@ -338,6 +338,148 @@ export async function readTodaySteps(): Promise<number> {
   return Math.round(res.value);
 }
 
+/* ---------------- HealthKit sleep ---------------- */
+
+export interface SleepSample {
+  startDate: string;
+  endDate: string;
+  /** INBED | ASLEEP | CORE | DEEP | REM | AWAKE | UNKNOWN (react-native-health strings) */
+  value: string;
+}
+
+export interface SleepSession {
+  /** ISO start of the in-bed span */
+  bedTime: string;
+  /** ISO end of the in-bed span */
+  wakeTime: string;
+  inBedMinutes: number;
+  asleepMinutes: number;
+  deepMinutes: number;
+  coreMinutes: number;
+  remMinutes: number;
+  awakeMinutes: number;
+  /** asleep / inBed, null when there is no in-bed span to divide by */
+  efficiency: number | null;
+}
+
+const ASLEEP_VALUES = new Set(["ASLEEP", "CORE", "DEEP", "REM"]);
+
+/** Merge overlapping [start, end] spans (ms) into a union; returns total minutes. */
+function unionMinutes(spans: Array<[number, number]>): number {
+  const valid = spans
+    .filter(([s, e]) => Number.isFinite(s) && Number.isFinite(e) && e > s)
+    .sort((a, b) => a[0] - b[0]);
+  let total = 0;
+  let curS = -1;
+  let curE = -1;
+  for (const [s, e] of valid) {
+    if (curS < 0) {
+      curS = s;
+      curE = e;
+    } else if (s <= curE) {
+      curE = Math.max(curE, e);
+    } else {
+      total += curE - curS;
+      curS = s;
+      curE = e;
+    }
+  }
+  if (curS >= 0) total += curE - curS;
+  return Math.round(total / 60000);
+}
+
+/**
+ * Group raw HealthKit sleep samples into per-night sessions. PURE — no native calls.
+ * A new session starts when the gap between consecutive samples exceeds 4 hours.
+ * Minutes are computed as interval unions so overlapping samples are never double-counted.
+ */
+export function groupSleepSamples(samples: SleepSample[]): SleepSession[] {
+  const parsed = samples
+    .map((s) => ({
+      s: Date.parse(s.startDate),
+      e: Date.parse(s.endDate),
+      value: (s.value ?? "").toUpperCase(),
+    }))
+    .filter((p) => Number.isFinite(p.s) && Number.isFinite(p.e) && p.e > p.s)
+    .sort((a, b) => a.s - b.s);
+  const FOUR_HOURS = 4 * 3600 * 1000;
+  const groups: Array<typeof parsed> = [];
+  for (const p of parsed) {
+    const last = groups[groups.length - 1];
+    const prevEnd = last ? Math.max(...last.map((x) => x.e)) : -1;
+    if (!last || p.s - prevEnd > FOUR_HOURS) groups.push([p]);
+    else last.push(p);
+  }
+  return groups.map((g) => {
+    const inBed = unionMinutes(
+      g.filter((x) => x.value === "INBED").map((x): [number, number] => [x.s, x.e]),
+    );
+    const asleepSpans = g
+      .filter((x) => ASLEEP_VALUES.has(x.value))
+      .map((x): [number, number] => [x.s, x.e]);
+    const asleepMinutes = unionMinutes(asleepSpans);
+    const deepMinutes = unionMinutes(
+      g.filter((x) => x.value === "DEEP").map((x): [number, number] => [x.s, x.e]),
+    );
+    const coreMinutes = unionMinutes(
+      g.filter((x) => x.value === "CORE").map((x): [number, number] => [x.s, x.e]),
+    );
+    const remMinutes = unionMinutes(
+      g.filter((x) => x.value === "REM").map((x): [number, number] => [x.s, x.e]),
+    );
+    const awakeMinutes = unionMinutes(
+      g.filter((x) => x.value === "AWAKE").map((x): [number, number] => [x.s, x.e]),
+    );
+    const bedTime = new Date(Math.min(...g.map((x) => x.s))).toISOString();
+    const wakeTime = new Date(Math.max(...g.map((x) => x.e))).toISOString();
+    return {
+      bedTime,
+      wakeTime,
+      inBedMinutes: inBed,
+      asleepMinutes,
+      deepMinutes,
+      coreMinutes,
+      remMinutes,
+      awakeMinutes,
+      efficiency: inBed > 0 ? Math.round((asleepMinutes / inBed) * 100) / 100 : null,
+    };
+  });
+}
+
+/**
+ * Read recent sleep sessions from HealthKit. Throws if not authorized.
+ * Queries the last 36 hours so "last night" is covered whatever the hour.
+ */
+export async function readSleepSessions(): Promise<SleepSession[]> {
+  const Health = tryRequire(() => require("react-native-health")) as {
+    getSleepSamples?: (
+      opts: { startDate: string; endDate: string; ascending: boolean },
+      cb: (
+        err: unknown,
+        res: Array<{ startDate: string; endDate: string; value: unknown }>,
+      ) => void,
+    ) => void;
+  } | null;
+  if (!Health?.getSleepSamples) throw new Error(t("napp.healthkit.unavailable"));
+  const getSleepSamples = Health.getSleepSamples;
+  const end = new Date();
+  const start = new Date(end.getTime() - 36 * 3600 * 1000);
+  const res = await new Promise<Array<{ startDate: string; endDate: string; value: unknown }>>(
+    (resolve, reject) =>
+      getSleepSamples(
+        { startDate: start.toISOString(), endDate: end.toISOString(), ascending: true },
+        (err, r) => (err ? reject(err) : resolve(r ?? [])),
+      ),
+  );
+  return groupSleepSamples(
+    res.map((r) => ({
+      startDate: r.startDate,
+      endDate: r.endDate,
+      value: typeof r.value === "string" ? r.value : "UNKNOWN",
+    })),
+  );
+}
+
 /* ---------------- Device info (expo-battery + expo-device) ---------------- */
 
 /**

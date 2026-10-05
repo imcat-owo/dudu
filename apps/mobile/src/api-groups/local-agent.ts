@@ -1432,6 +1432,10 @@ export function createLocalAgent(opts: {
             const { readTodaySteps } = await import("../native-apps");
             return readTodaySteps();
           },
+          getSleepSessions: async () => {
+            const { readSleepSessions } = await import("../native-apps");
+            return readSleepSessions();
+          },
           getBatteryStatus: async () => {
             const { getDeviceInfo } = await import("../native-apps");
             return getDeviceInfo();

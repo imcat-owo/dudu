@@ -15,7 +15,7 @@ WIRED (real authorization flows, real tools):
 - calendar (napp_calendar_today / napp_calendar_add): expo-calendar.
 - reminders (napp_reminders_list / napp_reminder_add): expo-calendar.
 - contacts (napp_contacts_search): expo-contacts.
-- healthkit (napp_health_steps): react-native-health (needs dev build).
+- healthkit (napp_health_steps / napp_health_sleep): react-native-health (needs dev build).
 - device-info (napp_battery_status): expo-battery + expo-device. Permission-free,
   no auth needed — always works on a real device.
 

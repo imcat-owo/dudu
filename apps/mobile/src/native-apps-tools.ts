@@ -5,7 +5,7 @@
  * - calendar: read today's events, create events
  * - reminders: list reminders, create reminders
  * - contacts: search contacts by name
- * - healthkit: read today's step count
+ * - healthkit: read today's step count, read recent sleep sessions
  * - device-info: battery level / charging state / device model (permission-free)
  *
  * Every tool checks the iOS authorization state FIRST via the hooks —
@@ -18,7 +18,7 @@
  */
 
 import type { LocalTool } from "./api-groups/local-tools";
-import type { DeviceInfo } from "./native-apps";
+import type { DeviceInfo, SleepSession } from "./native-apps";
 
 export interface NativeAppToolHooks {
   /** iOS auth state for a capability: granted / denied / undetermined / unavailable / needs-setup */
@@ -48,6 +48,8 @@ export interface NativeAppToolHooks {
   ) => Promise<Array<{ name: string; phone: string | null; id: string }>>;
   /** Today's step count (RN layer implements via react-native-health) */
   getTodaySteps?: () => Promise<number>;
+  /** Recent sleep sessions (RN layer implements via react-native-health) */
+  getSleepSessions?: () => Promise<SleepSession[]>;
   /** Battery + device info (RN layer implements via expo-battery/expo-device). No auth needed. */
   getBatteryStatus?: () => Promise<DeviceInfo>;
 }
@@ -68,6 +70,44 @@ async function requireAuth(
       `${humanName} 未授权（当前状态：${state}）。请让她去「设置 → 原生应用授权」里打开，我不能编数据。`,
     );
   }
+}
+
+const SH_TIME = new Intl.DateTimeFormat("zh-CN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Shanghai",
+});
+
+function fmtDur(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}小时${m}分` : `${m}分`;
+}
+
+/** Human-readable summary of one sleep session. PURE — no native calls. Exported for tests. */
+export function formatSleepSession(s: SleepSession): string {
+  const bed = SH_TIME.format(new Date(s.bedTime));
+  const wake = SH_TIME.format(new Date(s.wakeTime));
+  const parts = [`上床 ${bed}，起床 ${wake}`];
+  const totals: string[] = [];
+  if (s.inBedMinutes > 0) totals.push(`在床上${fmtDur(s.inBedMinutes)}`);
+  totals.push(`睡着${fmtDur(s.asleepMinutes)}`);
+  parts.push(totals.join("，"));
+  const stages: string[] = [];
+  if (s.deepMinutes > 0) stages.push(`深睡${fmtDur(s.deepMinutes)}`);
+  if (s.coreMinutes > 0) stages.push(`浅睡${fmtDur(s.coreMinutes)}`);
+  if (s.remMinutes > 0) stages.push(`REM${fmtDur(s.remMinutes)}`);
+  if (s.awakeMinutes > 0) stages.push(`清醒${fmtDur(s.awakeMinutes)}`);
+  if (stages.length > 0) {
+    parts.push(`分期：${stages.join("、")}`);
+  } else if (s.asleepMinutes > 0) {
+    parts.push("这台设备没给深睡/浅睡分期，只有总时长");
+  }
+  if (s.efficiency != null) {
+    parts.push(`睡眠效率${Math.round(s.efficiency * 100)}%`);
+  }
+  return `昨晚睡眠：${parts.join("；")}。`;
 }
 
 /**
@@ -191,6 +231,22 @@ export function createNativeAppTools(hooks: NativeAppToolHooks = {}): LocalTool[
         const steps = await hooks.getTodaySteps?.();
         if (steps == null) throw new Error("步数现在读不到。");
         return `今天走了 ${steps} 步。`;
+      },
+    },
+    {
+      name: "napp_health_sleep",
+      description:
+        "Read her recent sleep from HealthKit (睡眠）. Returns the most recent night: bed time, wake time, time asleep, sleep stages (deep / core / REM) and sleep efficiency — all from real HealthKit samples. Requires the Health authorization — if not granted, say so instead of inventing data. You're her partner, not her doctor: report, don't diagnose.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "native-apps",
+      run: async () => {
+        await requireAuth(hooks, "healthkit", "健康");
+        const sessions = await hooks.getSleepSessions?.();
+        if (sessions == null) throw new Error("睡眠数据现在读不到。");
+        if (sessions.length === 0) {
+          return "最近36小时里 HealthKit 没有睡眠记录。可能是她没戴表睡，或者手表/手机没记上 — 我不能编一个。";
+        }
+        return formatSleepSession(sessions[sessions.length - 1]);
       },
     },
     {
