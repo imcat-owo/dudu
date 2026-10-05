@@ -264,6 +264,33 @@ describe("B12 share codec", () => {
     assert.equal(payload!.apiKey, "");
   });
 
+  it("D19: restores the key pool on import when shared with keys", () => {
+    const g = blankGroup("openai");
+    g.name = "主力";
+    g.apiKey = "sk-main";
+    g.apiKeys = [
+      { id: "k_1", name: "主号", key: "sk-aaa", priority: 1, enabled: true, consecutiveFailures: 0, totalRequests: 0, disabledUntil: null, lastError: null, createdAt: 1 },
+      { id: "k_2", name: "备号", key: "sk-bbb", priority: 5, enabled: true, consecutiveFailures: 0, totalRequests: 0, disabledUntil: null, lastError: null, createdAt: 2 },
+    ];
+    const payload = decodeShare(encodeShare(g, true));
+    assert.ok(payload, "payload must decode");
+    const restored = payloadToGroup(payload);
+    const keys = restored.apiKeys;
+    assert.ok(keys, "key pool must survive import");
+    assert.equal(keys.length, 2);
+    assert.deepEqual(
+      keys.map((k) => [k.name, k.key, k.priority]),
+      [
+        ["主号", "sk-aaa", 1],
+        ["备号", "sk-bbb", 5],
+      ],
+    );
+    assert.ok(
+      keys.every((k) => k.id && k.id !== "k_1" && k.id !== "k_2"),
+      "imported entries get fresh ids",
+    );
+  });
+
   it("rejects foreign or corrupt payloads", () => {
     assert.equal(decodeShare("ai-provider:v1:xxxx"), null);
     assert.equal(decodeShare("hello world"), null);

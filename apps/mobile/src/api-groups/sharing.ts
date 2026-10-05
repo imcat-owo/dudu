@@ -11,6 +11,7 @@
  * shape and never executes anything.
  */
 
+import { blankApiKey } from "./api-keys";
 import type { ApiGroup } from "./types";
 import { blankGroup, newApiGroupId } from "./types";
 
@@ -99,5 +100,12 @@ export function payloadToGroup(payload: SharedProviderPayload): ApiGroup {
   g.headers = payload.headers ?? {};
   g.bodyExtras = {};
   g.createdAt = Date.now();
+  if (payload.apiKeys?.length) {
+    g.apiKeys = payload.apiKeys.map((k) => ({
+      ...blankApiKey(k.name),
+      key: k.key,
+      priority: k.priority,
+    }));
+  }
   return g;
 }
