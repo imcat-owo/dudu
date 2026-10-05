@@ -149,6 +149,29 @@
 - E3 coding-agent 闭环（plan→执行→验证）做不做，还是明确"我们不做 coding agent"（product P1-4）。
 - E4 `delegate_task` 子代理给不给工具（ai P2-7）。给了才是真子代理，不给就是"半个"。**已拍板（2026-10-05 她亲口）："我想要他们也能动工具呀。不然怎么给主ai干活"——给。修法：allowedTools 透传进子代理（不是删参数）。**
 - D25 delegate 子代理给工具（E4 已拍板，缺小细节第 7 条的修法）：`allowedTools` 透传进子代理（local-agent 的 runSubtask、group-meeting 的 generateOneShot 都要接上），子代理能动工具才是真给主 AI 干活。授权边界（2026-10-05 她亲定）："我已授权的，皆可自己用，不用反复确认，因为我不想的我不会去授权。我的 API 是干净的所以我信任。"——授权是一次性的门，进了门的随便用、不反复弹窗；她不想的东西她压根不授权。
+
+**第二批："信息断层、功能没闭环"类（2026-10-05 两份审计，20 条里 19 条核实成立，1 条过期不入）——排在 D1–D25 修完之后、新功能之前（她定的顺序①→②→③）。**
+- D26 P0 自动快照开关摆设：`isDue()` 全仓零调用，打开后一次自动备份都不会发生——虚假安全感；App 启动/回前台调 `isDue()`，到期 `take(reason="schedule")`；或删自动开关改文案诚实。
+- D27 P1 自定义供应商分组纯装饰：`userGroup` 字段零读取，建分组打标签对任何行为零影响；让分组真有用（分组内轮询/按分组切换），或删卡只留标签。
+- D28 P2 能力探测失败无声：`onProbe` 的 catch 直接 `setCaps(null)` 无提示；catch 里给一句人话。
+- D29 P2 快照删除确认框无正文：`Alert.alert` 第二参数空字符串，写好的 `deleteConfirm` 多语言零引用；接上，带上快照时间。
+- D30 P3 相机被拒后按钮仍说"扫码"：iOS 拒绝后再次 `requestPermission()` 不会再弹系统框；按钮改"去设置开启相机权限"，`Linking` 跳系统设置。
+- D31 P3 5 个孤儿 i18n key（apigroup.testing、sandbox.terminal.run、import.pickFile、restore.confirm、backup.remote.testOk）：删掉，或把对应 UI 补上。
+- D32 P0 `dudu read` 偷读别的对话框不留痕：工具描述承诺 "Reads are traced"，CLI 的 `readDialog` 直接读消息、无任何 `trace.append`；CLI 也写 trace，或改描述诚实——隐私暗道，优先修。
+- D33 P1 删闹钟报假成功：id 不存在 `cancel` 静默 no-op，工具照样返回"删掉了"，到点闹钟照响；`cancel` 在 id 不存在时抛错，工具如实返回。
+- D34 P1 闹钟文案撒谎：没 AlarmKit 时只是 expo-notifications 一次性通知，工具永远回"闹钟定好了，到点叫你"；区分"真闹钟"/"通知提醒"两种文案。
+- D35 P1 "自动朗读 AI 回复"开关名存实亡：云模式/无痕下开着永远不触发、无提示；TTS 合成失败 `catch { return false }` 静默；云模式/无痕下开关灰显或提示，合成失败记一条可见错误。
+- D36 P1 web_search 静默降级：坏 key 静默跳过、模型不知道用的哪个后端；DDG 反爬 0 结果直接返回 "No results found."，模型自信说"搜了没找到"；provider 失败如实告诉模型，DDG 反爬抛错而非"没找到"。
+- D37 P1 web_search 报错指不存在的路：报错让模型转告她去"环境变量里设 key"，但那个设置页根本不存在；报错别指不存在的页，等 D15 环境变量页上线后改指 D15。
+- D38 P1 扫码导入悄悄"阉割" headers/bodyExtras：没勾"连 key 分享"时 headers 置 `{}`，`payloadToGroup` 永远 `bodyExtras={}`；保留 bodyExtras（或明确告知），headers 被清空给一句提示。
+- D39 P1 Android/Web"编辑后重发"死按钮：`Alert.prompt` iOS 专用、无 Platform 判断；换跨平台输入弹窗，或 Web/Android 下隐藏该选项。
+- D40 P2 云模式长按消息静默无反应：`openMessageMenu` 首行非 local 直接 return；给一句提示，或云模式支持基础菜单（复制）。
+- D41 P2 长粘贴转文件无提示：长粘贴转 .txt 附件、清空输入框直接 return，消息没进队列；转文件时给一句明确提示。
+- D42 P2 云模式"添加文档"弹窗无导入入口：无文件时只有灰字提示+"完成"按钮；弹窗里直接给导入入口，或文案说清路径。
+- D43 P2 MCP 服务器出问题工具静默消失：`p.listTools()` 异常被 `catch {}` 全吞，准备好的诚实 OAuth 报错到不了模型；别吞异常。
+- D44 P2 扫码导入先报喜后保存：成功绿勾在前，`upsert` fire-and-forget 在后；等 upsert 完成再显示成功。
+- （第二批第 14 条"语音缓存自动清理"已过期——`local-app.tsx` 启动 hook（P2-24）已实现 30 天清理，不入计划。）
+- 审美向（她 2026-10-05）：提问小卡片这类卡片 UI 整体不够漂亮——排在修 bug 后面、新功能里一起考虑。
 - E5 headers 三级粒度（provider/model/assistant）追 Kelivo（product P2-3）——小，可进 D。
 - E6 浏览器 hardening 对标 browser-use（product P2-4）——长期项，不进本轮。
 
