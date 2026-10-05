@@ -70,7 +70,8 @@ jobs:
           # for expo modules under pnpm, so the EXConstants "Generate app.config"
           # script phase points at a non-existent path and the build fails.
           # Patch the generated Pods project to use the absolute script path.
-          EC_DIR=$(node -e "console.log(require('path').dirname(require.resolve('expo-constants/package.json')))")
+          ROOT=$(cd ../.. && pwd)
+          EC_DIR=$(find "$ROOT/node_modules/.pnpm" -maxdepth 2 -type d -name "expo-constants@*" | head -1)/node_modules/expo-constants
           EC_SCRIPT="$EC_DIR/scripts/get-app-config-ios.sh"
           if [ ! -f "$EC_SCRIPT" ]; then
             echo "expo-constants script not found at $EC_SCRIPT"
