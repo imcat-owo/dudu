@@ -181,6 +181,23 @@ const EXTENSION_KEYS = [
   "dudu.backup.webdav.user.v1",
   "dudu.backup.webdav.path.v1",
   "dudu.backup.s3.cfg.v1",
+  // B7 (final audit P1-1/P2-1/P3-1 + A3 anniversary): keys that were
+  // silently missed by backup. All plain AsyncStorage, no secrets —
+  // her scheduled tasks, provider groups, model slots, quick phrases,
+  // pricing/usage ledger, app-lock prefs, extras prefs, translation
+  // history, avatar anniversary day.
+  "dudu.scheduled-tasks.v1",
+  "dudu.api-groups.user-groups.v1",
+  "dudu.model-slots.v1",
+  "dudu.quick-phrases.v1",
+  "dudu.pricing.v1",
+  "dudu.usage.v1",
+  "dudu.app-lock.enabled.v1",
+  "dudu.app-lock.biometric-type.v1",
+  "dudu.app-lock.idle-seconds.v1",
+  "dudu.extras.prefs.v1",
+  "dudu.extras.translations.v1",
+  "dudu.avatar.anniversary-day.v1",
 ] as const;
 
 // TTS/STT configs live in SecureStore in production (voice/store.ts) —
@@ -816,13 +833,46 @@ export async function applyBackup(
  * internal bookkeeping are deliberately excluded and never reported.
  * Wire any real gap into EXTENSION_KEYS or one of the dedicated sections.
  */
+/**
+ * Keys that are deliberately NOT backed up — documented here honestly,
+ * never silently missing. Secrets stay in SecureStore / the secure
+ * backend and are never written into a backup file; bookkeeping and
+ * native transient state are outside the backup's domain.
+ */
 const KNOWN_UNBACKED_KEYS: ReadonlySet<string> = new Set([
   "dudu.session.token", // secret (SecureStore)
   "dudu.music.v1.apple-music.user-token", // secret (SecureStore)
   "dudu.sandbox.sshConfig.v1", // secrets: can hold a private key or password (SecureStore)
+  "dudu.sandbox.servers.v1", // secrets: per-server private keys/passwords (SecureStore, B4b)
+  "dudu.oauth.v1", // secret: OAuth tokens (api-groups/oauth.ts, secure backend)
+  "dudu.backup.s3.secret.v1", // secret (SecureStore)
+  "dudu.backup.webdav.pass.v1", // secret (SecureStore)
+  "dudu.diagnostics.v1", // bookkeeping: diagnostics log, not her data
   "dudu.backup.lastAt.v1", // bookkeeping, not her data
   "dudu.kb.v2.migrated", // internal migration flag
+  // App Group shared defaults (native UserDefaults, not AsyncStorage) —
+  // outside the backup's domain:
+  "dudu.pendingShare.v1", // transient: share-extension handoff, consumed on launch
+  "dudu.widgetData.v1", // derived: regenerated from app state for the widget
+  "dudu.liveActivity.v1", // transient: live activity state, ephemeral
 ]);
+
+/**
+ * Key prefixes that are deliberately NOT backed up — every key under
+ * them holds secrets in the secure backend. Same honesty rule as
+ * KNOWN_UNBACKED_KEYS: excluded on purpose, documented, never silent.
+ */
+const KNOWN_UNBACKED_PREFIXES: readonly string[] = [
+  "dudu.mcp-tokens.", // per-server OAuth tokens (mcp/store.ts)
+  "dudu.mcp-creds.", // per-server credentials (mcp/store.ts)
+  "dudu.env-value.", // secret env var values (mcp/env.ts)
+];
+
+/** True when a key is honestly excluded from backup (see above). */
+export function isKeyExcluded(key: string): boolean {
+  if (KNOWN_UNBACKED_KEYS.has(key)) return true;
+  return KNOWN_UNBACKED_PREFIXES.some((p) => key.startsWith(p));
+}
 
 function isKeyCovered(key: string): boolean {
   if (key.startsWith(CHAT_PREFIX) && key.endsWith(CHAT_SUFFIX)) return true;
@@ -845,7 +895,7 @@ export function findUnbackedKeys(allKeys: readonly string[]): string[] {
   const gaps: string[] = [];
   for (const key of allKeys) {
     if (!key.startsWith("dudu.")) continue;
-    if (KNOWN_UNBACKED_KEYS.has(key)) continue;
+    if (isKeyExcluded(key)) continue;
     if (isKeyCovered(key)) continue;
     gaps.push(key);
   }

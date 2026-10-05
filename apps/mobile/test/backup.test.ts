@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   applyBackup,
@@ -11,6 +13,38 @@ import {
   type SecureKV,
   serializeBackup,
 } from "../src/backup.js";
+
+/** apps/mobile/src — the real key set lives here, not in a hand-written list. */
+const SRC_DIR = join(new URL(".", import.meta.url).pathname, "..", "src");
+
+/**
+ * Extract every `dudu.*` string literal referenced in src/. This is the
+ * REAL key set: storage key constants are written as plain literals
+ * (e.g. `const STORE_KEY = "dudu.scheduled-tasks.v1"`), so a new feature
+ * that adds a key without wiring it into backup.ts fails the scan below.
+ */
+function collectSrcKeyLiterals(): string[] {
+  const out = new Set<string>();
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) {
+        walk(p);
+        continue;
+      }
+      if (!p.endsWith(".ts") && !p.endsWith(".tsx")) continue;
+      const text = readFileSync(p, "utf8");
+      const re = /["'](dudu\.[A-Za-z0-9._$~-]+)["']/g;
+      for (;;) {
+        const m: RegExpExecArray | null = re.exec(text);
+        if (m === null) break;
+        out.add(m[1]);
+      }
+    }
+  };
+  walk(SRC_DIR);
+  return [...out].sort();
+}
 
 function fakeKV(seed: Record<string, string> = {}): KeyValueStore {
   const map = new Map(Object.entries(seed));
@@ -169,7 +203,7 @@ describe("collectBackup", () => {
       const arr = Array.isArray(payload)
         ? payload
         : typeof payload === "object" && payload !== null
-          ? ((payload as { messages?: unknown }).messages as unknown[] | undefined) ?? []
+          ? (((payload as { messages?: unknown }).messages as unknown[] | undefined) ?? [])
           : [];
       for (const m of arr as Array<Record<string, unknown>>) {
         assert.ok(!("incognito" in m));
@@ -476,9 +510,7 @@ describe("applyBackup", () => {
     });
     const b = await collectBackup(kv, fakeSecure(SECURE_SEED));
     assert.ok(b.extensions, "extensions section must exist");
-    const musicKeys = Object.keys(b.extensions).filter((k) =>
-      k.startsWith("dudu.music.v1."),
-    );
+    const musicKeys = Object.keys(b.extensions).filter((k) => k.startsWith("dudu.music.v1."));
     assert.equal(musicKeys.length, 12, "all 12 music keys collected");
     assert.deepEqual(b.extensions["dudu.music.v1.playlists"], [{ id: "p1", name: "mix" }]);
   });
@@ -519,10 +551,7 @@ describe("applyBackup", () => {
       "https://img.example.com/status",
       "secret query param stripped from pollEndpoint",
     );
-    assert.ok(
-      b.secretsExcluded.urlsSanitized >= 2,
-      "stripped capability URLs are counted",
-    );
+    assert.ok(b.secretsExcluded.urlsSanitized >= 2, "stripped capability URLs are counted");
   });
 
   it("collects dialogs, coordination, meetings, outreach prefs, plans (P1-2/P2-8)", async () => {
@@ -571,9 +600,7 @@ describe("applyBackup", () => {
     ]) {
       assert.ok(key in b.extensions, `${key} collected`);
     }
-    assert.deepEqual(b.extensions["dudu.plan-gate.v1"], [
-      { id: "plan1", status: "approved" },
-    ]);
+    assert.deepEqual(b.extensions["dudu.plan-gate.v1"], [{ id: "plan1", status: "approved" }]);
   });
 
   it("restores extensions round-trip — music and approved plans survive", async () => {
@@ -705,68 +732,84 @@ describe("sanitizeUrl", () => {
   });
 });
 
-describe("findUnbackedKeys", () => {
-  it("reports nothing for the full known key set", () => {
-    const known = [
-      "dudu.local-chat.thread1.v1",
-      "dudu.api-groups.v1",
-      "dudu.api-groups.active.v1",
-      "dudu.settings.chatMode.v1",
-      "dudu.settings.fontSize.v1",
-      "dudu.font.v1",
-      "dudu.theme.bundle.v1",
-      "dudu.theme.history.v1",
-      "dudu.theme.customPresets.v1",
-      "dudu.theme.aiMode.v1",
-      "dudu.voice-settings.v1",
-      "dudu.tts.v1",
-      "dudu.stt.v1",
-      "dudu.aiAuth.v1",
-      "dudu.aiAuth.v1.bluetooth",
-      "dudu.memory.v1.profile",
-      "dudu.memory.v1.memories",
-      "dudu.memory.v1.events",
-      "dudu.memory.v1.autoExtract",
-      "dudu.skills.v1.list",
-      "dudu.ourspace.v1.diary",
-      "dudu.ourspace.v2.works",
-      "dudu.tasks.v1.task1",
-      "dudu.kb.v1.docs",
-      "dudu.music.v1.tracks",
-      "dudu.music.v1.playlists",
-      "dudu.capability-groups.v1",
-      "dudu.capability-routing-enabled.v1",
-      "dudu.model-profiles.v1",
-      "dudu.dialog-registry.v1",
-      "dudu.dialog-model-override.v1",
-      "dudu.cross-dialog-trace.v1",
-      "dudu.cross-dialog-visibility.v1",
-      "dudu.group-meetings.v1",
-      "dudu.plan-gate.v1",
-      "dudu.outreach.v1.frequency",
-      "dudu.outreach.v1.lastOpened",
-      "dudu.outreach.v1.lastOutreach",
-      "dudu.outreach.v1.loveLetterNudges",
-      "dudu.sandbox.activeBackend.v1",
-      "dudu.ambientvideo.v1.overrides",
-      // deliberately excluded: secrets + bookkeeping
-      "dudu.session.token",
-      "dudu.music.v1.apple-music.user-token",
-      "dudu.sandbox.sshConfig.v1",
-      "dudu.backup.lastAt.v1",
-      "dudu.kb.v2.migrated",
-    ];
-    assert.deepEqual(findUnbackedKeys(known), []);
+describe("findUnbackedKeys — real src/ key scan (B7, not decorative)", () => {
+  it("every real storage key in src/ is backed up or honestly excluded", () => {
+    const literals = collectSrcKeyLiterals();
+    assert.ok(
+      literals.length > 50,
+      `expected dozens of real keys from src/, got ${literals.length}`,
+    );
+    const concrete = literals.filter((k) => !k.endsWith(".") && !k.endsWith("-"));
+    const prefixes = literals.filter((k) => k.endsWith(".") || k.endsWith("-"));
+    // A prefix literal only matters when real keys are built under it —
+    // every such key must be covered or honestly excluded, otherwise the
+    // scan is blind to that namespace. Dead/defensive prefixes (no
+    // concrete key under them) are vacuously safe.
+    for (const prefix of prefixes) {
+      const under = concrete.filter((k) => k.startsWith(prefix));
+      if (under.length === 0) continue;
+      assert.deepEqual(
+        findUnbackedKeys(under),
+        [],
+        `unbacked keys under prefix ${prefix}: ${findUnbackedKeys(under).join(", ")}`,
+      );
+    }
+    const gaps = findUnbackedKeys(concrete);
+    assert.deepEqual(gaps, [], `unbacked keys: ${gaps.join(", ")}`);
   });
 
   it("flags a new user-owned key nobody wired into backup", () => {
-    assert.deepEqual(findUnbackedKeys(["dudu.some-new-feature.v1"]), [
-      "dudu.some-new-feature.v1",
-    ]);
+    assert.deepEqual(findUnbackedKeys(["dudu.some-new-feature.v1"]), ["dudu.some-new-feature.v1"]);
   });
 
   it("ignores non-dudu keys", () => {
     assert.deepEqual(findUnbackedKeys(["EXPO_PUBLIC_FOO", "other.key"]), []);
+  });
+
+  it("scheduled tasks survive backup → restore via the real path (P1-1)", async () => {
+    // Read the REAL key from the source module so a rename breaks loudly
+    // instead of silently testing a stale string.
+    const src = readFileSync(join(SRC_DIR, "platform", "scheduled-tasks.ts"), "utf8");
+    const m = src.match(/STORE_KEY\s*=\s*["']([^"']+)["']/);
+    assert.ok(m, "STORE_KEY must exist in platform/scheduled-tasks.ts");
+    const tasksKey = m[1];
+    const tasks = [
+      {
+        id: "t1",
+        title: "water the plants",
+        message: "time to water the plants",
+        nextFireAt: 1791300000000,
+        recurrence: "daily",
+        timeOfDay: "09:00",
+        enabled: true,
+        createdAt: 1791200000000,
+        notificationIds: [],
+      },
+      {
+        id: "t2",
+        title: "call mom",
+        message: "call mom",
+        nextFireAt: 1791400000000,
+        recurrence: "weekly",
+        daySpec: 1,
+        timeOfDay: "20:00",
+        enabled: false,
+        createdAt: 1791200000000,
+        notificationIds: [],
+      },
+    ];
+    const kv = fakeKV({ [tasksKey]: JSON.stringify(tasks) });
+    const b = await collectBackup(kv, fakeSecure());
+    assert.ok(b.extensions?.[tasksKey], "scheduled tasks must be collected into the backup");
+    const parsed = parseBackup(serializeBackup(b));
+    assert.equal(parsed.ok, true, "serialized backup must parse");
+    const kv2 = fakeKV();
+    await applyBackup(parsed.ok ? parsed.backup : b, kv2, fakeSecure());
+    assert.deepEqual(
+      JSON.parse((await kv2.getItem(tasksKey)) ?? "null"),
+      tasks,
+      "scheduled tasks must survive the round trip",
+    );
   });
 });
 
