@@ -116,4 +116,15 @@ describe("daily cap", () => {
     // Still Oct 5 in Shanghai (23:00): same-day sends counted.
     assert.equal(await store.countSendsToday("pA", MON_NOON + 11 * 3_600_000), 2);
   });
+
+  it("countAllSendsToday counts across every persona (for outreach's shared-cap read)", async () => {
+    const store = new InitiativeStore(fakeStorage(), { nowMs: () => MON_NOON });
+    await store.recordSend("pA", MON_NOON);
+    await store.recordSend("pA", MON_NOON + 3_600_000);
+    await store.recordSend("pB", MON_NOON);
+    assert.equal(await store.countAllSendsToday(MON_NOON), 3);
+    // Next Shanghai day: only that day's sends.
+    const nextDay = MON_NOON + 13 * 3_600_000;
+    assert.equal(await store.countAllSendsToday(nextDay), 0);
+  });
 });

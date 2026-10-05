@@ -141,7 +141,7 @@ function notifCopy(t: OutreachTrigger, copy: CopyFn): { title: string; body: str
 export interface ScheduleResult {
   scheduled: boolean;
   /** Machine-readable reason when not scheduled (for tests/logs). */
-  reason?: "quiet" | "no-trigger" | "no-permission" | "sleep-window" | "failed";
+  reason?: "quiet" | "no-trigger" | "no-permission" | "sleep-window" | "capped" | "failed";
   trigger?: OutreachTriggerKind;
 }
 
@@ -209,6 +209,12 @@ export async function evaluateAndScheduleOutreach(deps: {
   data: OutreachDataPorts;
   copy: CopyFn;
   now?: number;
+  /**
+   * Shared proactive cap check (initiative P2-2): outreach and initiative
+   * share the per-persona daily cap. Return true when another proactive
+   * send is still allowed today. Absent = not checked (legacy).
+   */
+  checkSharedCap?: () => Promise<boolean>;
   /**
    * Feed nudge actions (C3): the EXISTING feed_like / feed_reply tool
    * implementations, invoked — never reimplemented. Absent = feed_nudge
@@ -329,6 +335,19 @@ export async function evaluateAndScheduleOutreach(deps: {
     });
     if (triggers.length === 0) return { scheduled: false, reason: "no-trigger" };
     const top = triggers[0];
+
+    // Shared proactive cap (initiative P2-2): the initiative engine and
+    // outreach count against the same daily cap. A failing check stays
+    // silent — fail closed, like every other proactive gate.
+    if (deps.checkSharedCap) {
+      let allowed = false;
+      try {
+        allowed = await deps.checkSharedCap();
+      } catch {
+        allowed = false;
+      }
+      if (!allowed) return { scheduled: false, reason: "capped", trigger: top.kind };
+    }
 
     // Feed nudge (C3): act directly instead of notifying. The like + reply
     // are silent — no push, no wake. Sleep-window and quiet rules still

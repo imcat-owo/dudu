@@ -462,6 +462,33 @@ export function LocalApp() {
                   };
                 },
               },
+              // Shared proactive cap (initiative P2-2): outreach and the
+              // initiative engine count against the same daily cap. The cap
+              // key lives with the initiative store; outreach reads it here.
+              // Outreach has no persona dimension, so it counts against the
+              // global proactive total (all initiative sends today across
+              // every persona + all outreach sends today) — conservative
+              // by design. Read failures fall back to "allowed", mirroring
+              // the executor's own cap check.
+              checkSharedCap: async () => {
+                try {
+                  const [{ initiativeStore }, { shanghaiDayStart }] = await Promise.all([
+                    import("./initiative/instances"),
+                    import("./initiative/rules"),
+                  ]);
+                  const now = Date.now();
+                  const cap = await initiativeStore.getDailyCap();
+                  const dayStart = shanghaiDayStart(now);
+                  const initiativeSends = await initiativeStore.countAllSendsToday(now);
+                  const last = await outreachStore.getLastOutreachAt();
+                  const outreachSends = Object.values(last).filter(
+                    (v): v is number => typeof v === "number" && v >= dayStart,
+                  ).length;
+                  return initiativeSends + outreachSends < cap;
+                } catch {
+                  return true;
+                }
+              },
               copy: (key, params) => t(key as StringKey, params),
             });
           } else if (state === "active") {

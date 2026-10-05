@@ -256,6 +256,17 @@ export class InitiativeStore {
     return sends.filter((s) => s.personaId === personaId && s.day === day).length;
   }
 
+  /**
+   * ALL initiative sends today, across every persona (Shanghai day).
+   * Used by the outreach side of the shared cap check: outreach has no
+   * persona dimension, so it counts against the global proactive total.
+   */
+  async countAllSendsToday(nowMs: number = Date.now()): Promise<number> {
+    const day = shanghaiDayStart(nowMs);
+    const sends = await this.loadSends();
+    return sends.filter((s) => s.day === day).length;
+  }
+
   /** Record an initiative send. Never throws. */
   async recordSend(personaId: string, nowMs: number = Date.now()): Promise<void> {
     return this.exclusive(async () => {

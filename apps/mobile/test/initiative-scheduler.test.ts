@@ -13,8 +13,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ApiGroup } from "../src/api-groups/types.js";
-import { initiativeNotificationId } from "../src/initiative/executor.js";
+import { initiativeNotificationId, isSlotExpired } from "../src/initiative/executor.js";
 import type { InitiativeRule } from "../src/initiative/rules.js";
+import { slotId } from "../src/initiative/rules.js";
 import {
   cancelScheduled,
   checkDueInitiatives,
@@ -188,17 +189,54 @@ describe("ensureScheduled", () => {
 });
 
 describe("checkDueInitiatives", () => {
+  // 8:00 Shanghai slot; 8:10 is inside the 15-minute grace window.
+  const WITHIN_GRACE = NOW - 230 * 60_000;
+
   it("a due rule cancels its notification and runs the AI path", async () => {
-    // Rule born two days ago: today's 8:00 slot is genuinely due at 12:00.
+    // Rule born two days ago: today's 8:00 slot is genuinely due at 8:10.
     const ctx = makeCtx("granted", () => NOW - 2 * 86_400_000);
-    const rule = await makeDaily(ctx, 8); // 8:00 Shanghai today — due at 12:00
+    const rule = await makeDaily(ctx, 8); // 8:00 Shanghai today — due at 8:10
     await ensureScheduled(ctx.deps, rule, NOW);
     assert.equal(ctx.scheduled.length, 1);
 
-    await checkDueInitiatives(ctx.deps, NOW);
+    await checkDueInitiatives(ctx.deps, WITHIN_GRACE);
     assert.deepEqual(ctx.cancelled, [initiativeNotificationId(rule.id)]);
     const msgs = threadMessages(ctx, "threadA");
     assert.equal(msgs[msgs.length - 1].content, "想你了，过来抱一下");
+    assert.deepEqual(ctx.traceActions, ["proactive_send"]);
+  });
+
+  it("an expired slot is consumed on the tick, never delivered (P1-1)", async () => {
+    // Same rule, but the tick runs at 12:00 — the 8:00 slot is 4 hours
+    // stale. Her anti-disturbance rule: consume silently, no backfill.
+    const ctx = makeCtx("granted", () => NOW - 2 * 86_400_000);
+    const rule = await makeDaily(ctx, 8);
+    const slot = Date.UTC(2026, 9, 5, 0, 0, 0); // 8:00 Shanghai
+    assert.ok(isSlotExpired(slot, NOW));
+
+    await checkDueInitiatives(ctx.deps, NOW);
+    assert.equal(threadMessages(ctx, "threadA").length, 1, "nothing delivered");
+    assert.deepEqual(ctx.traceActions, [], "nothing traced");
+    assert.equal(
+      await ctx.deps.initiativeStore.wasSlotFired(slotId(rule.id, slot)),
+      true,
+      "expired slot is consumed",
+    );
+    // A later tick can never deliver it either.
+    await checkDueInitiatives(ctx.deps, NOW + 60_000);
+    assert.equal(threadMessages(ctx, "threadA").length, 1);
+  });
+
+  it("concurrent double-tick fires one slot at most once (P2-1)", async () => {
+    const ctx = makeCtx("granted", () => NOW - 2 * 86_400_000);
+    await makeDaily(ctx, 8);
+    const before = threadMessages(ctx, "threadA").length;
+    // The 30s timer and a foreground event firing at the same instant.
+    await Promise.all([
+      checkDueInitiatives(ctx.deps, WITHIN_GRACE),
+      checkDueInitiatives(ctx.deps, WITHIN_GRACE),
+    ]);
+    assert.equal(threadMessages(ctx, "threadA").length, before + 1, "exactly one delivery");
     assert.deepEqual(ctx.traceActions, ["proactive_send"]);
   });
 
@@ -230,6 +268,21 @@ describe("handleInitiativeTap", () => {
     const ctx = makeCtx();
     const r = await handleInitiativeTap(ctx.deps, "nope", NOW);
     assert.deepEqual(r, { fired: false });
+  });
+
+  it("a tap on an EXPIRED slot still delivers (tap is not grace-limited, P1-1)", async () => {
+    const ctx = makeCtx("granted", () => NOW - 2 * 86_400_000);
+    const rule = await makeDaily(ctx, 8);
+    const slot = Date.UTC(2026, 9, 5, 0, 0, 0); // 8:00 Shanghai
+    assert.ok(isSlotExpired(slot, NOW), "4 hours stale — the tick would skip this");
+    // She taps the notification herself at 12:00: the promised message
+    // is delivered — a tap is the delivery she asked for, not a backfill.
+    const first = await handleInitiativeTap(ctx.deps, rule.id, slot);
+    assert.ok(first);
+    assert.ok(first.fired);
+    const msgs = threadMessages(ctx, "threadA");
+    assert.equal(msgs[msgs.length - 1].content, "想你了，过来抱一下");
+    assert.equal(await handleInitiativeTap(ctx.deps, rule.id, slot), null, "no double tap");
   });
 });
 

@@ -28,8 +28,10 @@ Rules:
 
 Anti-disturbance （她的硬约束，不许软化）:
 - Per-persona daily cap N (default 3, she can change it in Our Space →
-  主动约定） — counts BOTH initiative sends and proactive outreach sends
-  today. Over cap = stay silent, honestly report it.
+  主动约定） — counts BOTH initiative sends (per persona) and proactive
+  outreach sends (counted globally — outreach has no persona dimension,
+  so one outreach send consumes one slot of EVERY persona's cap).
+  Over cap = stay silent, honestly report it.
 - A fired slot NEVER refires. Interrupted execution (killed, restarted,
   generation failed) is NEVER auto-retried. A failed fire still consumes
   its slot.
@@ -41,8 +43,11 @@ How it reaches her:
 - Foreground: the AI generates the message and it lands directly in the
   dialog (she's looking — no notification ping).
 - Background: a template notification rings first; tapping it opens the
-  dialog and triggers ONE generation. If the app was killed at fire time,
-  the slot is missed silently — never backfilled.
+  dialog and triggers ONE generation (a tap is the delivery she asked for —
+  it is NOT grace-limited).
+- Missed slots (app was killed at fire time): the foreground tick only
+  delivers a slot within 15 minutes of its fire time. A slot missed longer
+  than that is consumed silently — never delivered, never backfilled.
 - Every proactive send is logged to the cross-dialog audit trace
   (action "proactive_send"). She can always see what was sent and why.
 

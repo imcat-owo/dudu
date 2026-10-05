@@ -55,6 +55,29 @@ export type FireFailReason =
   | "generate-failed"
   | "deliver-failed";
 
+/**
+ * Foreground-tick grace window (her anti-disturbance rule): a slot only
+ * delivers on the foreground tick when it fired no more than this long
+ * ago. An older slot is consumed silently — never delivered, never
+ * backfilled. Tapping the notification herself is NOT grace-limited.
+ */
+export const INITIATIVE_TICK_GRACE_MS = 15 * 60_000;
+
+/** True when a slot is too old for the foreground tick to deliver. */
+export function isSlotExpired(slotTime: number, nowMs: number): boolean {
+  return nowMs - slotTime > INITIATIVE_TICK_GRACE_MS;
+}
+
+/**
+ * In-process in-flight slot claims (P2-1): the 30s tick, the
+ * foreground-event tick, and a later keep-alive can overlap — the
+ * wasSlotFired→fire check in the ledger is not atomic, so two ticks
+ * could both read "not fired" and both deliver. A claimed slot fires
+ * at most once per process; the loser gets "already-fired" and stays
+ * silent.
+ */
+const inFlightSlots = new Set<string>();
+
 /** Identifier for this rule's pre-scheduled notification (one at a time). */
 export function initiativeNotificationId(ruleId: string): string {
   return `dudu-initiative-${ruleId}`;
@@ -80,14 +103,31 @@ export function buildInitiativeSystemPrompt(personaName: string): string {
 /**
  * Fire one rule for one slot. `slotTime` is the scheduled fire time (or
  * nowMs for a manual run). Never throws — every failure is a FireOutcome.
+ *
+ * One slot fires at most once per process: an in-flight claim guards the
+ * ledger's check-then-fire race between overlapping ticks and taps.
  */
 export async function fireInitiativeRule(
   deps: InitiativeExecutorDeps,
   ruleId: string,
   slotTime: number,
 ): Promise<FireOutcome> {
-  const now = deps.nowMs();
   const slot = slotId(ruleId, slotTime);
+  if (inFlightSlots.has(slot)) return { fired: false, reason: "already-fired" };
+  inFlightSlots.add(slot);
+  try {
+    return await fireInitiativeRuleInner(deps, ruleId, slot);
+  } finally {
+    inFlightSlots.delete(slot);
+  }
+}
+
+async function fireInitiativeRuleInner(
+  deps: InitiativeExecutorDeps,
+  ruleId: string,
+  slot: string,
+): Promise<FireOutcome> {
+  const now = deps.nowMs();
 
   const fail = async (reason: FireFailReason): Promise<FireOutcome> => {
     // A failed fire still consumes its slot: interrupted execution is
@@ -119,8 +159,11 @@ export async function fireInitiativeRule(
   }
   if (!persona) return fail("persona-missing");
 
-  // Daily cap (shared proactive channel): initiative sends + outreach
-  // sends today, per persona. Her setting, default 3.
+  // Daily cap (shared proactive channel): initiative sends today are
+  // counted per persona; outreach sends today are counted GLOBALLY (the
+  // outreach ledger has no persona dimension — one outreach send consumes
+  // one slot of EVERY persona's cap). Conservative by design: over cap =
+  // stay silent. Her setting, default 3.
   const cap = await deps.initiativeStore.getDailyCap().catch(() => 3);
   const [initiativeSends, outreachSends] = await Promise.all([
     deps.initiativeStore.countSendsToday(rule.personaId, now).catch(() => 0),
@@ -181,7 +224,12 @@ export async function fireInitiativeRule(
   return { fired: true, threadId, text };
 }
 
-/** Outreach sends today (any kind) — the shared "AI reaches her" channel. */
+/**
+ * Outreach sends today (any kind) — the shared "AI reaches her" channel.
+ * Counted GLOBALLY: the outreach ledger has no persona dimension, so one
+ * outreach send counts against every persona's daily cap. Conservative
+ * by design.
+ */
 async function countOutreachSendsToday(deps: InitiativeExecutorDeps, now: number): Promise<number> {
   const dayStart = shanghaiDayStart(now);
   const last = await deps.outreachStore.getLastOutreachAt();

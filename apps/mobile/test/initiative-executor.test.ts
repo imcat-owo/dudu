@@ -19,7 +19,9 @@ import {
   buildInitiativeSystemPrompt,
   dueSlot,
   fireInitiativeRule,
+  INITIATIVE_TICK_GRACE_MS,
   type InitiativeExecutorDeps,
+  isSlotExpired,
 } from "../src/initiative/executor.js";
 import type { InitiativeRule } from "../src/initiative/rules.js";
 import { InitiativeStore } from "../src/initiative/store.js";
@@ -259,6 +261,18 @@ describe("daily cap (shared channel)", () => {
     assert.equal(outcome.fired, true);
   });
 
+  it("outreach counting is global, not per persona (P2-3): two kinds today count as two", async () => {
+    const ctx = makeCtx();
+    await ctx.deps.initiativeStore.setDailyCap(2);
+    // Two different outreach kinds fired today — both count, regardless
+    // of which persona the rule belongs to. The outreach ledger has no
+    // persona dimension; this is the conservative global semantics.
+    ctx.outreachLast = { anniversary: NOW - 3_600_000, silence: NOW - 2 * 3_600_000 };
+    const rule = await makeRule(ctx);
+    const outcome = await fireInitiativeRule(ctx.deps, rule.id, NOW);
+    assert.deepEqual(outcome, { fired: false, reason: "capped" });
+  });
+
   it("cap is per persona", async () => {
     const ctx = makeCtx();
     await ctx.deps.initiativeStore.setDailyCap(1);
@@ -266,6 +280,42 @@ describe("daily cap (shared channel)", () => {
     const rule = await makeRule(ctx); // personaA
     const outcome = await fireInitiativeRule(ctx.deps, rule.id, NOW);
     assert.equal(outcome.fired, true);
+  });
+});
+
+describe("in-flight slot claim (P2-1)", () => {
+  it("two concurrent fires of one slot deliver exactly once", async () => {
+    const ctx = makeCtx();
+    const rule = await makeRule(ctx);
+    const slot = Date.UTC(2026, 9, 5, 0, 0, 0);
+    // Gate generation so both calls are genuinely in flight together.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    ctx.generateImpl = async () => {
+      await gate;
+      return "想你了";
+    };
+    const before = ctx.threadMessages("threadA").length;
+    const p1 = fireInitiativeRule(ctx.deps, rule.id, slot);
+    const p2 = fireInitiativeRule(ctx.deps, rule.id, slot);
+    release();
+    const [a, b] = await Promise.all([p1, p2]);
+    const fired = [a, b].filter((o) => o.fired);
+    const refused = [a, b].filter((o) => !o.fired);
+    assert.equal(fired.length, 1, "exactly one winner");
+    assert.equal(refused.length, 1);
+    assert.deepEqual(refused[0], { fired: false, reason: "already-fired" });
+    assert.equal(ctx.threadMessages("threadA").length, before + 1, "one delivery");
+  });
+});
+
+describe("tick grace window (P1-1)", () => {
+  it("isSlotExpired: 15 minutes is the boundary", () => {
+    assert.equal(isSlotExpired(NOW - INITIATIVE_TICK_GRACE_MS, NOW), false);
+    assert.equal(isSlotExpired(NOW - INITIATIVE_TICK_GRACE_MS - 1, NOW), true);
+    assert.equal(isSlotExpired(NOW, NOW), false);
   });
 });
 

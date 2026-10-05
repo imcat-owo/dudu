@@ -34,6 +34,10 @@ How it works (local-first, honest):
   come back. When she returns, the scheduled nudge is cancelled — no stale pings.
 - When she is IN the app, triggers surface as one quiet line in your context —
   bring it up naturally, once, in your own words. Never as a system announcement.
+- Shared proactive cap: outreach and initiative （主动约定） share her
+  per-persona daily cap (default 3, set in Our Space → 主动约定）.
+  Outreach has no persona dimension — each outreach send counts against
+  the global proactive total. Over the cap, outreach stays silent.
 - Feed nudge is different: no notification is ever scheduled for it. When it
   wins, he likes her post and leaves ONE reply directly (the feed itself is
   the surface). In-session, the quiet line tells you to do it with feed_like

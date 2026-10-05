@@ -9,9 +9,12 @@
  *   Tapping it opens the dialog, and the tap itself triggers ONE AI
  *   generation (not an auto-retry — it's the delivery she asked for).
  *
- * Overdue slots (app was killed): the executor's slot ledger plus
- * dueSlot() math means a missed slot never refires. Interrupted execution
- * is never retried — hard constraint.
+ * Overdue slots (app was killed): the foreground tick only delivers a
+ * slot within the 15-minute grace window (INITIATIVE_TICK_GRACE_MS). An
+ * older slot is consumed silently — marked fired, never delivered, never
+ * backfilled. Tapping the notification she received is NOT grace-limited:
+ * a tap is the delivery she asked for. Interrupted execution is never
+ * retried — hard constraint.
  *
  * SEAM FOR HARNESS PHASE 2: the background half only needs "wake up and
  * call checkDueInitiatives(deps)". The keep-alive layer (not built yet)
@@ -25,8 +28,9 @@ import {
   fireInitiativeRule,
   type InitiativeExecutorDeps,
   initiativeNotificationId,
+  isSlotExpired,
 } from "./executor";
-import { type InitiativeRule, nextFireAt } from "./rules";
+import { type InitiativeRule, nextFireAt, slotId } from "./rules";
 
 export interface InitiativeSchedulerDeps extends InitiativeExecutorDeps {
   notifications: NotificationPort;
@@ -111,6 +115,10 @@ export async function cancelScheduled(
  * Foreground check: for every active rule, if a slot is due, cancel the
  * pre-scheduled notification and run the AI path. Fire-and-forget per
  * rule (one slow rule never blocks the others). Never throws.
+ *
+ * Grace window (P1-1): a slot older than INITIATIVE_TICK_GRACE_MS is
+ * consumed silently — marked fired, never delivered. The tap path is
+ * separate and unlimited.
  */
 export async function checkDueInitiatives(
   deps: InitiativeSchedulerDeps,
@@ -128,6 +136,11 @@ export async function checkDueInitiatives(
         const slot = dueSlot(rule, nowMs);
         if (slot === null) return;
         await cancelScheduled(deps.notifications, rule.id);
+        if (isSlotExpired(slot, nowMs)) {
+          // Missed too long ago: consume, never deliver on the tick.
+          await deps.initiativeStore.markSlotFired(slotId(rule.id, slot)).catch(() => {});
+          return;
+        }
         await fireInitiativeRule(deps, rule.id, slot);
       } catch {
         // One rule's failure never breaks the sweep.

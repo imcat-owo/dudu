@@ -352,6 +352,50 @@ describe("evaluateAndScheduleOutreach", () => {
     assert.equal((traces[0] as { action: string }).action, "proactive_send");
   });
 
+  it("shared cap (P2-2): blocked when checkSharedCap returns false", async () => {
+    const { d, scheduled, traces } = deps({
+      checkSharedCap: async () => false,
+      data: {
+        listAnniversaries: async () => [],
+        listPendingTellLater: async () => [],
+        countUnreadLoveLetters: async () => 1,
+      },
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, false);
+    assert.equal(r.reason, "capped");
+    assert.equal(r.trigger, "love_letter");
+    assert.equal(scheduled.length, 0, "nothing scheduled past the cap");
+    assert.equal(traces.length, 0, "nothing traced — the send never happened");
+  });
+
+  it("shared cap (P2-2): proceeds when checkSharedCap returns true", async () => {
+    const { d, scheduled } = deps({
+      checkSharedCap: async () => true,
+      data: {
+        listAnniversaries: async () => [],
+        listPendingTellLater: async () => [],
+        countUnreadLoveLetters: async () => 1,
+      },
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(scheduled.length, 1);
+  });
+
+  it("shared cap: absent port keeps legacy behavior", async () => {
+    const { d, scheduled } = deps({
+      data: {
+        listAnniversaries: async () => [],
+        listPendingTellLater: async () => [],
+        countUnreadLoveLetters: async () => 1,
+      },
+    });
+    const r = await evaluateAndScheduleOutreach(d as never);
+    assert.equal(r.scheduled, true);
+    assert.equal(scheduled.length, 1);
+  });
+
   it("no permission = no schedule, no nag", async () => {
     const { d, scheduled } = deps({
       data: {
