@@ -13,8 +13,8 @@
  * prompt.
  */
 
-import { getOnThisDay } from "../our-space/on-this-day.js";
-import type { OurSpaceStore } from "../our-space/store.js";
+import { getOnThisDay } from "../our-space/on-this-day";
+import type { OurSpaceStore } from "../our-space/store";
 
 /** The engine's onThisDay input shape: the single most poignant memory. */
 export interface OnThisDayEvalInput {

@@ -6,7 +6,7 @@
  * Empty string when nothing recorded: no noise, no spam.
  */
 
-import type { HerMood } from "./store.js";
+import type { HerMood } from "./store";
 
 /** How long a recorded mood stays relevant for injection. */
 export const HER_MOOD_FRESH_DAYS = 3;

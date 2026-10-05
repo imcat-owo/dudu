@@ -6,7 +6,7 @@
  * Empty string when neither is set: no noise, no spam.
  */
 
-import type { CoupleProfile } from "./store.js";
+import type { CoupleProfile } from "./store";
 
 /**
  * Build the nickname awareness section for the system prompt.

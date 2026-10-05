@@ -22,9 +22,9 @@ export {
   type ImageMessage,
   parseImageCommand,
   parseImageMessage,
-} from "./image/protocol.js";
+} from "./image/protocol";
 
-import type { ImageMessage } from "./image/protocol.js";
+import type { ImageMessage } from "./image/protocol";
 
 /**
  * Download a remote image to a local file so it can be saved or shared.

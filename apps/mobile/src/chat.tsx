@@ -857,7 +857,7 @@ export function ChatScreen({
     // durable is left on disk.
     try {
       if (!incognitoOn) {
-        const { persistVoiceMessage } = await import("./voice/voice-message-files.js");
+        const { persistVoiceMessage } = await import("./voice/voice-message-files");
         uri = await persistVoiceMessage(uri);
       }
     } catch {

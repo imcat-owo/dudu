@@ -34,11 +34,11 @@
  *   are plain ToolErrors, never silent.
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import { ToolError } from "../api-groups/local-tools.js";
-import { planGateStore } from "../api-groups/plan-gate.js";
-import { sharedKeyedChain as exclusiveFor } from "../util/write-chain.js";
-import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import { ToolError } from "../api-groups/local-tools";
+import { planGateStore } from "../api-groups/plan-gate";
+import { sharedKeyedChain as exclusiveFor } from "../util/write-chain";
+import type { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace";
 
 /** Must match historyKey() in api-groups/local-agent.ts. */
 const CHAT_HISTORY_PREFIX = "dudu.local-chat.";

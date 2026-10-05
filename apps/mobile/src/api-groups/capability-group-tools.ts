@@ -14,9 +14,9 @@
  * tool says so honestly instead of promising routing that can't happen.
  */
 
-import { type CapabilityGroup, capabilityGroupDisplayName } from "./capability-groups.js";
-import type { LocalTool } from "./local-tools.js";
-import type { ApiGroup } from "./types.js";
+import { type CapabilityGroup, capabilityGroupDisplayName } from "./capability-groups";
+import type { LocalTool } from "./local-tools";
+import type { ApiGroup } from "./types";
 
 export interface CapabilityGroupToolDeps {
   /** Translated preset name for a presetId (falls back to the id). */

@@ -8,8 +8,8 @@
  * human-language descriptions written FOR the AI).
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import type { SkillAuthor, SkillStore } from "./store.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import type { SkillAuthor, SkillStore } from "./store";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

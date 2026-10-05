@@ -4,7 +4,7 @@
  * see the same trace.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace.js";
+import { CrossDialogTraceStore, CrossDialogVisibilityStore } from "./cross-dialog-trace";
 
 export const crossDialogTraceStore = new CrossDialogTraceStore(AsyncStorage);
 export const crossDialogVisibilityStore = new CrossDialogVisibilityStore(AsyncStorage);

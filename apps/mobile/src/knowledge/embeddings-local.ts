@@ -39,8 +39,8 @@ export const API_EMBEDDING_PROVIDER_NAME = "api-embeddings";
  * Wraps embedTexts() to match the EmbeddingProvider interface.
  */
 export function createApiEmbeddingProvider(
-  getGroup: () => import("../api-groups/types.js").ApiGroup | null,
-  embedFn?: typeof import("./embeddings.js").embedTexts,
+  getGroup: () => import("../api-groups/types").ApiGroup | null,
+  embedFn?: typeof import("./embeddings").embedTexts,
 ): EmbeddingProvider {
   // Lazy import to avoid cycles; resolved at call time.
   return {
@@ -52,7 +52,7 @@ export function createApiEmbeddingProvider(
     async embed(texts: string[]): Promise<number[][]> {
       const group = getGroup();
       if (!group) throw new Error("noApiGroup");
-      const { embedTexts: doEmbed } = await import("./embeddings.js");
+      const { embedTexts: doEmbed } = await import("./embeddings");
       const fn = embedFn ?? doEmbed;
       const res = await fn(group, texts);
       return res.vectors;
@@ -96,7 +96,7 @@ export function createOnDeviceEmbeddingProvider(): EmbeddingProvider {
  * like the API path; when Phase 3 lands, callers get on-device for free.
  */
 export async function selectEmbeddingProvider(
-  getGroup: () => import("../api-groups/types.js").ApiGroup | null,
+  getGroup: () => import("../api-groups/types").ApiGroup | null,
 ): Promise<EmbeddingProvider> {
   const onDevice = createOnDeviceEmbeddingProvider();
   if (await onDevice.isReady()) return onDevice;
@@ -112,16 +112,16 @@ export async function selectEmbeddingProvider(
  * Returns { vectors, model } in the EmbedResult shape.
  */
 export async function embedWithRealModel(
-  getGroup: () => import("../api-groups/types.js").ApiGroup | null,
+  getGroup: () => import("../api-groups/types").ApiGroup | null,
   texts: string[],
-): Promise<import("./embeddings.js").EmbedResult> {
+): Promise<import("./embeddings").EmbedResult> {
   const provider = await selectEmbeddingProvider(getGroup);
   const vectors = await provider.embed(texts);
   let model = provider.name;
   if (provider.name === API_EMBEDDING_PROVIDER_NAME) {
     const group = getGroup();
     if (group) {
-      const { embeddingModelFor } = await import("./embeddings.js");
+      const { embeddingModelFor } = await import("./embeddings");
       model = embeddingModelFor(group);
     }
   }

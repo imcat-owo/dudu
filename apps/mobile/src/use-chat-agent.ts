@@ -100,8 +100,8 @@ export interface ChatAgent {
   /** Gap fill A4: edit a user message and regenerate from there. */
   editAndRegenerate?(messageId: string, newText: string): Promise<void>;
   /** Gap fill: thread meta (version selections, system prompt, token budget). */
-  getThreadMeta?(): import("./chat/thread-versions.js").ThreadMeta;
-  setThreadMeta?(meta: import("./chat/thread-versions.js").ThreadMeta): void;
+  getThreadMeta?(): import("./chat/thread-versions").ThreadMeta;
+  setThreadMeta?(meta: import("./chat/thread-versions").ThreadMeta): void;
   /** Gap fill A14: user-triggered context compression (Kelivo's model — new dialog). */
   compressContext?(keepTail?: number, customPrompt?: string): Promise<{ summary: string; newThreadId: string } | null>;
   /** Gap fill A13: estimated context usage of the visible history. */

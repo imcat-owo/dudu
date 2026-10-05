@@ -3,6 +3,6 @@
  * UI and AI tools share it so both sides see the same meetings.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GroupMeetingStore } from "./group-meeting-store.js";
+import { GroupMeetingStore } from "./group-meeting-store";
 
 export const groupMeetingStore = new GroupMeetingStore(AsyncStorage);

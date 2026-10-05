@@ -33,7 +33,7 @@
  * fail with a human-readable error code — never half-apply.
  */
 
-import type { KbChunkRecord, KbDoc } from "./knowledge/store.js";
+import type { KbChunkRecord, KbDoc } from "./knowledge/store";
 
 export const BACKUP_KIND = "dudu-backup";
 export const BACKUP_VERSION = 1;

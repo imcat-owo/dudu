@@ -24,12 +24,12 @@
  * so tests can fake it) and her API groups (injected as `listApiGroups`).
  */
 
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { planGateStore } from "../api-groups/plan-gate-instance.js";
-import type { ApiGroup } from "../api-groups/types.js";
-import { createWriteChain, type ExclusiveRunner } from "../util/write-chain.js";
-import { type CrossDialogStorage, DEFAULT_PERSONA_ID, listDialogs } from "./cross-dialog.js";
-import type { CrossDialogTraceStore } from "./cross-dialog-trace.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { planGateStore } from "../api-groups/plan-gate-instance";
+import type { ApiGroup } from "../api-groups/types";
+import { createWriteChain, type ExclusiveRunner } from "../util/write-chain";
+import { type CrossDialogStorage, DEFAULT_PERSONA_ID, listDialogs } from "./cross-dialog";
+import type { CrossDialogTraceStore } from "./cross-dialog-trace";
 import {
   buildMemberPrompt,
   DEFAULT_MAX_ROUNDS,
@@ -43,8 +43,8 @@ import {
   selectSpeakers,
   shouldEndMeeting,
   validateStartMeetingInput,
-} from "./group-meeting.js";
-import type { GroupMeetingStore } from "./group-meeting-store.js";
+} from "./group-meeting";
+import type { GroupMeetingStore } from "./group-meeting-store";
 
 export interface GroupMeetingToolDeps {
   /** The dialog the moderator AI is talking in. */

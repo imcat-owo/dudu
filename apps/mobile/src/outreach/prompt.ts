@@ -12,7 +12,7 @@
  *  - Never fabricate: only triggers the engine actually returned.
  */
 
-import type { OutreachTrigger } from "./engine.js";
+import type { OutreachTrigger } from "./engine";
 
 /**
  * Build the outreach section for the system prompt. Empty string when

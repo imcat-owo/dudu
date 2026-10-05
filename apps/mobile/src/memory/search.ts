@@ -13,7 +13,7 @@
  * Superseded records (validTo !== null) are excluded unless asked for.
  */
 
-import type { MemoryConfidence, MemoryRecord } from "./types.js";
+import type { MemoryConfidence, MemoryRecord } from "./types";
 
 /** CJK-aware tokenizer: latin words + individual CJK chars as tokens. */
 export function tokenize(text: string): string[] {

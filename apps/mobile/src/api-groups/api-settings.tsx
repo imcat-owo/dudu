@@ -584,7 +584,7 @@ function CapabilitySection({
     setProbing(true);
     setCaps(null);
     try {
-      const { probeCapabilities } = await import("./capability-probe.js");
+      const { probeCapabilities } = await import("./capability-probe");
       const c = await probeCapabilities(
         { ...draft, baseUrl: draft.baseUrl.trim().replace(/\/+$/, "") },
         fetch as never,

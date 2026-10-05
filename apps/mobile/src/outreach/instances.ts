@@ -3,6 +3,6 @@
  * engine, scheduler, and tests can inject their own storage.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { OutreachStore } from "./store.js";
+import { OutreachStore } from "./store";
 
 export const outreachStore = new OutreachStore(AsyncStorage);

@@ -18,9 +18,9 @@
  * Tool naming follows the existing convention (snake_case).
  */
 
-import type { LocalTool, ToolDeps } from "../api-groups/local-tools.js";
-import { browserAddress } from "../browser-address.js";
-import { browserController } from "./controller.js";
+import type { LocalTool, ToolDeps } from "../api-groups/local-tools";
+import { browserAddress } from "../browser-address";
+import { browserController } from "./controller";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

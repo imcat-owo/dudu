@@ -25,7 +25,7 @@ import {
   type MemoryEvent,
   type MemoryRecord,
   type ProfileEntry,
-} from "./types.js";
+} from "./types";
 import { createWriteChain } from "../util/write-chain";
 
 /** Minimal storage surface. AsyncStorage satisfies this in production. */

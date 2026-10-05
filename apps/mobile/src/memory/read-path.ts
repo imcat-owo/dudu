@@ -11,8 +11,8 @@
  * question. The AI must NEVER present an unsure memory as confident.
  */
 
-import { searchMemories } from "./search.js";
-import type { MemoryStore } from "./store.js";
+import { searchMemories } from "./search";
+import type { MemoryStore } from "./store";
 
 /** Hard token-ish budget for the memory section (chars ≈ tokens for CJK). */
 export const MEMORY_SECTION_BUDGET = 1200;

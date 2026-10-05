@@ -17,8 +17,8 @@
  * human-language descriptions written FOR the AI).
  */
 
-import type { LocalTool } from "./api-groups/local-tools.js";
-import type { DeviceInfo } from "./native-apps.js";
+import type { LocalTool } from "./api-groups/local-tools";
+import type { DeviceInfo } from "./native-apps";
 
 export interface NativeAppToolHooks {
   /** iOS auth state for a capability: granted / denied / undetermined / unavailable / needs-setup */

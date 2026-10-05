@@ -9,9 +9,9 @@
  * PURE module: no React Native / expo imports.
  */
 
-import { type LocalTool, ToolError } from "./local-tools.js";
-import { planGateStore } from "./plan-gate-instance.js";
-import { validatePlanInput } from "./plan-gate.js";
+import { type LocalTool, ToolError } from "./local-tools";
+import { planGateStore } from "./plan-gate-instance";
+import { validatePlanInput } from "./plan-gate";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

@@ -21,28 +21,28 @@
  * Adding a manual = one file in this dir + one entry in MANUALS below.
  */
 
-import { API_GROUPS_MANUAL } from "./api-groups.js";
-import { BACKUP_MANUAL } from "./backup.js";
-import { BROWSER_MANUAL } from "./browser.js";
-import { COORDINATION_MANUAL } from "./coordination.js";
-import { CROSS_DIALOG_MANUAL } from "./cross-dialog.js";
-import { GROUP_MEETING_MANUAL } from "./group-meeting.js";
-import { INCOGNITO_MANUAL } from "./incognito.js";
-import { KNOWLEDGE_MANUAL } from "./knowledge.js";
-import { MCP_TOOLS_MANUAL } from "./mcp-tools.js";
-import { MEDIA_MANUAL } from "./media.js";
-import { MEMORY_MANUAL } from "./memory.js";
-import { MUSIC_ROOM_MANUAL } from "./music-room.js";
-import { NATIVE_APPS_MANUAL } from "./native-apps.js";
-import { OUR_SPACE_MANUAL } from "./our-space.js";
-import { OUTREACH_MANUAL } from "./outreach.js";
-import { PERMISSIONS_MANUAL } from "./permissions.js";
-import { SANDBOX_MANUAL } from "./sandbox.js";
-import { SKILLS_MANUAL } from "./skills.js";
-import { THEMES_MANUAL } from "./themes.js";
-import { THINKING_DRAWER_MANUAL } from "./thinking-drawer.js";
-import { VISION_MANUAL } from "./vision.js";
-import { VOICE_MANUAL } from "./voice.js";
+import { API_GROUPS_MANUAL } from "./api-groups";
+import { BACKUP_MANUAL } from "./backup";
+import { BROWSER_MANUAL } from "./browser";
+import { COORDINATION_MANUAL } from "./coordination";
+import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
+import { GROUP_MEETING_MANUAL } from "./group-meeting";
+import { INCOGNITO_MANUAL } from "./incognito";
+import { KNOWLEDGE_MANUAL } from "./knowledge";
+import { MCP_TOOLS_MANUAL } from "./mcp-tools";
+import { MEDIA_MANUAL } from "./media";
+import { MEMORY_MANUAL } from "./memory";
+import { MUSIC_ROOM_MANUAL } from "./music-room";
+import { NATIVE_APPS_MANUAL } from "./native-apps";
+import { OUR_SPACE_MANUAL } from "./our-space";
+import { OUTREACH_MANUAL } from "./outreach";
+import { PERMISSIONS_MANUAL } from "./permissions";
+import { SANDBOX_MANUAL } from "./sandbox";
+import { SKILLS_MANUAL } from "./skills";
+import { THEMES_MANUAL } from "./themes";
+import { THINKING_DRAWER_MANUAL } from "./thinking-drawer";
+import { VISION_MANUAL } from "./vision";
+import { VOICE_MANUAL } from "./voice";
 
 export interface ManualEntry {
   /** Stable id, used by read_manual. */

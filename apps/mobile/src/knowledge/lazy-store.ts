@@ -10,10 +10,10 @@
  * PURE-ish: only depends on the store interfaces.
  */
 
-import { getKnowledgeStore, knowledgeStore } from "./instance.js";
-import type { KbChunkRecord, KbDoc } from "./store.js";
-import type { SqliteKnowledgeStore } from "./vec-store.js";
-import { topKByCosine } from "./vectors.js";
+import { getKnowledgeStore, knowledgeStore } from "./instance";
+import type { KbChunkRecord, KbDoc } from "./store";
+import type { SqliteKnowledgeStore } from "./vec-store";
+import { topKByCosine } from "./vectors";
 
 type Store = typeof knowledgeStore | SqliteKnowledgeStore;
 

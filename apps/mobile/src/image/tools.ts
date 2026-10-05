@@ -16,8 +16,8 @@
  * Tool naming follows the existing local-tools convention (snake_case,
  * human-language descriptions written FOR the AI).
  */
-import { type LocalTool, ToolError } from "../api-groups/local-tools.js";
-import { buildImageUrl, encodeImageMessage } from "./protocol.js";
+import { type LocalTool, ToolError } from "../api-groups/local-tools";
+import { buildImageUrl, encodeImageMessage } from "./protocol";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
