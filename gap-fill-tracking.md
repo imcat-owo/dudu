@@ -60,8 +60,9 @@ Follow-up 全做完（ade53fb）+ 复审 PASS：搜索滚动定位 / 追问气�
 - [x] B16 模型速测
 - [x] B17 出图端点探测
 
-## Batch 3 — 语音 C（待）
-C1 更多 TTS provider / C2 自动朗读 / C4 云端 STT / C5 发语音消息 / C6 AlarmKit 闹钟 / C7 语音纠错
+## Batch 3 — 语音 C（✅✅ 构建+复审+修+复审 全 PASS 2026-10-05）
+C1 四家 TTS / C2 自动朗读 / C4 云端 STT / C6 闹钟 / C7 纠错学习全做完，对着 Kelivo 真源码学的。
+复审 FAIL 一次（P1：测试 mock 多了 removeItem，2 行修好）→ 复审 PASS。C5 发语音给模型延期（要动消息 pipeline，记账等她拍板）；豆包 TTS 诚实没做（Kelivo 没有，无从对齐）。正式打勾。
 
 ## Batch 4 — MCP/工具 D（待）
 D1 MCP HTTP/SSE+OAuth / D2 MCP 管理 UI / D3 ask_user / D4 浏览器多标签 UI / D5 网页搜索 / D6 图片压缩 / D7 长粘贴转文件 / D8 工具描述可编辑 / D9 挂载外部文件夹 / D10 环境变量+脱敏 / D11 Skills GitHub 导入 / D12 sub-agent 委派 / D13 跨会话 CLI / D14 交互式终端
