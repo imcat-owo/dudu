@@ -1475,7 +1475,7 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.extras.needObject": "Must be a JSON object",
   "apigroup.caching.title": "Prompt caching",
   "apigroup.caching.desc":
-    "When the server supports it, repeated prompts hit the cache — faster and cheaper.",
+    "When the server supports it, repeated prompts hit the cache — faster and cheaper. OpenAI-compatible endpoints only.",
   "apigroup.diag.title": "Diagnostic log",
   "apigroup.diag.desc": "Every request is logged here; keys are redacted, never shown raw.",
   "apigroup.diag.view": "View log",
@@ -1537,8 +1537,6 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.slot.title": "Titles",
   "apigroup.slot.summary": "Summaries",
   "apigroup.slot.suggest": "Suggestions",
-  "apigroup.slot.translate": "Translation",
-  "apigroup.slot.ocr": "Image to text",
   "apigroup.slot.memory": "Memory",
   "apigroup.slot.compress": "Compress context",
   "chatmode.title": "Chat mode",

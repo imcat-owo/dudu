@@ -59,6 +59,7 @@ import { dialogModelOverrideStore } from "./api-groups/dialog-model-override";
 import { DialogModelChip } from "./api-groups/dialog-model-sheet";
 import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
+import { withSlotModel } from "./api-groups/model-slots";
 import { PlanGateCard } from "./api-groups/plan-gate-card";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
@@ -1238,8 +1239,10 @@ export function ChatScreen({
       if (!activeGroup) return;
       const text = messageText(last).trim();
       if (!text) return;
+      // B13: dedicated model slot for follow-up suggestions when set.
+      const slotGroup = await withSlotModel(activeGroup, "suggest");
       const raw = await generateOneShot(
-        activeGroup,
+        slotGroup,
         "Suggest follow-up questions. Reply with exactly 3 short follow-up questions, one per line, no numbering, no extra text.",
         `Her question was about: ${text.slice(0, 1200)}`,
         { timeoutMs: 25000 },
@@ -1272,8 +1275,10 @@ export function ChatScreen({
         .map((m) => messageText(m as AgentMessage).slice(0, 400))
         .join("\n");
       if (!sample.trim()) return;
+      // B13: dedicated model slot for auto-titles when set.
+      const slotGroup = await withSlotModel(activeGroup, "title");
       const title = await generateOneShot(
-        activeGroup,
+        slotGroup,
         "Generate a very short chat title (max 10 Chinese characters or 5 English words). Reply with ONLY the title, nothing else.",
         sample,
         { timeoutMs: 25000 },
