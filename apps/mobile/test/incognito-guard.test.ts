@@ -77,6 +77,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "music_memory_add",
       "dj_queue_add",
       "write_clipboard",
+      "dudu",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);
