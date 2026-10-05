@@ -1368,6 +1368,7 @@ const zhHans = {
   "apigroup.cap.thinkingUnknown": "思考过程：还没试过",
   "apigroup.cap.probe": "检测能力",
   "apigroup.cap.probing": "检测中…",
+  "apigroup.cap.probeFailed": "没连上，检查下地址和 key",
   "apigroup.profileReset": "重置学习记录",
   "apigroup.profileNote": "嘟嘟记住的可用配置",
 
@@ -1466,6 +1467,7 @@ const zhHans = {
   "apigroup.share.imported": "拿到了，检查下没问题就保存",
   "apigroup.share.invalid": "这串东西我看不懂，不是有效的分享",
   "apigroup.share.cameraDenied": "没拿到相机权限，开了才能扫码",
+  "apigroup.share.openSettings": "去设置开启相机权限",
   "apigroup.azure.title": "Azure OpenAI",
   "apigroup.azure.enable": "启用 Azure 模式",
   "apigroup.azure.desc": "打开就走 Azure 的部署地址，上面的接口地址就不管了。",

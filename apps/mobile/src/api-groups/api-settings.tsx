@@ -17,7 +17,7 @@ import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { Check, ChevronDown, Plus, Trash2, X } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { TText } from "../font";
 import { t } from "../i18n";
@@ -109,7 +109,16 @@ function ModeSwitch() {
   );
 }
 
-function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: () => void }) {
+function GroupEditor({
+  initial,
+  onClose,
+  openOAuth,
+}: {
+  initial: ApiGroup | null;
+  onClose: () => void;
+  /** D2: open the editor with the "免 Key 登录" (OAuth) section expanded. */
+  openOAuth?: boolean;
+}) {
   const colors = useColors();
   const s = useStyles();
   // Legacy stored vendors ("anthropic"/"gemini") have no tab anymore (P1-7:
@@ -415,7 +424,7 @@ function GroupEditor({ initial, onClose }: { initial: ApiGroup | null; onClose: 
         autoCapitalize="none"
         autoCorrect={false}
       />
-      <Collapsible title={t("apigroup.oauth.title")}>
+      <Collapsible title={t("apigroup.oauth.title")} defaultOpen={openOAuth}>
         <OAuthSection draft={draft} set={set} />
       </Collapsible>
       <Collapsible title={t("apigroup.keys.title")}>
@@ -565,6 +574,7 @@ function CapabilitySection({
   const s = useStyles();
   const [probing, setProbing] = useState(false);
   const [caps, setCaps] = useState<{ tools: string; thinking: string } | null>(null);
+  const [probeError, setProbeError] = useState("");
   const [profileNote, setProfileNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -584,6 +594,7 @@ function CapabilitySection({
     if (!draft.baseUrl.trim() || !draft.model.trim()) return;
     setProbing(true);
     setCaps(null);
+    setProbeError("");
     try {
       const { probeCapabilities } = await import("./capability-probe");
       const c = await probeCapabilities(
@@ -596,6 +607,7 @@ function CapabilitySection({
       });
     } catch {
       setCaps(null);
+      setProbeError(t("apigroup.cap.probeFailed"));
     } finally {
       setProbing(false);
     }
@@ -633,6 +645,9 @@ function CapabilitySection({
           {caps.tools} · {caps.thinking}
         </TText>
       ) : null}
+      {probeError ? (
+        <TText style={[s.small, { color: colors.danger }]}>{probeError}</TText>
+      ) : null}
       {profileNote ? (
         <TText style={[s.small, { color: colors.muted }]}>
           {t("apigroup.profileNote")}：{profileNote}
@@ -661,6 +676,8 @@ export function ApiSettingsScreen() {
   const s = useStyles();
   const { groups, activeId, loaded } = useApiGroups();
   const [editing, setEditing] = useState<ApiGroup | null | "new">(null);
+  // D2: from the first-screen card — open the editor with OAuth expanded.
+  const [oauthFirst, setOauthFirst] = useState(false);
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -684,7 +701,18 @@ export function ApiSettingsScreen() {
 
       {!loaded ? null : groups.length === 0 ? (
         <Card>
-          <TText style={{ color: colors.muted }}>{t("apigroup.empty")}</TText>
+          <View style={{ gap: 10 }}>
+            <TText style={{ color: colors.muted }}>{t("apigroup.empty")}</TText>
+            <Button
+              primary
+              onPress={() => {
+                setOauthFirst(true);
+                setEditing("new");
+              }}
+            >
+              {t("apigroup.oauth.title")}
+            </Button>
+          </View>
         </Card>
       ) : (
         groups.map((g) => {
@@ -763,7 +791,11 @@ export function ApiSettingsScreen() {
           {editing !== null ? (
             <GroupEditor
               initial={editing === "new" ? null : editing}
-              onClose={() => setEditing(null)}
+              onClose={() => {
+                setOauthFirst(false);
+                setEditing(null);
+              }}
+              openOAuth={oauthFirst}
             />
           ) : null}
         </View>
@@ -792,9 +824,17 @@ export function ActiveGroupChip() {
 type DraftSetter = <K extends keyof ApiGroup>(key: K, value: ApiGroup[K]) => void;
 
 /** Collapsible wrapper — keeps the long editor scannable. */
-function Collapsible({ title, children }: { title: string; children: ReactNode }) {
+function Collapsible({
+  title,
+  children,
+  defaultOpen,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
   const colors = useColors();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen ?? false);
   return (
     <View
       style={{
@@ -1624,12 +1664,18 @@ function ScanSheet({ onClose, onImport }: { onClose: () => void; onImport: (t: s
     );
   }
   if (!permission.granted) {
+    // iOS: once denied, requestPermission() never re-shows the system dialog —
+    // the only way back is the system Settings page.
+    const blocked = permission.canAskAgain === false;
     return (
       <Sheet title={t("apigroup.share.scan")} onClose={onClose}>
         <View style={{ gap: 12, paddingVertical: 8 }}>
           <TText style={{ color: colors.text }}>{t("apigroup.share.cameraDenied")}</TText>
-          <Button primary onPress={() => void requestPermission()}>
-            {t("apigroup.share.scan")}
+          <Button
+            primary
+            onPress={() => void (blocked ? Linking.openSettings() : requestPermission())}
+          >
+            {t(blocked ? "apigroup.share.openSettings" : "apigroup.share.scan")}
           </Button>
         </View>
       </Sheet>

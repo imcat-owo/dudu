@@ -1423,6 +1423,7 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.cap.thinkingUnknown": "Thinking: not tested yet",
   "apigroup.cap.probe": "Detect capabilities",
   "apigroup.cap.probing": "Detecting…",
+  "apigroup.cap.probeFailed": "Couldn't connect — check the URL and key",
   "apigroup.profileReset": "Reset learned config",
   "apigroup.profileNote": "Working config Dudu remembers",
 
@@ -1528,6 +1529,7 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.share.imported": "Got it — look it over, then save",
   "apigroup.share.invalid": "I can't read that — not a valid share",
   "apigroup.share.cameraDenied": "Camera permission needed to scan",
+  "apigroup.share.openSettings": "Open Settings to enable the camera",
   "apigroup.azure.title": "Azure OpenAI",
   "apigroup.azure.enable": "Enable Azure mode",
   "apigroup.azure.desc":
