@@ -64,6 +64,22 @@ jobs:
           cd ios
           pod install --repo-update
 
+      - name: Fix EXConstants script path (pnpm workaround)
+        run: |
+          # CocoaPods sets PODS_TARGET_SRCROOT to ios/Pods/../../ (= apps/mobile)
+          # for expo modules under pnpm, so the EXConstants "Generate app.config"
+          # script phase points at a non-existent path and the build fails.
+          # Patch the generated Pods project to use the absolute script path.
+          EC_DIR=$(node -e "console.log(require('path').dirname(require.resolve('expo-constants/package.json')))")
+          EC_SCRIPT="$EC_DIR/scripts/get-app-config-ios.sh"
+          if [ ! -f "$EC_SCRIPT" ]; then
+            echo "expo-constants script not found at $EC_SCRIPT"
+            exit 1
+          fi
+          echo "Patching EXConstants script phase to: $EC_SCRIPT"
+          sed -i '' 's|$PODS_TARGET_SRCROOT/../scripts/get-app-config-ios.sh|'"$EC_SCRIPT"'|g' ios/Pods/Pods.xcodeproj/project.pbxproj
+          grep -c "get-app-config-ios.sh" ios/Pods/Pods.xcodeproj/project.pbxproj
+
       - name: Build with xcodebuild (unsigned)
         run: |
           cd ios
