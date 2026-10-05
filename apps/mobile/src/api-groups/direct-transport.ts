@@ -18,7 +18,7 @@
 import { type ApiGroup, normalizeBaseUrl } from "./types";
 import { resolveKeySecret, selectKeyId, recordKeyResult } from "./api-keys";
 import { oauthStore } from "./oauth";
-import { logDiag, sanitizeHeaders, sanitizeBodyPreview } from "./diagnostics";
+import { logDiag, sanitizeBodyPreview } from "./diagnostics";
 import { recordUsage } from "./pricing";
 
 export interface ChatMessage {
@@ -204,6 +204,10 @@ function requestBody(
   }
   // B7: prompt caching — opt-in. Kelivo sends prompt_cache_key for
   // OpenAI-compatible endpoints; servers that support it bill less.
+  // Honest limitation: this transport only speaks OpenAI-compatible
+  // /chat/completions. Native Anthropic cache_control (/v1/messages)
+  // needs a native Anthropic transport, which is deliberately deferred
+  // (see types.ts). The UI says "OpenAI-compatible endpoints only".
   if (group.caching?.enabled && opts?.dialogId) {
     body.prompt_cache_key = `dudu:${opts.dialogId}`;
   }

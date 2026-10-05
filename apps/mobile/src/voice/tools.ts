@@ -10,6 +10,7 @@
 import { type LocalTool, ToolError } from "../api-groups/local-tools";
 import { enStrings } from "../i18n/en";
 import { zhHansStrings } from "../i18n/zh-Hans";
+import { createAlarmStore, type AlarmBackend } from "./alarms";
 import { generatePodcastAudio, splitPodcastText } from "./podcast";
 import type { TtsConfig } from "./types";
 
@@ -181,6 +182,170 @@ export function createPodcastTools(
   ];
 }
 
+/**
+ * Build the alarm tool set — let the AI set alarms on request.
+ *
+ * The native AlarmKit module and expo-notifications are loaded lazily
+ * (they don't exist in the node test env).
+ */
+export function createAlarmTools(
+  backend: AlarmBackend,
+  locale: PodcastLocale = "zh-Hans",
+): LocalTool[] {
+  const strings: Record<string, string> =
+    locale === "en"
+      ? (enStrings as unknown as Record<string, string>)
+      : (zhHansStrings as unknown as Record<string, string>);
+  const t = (key: string, vars?: Record<string, string>): string => {
+    let s = strings[key] ?? key;
+    if (vars) {
+      for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
+    }
+    return s;
+  };
+
+  async function alarmKit() {
+    try {
+      // expo-modules-core is an optional native dependency — resolve it
+      // dynamically so the module stays importable without it (tests).
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const req = (typeof require !== "undefined" ? require : null) as
+        | ((id: string) => unknown)
+        | null;
+      const mod = req
+        ? (req("expo-modules-core") as { NativeModulesProxy?: Record<string, unknown> })
+        : null;
+      const native = mod?.NativeModulesProxy?.DuduAlarmKit as
+        | {
+            isAvailable(): boolean;
+            requestAuthorization(): Promise<boolean>;
+            scheduleAlarm(fireAt: number, label: string): Promise<string>;
+            cancelAlarm(id: string): Promise<void>;
+          }
+        | undefined;
+      if (!native) return null;
+      return {
+        isAvailable: () => native.isAvailable(),
+        requestAuthorization: () => native.requestAuthorization(),
+        scheduleAlarm: (fireAt: number, label: string) => native.scheduleAlarm(fireAt, label),
+        cancelAlarm: (id: string) => native.cancelAlarm(id),
+        listAlarms: async () => [] as Array<{ id: string; fireAt: number; label: string }>,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function notifications() {
+    try {
+      const mod = await import("expo-notifications");
+      return {
+        requestPermissionsAsync: async () => {
+          const r = await mod.requestPermissionsAsync();
+          return { granted: r.granted };
+        },
+        scheduleNotificationAsync: (opts: {
+          content: { title: string; body: string; sound: boolean };
+          trigger: { type: "date"; date: Date };
+        }) =>
+          mod.scheduleNotificationAsync({
+            content: opts.content,
+            // expo-notifications v0.32+: date trigger needs explicit type.
+            trigger: { type: mod.SchedulableTriggerInputTypes.DATE, date: opts.trigger.date },
+          }),
+        cancelScheduledNotificationAsync: (id: string) =>
+          mod.cancelScheduledNotificationAsync(id),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const store = createAlarmStore({ backend, alarmKit, notifications });
+
+  return [
+    {
+      name: "set_alarm",
+      description:
+        "Set an alarm that rings at a specific time. Use when she says " +
+        "'明天 7 点叫我' / '定个闹钟' / '提醒我'. The alarm uses iOS AlarmKit " +
+        "(system alarm UI) when available, otherwise a scheduled notification. " +
+        "fireAt is an ISO 8601 datetime with timezone, e.g. '2026-10-06T07:00:00+08:00'. " +
+        "Always confirm what was set in your reply.",
+      parameters: {
+        type: "object",
+        properties: {
+          fireAt: {
+            type: "string",
+            description: "ISO 8601 datetime with timezone offset, e.g. '2026-10-06T07:00:00+08:00'.",
+          },
+          label: {
+            type: "string",
+            description: "Short label, e.g. '起床'. Defaults to '闹钟'.",
+          },
+        },
+        required: ["fireAt"],
+        additionalProperties: false,
+      },
+      manualId: "voice",
+      run: async (args) => {
+        const fireAtRaw = strArg(args, "fireAt").trim();
+        const label = strArg(args, "label").trim() || t("voice.alarmSet");
+        if (!fireAtRaw) throw new ToolError("fireAt is required.");
+        const fireAt = Date.parse(fireAtRaw);
+        if (!Number.isFinite(fireAt)) {
+          throw new ToolError(`Cannot parse fireAt as a date: ${fireAtRaw}`);
+        }
+        try {
+          const alarm = await store.schedule(fireAt, label);
+          const d = new Date(alarm.fireAt);
+          const when = `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          return t("voice.alarmSetOk") + `（${when}，${alarm.label}）`;
+        } catch (e) {
+          throw new ToolError(t("voice.alarmSetFail", { msg: e instanceof Error ? e.message : String(e) }));
+        }
+      },
+    },
+    {
+      name: "list_alarms",
+      description:
+        "List upcoming alarms. Use when she asks '我定了哪些闹钟'.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+      manualId: "voice",
+      run: async () => {
+        const alarms = await store.list();
+        if (!alarms.length) return t("voice.alarmEmpty");
+        return alarms
+          .map((a) => {
+            const d = new Date(a.fireAt);
+            const when = `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            return `- ${when} ${a.label} (id: ${a.id})`;
+          })
+          .join("\n");
+      },
+    },
+    {
+      name: "cancel_alarm",
+      description:
+        "Cancel an alarm by id (see list_alarms). Use when she says '把那个闹钟删了'.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Alarm id from list_alarms." },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      manualId: "voice",
+      run: async (args) => {
+        const id = strArg(args, "id").trim();
+        if (!id) throw new ToolError("id is required.");
+        await store.cancel(id);
+        return t("voice.alarmDelete") + " done.";
+      },
+    },
+  ];
+}
 /**
  * Build the TTS voice tool set — let the AI change the voice on request.
  */

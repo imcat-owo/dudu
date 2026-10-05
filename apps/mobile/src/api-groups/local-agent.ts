@@ -75,7 +75,7 @@ import {
   VisionError,
 } from "../vision/describe";
 import { voiceStore } from "../voice/store";
-import { createPodcastTools, createTtsVoiceTools } from "../voice/tools";
+import { createAlarmTools, createPodcastTools, createTtsVoiceTools } from "../voice/tools";
 import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
@@ -87,7 +87,7 @@ import {
   streamChat,
 } from "./direct-transport";
 import { classifyError, type ErrorClass } from "./error-classifier";
-import { loadModelSlots, type ModelSlotId } from "./model-slots";
+import { withSlotModel } from "./model-slots";
 import {
   describeVia,
   findCapabilityGroup,
@@ -184,24 +184,6 @@ export function contentToText(content: string | ChatContentBlock[]): string {
   return content.map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
 }
 export const MAX_TOOL_ITERATIONS = 10;
-
-/**
- * B13: swap in the dedicated slot model for a background task when the
- * user configured one (small/cheap model for small jobs). Returns the
- * group unchanged when no slot model is set or the lookup fails — never
- * throws. v1 overrides the model on the same group; binding a slot to a
- * different provider group is a follow-up.
- */
-export async function withSlotModel(group: ApiGroup, slotId: ModelSlotId): Promise<ApiGroup> {
-  try {
-    const slots = await loadModelSlots();
-    const model = slots[slotId]?.model?.trim();
-    if (model && model !== group.model) return { ...group, model };
-  } catch {
-    // slot lookup is best-effort
-  }
-  return group;
-}
 
 /**
  * Parse a tool call's JSON arguments string. Never throws — malformed
@@ -1116,6 +1098,8 @@ export function createLocalAgent(opts: {
           },
         }),
         ...createTtsVoiceTools(voiceStore),
+        // Batch 3: alarm tools — let the AI set alarms on request.
+        ...createAlarmTools(AsyncStorage, getLocale() === "en" ? "en" : "zh-Hans"),
         ...createDialogTools({ threadId: opts.threadId }),
         // Capability groups (audit round 2, AI-use P1-2): the AI was blind
         // to "分组" — now it can list them read-only and answer her
@@ -1866,7 +1850,9 @@ export function createLocalAgent(opts: {
                 incognito(),
                 async (prompt: string) => {
                   let text = "";
-                  await streamChat(activeGroup, [{ role: "user", content: prompt }], {
+                  // B13: dedicated model slot for memory extraction when set.
+                  const slotGroup = await withSlotModel(activeGroup, "memory");
+                  await streamChat(slotGroup, [{ role: "user", content: prompt }], {
                     onToken: (d: string) => {
                       text += d;
                     },

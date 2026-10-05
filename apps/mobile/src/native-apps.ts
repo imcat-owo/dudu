@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports — lazy optional requires are intentional here */
 /**
  * 原生应用授权 (Native App Authorizations) — pure logic.
  *
@@ -150,12 +149,11 @@ function normalize(status: string | undefined): NativeAppStatus {
 }
 
 /** Lazy require — keeps this module importable in node tests.
- * Takes a thunk so Metro sees a static require() call (it rejects
- * require(variable) at bundle time); the try/catch still makes the
- * module optional at runtime. */
-function tryRequire<T>(load: () => T): T | null {
+ * Takes a thunk so Metro sees a static require("literal") at bundle time
+ * (Metro rejects require(variable)). */
+function tryRequire<T>(fn: () => T): T | null {
   try {
-    return load();
+    return fn();
   } catch {
     return null;
   }

@@ -2,14 +2,15 @@
  * B13: dedicated model slots — small jobs get small (cheap) models.
  *
  * Learned from Kelivo's per-purpose model slots (title/summary/suggest/
- * translate/OCR/memory/compress): each slot binds provider group + model
- * + optional custom prompt + thinking toggle. Auto-titles, summaries and
- * compression stop burning the flagship model's money.
+ * memory/compress): each slot binds a model override. Auto-titles,
+ * follow-up suggestions, memory extraction, summaries and compression
+ * stop burning the flagship model's money.
  *
  * Stored in AsyncStorage (not secret — only ids and prompts).
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { ApiGroup } from "./types";
 
 const SLOTS_KEY = "dudu.model-slots.v1";
 
@@ -17,8 +18,6 @@ export type ModelSlotId =
   | "title"
   | "summary"
   | "suggest"
-  | "translate"
-  | "ocr"
   | "memory"
   | "compress";
 
@@ -37,8 +36,6 @@ export const MODEL_SLOT_IDS: ModelSlotId[] = [
   "title",
   "summary",
   "suggest",
-  "translate",
-  "ocr",
   "memory",
   "compress",
 ];
@@ -83,16 +80,19 @@ export async function saveModelSlots(slots: Record<ModelSlotId, ModelSlot>): Pro
 }
 
 /**
- * Resolve a slot to a concrete (groupId, model) pair.
- * Falls back to the active group/model when the slot is unbound.
+ * B13: swap in the dedicated slot model for a background task when the
+ * user configured one (small/cheap model for small jobs). Returns the
+ * group unchanged when no slot model is set or the lookup fails — never
+ * throws. v1 overrides the model on the same group; binding a slot to a
+ * different provider group is a follow-up.
  */
-export function resolveSlot(
-  slot: ModelSlot,
-  activeGroupId: string | null,
-  groupModel: (groupId: string) => string | null,
-): { groupId: string | null; model: string | null } {
-  const groupId = slot.groupId ?? activeGroupId;
-  if (!groupId) return { groupId: null, model: null };
-  const model = slot.model ?? groupModel(groupId);
-  return { groupId, model };
+export async function withSlotModel(group: ApiGroup, slotId: ModelSlotId): Promise<ApiGroup> {
+  try {
+    const slots = await loadModelSlots();
+    const model = slots[slotId]?.model?.trim();
+    if (model && model !== group.model) return { ...group, model };
+  } catch {
+    // slot lookup is best-effort
+  }
+  return group;
 }
