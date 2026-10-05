@@ -70,3 +70,37 @@ export function pruneUserGroups(
     groupIds: ug.groupIds.filter((id) => liveGroupIds.has(id)),
   }));
 }
+
+/**
+ * D27: find the user bucket that contains groupId. Pure.
+ * Returns null when the group isn't in any bucket.
+ */
+export function findBucketForGroup(
+  userGroups: UserProviderGroup[],
+  groupId: string,
+): UserProviderGroup | null {
+  for (const ug of userGroups) {
+    if (ug.groupIds.includes(groupId)) return ug;
+  }
+  return null;
+}
+
+/**
+ * D27: next live member of the bucket after currentId, in bucket order
+ * (wraps around). Pure. Returns null when fewer than 2 members are still
+ * alive — failover needs somewhere to go.
+ */
+export function nextBucketMember(
+  bucket: UserProviderGroup,
+  currentId: string,
+  liveGroupIds: Set<string>,
+): string | null {
+  const live = bucket.groupIds.filter((id) => liveGroupIds.has(id));
+  if (live.length < 2) return null;
+  const idx = live.indexOf(currentId);
+  // currentId always in live here (caller found the bucket via currentId),
+  // but stay safe: unknown id starts from the head.
+  const nextIdx = idx < 0 ? 0 : (idx + 1) % live.length;
+  const next = live[nextIdx];
+  return next === currentId ? null : next;
+}

@@ -12,6 +12,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
+import { findBucketForGroup, nextBucketMember, type UserProviderGroup } from "./provider-groups";
 import type { ApiGroup } from "./types";
 
 const GROUPS_KEY = "dudu.api-groups.v1";
@@ -159,6 +160,29 @@ export function createGroupStore(secure?: SecureBackend) {
     async setActive(id: string): Promise<void> {
       await ensureLoaded();
       if ((groups ?? []).some((g) => g.id === id)) await setActiveId(id);
+    },
+
+    /**
+     * D27: bucket failover. When the group with groupId fails with a
+     * retryable error and it sits in one of her user buckets with 2+
+     * live members, move the active group to the next bucket member
+     * (bucket order, wraps around) and return it. Returns null when
+     * there's nowhere to fail over to. Buckets are injected by the
+     * caller (kept out of the store so this stays testable without
+     * AsyncStorage).
+     */
+    async failoverToNextInBucket(
+      groupId: string,
+      buckets: UserProviderGroup[],
+    ): Promise<ApiGroup | null> {
+      await ensureLoaded();
+      const bucket = findBucketForGroup(buckets, groupId);
+      if (!bucket) return null;
+      const liveIds = new Set((groups ?? []).map((g) => g.id));
+      const nextId = nextBucketMember(bucket, groupId, liveIds);
+      if (!nextId) return null;
+      await setActiveId(nextId);
+      return (groups ?? []).find((g) => g.id === nextId) ?? null;
     },
 
     /**

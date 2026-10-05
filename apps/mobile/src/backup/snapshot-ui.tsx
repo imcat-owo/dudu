@@ -169,14 +169,18 @@ export function SnapshotSection() {
             </Button>
             <Button
               onPress={() =>
-                Alert.alert(t("snapshot.delete"), "", [
-                  { text: t("common.cancel"), style: "cancel" },
-                  {
-                    text: t("common.delete"),
-                    style: "destructive",
-                    onPress: () => void store.remove(s.id).then(refresh),
-                  },
-                ])
+                Alert.alert(
+                  t("snapshot.delete"),
+                  t("snapshot.deleteConfirm", { time: new Date(s.createdAt).toLocaleString() }),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("common.delete"),
+                      style: "destructive",
+                      onPress: () => void store.remove(s.id).then(refresh),
+                    },
+                  ],
+                )
               }
               disabled={busy}
             >

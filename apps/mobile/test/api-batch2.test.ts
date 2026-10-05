@@ -296,6 +296,48 @@ describe("B12 share codec", () => {
     assert.equal(decodeShare("hello world"), null);
     assert.equal(decodeShare(`${SHARE_PREFIX}!!!not-base64!!!`), null);
   });
+
+  it("D38: bodyExtras survive the round-trip instead of being neutered", () => {
+    const grp = blankGroup("openai");
+    grp.bodyExtras = { custom_param: "yes", nested: { a: 1 } };
+    const payload = decodeShare(encodeShare(grp, false));
+    assert.ok(payload);
+    const restored = payloadToGroup(payload);
+    assert.deepEqual(restored.bodyExtras, { custom_param: "yes", nested: { a: 1 } });
+  });
+
+  it("D38: headersStripped is set only when headers existed but keys were excluded", () => {
+    const withHeaders = blankGroup("openai");
+    withHeaders.headers = { "X-Custom": "1" };
+    const dropped = decodeShare(encodeShare(withHeaders, false));
+    assert.ok(dropped);
+    assert.equal(dropped.headersStripped, true, "headers dropped without keys → flag set");
+    const kept = decodeShare(encodeShare(withHeaders, true));
+    assert.ok(kept);
+    assert.equal(kept.headersStripped, undefined, "headers included → no flag");
+    const noHeaders = blankGroup("openai");
+    const none = decodeShare(encodeShare(noHeaders, false));
+    assert.ok(none);
+    assert.equal(none.headersStripped, undefined, "no headers to drop → no flag");
+  });
+
+  it("D38: old payloads without the new fields still import", () => {
+    const legacy = {
+      v: 1,
+      name: "old",
+      vendor: "openai",
+      baseUrl: "https://api.example.com/v1",
+      apiKey: "",
+      model: "gpt-4o-mini",
+      headers: {},
+      exportedAt: 1,
+    };
+    const text = `${SHARE_PREFIX}${Buffer.from(JSON.stringify(legacy), "utf8").toString("base64")}`;
+    const payload = decodeShare(text);
+    assert.ok(payload);
+    const restored = payloadToGroup(payload);
+    assert.deepEqual(restored.bodyExtras, {});
+  });
 });
 
 describe("B14 Azure endpoint construction", () => {

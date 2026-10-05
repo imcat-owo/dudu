@@ -1403,7 +1403,6 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.headerValuePh": "Value",
   "apigroup.addHeader": "Add row",
   "apigroup.test": "Test connection",
-  "apigroup.testing": "Testing…",
   "apigroup.testOk": "Connected",
   "apigroup.testFailAuth":
     "The key looks wrong or lacks permission. Re-paste the key in the group and double-check the address.",
@@ -1501,13 +1500,16 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.usergroup.ph": "e.g. main",
   "apigroup.pgroups.title": "My groups",
   "apigroup.pgroups.desc":
-    "Sort connections into your own buckets — tag a group with the same name and it lands here automatically.",
+    "Sort connections into your own buckets — tag a group with the same name and it lands here automatically. When the active connection gets rate-limited or goes down, it automatically fails over to the next one in its bucket.",
   "apigroup.pgroups.namePh": "Group name, e.g. freebies",
   "apigroup.pgroups.add": "Create",
   "apigroup.pgroups.delete": "Delete group",
   "apigroup.pgroups.deleteConfirm": 'Delete "{name}"? The connections inside stay untouched.',
   "apigroup.pgroups.empty": "No custom groups yet",
   "apigroup.pgroups.members": "{n} connections",
+  "apigroup.pgroups.use": "Switch to this group",
+  "apigroup.bucket.failover":
+    "{from} isn't responding, switched to {to} automatically — send another message to try it.",
   "apigroup.extras.title": "Extra request params",
   "apigroup.extras.desc":
     "Top-level params merged into every request — for gateways that need something special. Must be valid JSON.",
@@ -1550,6 +1552,8 @@ export const enStrings: Record<StringKey, string> = {
   "apigroup.share.pastePh": "Or paste the share text here",
   "apigroup.share.import": "Import this config",
   "apigroup.share.imported": "Got it — look it over, then save",
+  "apigroup.share.headersStripped":
+    "Heads-up: the sharer didn't include custom headers (kept private) — add them manually if this config needs them.",
   "apigroup.share.invalid": "I can't read that — not a valid share",
   "apigroup.share.cameraDenied": "Camera permission needed to scan",
   "apigroup.share.openSettings": "Open Settings to enable the camera",
@@ -1847,7 +1851,6 @@ export const enStrings: Record<StringKey, string> = {
   "sandbox.docker.stopFailed": "Could not stop the container.",
   "sandbox.terminal.title": "Terminal",
   "sandbox.terminal.command": "Command",
-  "sandbox.terminal.run": "Run",
   "sandbox.terminal.empty": "Run a command to see output here.",
   // Native app authorizations
   "napp.title": "Native App Authorizations",
@@ -2184,7 +2187,6 @@ export const enStrings: Record<StringKey, string> = {
   "backup.remote.list": "Cloud backups",
   "backup.remote.empty": "No cloud backups yet",
   "backup.remote.test": "Test connection",
-  "backup.remote.testOk": "Connected",
   "backup.remote.testFailed": "Can't connect — check URL and credentials",
   "backup.remote.validation.url-required": "Enter the server address first",
   "backup.remote.validation.url-scheme": "The address must start with http:// or https://",
@@ -2209,7 +2211,7 @@ export const enStrings: Record<StringKey, string> = {
   "snapshot.manual": "Take one now",
   "snapshot.restore": "Restore this",
   "snapshot.delete": "Delete",
-  "snapshot.deleteConfirm": "Delete this snapshot?",
+  "snapshot.deleteConfirm": "Delete the snapshot from {time}?",
   "snapshot.empty": "No snapshots yet",
   "snapshot.preRestore": "Auto-saved before restore",
   "snapshot.reason.manual": "Manual",
@@ -2221,7 +2223,6 @@ export const enStrings: Record<StringKey, string> = {
   "import.cherry": "Cherry Studio",
   "import.chatbox": "ChatBox",
   "import.hint": "Pick their backup file to bring chats over",
-  "import.pickFile": "Pick file",
   "import.importing": "Importing…",
   "import.done": "Imported {conversations} chats, {messages} messages",
   "import.skipped": "({skipped} already imported, skipped)",
@@ -2251,7 +2252,6 @@ export const enStrings: Record<StringKey, string> = {
   "restore.mode.merge": "Merge",
   "restore.mode.mergeHint": "Only add what's missing, keep current data",
   "restore.mode.warning": "Overwrite wipes everything — a snapshot is auto-saved first",
-  "restore.confirm": "Start restore",
 
   // ---- platform: app lock (H8) ----
   "platform.applock.title": "App Lock",
@@ -2390,6 +2390,9 @@ export const enStrings: Record<StringKey, string> = {
   "extras.scan.allowCamera": "Allow camera",
   "extras.scan.invalid": "Couldn't read that code — try another.",
   "extras.scan.providerImported": 'Config "{name}" imported — see API groups.',
+  "extras.scan.importing": "Saving the config…",
+  "extras.scan.headersStripped":
+    "The sharer didn't include custom headers (kept private) — add them in the group settings if the config needs them.",
   "extras.scan.themeStaged": 'Theme "{name}" is on for trying — keep or revert in settings.',
   "extras.scan.theme": "theme",
   "extras.scan.urlFound": "Found a link",

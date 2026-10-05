@@ -28,7 +28,8 @@ import { Button, Card, Sheet, useColors, useStyles } from "../ui";
 import { hapticTap } from "./haptics";
 
 type ScanOutcome =
-  | { kind: "provider"; name: string }
+  | { kind: "provider"; name: string; headersStripped: boolean }
+  | { kind: "importing" }
   | { kind: "theme"; name: string }
   | { kind: "url"; url: string }
   | { kind: "text"; text: string }
@@ -38,7 +39,12 @@ function classify(text: string): ScanOutcome {
   const trimmed = text.trim();
   if (!trimmed) return { kind: "invalid" };
   const provider = decodeShare(trimmed);
-  if (provider) return { kind: "provider", name: provider.name || trimmed.slice(0, 24) };
+  if (provider)
+    return {
+      kind: "provider",
+      name: provider.name || trimmed.slice(0, 24),
+      headersStripped: provider.headersStripped === true,
+    };
   const theme = parseImportBundle(trimmed);
   if (theme.ok) {
     const name =
@@ -64,16 +70,31 @@ export function QrScanSheet({ onClose }: { onClose: () => void }) {
     setScanned(true);
     hapticTap();
     const o = classify(text);
-    setOutcome(o);
     if (o.kind === "provider") {
+      // D44: don't celebrate before the save lands — show "importing",
+      // await the upsert, and only then report success or failure.
       const payload = decodeShare(text.trim());
       if (payload) {
+        setOutcome({ kind: "importing" });
         const g = payloadToGroup(payload);
-        void groupStore.upsert(g).catch(() => {
-          setOutcome({ kind: "invalid" });
-        });
+        const headersStripped = payload.headersStripped === true;
+        groupStore
+          .upsert(g)
+          .then(() => {
+            setOutcome({
+              kind: "provider",
+              name: payload.name || text.trim().slice(0, 24),
+              headersStripped,
+            });
+          })
+          .catch(() => {
+            setOutcome({ kind: "invalid" });
+          });
+        return;
       }
-    } else if (o.kind === "theme") {
+    }
+    setOutcome(o);
+    if (o.kind === "theme") {
       const parsed = parseImportBundle(text.trim());
       if (parsed.ok) {
         stageBundle({
@@ -121,6 +142,13 @@ export function QrScanSheet({ onClose }: { onClose: () => void }) {
             <TText style={{ color: colors.text, textAlign: "center" }}>
               {t("extras.scan.invalid")}
             </TText>
+          ) : outcome.kind === "importing" ? (
+            <>
+              <ActivityIndicator color={colors.text} />
+              <TText style={{ color: colors.muted, textAlign: "center" }}>
+                {t("extras.scan.importing")}
+              </TText>
+            </>
           ) : (
             <>
               <Check size={28} color={colors.blueDark} />
@@ -131,6 +159,12 @@ export function QrScanSheet({ onClose }: { onClose: () => void }) {
                 {outcome.kind === "url" && t("extras.scan.urlFound")}
                 {outcome.kind === "text" && t("extras.scan.textFound")}
               </TText>
+              {/* D38: say it when the sharer left the headers out. */}
+              {outcome.kind === "provider" && outcome.headersStripped && (
+                <TText style={[s.small, { color: colors.muted, textAlign: "center" }]}>
+                  {t("extras.scan.headersStripped")}
+                </TText>
+              )}
               {(outcome.kind === "url" || outcome.kind === "text") && (
                 <TText
                   style={{ color: colors.muted, textAlign: "center", fontSize: 13 }}

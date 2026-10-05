@@ -25,6 +25,13 @@ export interface SharedProviderPayload {
   apiKey: string;
   model: string;
   headers: Record<string, string>;
+  /** D38: true when the sharer had headers but left them out (didn't tick
+   *  "include keys"). Lets the importer say so honestly instead of the
+   *  imported config silently missing them. */
+  headersStripped?: boolean;
+  /** D38: extra request params travel with the config so the imported
+   *  group actually works instead of being silently neutered. */
+  bodyExtras?: Record<string, unknown>;
   /** Present when the sharer included their key pool. */
   apiKeys?: Array<{ name: string; key: string; priority: number }>;
   exportedAt: number;
@@ -41,6 +48,11 @@ export function encodeShare(group: ApiGroup, includeKeys: boolean): string {
     headers: includeKeys ? group.headers : {},
     exportedAt: Date.now(),
   };
+  const hadHeaders = Object.keys(group.headers ?? {}).length > 0;
+  if (!includeKeys && hadHeaders) payload.headersStripped = true;
+  if (group.bodyExtras && Object.keys(group.bodyExtras).length > 0) {
+    payload.bodyExtras = group.bodyExtras;
+  }
   if (includeKeys && group.apiKeys?.length) {
     payload.apiKeys = group.apiKeys.map((k) => ({
       name: k.name,
@@ -98,7 +110,7 @@ export function payloadToGroup(payload: SharedProviderPayload): ApiGroup {
   g.apiKey = payload.apiKey;
   g.model = payload.model;
   g.headers = payload.headers ?? {};
-  g.bodyExtras = {};
+  g.bodyExtras = payload.bodyExtras ?? {};
   g.createdAt = Date.now();
   if (payload.apiKeys?.length) {
     g.apiKeys = payload.apiKeys.map((k) => ({

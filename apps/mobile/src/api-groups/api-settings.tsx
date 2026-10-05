@@ -1597,7 +1597,12 @@ function ShareSection({
     }
     // Opens as a new draft; she saves through the existing onSave flow.
     replaceDraft(payloadToGroup(payload));
-    setNote(t("apigroup.share.imported"));
+    // D38: say it when the sharer left the headers out.
+    setNote(
+      payload.headersStripped === true
+        ? `${t("apigroup.share.imported")}\n${t("apigroup.share.headersStripped")}`
+        : t("apigroup.share.imported"),
+    );
     setScanOpen(false);
   }
 
@@ -1955,6 +1960,14 @@ function ProviderGroupsCard() {
   const s = useStyles();
   const [ugs, setUgs] = useState<UserProviderGroup[]>([]);
   const [name, setName] = useState("");
+  const { groups, activeId } = useApiGroups();
+
+  /** D27: switch the active connection to a bucket ("按分组切换") —
+   *  activates the bucket's first live member in bucket order. */
+  async function onUseBucket(ug: UserProviderGroup) {
+    const first = ug.groupIds.find((id) => groups.some((g) => g.id === id));
+    if (first && first !== activeId) await groupStore.setActive(first);
+  }
 
   useEffect(() => {
     let live = true;
@@ -2017,6 +2030,18 @@ function ProviderGroupsCard() {
                   {t("apigroup.pgroups.members", { n: ug.groupIds.length })}
                 </TText>
               </View>
+              {/* D27: 按分组切换 — bucket is now real: one tap moves the
+                  active connection to its first live member. */}
+              <Button
+                small
+                disabled={
+                  !ug.groupIds.some((id) => groups.some((g) => g.id === id)) ||
+                  ug.groupIds.find((id) => groups.some((g) => g.id === id)) === activeId
+                }
+                onPress={() => void onUseBucket(ug)}
+              >
+                {t("apigroup.pgroups.use")}
+              </Button>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("apigroup.pgroups.delete")}

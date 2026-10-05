@@ -1952,12 +1952,43 @@ export function createLocalAgent(opts: {
               continue;
             }
             if (await tryAdapt(cls)) continue;
+            // D27: bucket failover — a retryable failure (rate limit /
+            // network) of the GLOBAL active group moves it to the next
+            // member of her user bucket, so "主力挂了自动切白嫖" actually
+            // happens. Per-dialog overrides are her explicit choice and
+            // are never auto-switched. Auth errors never fail over (a bad
+            // key won't heal on another group... the next group has its
+            // own key, but silently hopping on 401s would hide the real
+            // problem — she should see which key is bad).
+            let failoverNote = "";
+            if (
+              (cls === "rate_limit" || cls === "network_error") &&
+              groupStore.getSnapshot().activeId === activeGroup.id
+            ) {
+              try {
+                const { loadUserGroups } = await import("./provider-groups");
+                const next = await groupStore.failoverToNextInBucket(
+                  activeGroup.id,
+                  await loadUserGroups(),
+                );
+                if (next) {
+                  failoverNote = t("apigroup.bucket.failover", {
+                    from: activeGroup.name,
+                    to: next.name,
+                  }) as string;
+                }
+              } catch {
+                // Failover is best-effort; the original error below is
+                // what matters.
+              }
+            }
             // Mark the failure on the reply bubble so the user sees WHICH
             // group failed, then rethrow for the screen's error path.
             const label =
               e instanceof GroupError ? `[${activeGroup.name}] ${e.message}` : String(e);
+            const bubbleText = failoverNote ? `${label}\n${failoverNote}` : label;
             messages = messages.map((m) =>
-              m.id === replyId && !replyText ? { ...m, content: label } : m,
+              m.id === replyId && !replyText ? { ...m, content: bubbleText } : m,
             );
             emit();
             throw e;
