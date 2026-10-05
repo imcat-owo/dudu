@@ -27,7 +27,9 @@ export type CrossDialogAction =
   | "meeting_round"
   | "meeting_end"
   /** Proactive outreach (主动触达) — every notification he sends her is logged here. */
-  | "proactive_send";
+  | "proactive_send"
+  /** Feed nudge (C3) — the like + reply he left on her unacknowledged post. */
+  | "feed_nudge";
 
 export interface CrossDialogTraceEntry {
   /** Stable id, e.g. "cdt_...". */

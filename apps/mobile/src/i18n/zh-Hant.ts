@@ -143,6 +143,8 @@ const zhHant = {
   "outreach.notif.silence.body": "好久沒見你了，來看看我好不好",
   "outreach.notif.diaryNudge.title": "那天又想起來了",
   "outreach.notif.diaryNudge.body": "「{anchor}」——想把它記下來，你寫還是我寫？",
+  "outreach.notif.feedNudge.title": "看到你那條動態了",
+  "outreach.notif.feedNudge.body": "去給你點了讚，留了言",
   "outreach.notif.onThisDay.title": "去年的今天",
   "outreach.notif.onThisDay.body": "「{title}」——{years} 年前的今天，想和你一起回頭看看",
   "space.cards.feed": "動態",

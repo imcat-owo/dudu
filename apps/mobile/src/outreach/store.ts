@@ -26,6 +26,11 @@ const KEYS = {
    * drops to 0) — the cap is per unread-letter episode, not forever.
    */
   loveLetterNudges: "dudu.outreach.v1.loveLetterNudges",
+  /**
+   * Feed nudge (C3): post ids already nudged. JSON: string[].
+   * Exactly-once per post — a post in this set is never nudged again.
+   */
+  feedNudges: "dudu.outreach.v1.feedNudges",
 } as const;
 
 export const DEFAULT_FREQUENCY: OutreachFrequency = "moderate";
@@ -98,6 +103,7 @@ export class OutreachStore {
         "silence",
         "diary_nudge",
         "on_this_day",
+        "feed_nudge",
       ] as const) {
         const v = (parsed as Record<string, unknown>)[k];
         if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
@@ -127,6 +133,7 @@ export class OutreachStore {
       await this.storage.setItem(KEYS.lastOpened, "");
       await this.storage.setItem(KEYS.lastOutreach, "{}");
       await this.storage.setItem(KEYS.loveLetterNudges, JSON.stringify({ count: 0 }));
+      await this.storage.setItem(KEYS.feedNudges, JSON.stringify([]));
     });
   }
 
@@ -163,6 +170,41 @@ export class OutreachStore {
     return this.exclusive(async () => {
       try {
         await this.storage.setItem(KEYS.loveLetterNudges, JSON.stringify({ count: 0 }));
+      } catch {
+        // Bookkeeping must never break the app.
+      }
+    });
+  }
+
+  /**
+   * Feed nudge (C3): post ids already nudged. Never throws; junk → [].
+   */
+  async getNudgedFeedPostIds(): Promise<string[]> {
+    try {
+      const raw = await this.storage.getItem(KEYS.feedNudges);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((v): v is string => typeof v === "string" && v.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Record that a feed post was nudged (exactly-once). Serialized and
+   * deduplicated; capped so the set can't grow without bound. Never throws.
+   */
+  async recordFeedNudge(postId: string): Promise<void> {
+    if (!postId) return;
+    return this.exclusive(async () => {
+      try {
+        const prev = await this.getNudgedFeedPostIds();
+        if (prev.includes(postId)) return;
+        const next = [...prev, postId];
+        // Cap: a feed won't meaningfully exceed this; oldest drops first.
+        const capped = next.length > 1000 ? next.slice(next.length - 1000) : next;
+        await this.storage.setItem(KEYS.feedNudges, JSON.stringify(capped));
       } catch {
         // Bookkeeping must never break the app.
       }

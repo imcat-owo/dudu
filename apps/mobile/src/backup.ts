@@ -157,6 +157,7 @@ const EXTENSION_KEYS = [
   "dudu.outreach.v1.lastOpened",
   "dudu.outreach.v1.lastOutreach",
   "dudu.outreach.v1.loveLetterNudges",
+  "dudu.outreach.v1.feedNudges",
   "dudu.sandbox.activeBackend.v1",
   "dudu.ambientvideo.v1.overrides",
   "dudu.theme.aiMode.v1",

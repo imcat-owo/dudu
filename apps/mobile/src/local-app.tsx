@@ -44,6 +44,8 @@ import { IncognitoProvider } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
 import { OurSpaceScreen, type OurSpaceStartPage } from "./our-space-ui";
+import { createOurSpaceTools } from "./our-space/tools";
+import type { FeedNudgePost } from "./outreach/feed-nudge";
 import type { NotificationPort, OutreachTriggerKind } from "./outreach/notify";
 import { notificationDeepLink } from "./outreach/notify";
 import { registerFontSizeHandler } from "./settings/tools";
@@ -328,6 +330,60 @@ export function LocalApp() {
                 // Mood suppression (Fixer D, xiaomeng P2-4): no diary nudge
                 // on top of a fresh "难过".
                 getHerMood: () => ourSpaceStore.getHerMood().catch(() => null),
+                // Feed nudge (C3): her recent posts with AI-interaction
+                // state, shaped for the nudge evaluator.
+                listFeedForNudge: async () => {
+                  const posts = await ourSpaceStore.listFeed(20).catch(() => []);
+                  const out: FeedNudgePost[] = [];
+                  for (const p of posts) {
+                    const replies = await ourSpaceStore.listReplies(p.id).catch(() => []);
+                    out.push({
+                      id: p.id,
+                      author: p.author,
+                      text: p.text,
+                      imageUri: p.imageUri,
+                      createdAt: p.createdAt,
+                      likedByAi: p.likedByAi,
+                      hasAiReply: replies.some((r) => r.author === "ai"),
+                    });
+                  }
+                  return out;
+                },
+              },
+              // Feed nudge actions (C3): invoke the EXISTING feed_like /
+              // feed_reply tool implementations — never reimplemented.
+              // In-app tools carry no capability gate, so authorize is
+              // never consulted; the ctx only satisfies the type.
+              feedActions: {
+                likePost: async (postId: string) => {
+                  const tool = createOurSpaceTools(ourSpaceStore).find(
+                    (x) => x.name === "feed_like",
+                  );
+                  if (!tool) throw new Error("feed_like tool not found");
+                  await tool.run({ postId }, { authorize: async () => true });
+                },
+                replyToPost: async (postId: string, text: string) => {
+                  const tool = createOurSpaceTools(ourSpaceStore).find(
+                    (x) => x.name === "feed_reply",
+                  );
+                  if (!tool) throw new Error("feed_reply tool not found");
+                  await tool.run({ postId, text }, { authorize: async () => true });
+                },
+                getPost: async (postId: string) => {
+                  const posts = await ourSpaceStore.listFeed(100).catch(() => []);
+                  const p = posts.find((x) => x.id === postId);
+                  if (!p) return null;
+                  const replies = await ourSpaceStore.listReplies(p.id).catch(() => []);
+                  return {
+                    id: p.id,
+                    author: p.author,
+                    text: p.text,
+                    imageUri: p.imageUri,
+                    createdAt: p.createdAt,
+                    likedByAi: p.likedByAi,
+                    hasAiReply: replies.some((r) => r.author === "ai"),
+                  };
+                },
               },
               copy: (key, params) => t(key as StringKey, params),
             });

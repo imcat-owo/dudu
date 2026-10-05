@@ -28,6 +28,11 @@ import {
   type OutreachTrigger,
   type OutreachTriggerKind,
 } from "./engine";
+import {
+  runFeedNudge,
+  type FeedNudgeActionPorts,
+  type FeedNudgePost,
+} from "./feed-nudge";
 import { getUpcomingAnniversaries } from "../our-space/anniversary-section";
 import {
   HER_SLEEP_END_HOUR,
@@ -78,6 +83,11 @@ export interface OutreachDataPorts {
    * negative — same freshness window the mood prompt section uses.
    */
   getHerMood?(): Promise<{ mood: string; updatedAt: number } | null>;
+  /**
+   * Feed nudge input (C3): her recent posts with AI-interaction state.
+   * Absent = the caller has no feed data → the trigger stays off.
+   */
+  listFeedForNudge?(): Promise<FeedNudgePost[]>;
 }
 
 export type CopyFn = (key: string, params?: Record<string, string | number>) => string;
@@ -116,6 +126,14 @@ function notifCopy(t: OutreachTrigger, copy: CopyFn): { title: string; body: str
       return {
         title: copy("outreach.notif.diaryNudge.title"),
         body: copy("outreach.notif.diaryNudge.body", { anchor: t.detail }),
+      };
+    case "feed_nudge":
+      // Unreachable in practice: the scheduler executes feed_nudge
+      // directly (like + reply) instead of notifying. Kept for
+      // exhaustiveness — the feed itself is the surface.
+      return {
+        title: copy("outreach.notif.feedNudge.title"),
+        body: copy("outreach.notif.feedNudge.body"),
       };
   }
 }
@@ -179,6 +197,10 @@ export function clampFireOutOfSleepWindow(nowMs: number, delaySeconds: number): 
 /**
  * Evaluate triggers and schedule one notification for the top trigger.
  * Never throws — delivery must never break the app lifecycle.
+ *
+ * feed_nudge is special: instead of a notification, the top feed_nudge
+ * trigger executes a like + one reply directly (the feed itself is the
+ * surface — a "your AI liked your post" notification would be noise).
  */
 export async function evaluateAndScheduleOutreach(deps: {
   store: OutreachStore;
@@ -187,6 +209,12 @@ export async function evaluateAndScheduleOutreach(deps: {
   data: OutreachDataPorts;
   copy: CopyFn;
   now?: number;
+  /**
+   * Feed nudge actions (C3): the EXISTING feed_like / feed_reply tool
+   * implementations, invoked — never reimplemented. Absent = feed_nudge
+   * can win the trigger evaluation but its execution fails closed.
+   */
+  feedActions?: FeedNudgeActionPorts;
 }): Promise<ScheduleResult> {
   const now = deps.now ?? Date.now();
   try {
@@ -269,6 +297,21 @@ export async function evaluateAndScheduleOutreach(deps: {
     }
     const lastOpenedAt = await deps.store.getLastOpenedAt().catch(() => null);
     const lastOutreachAt = await deps.store.getLastOutreachAt().catch(() => ({}));
+    // Feed nudge input (C3): her recent posts + the persisted nudged-set.
+    // A failing source degrades to "no feed trigger", never to a fabricated one.
+    let feedPosts: FeedNudgePost[] = [];
+    try {
+      feedPosts = (await deps.data.listFeedForNudge?.()) ?? [];
+      if (!Array.isArray(feedPosts)) feedPosts = [];
+    } catch {
+      feedPosts = [];
+    }
+    let nudgedFeedPostIds: string[] = [];
+    try {
+      nudgedFeedPostIds = await deps.store.getNudgedFeedPostIds();
+    } catch {
+      nudgedFeedPostIds = [];
+    }
 
     const triggers = evaluateOutreachTriggers({
       frequency,
@@ -282,9 +325,47 @@ export async function evaluateAndScheduleOutreach(deps: {
       onThisDay,
       recentMoodNegative,
       loveLetterNudgeCount,
+      feedNudge: deps.data.listFeedForNudge ? { posts: feedPosts, nudgedPostIds: nudgedFeedPostIds } : undefined,
     });
     if (triggers.length === 0) return { scheduled: false, reason: "no-trigger" };
     const top = triggers[0];
+
+    // Feed nudge (C3): act directly instead of notifying. The like + reply
+    // are silent — no push, no wake. Sleep-window and quiet rules still
+    // apply (the executor checks the sleep window itself).
+    if (top.kind === "feed_nudge") {
+      if (!top.postId || !deps.feedActions) {
+        return { scheduled: false, reason: "failed", trigger: top.kind };
+      }
+      const result = await runFeedNudge({
+        now,
+        posts: feedPosts,
+        nudgedPostIds: nudgedFeedPostIds,
+        actions: deps.feedActions,
+        recordNudged: (id) => deps.store.recordFeedNudge(id),
+        trace: async (summary, reason) => {
+          await deps.trace.append({
+            action: "feed_nudge",
+            fromThreadId: "proactive",
+            fromName: "proactive",
+            summary: summary.slice(0, 200),
+            reason,
+            personaId: "default",
+          });
+        },
+      });
+      if (result.nudged) {
+        await deps.store.markOutreach("feed_nudge", now).catch(() => {});
+        return { scheduled: true, trigger: "feed_nudge" };
+      }
+      const reason =
+        result.reason === "sleep-window"
+          ? ("sleep-window" as const)
+          : result.reason === "no-candidate"
+            ? ("no-trigger" as const)
+            : ("failed" as const);
+      return { scheduled: false, reason, trigger: "feed_nudge" };
+    }
 
     // Her clock (xiaomeng P2-3): she sleeps 06:00–16:00. Never wake her
     // with a nudge — an anniversary is the only thing worth it. The
@@ -392,5 +473,9 @@ export function notificationDeepLink(kind: OutreachTriggerKind): {
       return { section: "space", page: "anniversary" };
     case "silence":
       return { section: "chat" };
+    case "feed_nudge":
+      // The feed lives in Our Space; the like + reply are the surface,
+      // so a notification is never scheduled for this kind.
+      return { section: "space" };
   }
 }

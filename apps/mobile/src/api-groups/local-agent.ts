@@ -73,6 +73,7 @@ import {
   type ScanMessage,
 } from "../persona/world-book";
 import type { OutreachTriggerKind } from "../outreach/engine";
+import type { FeedNudgePost } from "../outreach/feed-nudge";
 import { buildOnThisDayInput } from "../outreach/on-this-day-input";
 import { buildOutreachSection } from "../outreach/prompt";
 import { sandboxManager } from "../sandbox/manager";
@@ -1577,6 +1578,40 @@ export function createLocalAgent(opts: {
           // scheduler passes (local-app.tsx listOnThisDay) — without it the
           // on_this_day prompt line can never fire. Null = no memory today.
           const oOnThisDay = await buildOnThisDayInput(opts.ourSpaceStore ?? ourSpaceStore);
+          // Feed nudge (C3): her recent posts + the persisted nudged-set, so
+          // the in-session prompt can tell him to like + reply once via his
+          // feed_like / feed_reply tools. Same input shape as the background
+          // scheduler. Absent = no feed data → trigger stays off.
+          let oFeedNudge:
+            | { posts: FeedNudgePost[]; nudgedPostIds: string[] }
+            | undefined;
+          try {
+            const os = opts.ourSpaceStore ?? ourSpaceStore;
+            const oPosts = await os.listFeed(20).catch(() => []);
+            const oMapped: FeedNudgePost[] = [];
+            for (const p of oPosts) {
+              let hasAiReply = false;
+              try {
+                const replies = await os.listReplies(p.id).catch(() => []);
+                hasAiReply = replies.some((r) => r.author === "ai");
+              } catch {
+                hasAiReply = false;
+              }
+              oMapped.push({
+                id: p.id,
+                author: p.author,
+                text: p.text,
+                imageUri: p.imageUri,
+                createdAt: p.createdAt,
+                likedByAi: p.likedByAi,
+                hasAiReply,
+              });
+            }
+            const oNudged = await oStore.getNudgedFeedPostIds().catch(() => [] as string[]);
+            oFeedNudge = { posts: oMapped, nudgedPostIds: oNudged };
+          } catch {
+            oFeedNudge = undefined;
+          }
           const oTriggers = evaluateOutreachTriggers({
             frequency,
             now: Date.now(),
@@ -1589,6 +1624,7 @@ export function createLocalAgent(opts: {
             lastOutreachAt: oLastOutreachAt,
             diaryNudge: oDiaryNudge,
             onThisDay: oOnThisDay,
+            feedNudge: oFeedNudge,
           });
           // xiaomeng P3-2: a silence notification fired within the last 24h
           // already said "missed you" — don't double up in-session.

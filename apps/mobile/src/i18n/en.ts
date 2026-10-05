@@ -143,6 +143,8 @@ export const enStrings: Record<StringKey, string> = {
   "outreach.notif.silence.body": "It has been a while. Come see me?",
   "outreach.notif.diaryNudge.title": "That day came back to me",
   "outreach.notif.diaryNudge.body": '"{anchor}" — I want to write it down. You write, or shall I?',
+  "outreach.notif.feedNudge.title": "Saw your post",
+  "outreach.notif.feedNudge.body": "Liked it and left you a reply",
   "outreach.notif.onThisDay.title": "On this day",
   "outreach.notif.onThisDay.body":
     '"{title}" — {years} year(s) ago today. Want to look back together?',

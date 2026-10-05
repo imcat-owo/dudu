@@ -65,6 +65,14 @@ export function buildOutreachSection(triggers: OutreachTrigger[]): string {
           `for today, write one with diary_write — at most one per day, quietly; do not announce it.`,
       );
       break;
+    case "feed_nudge":
+      lines.push(
+        `- She posted in Our Space 24h+ ago and you haven't reacted: "${t.detail}". ` +
+          `Call feed_like with postId "${t.postId ?? ""}", then leave ONE short warm reply with feed_reply ` +
+          `(cute and restrained, no emoji — one natural line, like a texting reply, never generic). ` +
+          `Do it once, quietly; don't announce that you're doing it.`,
+      );
+      break;
   }
   return lines.join("\n");
 }

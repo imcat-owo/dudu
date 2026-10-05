@@ -11,7 +11,9 @@
  *    forbidden), tell_later item whose moment has come, on-this-day memory
  *    ("去年今日", round 3 xiaomeng P1-1), diary nudge (no diary entry for a
  *    while + a real anchor — xiaomeng P2-1; suppressed when her mood is
- *    freshly negative — round 3 xiaomeng P2-4), long silence (real absence).
+ *    freshly negative — round 3 xiaomeng P2-4), long silence (real absence),
+ *    feed nudge (C3: her feed post 24h+ old with no AI reaction — like +
+ *    one reply, exactly once per post).
  *  - Frequency gate: 积极 / 适度 / 安静 (default 适度). 安静 = in-session
  *    only, the engine returns nothing.
  *  - Per-kind cooldown (24h): the same kind of nudge never fires twice
@@ -26,7 +28,8 @@ export type OutreachTriggerKind =
   | "love_letter"
   | "silence"
   | "diary_nudge"
-  | "on_this_day";
+  | "on_this_day"
+  | "feed_nudge";
 
 export interface OutreachTrigger {
   kind: OutreachTriggerKind;
@@ -43,6 +46,8 @@ export interface OutreachTrigger {
   daysUntil?: number;
   /** on_this_day only: how many years ago the memory is from. */
   yearsAgo?: number;
+  /** feed_nudge only: the post to like + reply to. */
+  postId?: string;
 }
 
 export interface OutreachEvalInput {
@@ -83,6 +88,15 @@ export interface OutreachEvalInput {
    * Absent = the caller doesn't track it → no cap (legacy behavior).
    */
   loveLetterNudgeCount?: number;
+  /**
+   * Feed nudge input (C3): her recent posts shaped for eligibility.
+   * Absent = the caller has no feed data → this trigger stays off.
+   */
+  feedNudge?: {
+    posts: FeedNudgePost[];
+    /** Post ids the executor already nudged (persisted). */
+    nudgedPostIds: string[];
+  };
 }
 
 /** Same kind of nudge never fires twice within this window. */
@@ -148,6 +162,7 @@ export function isNegativeMoodWord(mood: string): boolean {
 }
 
 import { HER_MOOD_FRESH_DAYS } from "../our-space/her-mood-section";
+import { evaluateFeedNudge, type FeedNudgePost } from "./feed-nudge";
 
 function cooledDown(kind: OutreachTriggerKind, now: number, last: Partial<Record<OutreachTriggerKind, number>>): boolean {
   const at = last[kind];
@@ -229,6 +244,27 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
     });
   }
 
+  // 3c. Feed nudge (C3) — she posted 24h+ ago and he never reacted.
+  // A like + one reply, exactly once per post (persisted nudged-set +
+  // live likedByAi/hasAiReply checks inside evaluateFeedNudge). Ranks
+  // above diary_nudge: her reaching out beats him prompting her.
+  const fn = input.feedNudge;
+  if (fn) {
+    const candidate = evaluateFeedNudge({
+      now,
+      posts: fn.posts,
+      nudgedPostIds: fn.nudgedPostIds,
+    });
+    if (candidate && !cooledDown("feed_nudge", now, input.lastOutreachAt)) {
+      out.push({
+        kind: "feed_nudge",
+        priority: 4,
+        detail: candidate.snippet,
+        postId: candidate.postId,
+      });
+    }
+  }
+
   // 4. Diary nudge (xiaomeng P2-1) — only when BOTH hold: no diary entry
   // for a while AND a real anchor from recent days exists. Never random,
   // never "该写日记了". The anchor rides in `detail` so the copy always
@@ -245,7 +281,7 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
       !input.recentMoodNegative &&
       !cooledDown("diary_nudge", now, input.lastOutreachAt)
     ) {
-      out.push({ kind: "diary_nudge", priority: 4, detail: anchor.slice(0, 200) });
+      out.push({ kind: "diary_nudge", priority: 5, detail: anchor.slice(0, 200) });
     }
   }
 
@@ -255,7 +291,7 @@ export function evaluateOutreachTriggers(input: OutreachEvalInput): OutreachTrig
   if (input.lastOpenedAt !== null) {
     const gap = now - input.lastOpenedAt;
     if (gap >= SILENCE_THRESHOLD_MS[frequency] && !cooledDown("silence", now, input.lastOutreachAt)) {
-      out.push({ kind: "silence", priority: 5, detail: "" });
+      out.push({ kind: "silence", priority: 6, detail: "" });
     }
   }
 

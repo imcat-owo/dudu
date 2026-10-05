@@ -140,6 +140,8 @@ const zhHans = {
   "outreach.notif.silence.body": "好久没见你了，来看看我好不好",
   "outreach.notif.diaryNudge.title": "那天又想起来了",
   "outreach.notif.diaryNudge.body": "「{anchor}」——想把它记下来，你写还是我写？",
+  "outreach.notif.feedNudge.title": "看到你那条动态了",
+  "outreach.notif.feedNudge.body": "去给你点了赞，留了言",
   "outreach.notif.onThisDay.title": "去年的今天",
   "outreach.notif.onThisDay.body": "「{title}」——{years} 年前的今天，想和你一起回头看看",
   "space.cards.feed": "动态",
