@@ -99,6 +99,13 @@ async function searchDuckDuckGo(query: string): Promise<SearchResponse> {
   });
   if (!res.ok) throw new Error(`DuckDuckGo HTTP ${res.status}`);
   const html = await res.text();
+  // D36: DuckDuckGo anti-scraping often returns HTTP 200 with a
+  // captcha/challenge page instead of results. Parsing that page yields
+  // zero results, which used to surface as a confident "No results found."
+  // Detect the block and throw so the model gets the truth.
+  if (/captcha|anomaly-modal|challenge-form|cf-challenge|just a moment/i.test(html)) {
+    throw new Error("DuckDuckGo anti-scraping blocked the request (captcha/challenge page)");
+  }
   const results: SearchResult[] = [];
   const re =
     /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>.*?<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gs;
@@ -116,35 +123,97 @@ export interface WebSearchDeps {
   providerOrder?: string[];
 }
 
+/** What happened with each provider during a search run. D36: the model
+ * must know WHICH backend served the results and which ones failed/skipped
+ * and why — no more silent fallback. */
+export interface ProviderAttempt {
+  provider: string;
+  status: "ok" | "skipped" | "failed";
+  detail?: string;
+}
+
+export interface WebSearchRun {
+  provider: string;
+  response: SearchResponse;
+  attempts: ProviderAttempt[];
+}
+
 export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
   const order = deps.providerOrder ?? ["tavily", "serper", "brave", "duckduckgo"];
 
-  async function run(query: string): Promise<SearchResponse> {
+  async function run(query: string): Promise<WebSearchRun> {
     const env = await envStore.getValues();
-    const errors: string[] = [];
+    const attempts: ProviderAttempt[] = [];
     for (const provider of order) {
       try {
         switch (provider) {
           case "tavily":
-            if (env.TAVILY_API_KEY) return await searchTavily(query, env.TAVILY_API_KEY);
-            break;
+            // D36: a missing key is a skip, not a silent nothing — record it.
+            if (!env.TAVILY_API_KEY) {
+              attempts.push({ provider, status: "skipped", detail: "no API key configured" });
+              break;
+            }
+            return {
+              provider,
+              response: await searchTavily(query, env.TAVILY_API_KEY),
+              attempts: [...attempts, { provider, status: "ok" }],
+            };
           case "serper":
-            if (env.SERPER_API_KEY) return await searchSerper(query, env.SERPER_API_KEY);
-            break;
+            if (!env.SERPER_API_KEY) {
+              attempts.push({ provider, status: "skipped", detail: "no API key configured" });
+              break;
+            }
+            return {
+              provider,
+              response: await searchSerper(query, env.SERPER_API_KEY),
+              attempts: [...attempts, { provider, status: "ok" }],
+            };
           case "brave":
-            if (env.BRAVE_API_KEY) return await searchBrave(query, env.BRAVE_API_KEY);
-            break;
-          case "duckduckgo":
-            return await searchDuckDuckGo(query);
+            if (!env.BRAVE_API_KEY) {
+              attempts.push({ provider, status: "skipped", detail: "no API key configured" });
+              break;
+            }
+            return {
+              provider,
+              response: await searchBrave(query, env.BRAVE_API_KEY),
+              attempts: [...attempts, { provider, status: "ok" }],
+            };
+          case "duckduckgo": {
+            const ddg = await searchDuckDuckGo(query);
+            // D36: an empty DDG scrape is almost never a genuine "no results"
+            // — it's anti-scraping returning an unparseable page. Treat it as
+            // a provider failure, not as a confident empty answer.
+            if (ddg.results.length === 0) {
+              attempts.push({
+                provider,
+                status: "failed",
+                detail: "returned no parseable results (likely anti-scraping)",
+              });
+              break;
+            }
+            return { provider, response: ddg, attempts: [...attempts, { provider, status: "ok" }] };
+          }
+          default:
+            attempts.push({ provider, status: "skipped", detail: "unknown provider" });
         }
       } catch (e) {
-        errors.push(`${provider}: ${e instanceof Error ? e.message : String(e)}`);
+        attempts.push({
+          provider,
+          status: "failed",
+          detail: e instanceof Error ? e.message : String(e),
+        });
       }
     }
+    const summary = attempts
+      .map((a) => `${a.provider}: ${a.status}${a.detail ? ` (${a.detail})` : ""}`)
+      .join("; ");
+    // D37: the old message told the model to send her to "env vars" to set a
+    // key — but there is currently NO settings page to add a search API key.
+    // Pointing her at a page that doesn't exist is a lie; say what's true.
     throw new Error(
-      `Web search failed (tried: ${order.join(", ")}). ` +
-        `Set a search API key in env vars (TAVILY_API_KEY / SERPER_API_KEY / BRAVE_API_KEY). ` +
-        errors.join("; "),
+      `Web search failed (tried: ${order.join(", ")}). ${summary}. ` +
+        `There is currently no in-app settings page to add a search API key — ` +
+        `tell her a key can't be added yet instead of pointing her somewhere that doesn't exist.`,
     );
   }
 
@@ -152,7 +221,7 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
     {
       name: "web_search",
       description:
-        "Search the web for current information. Use when she asks about news, prices, docs, or anything you don't know. Returns titles, URLs, and snippets — cite sources with [title](url) in your reply.",
+        "Search the web for current information. Use when she asks about news, prices, docs, or anything you don't know. Returns titles, URLs, and snippets — cite sources with [title](url) in your reply. The first line tells you which search backend served the results and which backends failed or were skipped — never claim you searched a backend that is listed as failed/skipped.",
       parameters: {
         type: "object",
         properties: {
@@ -165,10 +234,23 @@ export function createWebSearchTools(deps: WebSearchDeps = {}): LocalTool[] {
       run: async (args, _ctx) => {
         const query = String(args.query ?? "").trim();
         if (!query) throw new Error("web_search: empty query");
-        const { results, answer } = await run(query);
-        if (results.length === 0) return "No results found.";
+        const { provider, response, attempts } = await run(query);
+        const { results, answer } = response;
+        // D36: provenance header — the model always knows which backend
+        // answered and what happened with the others.
+        const header = [`via: ${provider}`];
+        const others = attempts.filter((a) => a.status !== "ok");
+        if (others.length > 0) {
+          header.push(
+            `other backends: ${others
+              .map((a) => `${a.provider} ${a.status}${a.detail ? ` (${a.detail})` : ""}`)
+              .join("; ")}`,
+          );
+        }
+        const head = header.join("\n");
+        if (results.length === 0) return `${head}\n\nNo results found.`;
         const lines = results.map((r, i) => `${i + 1}. [${r.title}](${r.url})\n   ${r.snippet}`);
-        return (answer ? `Summary: ${answer}\n\n` : "") + lines.join("\n\n");
+        return `${head}\n\n${answer ? `Summary: ${answer}\n\n` : ""}${lines.join("\n\n")}`;
       },
     },
   ];

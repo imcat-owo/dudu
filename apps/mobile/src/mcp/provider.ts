@@ -164,3 +164,39 @@ export async function createMcpProviders(deps: McpProviderDeps): Promise<
 
   return providers;
 }
+
+/**
+ * D43: load every provider's tools, but NEVER swallow a failure.
+ *
+ * A broken MCP server used to vanish silently — its tools just weren't in
+ * the list and the model had no idea the server even existed (the honest
+ * OAuth "needs authorization" error died in a bare `catch {}` too).
+ * Skipping the broken server keeps the agent alive; the placeholder tool
+ * below carries the honest reason in its description, so the model knows
+ * the server exists and what's wrong with it.
+ */
+export async function listMcpToolsWithHonestErrors(
+  providers: Array<{ providerId: string; listTools: () => Promise<LocalTool[]> }>,
+): Promise<LocalTool[]> {
+  const tools: LocalTool[] = [];
+  for (const p of providers) {
+    try {
+      tools.push(...(await p.listTools()));
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      const serverId = p.providerId.replace(/^mcp:/, "");
+      tools.push({
+        name: `mcp__${serverId}__unavailable`,
+        description:
+          `[MCP:${serverId}] UNAVAILABLE — its tools could not be loaded: ${reason}. ` +
+          `Tell her what's wrong in plain words instead of pretending this server doesn't exist.`,
+        parameters: { type: "object", properties: {}, additionalProperties: false },
+        manualId: "mcp-tools",
+        run: async () => {
+          throw new Error(`MCP server "${serverId}" is unavailable: ${reason}`);
+        },
+      });
+    }
+  }
+  return tools;
+}

@@ -24,7 +24,7 @@ import { createAskUserTools } from "../mcp/ask-user";
 import { createDelegateTools, resolveSubagentTools } from "../mcp/delegate";
 import { envStore } from "../mcp/env";
 import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
-import { createMcpProviders } from "../mcp/provider";
+import { createMcpProviders, listMcpToolsWithHonestErrors } from "../mcp/provider";
 import { requestMcpToolApproval } from "../mcp/tool-approval";
 import { descOverrideStore } from "../mcp/tool-descriptions";
 import { createWebSearchTools } from "../mcp/web-search";
@@ -1483,14 +1483,7 @@ export function createLocalAgent(opts: {
               toolDesc: (serverName, toolDesc) => `[MCP:${serverName}] ${toolDesc}`,
             },
           });
-          const mcpTools: LocalTool[] = [];
-          for (const p of mcpProviders) {
-            try {
-              mcpTools.push(...(await p.listTools()));
-            } catch {
-              // Server unreachable — skip, don't break the whole agent.
-            }
-          }
+          const mcpTools: LocalTool[] = await listMcpToolsWithHonestErrors(mcpProviders);
           return mcpTools;
         },
         applyDescOverrides: (t) => descOverrideStore.apply(t),
