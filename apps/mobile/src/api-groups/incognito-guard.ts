@@ -136,6 +136,10 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "moodcheck_record",
   "moodcheck_delete",
   "moodcheck_set_config",
+  // Together-days milestones （里程碑庆祝）: toggle/cancel persist the
+  // ledger + archive pending celebration rules; _status stays readable
+  "milestone_celebration_set_enabled",
+  "milestone_celebration_cancel",
   // AI photo share （主动发照片）: config writes + manual share write to
   // chat history (zero-trace promise); status/log stay readable
   "photoshare_config",

@@ -48,6 +48,7 @@ import { OUTREACH_MANUAL } from "./outreach";
 import { PERMISSIONS_MANUAL } from "./permissions";
 import { PERSONA_GROUP_MANUAL } from "./persona-group";
 import { PHOTOSHARE_MANUAL } from "./photoshare";
+import { ROMANCE_MANUAL } from "./romance";
 import { SANDBOX_MANUAL } from "./sandbox";
 import { SELFPOST_MANUAL } from "./selfpost";
 import { SKILLS_MANUAL } from "./skills";
@@ -90,6 +91,7 @@ export const MANUALS: ManualEntry[] = [
   OUTREACH_MANUAL,
   INITIATIVE_MANUAL,
   MOODCHECK_MANUAL,
+  ROMANCE_MANUAL,
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,

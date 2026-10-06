@@ -111,6 +111,10 @@ const OURSPACE_KEYS = [
   // D12 romance: celebrated intimacy milestones + today's question state.
   "dudu.romance.milestones.v1",
   "dudu.romance.question.v1",
+  // Together-days milestone celebrations （里程碑庆祝）: the ledger
+  // (celebrated/skipped/pending) + master toggle. Plain JSON, no secrets.
+  "dudu.romance.together-milestones.v1",
+  "dudu.romance.milestone-celebrations-enabled.v1",
 ] as const;
 
 // Task progress cards (our-space/task-progress.ts) — enumerated by prefix.

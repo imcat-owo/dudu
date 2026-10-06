@@ -106,6 +106,8 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "moodcheck_record",
       "moodcheck_delete",
       "moodcheck_set_config",
+      "milestone_celebration_set_enabled",
+      "milestone_celebration_cancel",
       // AI photo share (write tools; status/log stay readable)
       "photoshare_config",
       "photoshare_share_now",

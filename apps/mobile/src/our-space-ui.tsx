@@ -89,6 +89,7 @@ import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
 import { EvolutionSection } from "./evolution/evolution-ui";
 import { FollowupSection } from "./followup/followup-ui";
+import { MilestoneSection } from "./romance/milestone-ui";
 import { MoodcheckSection } from "./moodcheck/moodcheck-ui";
 import { PhotoshareSection } from "./photoshare/photoshare-ui";
 import { SelfpostSection } from "./selfpost/selfpost-ui";
@@ -1036,6 +1037,7 @@ function TellLaterView() {
   const initiativeSection = <InitiativeSection />;
   const followupSection = <FollowupSection />;
   const moodcheckSection = <MoodcheckSection />;
+  const milestoneSection = <MilestoneSection />;
   const photoshareSection = <PhotoshareSection />;
   const evolutionSectionUi = <EvolutionSection />;
 
@@ -1046,6 +1048,7 @@ function TellLaterView() {
         {initiativeSection}
         {followupSection}
         {moodcheckSection}
+        {milestoneSection}
         {photoshareSection}
         {evolutionSectionUi}
         <EmptyState text={t("space.tellLater.empty")} />
@@ -1113,6 +1116,7 @@ function TellLaterView() {
         {initiativeSection}
         {followupSection}
         {moodcheckSection}
+        {milestoneSection}
         {photoshareSection}
         {evolutionSectionUi}
         {pending.length > 0 && (

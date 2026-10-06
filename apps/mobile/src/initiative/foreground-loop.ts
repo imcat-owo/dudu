@@ -27,6 +27,17 @@ export function startInitiativeForegroundLoop(
         // skips them), and fired items consume their slot (so the generic
         // tick no-ops). Dynamic import keeps scheduler.ts node-testable
         // and avoids a static initiative→followup edge.
+        // Together-days milestone celebrations run BEFORE the generic sweep:
+        // each newly-hit milestone (7/30/100/365) schedules one celebration
+        // through the real initiative path. Dynamic import keeps
+        // scheduler.ts node-testable and avoids a static initiative→romance
+        // edge.
+        try {
+          const { runMilestoneTick } = await import("../romance/instances");
+          await runMilestoneTick();
+        } catch {
+          // Never break the follow-up / initiative sweep.
+        }
         try {
           const { runMoodcheckTick } = await import("../moodcheck/instances");
           await runMoodcheckTick();

@@ -86,6 +86,7 @@ import {
 import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionFollowupTools } from "../followup/instances";
 import { createProductionMoodcheckTools } from "../moodcheck/instances";
+import { createProductionMilestoneTools } from "../romance/instances";
 import { createProductionEvolutionTools, buildActiveEvolutionSection } from "../evolution/instances";
 import { buildActiveDialsSection } from "../dials/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
@@ -1095,6 +1096,10 @@ export function createLocalAgent(opts: {
         // (moodcheck_record/delete/set_config) are in INCOGNITO_BLOCKED_TOOLS;
         // moodcheck_list stays available.
         ...createProductionMoodcheckTools(),
+        // Together-days milestones （里程碑庆祝）: the write tools
+        // (milestone_celebration_set_enabled/cancel) are in
+        // INCOGNITO_BLOCKED_TOOLS; milestone_celebration_status stays.
+        ...createProductionMilestoneTools(),
         // Personality evolution （性格进化）: the write tools
         // (evolution_note_add/edit/delete, evolution_set_enabled,
         // evolution_reset) are in INCOGNITO_BLOCKED_TOOLS;
