@@ -85,6 +85,7 @@ import {
 } from "../our-space/tools";
 import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
+import { createProductionSelfpostTools } from "../selfpost/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
@@ -1080,6 +1081,10 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createProductionInitiativeTools(),
+        // AI self-post trigger （自发帖触发器）: management tools. The
+        // write tools (selfpost_config, selfpost_post_now) are in
+        // INCOGNITO_BLOCKED_TOOLS; reads stay available.
+        ...createProductionSelfpostTools(incognito),
         // Aru-gap 轻控制： open_app whitelist tool. threadId = the dialog
         // she's in (watchdog return target).
         ...createProductionOpenAppTools(opts.threadId),

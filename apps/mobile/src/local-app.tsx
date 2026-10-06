@@ -23,7 +23,7 @@ import {
   Plug,
   SlidersHorizontal,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Dimensions, Pressable, View } from "react-native";
 import type { Section, Workspace } from "../../../packages/domain/src";
 import { LocalAgentWorkspaceProvider } from "./agent-workspace";
@@ -40,7 +40,7 @@ import { extrasPrefsReady, subscribeNewChat } from "./extras/prefs";
 import { FontProvider, TText } from "./font";
 import { GlassView } from "./glass";
 import { type StringKey, t } from "./i18n";
-import { IncognitoProvider } from "./incognito";
+import { IncognitoProvider, useIncognito } from "./incognito";
 import { PdfExtractBridge } from "./knowledge/pdf-bridge";
 import { canOpenDetail } from "./local-detail-routing";
 import { createOurSpaceTools } from "./our-space/tools";
@@ -125,6 +125,39 @@ const LOCAL_WORKSPACE: Workspace = {
   connections: [],
   runtime: { provider: "sample", configured: false, openbotConfigured: false, richThreads: false },
 };
+
+/**
+ * AI self-post trigger （自发帖触发器） — foreground loop bridge.
+ * Lives INSIDE IncognitoProvider (unlike the initiative loop) because the
+ * self-post gate hard-blocks in incognito — the loop needs the live toggle.
+ * Never blocks startup, never throws.
+ */
+function SelfpostLoopBridge() {
+  const { incognito } = useIncognito();
+  const incognitoRef = useRef(incognito);
+  incognitoRef.current = incognito;
+  useEffect(() => {
+    let alive = true;
+    let stop: (() => void) | null = null;
+    void Promise.all([import("./selfpost/instances"), import("./selfpost/foreground-loop")])
+      .then(([im, sm]) => {
+        if (!alive) return;
+        stop = sm.startSelfpostForegroundLoop(() =>
+          im.buildSelfpostDeps({ isIncognito: () => incognitoRef.current }),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      try {
+        stop?.();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+  return null;
+}
 
 export function LocalApp() {
   const colors = useColors();
@@ -569,6 +602,7 @@ export function LocalApp() {
       <ThreadsProvider>
         <LocalAgentWorkspaceProvider>
           <IncognitoProvider>
+            <SelfpostLoopBridge />
             <ThemeProvider>
               <FontProvider>
                 <ThemeTransition>

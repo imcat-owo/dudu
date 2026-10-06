@@ -70,6 +70,8 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionPersonaGroupSetModel");
     case "persona_group_archive":
       return t("crossDialog.actionPersonaGroupArchive");
+    case "selfpost_post":
+      return t("crossDialog.actionSelfpostPost");
   }
 }
 

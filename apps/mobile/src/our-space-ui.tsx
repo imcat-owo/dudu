@@ -87,6 +87,7 @@ import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
 import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
+import { SelfpostSection } from "./selfpost/selfpost-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
   AiStatus,
@@ -2062,6 +2063,7 @@ function FeedPage() {
   if (posts.length === 0) {
     return (
       <>
+        <SelfpostSection />
         <FeedComposer onPosted={() => setTick((x) => x + 1)} />
         <EmptyState text={t("space.feed.empty")} />
       </>
@@ -2070,6 +2072,7 @@ function FeedPage() {
 
   return (
     <View style={{ gap: 14 }}>
+      <SelfpostSection />
       <FeedComposer onPosted={() => setTick((x) => x + 1)} />
       {posts.map((p, i) => (
         <StaggerIn key={p.id} index={i}>

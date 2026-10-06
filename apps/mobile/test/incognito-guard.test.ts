@@ -94,6 +94,9 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "persona_group_remove_member",
       "persona_group_set_model",
       "persona_group_archive",
+      // AI self-post trigger (write tools; reads stay available)
+      "selfpost_config",
+      "selfpost_post_now",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);
@@ -130,6 +133,9 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "initiative_rule_list",
       "chara_preview",
       "persona_group_list",
+      // AI self-post trigger (read tools stay available in incognito)
+      "selfpost_status",
+      "selfpost_log",
     ];
     for (const name of reads) {
       assert.equal(isBlockedInIncognito(name), false, `${name} must stay available`);

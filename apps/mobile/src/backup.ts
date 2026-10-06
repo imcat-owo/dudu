@@ -167,6 +167,12 @@ const EXTENSION_KEYS = [
   "dudu.initiative.v1.fired",
   "dudu.initiative.v1.sends",
   "dudu.initiative.v1.dailyCap",
+  // AI self-post trigger: config + fired-slot ledger + daily sends + decision log.
+  // Plain JSON, no secrets.
+  "dudu.selfpost.v1.config",
+  "dudu.selfpost.v1.fired",
+  "dudu.selfpost.v1.sends",
+  "dudu.selfpost.v1.log",
   // Open-app watchdog （轻控制）: handled-tap ledger (idempotency — a
   // restored backup must not double-greet a tapped notification).
   "dudu.openapp.v1.handledTaps",

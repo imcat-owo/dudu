@@ -120,6 +120,9 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "persona_group_remove_member",
   "persona_group_set_model",
   "persona_group_archive",
+  // AI self-post trigger: config writes + manual post (reads stay available)
+  "selfpost_config",
+  "selfpost_post_now",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

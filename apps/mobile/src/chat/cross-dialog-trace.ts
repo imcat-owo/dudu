@@ -32,6 +32,8 @@ export type CrossDialogAction =
   | "feed_nudge"
   /** Open-app watchdog (Aru-gap 轻控制） — welcome-back after she taps the return notification. */
   | "openapp_return"
+  /** AI self-post trigger （自发帖触发器） — the AI's own feed post. */
+  | "selfpost_post"
   /** Persona group chat (人设群聊) — group management + rounds, same trace, same law. */
   | "persona_group_create"
   | "persona_group_round"
