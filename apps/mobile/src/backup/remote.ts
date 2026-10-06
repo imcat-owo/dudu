@@ -129,9 +129,9 @@ async function sha256Hex(data: string | Uint8Array): Promise<string> {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   }
-  // Node fallback for tests.
-  const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(bytes).digest("hex");
+  // Metro cannot bundle node:crypto; WebCrypto is available on both
+  // React Native (Hermes) and Node 18+, so this is unreachable.
+  throw new Error("WebCrypto unavailable");
 }
 
 async function hmacSha256(key: Uint8Array, data: string): Promise<Uint8Array> {
@@ -140,8 +140,7 @@ async function hmacSha256(key: Uint8Array, data: string): Promise<Uint8Array> {
     const sig = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data));
     return new Uint8Array(sig);
   }
-  const { createHmac } = await import("node:crypto");
-  return new Uint8Array(createHmac("sha256", key).update(data).digest());
+  throw new Error("WebCrypto unavailable");
 }
 
 function toHex(bytes: Uint8Array): string {
