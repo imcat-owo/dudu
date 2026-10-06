@@ -38,7 +38,7 @@ async function getActivePersona(): Promise<Persona | null> {
     const id = await personaStore.getActiveId().catch(() => null);
     if (!id) return null;
     const p = await personaStore.get(id).catch(() => null);
-    return p && p.enabled ? p : null;
+    return p?.enabled ? p : null;
   } catch {
     return null;
   }

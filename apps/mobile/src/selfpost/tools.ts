@@ -85,7 +85,7 @@ export function createSelfpostTools(env: SelfpostToolEnv): LocalTool[] {
         additionalProperties: false,
       },
       manualId: "selfpost",
-      run: async (args, ctx?: ToolContext) => {
+      run: async (args, _ctx?: ToolContext) => {
         if (env.isIncognito()) {
           throw new ToolError("Incognito: the self-post trigger config cannot be changed here.");
         }
@@ -175,7 +175,7 @@ export function createSelfpostTools(env: SelfpostToolEnv): LocalTool[] {
         PERMISSION_LINE,
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "selfpost",
-      run: async (_args, ctx?: ToolContext) => {
+      run: async (_args, _ctx?: ToolContext) => {
         if (env.isIncognito()) {
           throw new ToolError("Incognito: cannot post to the feed here.");
         }

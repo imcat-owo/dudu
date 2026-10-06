@@ -15,6 +15,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { LocalTool, ToolContext } from "../src/api-groups/local-tools.js";
 import type { ApiGroup } from "../src/api-groups/types.js";
 import type { Persona } from "../src/persona/types.js";
 import { parseSelfpostDecision } from "../src/selfpost/decide.js";
@@ -34,7 +35,6 @@ import {
 } from "../src/selfpost/slots.js";
 import { type SelfpostConfig, SelfpostStore } from "../src/selfpost/store.js";
 import { createSelfpostTools } from "../src/selfpost/tools.js";
-import type { LocalTool, ToolContext } from "../src/api-groups/local-tools.js";
 
 // 2026-10-06 22:00 Asia/Shanghai (her evening, awake).
 const NIGHT = Date.UTC(2026, 9, 6, 14, 0, 0);
@@ -78,6 +78,7 @@ function makeDeps(opts?: {
   sharedSends?: number;
   sharedCap?: number;
   lastOutreachAt?: number;
+  initiativeLastSendAt?: number;
   store?: SelfpostStore;
 }): { deps: SelfpostExecutorDeps; feed: string[]; calls: string[]; store: SelfpostStore } {
   const store = opts?.store ?? new SelfpostStore(fakeKv());
@@ -90,6 +91,7 @@ function makeDeps(opts?: {
     initiativeStore: {
       getDailyCap: async () => opts?.sharedCap ?? 3,
       countAllSendsToday: async () => opts?.sharedSends ?? 0,
+      lastSendAt: async () => opts?.initiativeLastSendAt ?? 0,
     } as unknown as SelfpostExecutorDeps["initiativeStore"],
     outreachStore: {
       getLastOutreachAt: async () => ({ test: opts?.lastOutreachAt ?? 0 }),
@@ -326,6 +328,56 @@ describe("selfpost executor", () => {
     assert.equal(out.fired, false);
     assert.equal(out.reason, "incognito");
     assert.equal(calls.length, 0);
+  });
+
+  it("kill during the model call: slot already consumed, next tick does NOT re-fire (P1-1)", async () => {
+    let release!: (v: string) => void;
+    const hanging = new Promise<string>((res) => {
+      release = res;
+    });
+    const { deps, calls, store } = makeDeps({ generate: () => hanging });
+    await seedConfig(store);
+    // The model call hangs — the slot must already be in the ledger.
+    const first = fireSelfpostSlot(deps, slotAt(0, NIGHT));
+    const deadline = Date.now() + 2000;
+    let consumed = false;
+    while (Date.now() < deadline) {
+      if ((await store.firedSlotIds()).size > 0) {
+        consumed = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(consumed, "slot is marked fired BEFORE the model call resolves");
+    // The kill "lands": resolve the hanging call as a skip, then a fresh
+    // tick for the same slot must be vetoed, never re-fired.
+    release("SKIP");
+    const out1 = await first;
+    assert.equal(out1.fired, true);
+    if (out1.fired) assert.equal(out1.outcome, "skipped");
+    assert.equal(calls.length, 1, "the model is asked exactly once per slot");
+    const again = await fireSelfpostSlot(deps, slotAt(0, NIGHT));
+    assert.equal(again.fired, false);
+    assert.equal(again.reason, "already-fired");
+    assert.equal(calls.length, 1, "no second model call on the retry tick");
+  });
+
+  it("collision: an initiative send 10 min ago vetoes the slot (P2-1)", async () => {
+    const { deps, calls } = makeDeps({ initiativeLastSendAt: NIGHT - 10 * 60_000 });
+    await seedConfig(deps.selfpostStore);
+    const out = await fireSelfpostSlot(deps, slotAt(0, NIGHT));
+    assert.equal(out.fired, false);
+    assert.equal(out.reason, "collision");
+    assert.equal(calls.length, 0, "no model call on collision veto");
+  });
+
+  it("collision: an outreach send 10 min ago vetoes the slot (P2-1)", async () => {
+    const { deps, calls } = makeDeps({ lastOutreachAt: NIGHT - 10 * 60_000 });
+    await seedConfig(deps.selfpostStore);
+    const out = await fireSelfpostSlot(deps, slotAt(0, NIGHT));
+    assert.equal(out.fired, false);
+    assert.equal(out.reason, "collision");
+    assert.equal(calls.length, 0, "no model call on collision veto");
   });
 });
 

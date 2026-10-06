@@ -21,12 +21,15 @@ import type { CrossDialogVisibilityStore } from "../chat/cross-dialog-trace";
 import type { NotificationPort, TracePort } from "../outreach/notify";
 import type { OutreachStore } from "../outreach/store";
 import type { Persona } from "../persona/types";
+import type { SelfpostStore } from "../selfpost/store";
 import { type InitiativeRule, nextFireAt, shanghaiDayStart, slotId } from "./rules";
 import type { InitiativeStore } from "./store";
 
 export interface InitiativeExecutorDeps {
   initiativeStore: InitiativeStore;
   outreachStore: OutreachStore;
+  /** Self-post sends count against the same shared proactive cap. */
+  selfpostStore: SelfpostStore;
   storage: CrossDialogStorage;
   trace: TracePort;
   visibility: CrossDialogVisibilityStore;
@@ -162,14 +165,16 @@ async function fireInitiativeRuleInner(
   // Daily cap (shared proactive channel): initiative sends today are
   // counted per persona; outreach sends today are counted GLOBALLY (the
   // outreach ledger has no persona dimension — one outreach send consumes
-  // one slot of EVERY persona's cap). Conservative by design: over cap =
-  // stay silent. Her setting, default 3.
+  // one slot of EVERY persona's cap); self-post sends are counted globally
+  // too (the self-post trigger shares the same "AI reaches her" budget).
+  // Conservative by design: over cap = stay silent. Her setting, default 3.
   const cap = await deps.initiativeStore.getDailyCap().catch(() => 3);
-  const [initiativeSends, outreachSends] = await Promise.all([
+  const [initiativeSends, outreachSends, selfpostSends] = await Promise.all([
     deps.initiativeStore.countSendsToday(rule.personaId, now).catch(() => 0),
     countOutreachSendsToday(deps, now).catch(() => 0),
+    deps.selfpostStore.countSendsToday(now).catch(() => 0),
   ]);
-  if (initiativeSends + outreachSends >= cap) return fail("capped");
+  if (initiativeSends + outreachSends + selfpostSends >= cap) return fail("capped");
 
   // Resolve the target dialog — persona-isolated by construction.
   const threadId = await resolveTargetDialog(deps, rule);

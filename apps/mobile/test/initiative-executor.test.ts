@@ -25,6 +25,7 @@ import {
 } from "../src/initiative/executor.js";
 import type { InitiativeRule } from "../src/initiative/rules.js";
 import { InitiativeStore } from "../src/initiative/store.js";
+import { SelfpostStore } from "../src/selfpost/store.js";
 
 // 2026-10-05 12:00 Shanghai.
 const NOW = Date.UTC(2026, 9, 5, 4, 0, 0);
@@ -103,6 +104,7 @@ function makeCtx(): TestCtx {
     outreachStore: {
       getLastOutreachAt: async () => ctx.outreachLast,
     } as unknown as TestCtx["deps"]["outreachStore"],
+    selfpostStore: new SelfpostStore(kv, { nowMs: () => NOW }),
     storage: kv,
     trace: {
       append: async (e: TraceEntry) => {
@@ -271,6 +273,28 @@ describe("daily cap (shared channel)", () => {
     const rule = await makeRule(ctx);
     const outcome = await fireInitiativeRule(ctx.deps, rule.id, NOW);
     assert.deepEqual(outcome, { fired: false, reason: "capped" });
+  });
+
+  it("selfpost sends today count toward the same cap (P2-2)", async () => {
+    const ctx = makeCtx();
+    await ctx.deps.initiativeStore.setDailyCap(2);
+    // Two AI self-posts already went out today — the shared "AI reaches
+    // her" budget is spent; the initiative rule stays silent.
+    await ctx.deps.selfpostStore.recordSend(NOW - 3_600_000);
+    await ctx.deps.selfpostStore.recordSend(NOW - 2 * 3_600_000);
+    const rule = await makeRule(ctx);
+    const outcome = await fireInitiativeRule(ctx.deps, rule.id, NOW);
+    assert.deepEqual(outcome, { fired: false, reason: "capped" });
+    assert.equal(ctx.generated.length, 0, "no model call when capped");
+  });
+
+  it("one selfpost send leaves room for one initiative send", async () => {
+    const ctx = makeCtx();
+    await ctx.deps.initiativeStore.setDailyCap(2);
+    await ctx.deps.selfpostStore.recordSend(NOW - 3_600_000);
+    const rule = await makeRule(ctx);
+    const outcome = await fireInitiativeRule(ctx.deps, rule.id, NOW);
+    assert.equal(outcome.fired, true);
   });
 
   it("cap is per persona", async () => {

@@ -59,6 +59,32 @@ export type SelfpostFireOutcome =
  */
 const inFlightSlots = new Set<string>();
 
+/**
+ * 60-min collision check (gate #8): the most recent proactive send of ANY
+ * kind — selfpost, initiative, or outreach. The gate input doc promises
+ * "any kind"; counting only our own sends would leave the rule hollow.
+ * Every read is guarded — a failing source degrades to 0 (no veto).
+ */
+async function lastProactiveActivityAt(deps: SelfpostExecutorDeps): Promise<number> {
+  const [selfpostLast, initiativeLast, outreachLast] = await Promise.all([
+    deps.selfpostStore.lastActivityAt().catch(() => 0),
+    Promise.resolve()
+      .then(() => deps.initiativeStore.lastSendAt())
+      .catch(() => 0),
+    Promise.resolve()
+      .then(() => deps.outreachStore.getLastOutreachAt())
+      .then((last) => {
+        let m = 0;
+        for (const v of Object.values(last)) {
+          if (typeof v === "number" && v > m) m = v;
+        }
+        return m;
+      })
+      .catch(() => 0),
+  ]);
+  return Math.max(selfpostLast, initiativeLast, outreachLast);
+}
+
 async function countSharedSendsToday(
   deps: SelfpostExecutorDeps,
   now: number,
@@ -141,7 +167,7 @@ async function fireSelfpostSlotInner(
     store.firedSlotIds().catch(() => new Set<string>()),
     store.countSendsToday(now).catch(() => 0),
     countSharedSendsToday(deps, now).catch(() => ({ sharedSends: 0, sharedCap: 3 })),
-    store.lastActivityAt().catch(() => 0),
+    lastProactiveActivityAt(deps),
     deps.getActivePersona().catch(() => null),
     deps.getActiveGroup().catch(() => null),
   ]);
@@ -167,7 +193,13 @@ async function fireSelfpostSlotInner(
   }
 
   // Gate passed — consume the slot BEFORE the model call so a crash or
-  // kill between decision and post can never double-fire it.
+  // kill between decision and post can never double-fire it. markSlotFired
+  // is idempotent; the post-hoc consume() calls below re-mark harmlessly.
+  try {
+    await store.markSlotFired(slot, now);
+  } catch {
+    // a ledger hiccup must not resurrect the slot into a retry
+  }
   const personaName = deps.personaDisplayName(persona as Persona);
   let decision: string | null = null;
   try {

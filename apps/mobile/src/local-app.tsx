@@ -523,19 +523,23 @@ export function LocalApp() {
               // the executor's own cap check.
               checkSharedCap: async () => {
                 try {
-                  const [{ initiativeStore }, { shanghaiDayStart }] = await Promise.all([
-                    import("./initiative/instances"),
-                    import("./initiative/rules"),
-                  ]);
+                  const [{ initiativeStore }, { selfpostStore }, { shanghaiDayStart }] =
+                    await Promise.all([
+                      import("./initiative/instances"),
+                      import("./selfpost/instances"),
+                      import("./initiative/rules"),
+                    ]);
                   const now = Date.now();
                   const cap = await initiativeStore.getDailyCap();
                   const dayStart = shanghaiDayStart(now);
                   const initiativeSends = await initiativeStore.countAllSendsToday(now);
+                  // Self-posts share the same "AI reaches her" daily budget.
+                  const selfpostSends = await selfpostStore.countSendsToday(now).catch(() => 0);
                   const last = await outreachStore.getLastOutreachAt();
                   const outreachSends = Object.values(last).filter(
                     (v): v is number => typeof v === "number" && v >= dayStart,
                   ).length;
-                  return initiativeSends + outreachSends < cap;
+                  return initiativeSends + outreachSends + selfpostSends < cap;
                 } catch {
                   return true;
                 }

@@ -186,7 +186,7 @@ export class SelfpostStore {
     });
   }
 
-  /** Last proactive send of ANY kind — for the 60-min collision check. */
+  /** Last self-post send (own ledger only — the executor combines this with initiative/outreach for the "any kind" collision check). */
   async lastActivityAt(): Promise<number> {
     const sends = await this.loadSends();
     let last = 0;

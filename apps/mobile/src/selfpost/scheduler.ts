@@ -30,7 +30,7 @@ export async function checkDueSelfpostSlots(deps: SelfpostSchedulerDeps): Promis
   try {
     const now = deps.nowMs();
     const config = await deps.selfpostStore.getConfig().catch(() => null);
-    if (!config || !config.enabled) return;
+    if (!config?.enabled) return;
     const dayStart = shanghaiDayStart(now);
     const slots = selfpostSlotsToday(config.slotCount, now);
     const fired = await deps.selfpostStore.firedSlotIds().catch(() => new Set<string>());

@@ -13,6 +13,7 @@ import { outreachStore } from "../outreach/instances";
 import type { NotificationPort } from "../outreach/notify";
 import { personaStore } from "../persona/stores";
 import type { Persona } from "../persona/types";
+import { selfpostStore } from "../selfpost/instances";
 import type { InitiativeSchedulerDeps } from "./scheduler";
 import { InitiativeStore } from "./store";
 import { createInitiativeTools } from "./tools";
@@ -73,6 +74,7 @@ export async function buildInitiativeDeps(): Promise<InitiativeSchedulerDeps> {
   return {
     initiativeStore,
     outreachStore,
+    selfpostStore,
     storage: AsyncStorage,
     trace: crossDialogTraceStore,
     visibility: crossDialogVisibilityStore,

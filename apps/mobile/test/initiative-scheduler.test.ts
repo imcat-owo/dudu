@@ -25,6 +25,7 @@ import {
   rescheduleAll,
 } from "../src/initiative/scheduler.js";
 import { InitiativeStore } from "../src/initiative/store.js";
+import { SelfpostStore } from "../src/selfpost/store.js";
 
 // 2026-10-05 12:00 Shanghai.
 const NOW = Date.UTC(2026, 9, 5, 4, 0, 0);
@@ -81,6 +82,7 @@ function makeCtx(permission = "granted", clock: () => number = () => NOW): TestC
     outreachStore: {
       getLastOutreachAt: async () => ({}),
     } as unknown as TestCtx["deps"]["outreachStore"],
+    selfpostStore: new SelfpostStore(kv, { nowMs: clock }),
     storage: kv,
     trace: {
       append: async (e: { action: string }) => {

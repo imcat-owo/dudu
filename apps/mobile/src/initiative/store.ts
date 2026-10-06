@@ -267,6 +267,17 @@ export class InitiativeStore {
     return sends.filter((s) => s.day === day).length;
   }
 
+  /**
+   * Most recent initiative send timestamp (any persona), 0 if none.
+   * For the self-post 60-min collision check ("any kind" activity).
+   */
+  async lastSendAt(): Promise<number> {
+    const sends = await this.loadSends();
+    let last = 0;
+    for (const s of sends) if (s.at > last) last = s.at;
+    return last;
+  }
+
   /** Record an initiative send. Never throws. */
   async recordSend(personaId: string, nowMs: number = Date.now()): Promise<void> {
     return this.exclusive(async () => {
