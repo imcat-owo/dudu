@@ -62,6 +62,10 @@ export async function importExchange(
 ): Promise<ExchangeImportOutcome> {
   if (!text.trim()) return { ok: false, code: "empty" };
   // A dudu-exchange v1 file goes straight through (no adapter needed).
+  // DEFERRED (final audit 2026-10-06): routing sniffs for the literal
+  // '"dudu-exchange"' string — a foreign file containing that string would
+  // be misrouted (then cleanly rejected by parseExchange). Probability is
+  // negligible; a content-type-aware router can replace this later.
   if (text.includes('"dudu-exchange"')) {
     const parsed = parseExchange(text);
     if (!parsed.ok) return { ok: false, code: parsed.code, detail: parsed.detail };

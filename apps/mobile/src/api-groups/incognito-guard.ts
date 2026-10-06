@@ -102,6 +102,24 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "ask_env_form", // D15: persists a secret into envStore — a real write
   // Coding loop (E3): writes to her sandbox + persists task records
   "coding_task",
+  // Proactive initiative (Aru-gap): rule store writes + schedules notifications
+  "initiative_rule_create",
+  "initiative_rule_archive",
+  "initiative_rule_restore",
+  "initiative_rule_delete",
+  "initiative_rule_run_now",
+  // Character cards (E1): import writes persona + lorebook + avatar; export
+  // upserts persona (refreshes stored card) + writes the card PNG file
+  "chara_import",
+  "chara_export",
+  // Exchange import (Aru-gap): writes imported dialog threads
+  "exchange_import",
+  // Persona group chat: group store writes (create/members/model/archive)
+  "persona_group_create",
+  "persona_group_add_member",
+  "persona_group_remove_member",
+  "persona_group_set_model",
+  "persona_group_archive",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

@@ -210,6 +210,9 @@ export function LocalApp() {
         // Aru-gap P0 (initiative): tapping a proactive-initiative template
         // notification opens chat and triggers the ONE promised AI
         // generation for that slot (not an auto-retry — the delivery).
+        // DEFERRED (final audit 2026-10-06): tap opens the chat list only,
+        // not the exact dialog the message landed in — the plan says
+        // "点通知直跳对话", which needs thread-level deep-link infra.
         if (kind === "initiative") {
           const d = (data ?? {}) as Record<string, unknown>;
           const ruleId = typeof d.ruleId === "string" ? d.ruleId : "";
@@ -233,6 +236,9 @@ export function LocalApp() {
         // Aru-gap 轻控制 (open_app watchdog): tapping the "bring me back"
         // notification opens chat and triggers ONE welcome-back greeting
         // for that jump (idempotent — a double tap greets once).
+        // DEFERRED (final audit 2026-10-06): tap opens the chat list only,
+        // not the exact dialog the message landed in — needs thread-level
+        // deep-link infra. Same deferred item as the initiative tap above.
         if (kind === "openapp-watch") {
           void import("./openapp/instances")
             .then(async (m) => {

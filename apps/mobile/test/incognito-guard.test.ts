@@ -1,5 +1,5 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
   buildIncognitoPromptSection,
   incognitoRefusal,
@@ -80,6 +80,20 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "dj_queue_add",
       "write_clipboard",
       "cross_dialog",
+      "coding_task",
+      "initiative_rule_create",
+      "initiative_rule_archive",
+      "initiative_rule_restore",
+      "initiative_rule_delete",
+      "initiative_rule_run_now",
+      "chara_import",
+      "chara_export",
+      "exchange_import",
+      "persona_group_create",
+      "persona_group_add_member",
+      "persona_group_remove_member",
+      "persona_group_set_model",
+      "persona_group_archive",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);
@@ -113,6 +127,9 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "generate_image",
       "backup_status",
       "check_plan_status",
+      "initiative_rule_list",
+      "chara_preview",
+      "persona_group_list",
     ];
     for (const name of reads) {
       assert.equal(isBlockedInIncognito(name), false, `${name} must stay available`);
@@ -136,10 +153,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
 
   it("warns before an out-of-app approval breaks the promise (ai-use P2-2)", () => {
     const section = buildIncognitoPromptSection();
-    assert.ok(
-      section.includes("leave a record"),
-      "must name the one honest exception",
-    );
+    assert.ok(section.includes("leave a record"), "must name the one honest exception");
     assert.ok(
       section.includes("BEFORE she approves"),
       "the AI must warn before she approves, never silently",
