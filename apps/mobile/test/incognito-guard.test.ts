@@ -130,6 +130,8 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "outfit_add",
       "outfit_delete",
       "outfit_set_active",
+      // Photo doodle (write tool — creates a PNG file)
+      "photo_doodle",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

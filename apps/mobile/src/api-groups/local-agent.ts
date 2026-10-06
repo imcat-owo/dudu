@@ -14,9 +14,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshFontSizeOption } from "../app-settings";
 import { createBackupTools } from "../backup-tools";
-import { createCharaTools } from "../chara/chara-tools";
 import { createBrowserTools } from "../browser/tools";
 import { buildCapabilityPromptSection } from "../capabilities";
+import { createCharaTools } from "../chara/chara-tools";
 import { createContextTools } from "../chat/context-tools";
 import {
   createCrossDialogTools,
@@ -43,12 +43,21 @@ import {
   truncateForRegenerate,
   visibleMessages,
 } from "../chat/thread-versions";
+import { createCodingToolsForThread } from "../coding/instances";
 import { deviceTimeLine } from "../date-time";
+import { buildActiveDialsSection } from "../dials/instances";
+import { createProductionDoodleTools } from "../doodle/instances";
+import {
+  buildActiveEvolutionSection,
+  createProductionEvolutionTools,
+} from "../evolution/instances";
+import { createProductionFollowupTools } from "../followup/instances";
 import { logPayload } from "../harness/session-log";
 import { createHarnessRegistryFromLocalTools } from "../harness/tool-registry";
 import { createAgentHarness } from "../harness/wiring";
 import { getLocale, type StringKey, t } from "../i18n";
 import { createImageTools, type ImageOutputBackend } from "../image/tools";
+import { createProductionInitiativeTools } from "../initiative/instances";
 import { getKnowledgeStore } from "../knowledge/instance";
 import { lazyKnowledgeStore } from "../knowledge/lazy-store";
 import { createKnowledgeAddTools, createKnowledgeTools } from "../knowledge/tools";
@@ -65,9 +74,11 @@ import { createWebSearchTools } from "../mcp/web-search";
 import { buildMemorySection, createMemoryTools, extractMemoriesAsync } from "../memory/index";
 import { memoryStore } from "../memory/instance";
 import type { MemoryStore } from "../memory/store";
+import { createProductionMoodcheckTools } from "../moodcheck/instances";
 import { musicStore } from "../music/instance";
 import { createMusicTools } from "../music/tools";
 import { createNativeAppTools } from "../native-apps-tools";
+import { createProductionOpenAppTools } from "../openapp/instances";
 import {
   buildAnniversarySection,
   getUpcomingAnniversaries,
@@ -83,28 +94,19 @@ import {
   createOurSpaceTools,
   createTaskProgressTools,
 } from "../our-space/tools";
-import { createProductionInitiativeTools } from "../initiative/instances";
-import { createProductionFollowupTools } from "../followup/instances";
-import { createProductionMoodcheckTools } from "../moodcheck/instances";
-import { createProductionMilestoneTools } from "../romance/instances";
-import { createProductionEvolutionTools, buildActiveEvolutionSection } from "../evolution/instances";
-import { buildActiveDialsSection } from "../dials/instances";
-import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionOutfitTools } from "../outfit/instances";
-import { createProductionPhotoshareTools } from "../photoshare/instances";
-import { createProductionSelfpostTools } from "../selfpost/instances";
-import { createProductionVoiceCallTools } from "../voice-call/instances";
-import {
-  buildStorySectionForThread,
-  createProductionStoryTools,
-} from "../story/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
 import { buildOnThisDayInput } from "../outreach/on-this-day-input";
 import { buildOutreachSection } from "../outreach/prompt";
 import { renderGlobalMdBlock } from "../persona/global-md";
-import { globalMdStore, personaApiGroupPrefStore, personaStore, worldBookStore } from "../persona/stores";
+import {
+  globalMdStore,
+  personaApiGroupPrefStore,
+  personaStore,
+  worldBookStore,
+} from "../persona/stores";
 import { applyPersonaRegex, type Persona } from "../persona/types";
 import {
   evaluateWorldBooks,
@@ -112,13 +114,20 @@ import {
   renderWorldBookBlock,
   type ScanMessage,
 } from "../persona/world-book";
+import { createProductionPhotoshareTools } from "../photoshare/instances";
+import { createProductionMilestoneTools } from "../romance/instances";
 import { createInteractiveTerminalTools } from "../sandbox/interactive-terminal";
 import { sandboxManager } from "../sandbox/manager";
 import { sandboxTools } from "../sandbox/sandbox-tools";
+import { BubbleDrip } from "../segments/drip";
+import { segmentStore } from "../segments/instances";
+import { splitIntoBubbles } from "../segments/split";
+import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createFontSizeTools } from "../settings/tools";
 import { skillStore } from "../skills/instance";
 import { createSkillTools } from "../skills/tools";
 import { ambientVideoStore } from "../sora-ambient-video-instance";
+import { buildStorySectionForThread, createProductionStoryTools } from "../story/instances";
 import { getAiThemeMode } from "../theme/ai-mode";
 import {
   createCreativeThemeTools,
@@ -142,6 +151,7 @@ import {
   createTtsVoiceTools,
   createVoiceMessageTools,
 } from "../voice/tools";
+import { createProductionVoiceCallTools } from "../voice-call/instances";
 import { createCapabilityGroupTools } from "./capability-group-tools";
 import { CAPABILITY_TAGS } from "./capability-groups";
 import { capabilityStore } from "./capability-store";
@@ -177,7 +187,6 @@ import { modelProfileStore } from "./model-profiles";
 import { buildRankingSlip } from "./model-ranking";
 import { withSlotModel } from "./model-slots";
 import { createPlanTools } from "./plan-tools";
-import { createCodingToolsForThread } from "../coding/instances";
 import { groupStore } from "./store";
 import { assembleAgentTools } from "./tool-assembly";
 import type { ApiGroup, FeatureSwitch } from "./types";
@@ -330,6 +339,11 @@ export interface ChatAgent {
   getContextUsage(): { tokens: number; messages: number };
   /** Abort an in-flight turn. */
   stop(): Promise<void>;
+  /**
+   * 真人式分段发送: true while follow-up bubbles are still dripping in.
+   * Powers the typing indicator between bubbles.
+   */
+  readonly segmentsPending: boolean;
   /**
    * Re-attempt the history save (P1-11). Resolves true when the current
    * in-memory messages are safely stored; false keeps the UI warning up.
@@ -763,6 +777,15 @@ export function createLocalAgent(opts: {
   // "making something" state — set around registry.execute, cleared after.
   let activeToolName: string | null = null;
   let aborter: AbortController | null = null;
+  // 真人式分段发送 (segmented sending): after a turn, a long final
+  // assistant bubble drips in as 2–3 bubbles through the real addMessage
+  // path. Pending drips keep the typing indicator alive.
+  const bubbleDrip = new BubbleDrip(
+    (text) => {
+      agent.addMessage({ id: newId("asst"), role: "assistant", content: text });
+    },
+    () => emit(),
+  );
   const listeners = new Set<
     (e: { messages: LocalChatMessage[]; historySaveFailed: boolean }) => void
   >();
@@ -1113,6 +1136,9 @@ export function createLocalAgent(opts: {
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),
+        // Photo doodle （照片涂鸦）: photo_doodle writes a PNG file —
+        // it is in INCOGNITO_BLOCKED_TOOLS.
+        ...createProductionDoodleTools(),
         // Interactive story mode （互动故事）: the 8 write tools
         // (story_start/_scene_add/_choose/_bible_update/_pause/_resume/
         // _end/_delete) are in INCOGNITO_BLOCKED_TOOLS;
@@ -2403,6 +2429,32 @@ export function createLocalAgent(opts: {
         running = false;
         aborter = null;
         emit();
+        // 真人式分段发送 (segmented sending, romance-gap ⑫A): a long
+        // final assistant bubble becomes 2–3 human-like bubbles. The
+        // first bubble replaces the original message NOW; the rest drip
+        // in with small delays through the REAL addMessage path (each
+        // drips emits + persists, exactly like a normal message).
+        // Best-effort and conservative: never throws, never runs in
+        // incognito, never touches tool-call or envelope messages, and
+        // the splitter itself only fires on long replies.
+        try {
+          const last = messages[messages.length - 1];
+          if (!incognito() && last && last.role === "assistant" && !last.toolCalls?.length) {
+            const text = contentToText(last.content);
+            const personaId = await personaStore.getActiveId().catch(() => null);
+            const segOn = await segmentStore.isEnabled(personaId).catch(() => true);
+            if (segOn) {
+              const bubbles = splitIntoBubbles(text);
+              if (bubbles.length > 1) {
+                messages = [...messages.slice(0, -1), { ...last, content: bubbles[0] }];
+                emit();
+                bubbleDrip.start(bubbles.slice(1), bubbles[0].length);
+              }
+            }
+          }
+        } catch {
+          // Segmentation must never break the turn.
+        }
         persist(messages);
         // Harness: close the turn in the session log (fire-and-forget,
         // incognito-gated inside logEvent).
@@ -2489,6 +2541,9 @@ export function createLocalAgent(opts: {
     getThreadMeta(): ThreadMeta {
       return threadMeta;
     },
+    get segmentsPending(): boolean {
+      return bubbleDrip.pendingCount > 0;
+    },
     setThreadMeta(meta: ThreadMeta): void {
       threadMeta = meta;
       emit();
@@ -2515,6 +2570,8 @@ export function createLocalAgent(opts: {
     },
     async stop(): Promise<void> {
       aborter?.abort();
+      // Never lose bubbles: flush any still-dripping segments immediately.
+      bubbleDrip.flush();
     },
     async retryHistorySave(): Promise<boolean> {
       // Incognito sessions never persist: nothing to retry.

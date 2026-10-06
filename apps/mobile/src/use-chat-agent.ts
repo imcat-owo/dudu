@@ -93,6 +93,12 @@ export interface ChatAgent {
   stop(): Promise<void>;
   /** Every stored message, including unselected versions (A2 version UI). */
   getAllMessages?(): { id: string; role: string; content?: unknown; groupId?: string; versionIndex?: number }[];
+  /**
+   * 真人式分段发送: true while follow-up bubbles are still dripping in
+   * after a turn (local mode only). Powers the typing indicator between
+   * bubbles. Cloud mode: always false / undefined.
+   */
+  segmentsPending?: boolean;
   /** Gap fill A1: regenerate the assistant reply at messageId (new version). */
   regenerateAt?(messageId: string): Promise<void>;
   /** Gap fill A5: delete one message (optionally all versions of its group). */
@@ -245,6 +251,9 @@ function useLocalAgent({ agentId, threadId }: { agentId: string; threadId: strin
       },
       get activeToolName() {
         return local.activeToolName;
+      },
+      get segmentsPending() {
+        return local.segmentsPending;
       },
       subscribe: (listener) =>
         local.subscribe({

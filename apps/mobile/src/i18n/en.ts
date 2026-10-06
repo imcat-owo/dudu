@@ -107,6 +107,10 @@ export const enStrings: Record<StringKey, string> = {
   "space.garden.title": "Memory garden",
   "space.garden.empty":
     "The garden is empty. Talk to me more — I will plant what is worth keeping.",
+  "space.garden.viewList": "List",
+  "space.garden.viewMap": "Map",
+  "space.garden.mapLegendTogether": "— memories from the same time, same kind",
+  "space.garden.mapLegendSupersedes": "- - - replaced by a newer memory",
   "space.garden.blooming": "Blooming",
   "space.garden.sprouting": "Sprouting",
   "space.garden.ask": "Ask her",
@@ -2289,6 +2293,9 @@ export const enStrings: Record<StringKey, string> = {
   "persona.maxTokens": "Max tokens",
   "persona.useDefault": "Default",
   "persona.enabled": "Enabled",
+  "persona.segmentedSending": "Send long replies in segments",
+  "persona.segmentedSendingHint":
+    "Long replies arrive as 2–3 short bubbles, like texting a real person. Only long messages split.",
   "persona.delete": "Delete persona",
   "persona.deleteConfirm": 'Delete "{name}"? Chats using it are unaffected.',
   "persona.setActive": "Set active",

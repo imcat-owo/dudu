@@ -463,7 +463,7 @@ export function ChatScreen({
   const [busy, setBusy] = useState(false);
   // Batch 7: generation flag + side effects (keep-awake I8, haptic I9,
   // VoiceOver announcement I5). Placed after `busy` is declared.
-  const generating = busy || agent.isRunning;
+  const generating = busy || agent.isRunning || (agent.segmentsPending ?? false);
   // A3: the AI face is alive — idle by default, working while generating,
   // making_something while a creative tool runs, milestone_level_up briefly
   // after a task card completes or on anniversary day.

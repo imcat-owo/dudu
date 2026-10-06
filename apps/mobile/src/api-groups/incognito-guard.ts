@@ -166,6 +166,9 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "outfit_add",
   "outfit_delete",
   "outfit_set_active",
+  // Photo doodle (romance-gap ⑫B): photo_doodle writes a composited PNG
+  // file — a real side effect, never in incognito
+  "photo_doodle",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

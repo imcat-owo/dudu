@@ -64,6 +64,7 @@ import "./avatar-celebration-instance";
 import { getLocale, type StringKey, t } from "./i18n";
 import { HandText, PaperGrain, type TapeColor, WashiTape } from "./journal-decor";
 import { memoryStore } from "./memory/instance";
+import { MindMapView } from "./mindmap/mindmap-ui";
 import {
   detectNewMilestones,
   intimacyPhase,
@@ -840,6 +841,11 @@ function GardenView() {
       .catch(() => {});
   }, [historyOpen, mv]);
 
+  // 列表 / 图谱 view toggle (romance-gap ⑫C): the garden as a list of
+  // cards, or as a mind map — nodes from real records, edges from real
+  // metadata (same category + time proximity, or supersedes chains).
+  const [gardenView, setGardenView] = useState<"list" | "map">("list");
+
   if (items.length === 0) return <EmptyState text={t("space.garden.empty")} />;
 
   return (
@@ -868,6 +874,54 @@ function GardenView() {
           </View>
           <Switch value={autoExtract} onValueChange={toggleAutoExtract} />
         </View>
+        {/* 列表 / 图谱 toggle */}
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: colors.card,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: colors.line,
+            padding: 3,
+            alignSelf: "flex-start",
+          }}
+        >
+          {(
+            [
+              { key: "list", label: t("space.garden.viewList") },
+              { key: "map", label: t("space.garden.viewMap") },
+            ] as const
+          ).map((opt) => {
+            const active = gardenView === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setGardenView(opt.key)}
+                accessibilityRole="button"
+                style={{
+                  paddingVertical: 6,
+                  paddingHorizontal: 16,
+                  borderRadius: 999,
+                  backgroundColor: active ? colors.text : "transparent",
+                }}
+              >
+                <TText
+                  style={{
+                    color: active ? colors.card : colors.muted,
+                    fontSize: 12.5,
+                    fontWeight: active ? "700" : "400",
+                  }}
+                >
+                  {opt.label}
+                </TText>
+              </Pressable>
+            );
+          })}
+        </View>
+        {gardenView === "map" ? (
+          <MindMapView records={items} onSelect={() => {}} />
+        ) : (
+          <>
         {GARDEN_SECTIONS.map((sec) => {
           const list = items.filter((m) => gardenStateOf(m) === sec.confidence);
           if (list.length === 0) return null;
@@ -1013,6 +1067,8 @@ function GardenView() {
               ))
             )}
           </View>
+        )}
+          </>
         )}
       </View>
     </FadeIn>

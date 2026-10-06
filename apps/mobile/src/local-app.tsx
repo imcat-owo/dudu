@@ -35,6 +35,7 @@ import { AppearanceScreen } from "./appearance";
 import AIBrowserView from "./browser/AIBrowserView";
 import { ChatScreen } from "./chat";
 import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
+import { DoodleComposerHost } from "./doodle/compose";
 import { ErrorBoundary } from "./error-boundary";
 import { extrasPrefsReady, subscribeNewChat } from "./extras/prefs";
 import { FontProvider, TText } from "./font";
@@ -676,6 +677,20 @@ export function LocalApp() {
                     {/* PDF text extraction bridge for the AI knowledge_add_file
                         tool — hidden, mounts the pdf.js WebView on demand. */}
                     <PdfExtractBridge />
+                    {/* Photo doodle composer (romance-gap ⑫B): hidden host
+                        that rasterizes photo + SVG doodles via ViewShot.
+                        Off-screen at real size so capture is full-res. */}
+                    <View
+                      style={{
+                        position: "absolute",
+                        left: -10000,
+                        top: 0,
+                        opacity: 0,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <DoodleComposerHost />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <ErrorBoundary resetKey={section} label={section}>
                         {section === "chat" ? (
