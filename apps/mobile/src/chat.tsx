@@ -595,8 +595,14 @@ export function ChatScreen({
         const { storyStore } = await import("./story/instances");
         const { pendingChoiceScene } = await import("./story/types");
         const story = await storyStore.findByThread(threadId);
+        // Persona parity with the STORY MODE prompt section
+        // (story/prompt.ts): chips only show when the story's voice is the
+        // active persona — otherwise the AI wouldn't narrate it either.
+        const activePersonaId = await personaStore.getActiveId().catch(() => null);
         const pending =
-          story && story.status === "active" ? pendingChoiceScene(story) : null;
+          story && story.status === "active" && story.personaId === activePersonaId
+            ? pendingChoiceScene(story)
+            : null;
         setStoryChoices(pending ? pending.offeredChoices : []);
       } catch {
         setStoryChoices([]);
