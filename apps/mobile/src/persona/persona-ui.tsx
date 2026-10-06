@@ -16,6 +16,7 @@ import { createWorldBookStore } from "./world-book-store";
 import { blankWorldBook, type WorldBook } from "./world-book";
 import { CharaExportButton, CharaExtrasSection, CharaImportRow } from "../chara/chara-ui";
 import { DialsSection } from "../dials/dials-ui";
+import { dialsStore } from "../dials/instances";
 
 const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
@@ -136,7 +137,18 @@ export function PersonaSection() {
         persona={editing}
         tags={tags}
         onSave={savePersona}
-        onCancel={() => setEditing(null)}
+        onCancel={() =>
+          void (async () => {
+            const p = editing;
+            setEditing(null);
+            // New persona cancelled before save: drop any dial row the
+            // DialsSection may have written under the temp blank id,
+            // so it doesn't linger as an orphan.
+            if (p && !(await personaStore.get(p.id).catch(() => null))) {
+              await dialsStore.reset(p.id).catch(() => {});
+            }
+          })()
+        }
       />
     );
   }
