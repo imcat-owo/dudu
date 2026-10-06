@@ -14,7 +14,7 @@ permissions:
 jobs:
   build-ios:
     runs-on: macos-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     defaults:
       run:
         working-directory: apps/mobile
@@ -63,6 +63,12 @@ jobs:
           CI: 1
 
       - name: Install CocoaPods
+        env:
+          # Build Hermes from source (2026-10-06): the prebuilt hermes-engine
+          # binary shipped with RN 0.81.5 has stale VM-layout assumptions that
+          # crash on iOS 26/27 (expo#44606). Building from the pinned tag
+          # (sdks/.hermesversion) with the current Xcode avoids the bad binary.
+          RCT_BUILD_HERMES_FROM_SOURCE: "true"
         run: |
           cd ios
           pod install --repo-update
