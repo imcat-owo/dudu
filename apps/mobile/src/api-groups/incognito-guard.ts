@@ -126,6 +126,11 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   // Voice call (romance-gap): propose_voice_call rings her phone + persists
   // the proposal — the most intrusive write; list_voice_calls stays readable
   "propose_voice_call",
+  // Memory-driven next-day follow-up （次日跟进）: add/delete/toggle persist
+  // items + backing initiative rules; followup_list stays readable
+  "followup_add",
+  "followup_delete",
+  "followup_set_enabled",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

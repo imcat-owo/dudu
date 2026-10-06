@@ -171,6 +171,12 @@ const zhHant = {
   "initiative.form.every": "每隔",
   "initiative.form.hours": "小時",
   "initiative.form.submit": "定下來",
+  // ---- memory-driven next-day follow-up （次日跟進） ----
+  "followup.section.title": "次日跟進",
+  "followup.section.desc": "她提過的事，第二天他會記得問一句。所有在跟進的都在這裡，隨時可以刪。",
+  "followup.list.empty": "還沒有在跟進的事。跟他聊到將來的事，他會記下來問你。",
+  "followup.actions.delete": "刪除跟進",
+  "followup.item.followUpAt": "問起時間：",
   // ---- AI 自發帖觸發器 ----
   "selfpost.section.title": "他自己發的動態",
   "selfpost.section.desc": "每天幾個安靜時刻，他自己決定有沒有值得發到動態裡的事。不打擾你——你打開我們的空間時自然會看到。",
@@ -1989,6 +1995,7 @@ const zhHant = {
   "crossDialog.actionFeedNudge": "給她的動態點了讚",
   "crossDialog.actionOpenAppReturn": "她從別的 App 回來了",
   "crossDialog.actionSelfpostPost": "他自己發了一條動態",
+  "crossDialog.actionFollowupCancelled": "跟進自動取消（已經聊過了）",
   "crossDialog.actionPersonaGroupCreate": "建了人設群聊",
   "crossDialog.actionPersonaGroupRound": "群聊一輪",
   "crossDialog.actionPersonaGroupAddMember": "群聊加人",

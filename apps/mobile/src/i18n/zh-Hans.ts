@@ -168,6 +168,12 @@ const zhHans = {
   "initiative.form.every": "每隔",
   "initiative.form.hours": "小时",
   "initiative.form.submit": "定下来",
+  // ---- memory-driven next-day follow-up （次日跟进） ----
+  "followup.section.title": "次日跟进",
+  "followup.section.desc": "她提过的事，第二天他会记得问一句。所有在跟进的都在这里，随时可以删。",
+  "followup.list.empty": "还没有在跟进的事。跟他聊到将来的事，他会记下来问你。",
+  "followup.actions.delete": "删除跟进",
+  "followup.item.followUpAt": "问起时间：",
   // ---- AI 自发帖触发器 ----
   "selfpost.section.title": "他自己发的动态",
   "selfpost.section.desc": "每天几个安静时刻，他自己决定有没有值得发到动态里的事。不打扰你——你打开我们的空间时自然会看到。",
@@ -1986,6 +1992,7 @@ const zhHans = {
   "crossDialog.actionFeedNudge": "给她的动态点了赞",
   "crossDialog.actionOpenAppReturn": "她从别的 App 回来了",
   "crossDialog.actionSelfpostPost": "他自己发了一条动态",
+  "crossDialog.actionFollowupCancelled": "跟进自动取消（已经聊过了）",
   "crossDialog.actionPersonaGroupCreate": "建了人设群聊",
   "crossDialog.actionPersonaGroupRound": "群聊一轮",
   "crossDialog.actionPersonaGroupAddMember": "群聊加人",

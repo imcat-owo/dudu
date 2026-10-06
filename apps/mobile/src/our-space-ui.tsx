@@ -87,6 +87,7 @@ import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
 import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
+import { FollowupSection } from "./followup/followup-ui";
 import { SelfpostSection } from "./selfpost/selfpost-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
@@ -1030,12 +1031,14 @@ function TellLaterView() {
   // "AI reaches her" channel and daily cap.
   const freqSection = <OutreachFrequencySection />;
   const initiativeSection = <InitiativeSection />;
+  const followupSection = <FollowupSection />;
 
   if (items.length === 0)
     return (
       <View style={{ gap: 12 }}>
         {freqSection}
         {initiativeSection}
+        {followupSection}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1099,6 +1102,7 @@ function TellLaterView() {
       <View style={{ gap: 20 }}>
         {freqSection}
         {initiativeSection}
+        {followupSection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

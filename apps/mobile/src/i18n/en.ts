@@ -173,6 +173,12 @@ export const enStrings: Record<StringKey, string> = {
   "initiative.form.every": "Every",
   "initiative.form.hours": "hours",
   "initiative.form.submit": "Set it",
+  // ---- memory-driven next-day follow-up ----
+  "followup.section.title": "Next-day follow-ups",
+  "followup.section.desc": "Things she mentioned — he'll remember to ask about them the next day. Everything tracked is listed here, deletable anytime.",
+  "followup.list.empty": "Nothing being tracked yet. Mention something coming up and he'll remember to ask.",
+  "followup.actions.delete": "Delete follow-up",
+  "followup.item.followUpAt": "Ask at: ",
   // ---- AI self-post trigger （自发帖触发器） ----
   "selfpost.section.title": "His own posts",
   "selfpost.section.desc": "At a few quiet moments each day, he decides whether he has something worth sharing to the feed. No pings — you'll find it when you open Our Space.",
@@ -2075,6 +2081,7 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.actionFeedNudge": "Reacted to her post",
   "crossDialog.actionOpenAppReturn": "Welcomed her back from another app",
   "crossDialog.actionSelfpostPost": "Posted to the feed by himself",
+  "crossDialog.actionFollowupCancelled": "Follow-up auto-cancelled (already discussed)",
   "crossDialog.actionPersonaGroupCreate": "Created a persona group",
   "crossDialog.actionPersonaGroupRound": "Group round",
   "crossDialog.actionPersonaGroupAddMember": "Added a group member",

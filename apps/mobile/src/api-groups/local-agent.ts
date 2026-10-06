@@ -84,6 +84,7 @@ import {
   createTaskProgressTools,
 } from "../our-space/tools";
 import { createProductionInitiativeTools } from "../initiative/instances";
+import { createProductionFollowupTools } from "../followup/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createProductionVoiceCallTools } from "../voice-call/instances";
@@ -1082,6 +1083,10 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createProductionInitiativeTools(),
+        // Memory-driven next-day follow-up （次日跟进）: the write tools
+        // (followup_add/delete/set_enabled) are in INCOGNITO_BLOCKED_TOOLS;
+        // followup_list stays available.
+        ...createProductionFollowupTools(),
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),

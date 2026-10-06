@@ -21,7 +21,20 @@ export function startInitiativeForegroundLoop(
   const tick = () => {
     if (stopped) return;
     void getDeps()
-      .then((deps) => checkDueInitiatives(deps))
+      .then(async (deps) => {
+        // Memory-driven next-day follow-ups run BEFORE the generic sweep:
+        // items already discussed get archived here (so the generic tick
+        // skips them), and fired items consume their slot (so the generic
+        // tick no-ops). Dynamic import keeps scheduler.ts node-testable
+        // and avoids a static initiative→followup edge.
+        try {
+          const { runFollowupTick } = await import("../followup/instances");
+          await runFollowupTick();
+        } catch {
+          // Never break the initiative sweep.
+        }
+        await checkDueInitiatives(deps);
+      })
       .catch(() => {});
   };
 

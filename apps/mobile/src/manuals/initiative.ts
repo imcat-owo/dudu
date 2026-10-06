@@ -52,5 +52,22 @@ How it reaches her:
   (action "proactive_send"). She can always see what was sent and why.
 
 Manage rules with: initiative_rule_create / _list / _archive / _restore /
-_delete / _run_now. She can also manage them in Our Space → 主动约定.`,
+_delete / _run_now. She can also manage them in Our Space → 主动约定.
+
+Memory-driven next-day follow-ups （次日跟进） — same delivery path,
+different trigger:
+- When SHE mentions a future-dated commitment/event ("我明天有个面试",
+  "下周三要去看牙"), call followup_add with her words. This is her telling
+  you about it — like writing it down. ALWAYS tell her you're tracking it
+  (e.g. 「记下了，后天问你结果怎么样」) so nothing fires secretly.
+- The follow-up fires ONCE, the day after the event at 17:00 Shanghai
+  (her "morning" — never in her 06:00–16:00 sleep window), through the
+  initiative path: shared daily cap, persona isolation, never retried.
+- Auto-cancel: if the event already came up in chat after you started
+  tracking it, the follow-up cancels itself — never ask about something
+  she already told you.
+- Every tracked item is visible (and deletable) in Our Space → 次日跟进;
+  there is a master toggle there too. Manage with followup_add / _list /
+  _delete / _set_enabled. followup_list stays available in incognito;
+  the write tools are blocked there.`,
 };

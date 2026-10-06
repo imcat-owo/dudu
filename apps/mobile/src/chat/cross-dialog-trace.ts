@@ -28,6 +28,9 @@ export type CrossDialogAction =
   | "meeting_end"
   /** Proactive outreach (主动触达) — every notification he sends her is logged here. */
   | "proactive_send"
+  /** Memory-driven next-day follow-up （次日跟进） — auto-cancelled because
+   * the event already came up in chat. */
+  | "followup_cancelled"
   /** Feed nudge (C3) — the like + reply he left on her unacknowledged post. */
   | "feed_nudge"
   /** Open-app watchdog (Aru-gap 轻控制） — welcome-back after she taps the return notification. */

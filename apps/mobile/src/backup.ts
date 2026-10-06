@@ -167,6 +167,11 @@ const EXTENSION_KEYS = [
   "dudu.initiative.v1.fired",
   "dudu.initiative.v1.sends",
   "dudu.initiative.v1.dailyCap",
+  // Memory-driven next-day follow-up （次日跟进）: tracked items + master
+  // toggle. Plain JSON, no secrets. The backing initiative rules are
+  // covered above under dudu.initiative.v1.*.
+  "dudu.followup.v1.items",
+  "dudu.followup.v1.enabled",
   // AI self-post trigger: config + fired-slot ledger + daily sends + decision log.
   // Plain JSON, no secrets.
   "dudu.selfpost.v1.config",

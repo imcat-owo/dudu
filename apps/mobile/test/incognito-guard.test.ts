@@ -98,6 +98,10 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "selfpost_config",
       "selfpost_post_now",
       "propose_voice_call",
+      // Memory-driven next-day follow-up (write tools; followup_list stays readable)
+      "followup_add",
+      "followup_delete",
+      "followup_set_enabled",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);
