@@ -176,6 +176,10 @@ const EXTENSION_KEYS = [
   // covered above under dudu.initiative.v1.*.
   "dudu.followup.v1.items",
   "dudu.followup.v1.enabled",
+  // Interactive story mode （互动故事）: stories (scenes, choices,
+  // bible). Plain JSON, no secrets. Losing these on restore would
+  // silently erase her co-written stories.
+  "dudu.story.v1.stories",
   // Daily mood check-in （每日心情）: config + timeline + fire ledger.
   // Plain JSON, no secrets.
   "dudu.moodcheck.v1.config",

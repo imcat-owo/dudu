@@ -117,6 +117,15 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "evolution_note_delete",
       "evolution_set_enabled",
       "evolution_reset",
+      // Interactive story mode (write tools; story_list/_show stay readable)
+      "story_start",
+      "story_scene_add",
+      "story_choose",
+      "story_bible_update",
+      "story_pause",
+      "story_resume",
+      "story_end",
+      "story_delete",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

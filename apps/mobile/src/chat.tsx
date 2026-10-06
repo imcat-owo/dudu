@@ -581,6 +581,32 @@ export function ChatScreen({
   const [phrasesOpen, setPhrasesOpen] = useState(false);
   const [shotRound, setShotRound] = useState<ShotRound | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
+  // Interactive story mode （互动故事）: tappable choice chips for the
+  // active story's pending scene choices in this dialog. Re-read from the
+  // store (the truth) — cleared when story_choose records her pick.
+  const [storyChoices, setStoryChoices] = useState<{ id: string; label: string }[]>([]);
+  const refreshStoryChoices = () => {
+    if (mode !== "local") {
+      setStoryChoices([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const { storyStore } = await import("./story/instances");
+        const { pendingChoiceScene } = await import("./story/types");
+        const story = await storyStore.findByThread(threadId);
+        const pending =
+          story && story.status === "active" ? pendingChoiceScene(story) : null;
+        setStoryChoices(pending ? pending.offeredChoices : []);
+      } catch {
+        setStoryChoices([]);
+      }
+    })();
+  };
+  useEffect(() => {
+    refreshStoryChoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, mode]);
   // P3-4: multi-select export — pick messages, then export just those.
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1511,6 +1537,9 @@ export function ChatScreen({
       if (last && last.role === "assistant" && followUpForRef.current !== last.id) {
         followUpForRef.current = last.id;
         void makeFollowUps(last);
+        // Interactive story mode: re-read pending scene choices — the
+        // reply may have offered new ones (or recorded her pick).
+        refreshStoryChoices();
         void maybeAutoTitle();
         // Batch 3: auto-read the finished reply aloud if she opted in.
         void maybeAutoReadAssistantMessage(messageText(last), {
@@ -2271,6 +2300,21 @@ export function ChatScreen({
                         {isLast && followUps.length > 0 && threadMeta?.followUpChips !== false && (
                           <View style={{ paddingHorizontal: 4 }}>
                             <FollowUpChips suggestions={followUps} onPick={(sug) => enqueue(sug)} />
+                          </View>
+                        )}
+                        {/* Interactive story mode （互动故事）: tappable
+                            scene choices. Tapping sends her pick as a
+                            message; the AI records it via story_choose. */}
+                        {isLast && idle && storyChoices.length > 0 && (
+                          <View style={{ paddingHorizontal: 4 }}>
+                            <FollowUpChips
+                              title={t("story.choice.title") as string}
+                              suggestions={storyChoices.map((c) => `${c.id} · ${c.label}`)}
+                              onPick={(sug) => {
+                                setStoryChoices([]);
+                                enqueue(sug);
+                              }}
+                            />
                           </View>
                         )}
                       </>

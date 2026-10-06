@@ -93,6 +93,7 @@ import { MilestoneSection } from "./romance/milestone-ui";
 import { MoodcheckSection } from "./moodcheck/moodcheck-ui";
 import { PhotoshareSection } from "./photoshare/photoshare-ui";
 import { SelfpostSection } from "./selfpost/selfpost-ui";
+import { StorySection } from "./story/story-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
   AiStatus,
@@ -1040,6 +1041,7 @@ function TellLaterView() {
   const milestoneSection = <MilestoneSection />;
   const photoshareSection = <PhotoshareSection />;
   const evolutionSectionUi = <EvolutionSection />;
+  const storySection = <StorySection />;
 
   if (items.length === 0)
     return (
@@ -1051,6 +1053,7 @@ function TellLaterView() {
         {milestoneSection}
         {photoshareSection}
         {evolutionSectionUi}
+        {storySection}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1119,6 +1122,7 @@ function TellLaterView() {
         {milestoneSection}
         {photoshareSection}
         {evolutionSectionUi}
+        {storySection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

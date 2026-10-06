@@ -342,9 +342,12 @@ export function VersionSwitcher({
 export function FollowUpChips({
   suggestions,
   onPick,
+  title,
 }: {
   suggestions: string[];
   onPick: (s: string) => void;
+  /** Custom header; defaults to the "接着问" follow-up title. */
+  title?: string;
 }) {
   const colors = useColors();
   if (!suggestions.length) return null;
@@ -352,7 +355,9 @@ export function FollowUpChips({
     <View style={{ gap: 6, marginTop: 4 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <Sparkles size={12} color={colors.muted} />
-        <TText style={{ fontSize: 11, color: colors.muted }}>{t("chat.followUpTitle")}</TText>
+        <TText style={{ fontSize: 11, color: colors.muted }}>
+          {title ?? (t("chat.followUpTitle") as string)}
+        </TText>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {suggestions.map((s) => (

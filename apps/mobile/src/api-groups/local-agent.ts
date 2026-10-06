@@ -93,6 +93,10 @@ import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionPhotoshareTools } from "../photoshare/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createProductionVoiceCallTools } from "../voice-call/instances";
+import {
+  buildStorySectionForThread,
+  createProductionStoryTools,
+} from "../story/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
@@ -1108,6 +1112,11 @@ export function createLocalAgent(opts: {
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),
+        // Interactive story mode （互动故事）: the 8 write tools
+        // (story_start/_scene_add/_choose/_bible_update/_pause/_resume/
+        // _end/_delete) are in INCOGNITO_BLOCKED_TOOLS;
+        // story_list/_show stay available.
+        ...createProductionStoryTools(opts.threadId),
         // AI photo share （主动发照片）: management tools. The write tools
         // (photoshare_config, photoshare_share_now) are in
         // INCOGNITO_BLOCKED_TOOLS; reads stay available.
@@ -1898,6 +1907,14 @@ export function createLocalAgent(opts: {
       const dialsSection = await buildActiveDialsSection(activePersona?.id ?? null, {
         incognito: incognitoOn,
       });
+      // Interactive story mode （互动故事）: when THIS dialog has an active
+      // story, the STORY MODE section (bible + progress + her last choice)
+      // rides the prompt so narration stays coherent. Empty when no story,
+      // paused/ended, incognito, or persona mismatch — never throws.
+      const storySection = await buildStorySectionForThread(opts.threadId, {
+        incognito: incognitoOn,
+        personaId: activePersona?.id ?? null,
+      });
       // A16: per-dialog system prompt override — her rule for THIS dialog,
       // appended after the persona sections. Empty when unset: no noise.
       const dialogSystemPrompt =
@@ -1913,6 +1930,10 @@ export function createLocalAgent(opts: {
           memorySection,
           evolutionSection,
           dialsSection,
+          // Interactive story mode: the STORY MODE section (bible +
+          // progress + her last choice) when this dialog has an active
+          // story. Empty string = no story; filtered below.
+          ...(storySection ? [storySection] : []),
           skillSection,
           anniversarySection,
           herMoodSection,

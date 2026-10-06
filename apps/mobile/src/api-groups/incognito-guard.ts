@@ -151,6 +151,15 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "evolution_note_delete",
   "evolution_set_enabled",
   "evolution_reset",
+  // Interactive story mode (write tools; story_list/_show stay readable)
+  "story_start",
+  "story_scene_add",
+  "story_choose",
+  "story_bible_update",
+  "story_pause",
+  "story_resume",
+  "story_end",
+  "story_delete",
 ]);
 
 /** True when this tool must be refused in an incognito session. */
