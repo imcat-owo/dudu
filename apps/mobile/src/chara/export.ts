@@ -7,9 +7,9 @@
  * with spec mutated to chara_card_v3/3.0).
  */
 
-import type { Persona, PersonaTag } from "../persona/types.js";
-import { type CharaCard, serializeCharaCard, toV3 } from "./card.js";
-import { personaToCardData, withExportedCard } from "./persona-map.js";
+import type { Persona, PersonaTag } from "../persona/types";
+import { type CharaCard, serializeCharaCard, toV3 } from "./card";
+import { personaToCardData, withExportedCard } from "./persona-map";
 import {
   base64ToBytes,
   bytesToBase64,
@@ -21,7 +21,7 @@ import {
   parsePngChunks,
   stripCardChunks,
   utf8Encode,
-} from "./png.js";
+} from "./png";
 
 export interface CharaExportDeps {
   /** Resolve the persona's avatar to PNG bytes (local path/URL -> bytes). Null = no usable PNG. */

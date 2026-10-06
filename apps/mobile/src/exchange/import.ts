@@ -15,15 +15,15 @@ import {
   type ImportedConversation,
   type ImportResult,
   importConversations,
-} from "../backup/import.js";
-import { detectAdapter, type ExchangeAdapter, getAdapter } from "./adapters.js";
+} from "../backup/import";
+import { detectAdapter, type ExchangeAdapter, getAdapter } from "./adapters";
 import {
   buildExchange,
   type DuduExchange,
   type ExchangeConversation,
   type ExchangeParseError,
   parseExchange,
-} from "./types.js";
+} from "./types";
 
 export interface KeyValueLike {
   getItem(key: string): Promise<string | null>;

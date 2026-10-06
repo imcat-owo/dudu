@@ -6,12 +6,12 @@
  * injected via CharaToolDeps; the real wiring lives in local-agent.ts.
  */
 
-import type { LocalTool } from "../api-groups/local-tools.js";
-import { ToolError } from "../api-groups/local-tools.js";
-import type { Persona, PersonaTag } from "../persona/types.js";
-import type { WorldBook } from "../persona/world-book.js";
-import { exportCharaCardPng } from "./export.js";
-import { importCharaCard, previewCharaCard } from "./import.js";
+import type { LocalTool } from "../api-groups/local-tools";
+import { ToolError } from "../api-groups/local-tools";
+import type { Persona, PersonaTag } from "../persona/types";
+import type { WorldBook } from "../persona/world-book";
+import { exportCharaCardPng } from "./export";
+import { importCharaCard, previewCharaCard } from "./import";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];

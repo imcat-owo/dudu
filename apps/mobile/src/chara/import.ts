@@ -6,10 +6,10 @@
  * (corrupt input = clean error, zero writes).
  */
 
-import type { Persona, PersonaTag } from "../persona/types.js";
-import type { WorldBook } from "../persona/world-book.js";
-import { type CardParseResult, type CharaCard, parseCharaCardJson } from "./card.js";
-import { cardToPersona } from "./persona-map.js";
+import type { Persona, PersonaTag } from "../persona/types";
+import type { WorldBook } from "../persona/world-book";
+import { type CardParseResult, type CharaCard, parseCharaCardJson } from "./card";
+import { cardToPersona } from "./persona-map";
 import {
   base64ToBytes,
   type PngChunk,
@@ -17,7 +17,7 @@ import {
   parsePngChunks,
   scanCardChunks,
   utf8Decode,
-} from "./png.js";
+} from "./png";
 
 export type CharaImportCode =
   | "empty"

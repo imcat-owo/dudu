@@ -28,7 +28,7 @@ export interface ImportedConversation {
   messages: ImportedMessage[];
 }
 
-import { defaultThreadMeta } from "../chat/thread-versions.js";
+import { defaultThreadMeta } from "../chat/thread-versions";
 
 /** Result of an import. */
 export interface ImportResult {

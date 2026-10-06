@@ -25,11 +25,11 @@
  * imported original card when present (lossless round-trip).
  */
 
-import type { Persona, PersonaTag } from "../persona/types.js";
-import { blankPersona, newPersonaId } from "../persona/types.js";
-import type { WorldBook } from "../persona/world-book.js";
-import { blankWorldBook, newWorldBookEntryId } from "../persona/world-book.js";
-import type { CharaCard, CharaCardData, LorebookEntry } from "./card.js";
+import type { Persona, PersonaTag } from "../persona/types";
+import { blankPersona, newPersonaId } from "../persona/types";
+import type { WorldBook } from "../persona/world-book";
+import { blankWorldBook, newWorldBookEntryId } from "../persona/world-book";
+import type { CharaCard, CharaCardData, LorebookEntry } from "./card";
 
 /** Marker separating the scenario block inside persona.background. */
 export const SCENARIO_MARKER = "\n\n―― Scenario ――\n";

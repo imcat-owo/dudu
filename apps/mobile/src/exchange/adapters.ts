@@ -21,8 +21,8 @@ import {
   type ImportedConversation,
   parseChatBoxBackup,
   parseCherryBackup,
-} from "../backup/import.js";
-import type { ExchangeConversation, ExchangeMessage } from "./types.js";
+} from "../backup/import";
+import type { ExchangeConversation, ExchangeMessage } from "./types";
 
 /** A foreign app's import adapter. */
 export interface ExchangeAdapter {
