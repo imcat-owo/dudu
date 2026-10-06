@@ -2526,6 +2526,22 @@ const zhHant = {
   "pgroup.inputPlaceholder": "在群裡說點什麼… @ 某人",
   "pgroup.sending": "發送中…",
   "pgroup.toolsHide": "收起工具調用",
+  "voicecall.status.listening": "在聽…",
+  "voicecall.status.capturing": "聽到你了…",
+  "voicecall.status.thinking": "想一下…",
+  "voicecall.status.speaking": "說話中…（直接開口就能打斷我）",
+  "voicecall.status.connecting": "接通中…",
+  "voicecall.transcript.empty": "說話吧，我在聽。",
+  "voicecall.mute": "靜音",
+  "voicecall.end": "掛斷",
+  "voicecall.close": "關閉",
+  "voicecall.ring.title": "來電",
+  "voicecall.ring.accept": "接聽",
+  "voicecall.ring.decline": "掛斷",
+  "voicecall.ring.missed": "未接來電",
+  "voicecall.error.micDenied": "通話需要麥克風權限——去設定裡打開才能說話。",
+  "voicecall.error.noGroup": "通話需要先配好 API 分組——先去「連接」裡設定。",
+  "voicecall.manual.title": "語音通話",
 } as const;
 
 // StringKey is defined in zh-Hans.ts (same keys).

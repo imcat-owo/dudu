@@ -86,6 +86,7 @@ import {
 import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
+import { createProductionVoiceCallTools } from "../voice-call/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
 import { evaluateOutreachTriggers } from "../outreach/engine";
 import type { FeedNudgePost } from "../outreach/feed-nudge";
@@ -1081,6 +1082,9 @@ export function createLocalAgent(opts: {
         ...createLocalTools(opts.toolDeps),
         ...createOurSpaceTools(opts.ourSpaceStore ?? ourSpaceStore),
         ...createProductionInitiativeTools(),
+        // Voice call （实时双工语音通话）: propose_voice_call is the AI's
+        // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
+        ...createProductionVoiceCallTools(),
         // AI self-post trigger （自发帖触发器）: management tools. The
         // write tools (selfpost_config, selfpost_post_now) are in
         // INCOGNITO_BLOCKED_TOOLS; reads stay available.

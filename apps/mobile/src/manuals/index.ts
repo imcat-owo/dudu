@@ -51,6 +51,7 @@ import { THEMES_MANUAL } from "./themes";
 import { THINKING_DRAWER_MANUAL } from "./thinking-drawer";
 import { VISION_MANUAL } from "./vision";
 import { VOICE_MANUAL } from "./voice";
+import { VOICE_CALL_MANUAL } from "./voice-call";
 
 export interface ManualEntry {
   /** Stable id, used by read_manual. */
@@ -71,6 +72,7 @@ export const MANUALS: ManualEntry[] = [
   THINKING_DRAWER_MANUAL,
   INCOGNITO_MANUAL,
   VOICE_MANUAL,
+  VOICE_CALL_MANUAL,
   VISION_MANUAL,
   THEMES_MANUAL,
   API_GROUPS_MANUAL,

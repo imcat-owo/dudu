@@ -56,6 +56,7 @@ import { ThemeProvider } from "./theme/ThemeContext";
 import { ThemeTransition } from "./theme-transition";
 import { ThreadsProvider } from "./threads";
 import { useColors } from "./ui";
+import { VoiceCallBridge } from "./voice-call/ring-bridge";
 import type { Detail } from "./workspace";
 import { WorkspaceContext } from "./workspace";
 
@@ -263,6 +264,13 @@ export function LocalApp() {
               })
               .catch(() => {});
           }
+          setSection("chat");
+          return;
+        }
+        // Voice call ring: tapping the ring notification just opens the app —
+        // VoiceCallBridge polls the proposal store and shows the ringing
+        // overlay itself (no deep-link surgery needed).
+        if (kind === "voice-call-ring") {
           setSection("chat");
           return;
         }
@@ -607,6 +615,7 @@ export function LocalApp() {
         <LocalAgentWorkspaceProvider>
           <IncognitoProvider>
             <SelfpostLoopBridge />
+            <VoiceCallBridge />
             <ThemeProvider>
               <FontProvider>
                 <ThemeTransition>

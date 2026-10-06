@@ -97,6 +97,7 @@ describe("incognito guard (P1-3: zero trace)", () => {
       // AI self-post trigger (write tools; reads stay available)
       "selfpost_config",
       "selfpost_post_now",
+      "propose_voice_call",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

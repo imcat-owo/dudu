@@ -123,6 +123,9 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   // AI self-post trigger: config writes + manual post (reads stay available)
   "selfpost_config",
   "selfpost_post_now",
+  // Voice call (romance-gap): propose_voice_call rings her phone + persists
+  // the proposal — the most intrusive write; list_voice_calls stays readable
+  "propose_voice_call",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

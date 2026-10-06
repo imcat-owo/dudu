@@ -2523,6 +2523,22 @@ const zhHans = {
   "pgroup.inputPlaceholder": "在群里说点什么… @ 某人",
   "pgroup.sending": "发送中…",
   "pgroup.toolsHide": "收起工具调用",
+  "voicecall.status.listening": "在听…",
+  "voicecall.status.capturing": "听到你了…",
+  "voicecall.status.thinking": "想一下…",
+  "voicecall.status.speaking": "说话中…（直接开口就能打断我）",
+  "voicecall.status.connecting": "接通中…",
+  "voicecall.transcript.empty": "说话吧，我在听。",
+  "voicecall.mute": "静音",
+  "voicecall.end": "挂断",
+  "voicecall.close": "关闭",
+  "voicecall.ring.title": "来电",
+  "voicecall.ring.accept": "接听",
+  "voicecall.ring.decline": "挂断",
+  "voicecall.ring.missed": "未接来电",
+  "voicecall.error.micDenied": "通话需要麦克风权限——去设置里打开才能说话。",
+  "voicecall.error.noGroup": "通话需要先配好 API 分组——先去「连接」里设置。",
+  "voicecall.manual.title": "语音通话",
 } as const;
 
 export type StringKey = keyof typeof zhHans;
