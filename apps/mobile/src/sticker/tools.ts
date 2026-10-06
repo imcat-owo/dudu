@@ -1,15 +1,18 @@
 /**
  * 图片表情包 — AI tools.
  *
- * sticker_list:  read-only — what stickers exist (her custom packs + AI library).
- * sticker_send:  read-only — send one sticker. Resolves the sticker, copies
- *                 it into the message-scoped sent dir, and returns a
- *                 sticker_message envelope: the AI pastes that JSON into its
- *                 reply so it renders as a chromeless sticker bubble.
+ * sticker_list:  lists what stickers exist (her custom packs + AI library).
+ *                 First call seeds the AI library (copies 10 mascot images)
+ *                 — a real file write, so it is in INCOGNITO_BLOCKED_TOOLS.
+ * sticker_send:  send one sticker. Resolves the sticker, copies it into the
+ *                 message-scoped sent dir (a real file write on EVERY call),
+ *                 and returns a sticker_message envelope: the AI pastes that
+ *                 JSON into its reply so it renders as a chromeless sticker
+ *                 bubble. In INCOGNITO_BLOCKED_TOOLS.
  *
- * Neither tool writes to any store (pack management is her UI-only job),
- * so both stay available in incognito — like words, a sticker is part of
- * the reply, not a side effect.
+ * Neither tool touches a store (pack management is her UI-only job), but
+ * both leave files behind, so incognito refuses them — incognito promises
+ * zero side effects.
  * manualId "sticker" pairs with src/manuals/sticker.ts (paper slip:
  * restraint rules — stickers punctuate, never replace, words).
  */
@@ -61,6 +64,7 @@ export function createStickerTools(env: StickerToolEnv): LocalTool[] {
         "Send one image sticker in your reply. stickerId: from sticker_list. " +
         "Returns a sticker_message envelope JSON — PASTE that JSON into your reply " +
         "so it renders as a sticker bubble, and keep your words around it short. " +
+        "GIFs render as their first frame only — never promise animation. " +
         "Restraint (from the sticker manual): stickers punctuate, never replace, " +
         "words — at most one per turn, never a sticker-only reply to anything serious.",
       parameters: {

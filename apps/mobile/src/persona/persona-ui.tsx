@@ -18,6 +18,7 @@ import { CharaExportButton, CharaExtrasSection, CharaImportRow } from "../chara/
 import { DialsSection } from "../dials/dials-ui";
 import { dialsStore } from "../dials/instances";
 import { SegmentSection } from "../segments/segment-ui";
+import { StickerToggleSection } from "../sticker/sticker-toggle-ui";
 
 const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
@@ -399,6 +400,8 @@ function PersonaEditor({
       <DialsSection personaId={p.id} />
 
       <SegmentSection personaId={p.id} />
+
+      <StickerToggleSection personaId={p.id} />
 
       {tags.length > 0 && (
         <View style={{ marginBottom: 12 }}>

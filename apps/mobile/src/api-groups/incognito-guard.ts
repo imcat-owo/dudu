@@ -163,6 +163,12 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   // Photo doodle (romance-gap ⑫B): photo_doodle writes a composited PNG
   // file — a real side effect, never in incognito
   "photo_doodle",
+  // Image stickers （图片表情包）: sticker_send copies a file into the
+  // sent dir on EVERY call; sticker_list triggers the AI-library seeding
+  // (copies 10 mascot images on first call) — both are real side effects,
+  // never in incognito
+  "sticker_send",
+  "sticker_list",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

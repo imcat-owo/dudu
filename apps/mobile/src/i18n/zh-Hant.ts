@@ -2224,6 +2224,8 @@ const zhHant = {
   "persona.enabled": "啓用",
   "persona.segmentedSending": "長回覆分段發送",
   "persona.segmentedSendingHint": "長回覆會像真人聊天一樣分成 2–3 條短訊息發過來。只有足夠長的訊息才會分段。",
+  "persona.stickerSending": "允許 AI 發表情包",
+  "persona.stickerSendingHint": "AI 會在回覆裡偶爾發一張表情包（從你的表情包或它的表情庫裡挑）。關掉後它就只發文字。",
   "persona.delete": "刪除人設",
   "persona.deleteConfirm": "確定刪除「{name}」嗎？用它開的對話不受影響。",
   "persona.setActive": "設爲當前",

@@ -128,6 +128,11 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "story_delete",
       // Photo doodle (write tool — creates a PNG file)
       "photo_doodle",
+      // Image stickers （图片表情包）: sticker_send copies a file into the
+      // sent dir on every call; sticker_list seeds the AI library (copies
+      // 10 mascot images on first call) — both are writes
+      "sticker_send",
+      "sticker_list",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

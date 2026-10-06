@@ -34,8 +34,10 @@ HONESTY:
 - If a sticker id from an old turn no longer exists, sticker_list
   again — don't pretend you sent it.
 
-Incognito: sticker_list/sticker_send stay available (read-only, part
-of the reply like words). Pack files live on-device only
-(<documentDirectory>/dudu-stickers) and are not part of backups —
-after a reinstall, packs need their pictures re-added.`,
+Incognito: sticker_list/sticker_send are UNAVAILABLE in incognito — the
+send copies a file and the first list seeds the AI library, and incognito
+promises zero side effects. Pack files live on-device only
+(<documentDirectory>/dudu-stickers) and are NOT part of backups — pack
+metadata isn't backed up either, so after a reinstall the packs are gone
+entirely (pack list + pictures alike). Rebuild them by re-adding.`,
 };

@@ -2312,6 +2312,9 @@ export const enStrings: Record<StringKey, string> = {
   "persona.segmentedSending": "Send long replies in segments",
   "persona.segmentedSendingHint":
     "Long replies arrive as 2–3 short bubbles, like texting a real person. Only long messages split.",
+  "persona.stickerSending": "AI can send stickers",
+  "persona.stickerSendingHint":
+    "The AI may punctuate replies with a sticker from your packs or its library. Turn off to keep replies words-only.",
   "persona.delete": "Delete persona",
   "persona.deleteConfirm": 'Delete "{name}"? Chats using it are unaffected.',
   "persona.setActive": "Set active",

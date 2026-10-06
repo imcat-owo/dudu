@@ -2221,6 +2221,8 @@ const zhHans = {
   "persona.enabled": "启用",
   "persona.segmentedSending": "长回复分段发送",
   "persona.segmentedSendingHint": "长回复会像真人聊天一样分成 2–3 条短消息发过来。只有足够长的消息才会分段。",
+  "persona.stickerSending": "允许 AI 发表情包",
+  "persona.stickerSendingHint": "AI 会在回复里偶尔发一张表情包（从你的表情包或它的表情库里挑）。关掉后它就只发文字。",
   "persona.delete": "删除人设",
   "persona.deleteConfirm": "确定删除「{name}」吗？用它开的对话不受影响。",
   "persona.setActive": "设为当前",
