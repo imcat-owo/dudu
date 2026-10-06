@@ -39,6 +39,7 @@ import { ApiSettingsScreen } from "./src/api-groups/api-settings";
 import { useChatMode } from "./src/api-groups/mode";
 import { AppearanceScreen } from "./src/appearance";
 import { getSnapshotStore } from "./src/backup/snapshot-stores";
+import { bootMark } from "./src/bootlog";
 import { ChatScreen, WorkspaceTools } from "./src/chat";
 import { ComputerEntry } from "./src/computer";
 import { ComputerDraftProvider } from "./src/computer-drafts";
@@ -99,6 +100,10 @@ export default function App() {
   // Dual-mode root: local (default) → pure client-side shell, no backend,
   // no login, no CopilotKit. Cloud → the original backend path.
   const mode = useChatMode();
+  // Crash-bisection (2026-10-06): startup milestone log.
+  useEffect(() => {
+    void bootMark("app-launch");
+  }, []);
   // Launch splash: Sora avatar bloom, then cross-fade into the app.
   const [splashed, setSplashed] = useState(false);
   if (!splashed) {
@@ -109,7 +114,12 @@ export default function App() {
         <ThemeProvider>
           <ThemedStatusBar />
           <ErrorBoundary label="splash">
-            <Splash onDone={() => setSplashed(true)} />
+            <Splash
+              onDone={() => {
+                void bootMark("splash-done");
+                setSplashed(true);
+              }}
+            />
           </ErrorBoundary>
         </ThemeProvider>
       </SafeAreaProvider>

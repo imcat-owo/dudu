@@ -2,7 +2,8 @@ import "./helpers/rn-stub.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type BrowserWebViewRef, browserController } from "../src/browser/controller.js";
-import { createBrowserTools } from "../src/browser/tools.js";
+import { __resetBrowserViewMount, isBrowserViewMounted } from "../src/browser/mount.js";
+import { __setBrowserMountWaitMs, createBrowserTools } from "../src/browser/tools.js";
 import { getManual } from "../src/manuals/index.js";
 
 /** Fake WebView that simulates page responses. */
@@ -62,13 +63,21 @@ test("browser_navigate rejects invalid URLs honestly", async () => {
   await assert.rejects(() => nav.run({ url: "" }, ctx), /Missing required/);
 });
 
-test("browser tools fail honestly when WebView not mounted", async () => {
+test("browser tools request the mount and fail honestly when the view never appears", async () => {
+  // Crash-bisection (2026-10-06): the WebView mounts lazily now. Tools no
+  // longer throw "not ready" immediately — they request the mount and wait,
+  // then fail honestly on timeout.
+  __resetBrowserViewMount();
+  __setBrowserMountWaitMs(400);
   browserController.setWebView(null);
   const tools = createBrowserTools();
   const ctx = { authorize: async () => true };
   const snapshot = tools.find((t) => t.name === "browser_snapshot");
   assert.ok(snapshot);
-  await assert.rejects(() => snapshot.run({}, ctx), /not ready|not mounted/);
+  await assert.rejects(() => snapshot.run({}, ctx), /did not mount in time/);
+  assert.equal(isBrowserViewMounted(), true);
+  __resetBrowserViewMount();
+  __setBrowserMountWaitMs(12000);
 });
 
 test("browser_navigate works with mounted WebView", async () => {
@@ -106,13 +115,17 @@ test("browser_screenshot returns SCREENSHOT marker with file URI", async () => {
   browserController.setWebView(null);
 });
 
-test("browser_screenshot fails honestly when WebView not mounted", async () => {
+test("browser_screenshot requests the mount and fails honestly when the view never appears", async () => {
+  __resetBrowserViewMount();
+  __setBrowserMountWaitMs(400);
   browserController.setWebView(null);
   const tools = createBrowserTools();
   const ctx = { authorize: async () => true };
   const shot = tools.find((t) => t.name === "browser_screenshot");
   assert.ok(shot);
-  await assert.rejects(() => shot.run({}, ctx), /not ready|not mounted/);
+  await assert.rejects(() => shot.run({}, ctx), /did not mount in time/);
+  __resetBrowserViewMount();
+  __setBrowserMountWaitMs(12000);
 });
 
 test("browser_screenshot fails honestly when capture throws", async () => {

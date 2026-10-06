@@ -3,7 +3,10 @@
  *
  * The AI's hands for the web. Drives a real WebView through
  * browserController (src/browser/controller.ts). The WebView is mounted
- * by AIBrowserView; if it's not mounted, tools fail honestly — never fake.
+ * lazily (crash-bisection 2026-10-06): the first tool call requests the
+ * mount via requestBrowserViewMount() and waits for the controller to come
+ * up, so tools never fail with "Browser is not ready" on a cold start —
+ * and never fake it either.
  *
  * browser_screenshot captures via react-native-view-shot (native module,
  * dev build only) and returns a [SCREENSHOT] marker with the file URI;
@@ -21,6 +24,7 @@
 import type { LocalTool, ToolDeps } from "../api-groups/local-tools";
 import { browserAddress } from "../browser-address";
 import { browserController } from "./controller";
+import { requestBrowserViewMount } from "./mount";
 
 function strArg(args: Record<string, unknown>, name: string): string {
   const v = args[name];
@@ -30,6 +34,31 @@ function strArg(args: Record<string, unknown>, name: string): string {
 /** Escape a string for safe embedding in a JS single-quoted literal. */
 function jsStr(s: string): string {
   return `'${s.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n")}'`;
+}
+
+// How long a tool waits for the lazily-mounted browser view to become ready
+// before giving up honestly. Overridable in tests via __setBrowserMountWaitMs.
+let mountWaitMs = 12000;
+
+/** Test-only: shorten the mount wait. Never call in production code. */
+export function __setBrowserMountWaitMs(ms: number): void {
+  mountWaitMs = ms;
+}
+
+/**
+ * Crash-bisection (2026-10-06): the browser WebView is no longer mounted at
+ * startup. The first tool call requests the mount and waits for the
+ * controller to come up instead of throwing "Browser is not ready".
+ */
+async function ensureBrowserReady(): Promise<void> {
+  requestBrowserViewMount();
+  const start = Date.now();
+  while (!browserController.isReady()) {
+    if (Date.now() - start > mountWaitMs) {
+      throw new Error("Browser view did not mount in time — the browser view failed to start.");
+    }
+    await new Promise((r) => setTimeout(r, 120));
+  }
 }
 
 export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
@@ -59,9 +88,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
         } catch (e) {
           throw new Error(e instanceof Error ? e.message : "Invalid URL.");
         }
-        if (!browserController.isReady()) {
-          throw new Error("Browser is not ready — the browser view is not mounted.");
-        }
+        await ensureBrowserReady();
         // Navigation goes through the view layer via a pending URL.
         // The controller holds it; AIBrowserView picks it up.
         browserController.setUrl(url);
@@ -77,6 +104,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "browser",
       run: async () => {
+        await ensureBrowserReady();
         const r = await browserController.evaluate(`
           (function(){
             var title = document.title || "";
@@ -108,6 +136,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       },
       manualId: "browser",
       run: async (args) => {
+        await ensureBrowserReady();
         const target = strArg(args, "target");
         if (!target) throw new Error("Missing required argument: target.");
         const r = await browserController.evaluate(`
@@ -157,6 +186,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       },
       manualId: "browser",
       run: async (args) => {
+        await ensureBrowserReady();
         const target = strArg(args, "target");
         const text = strArg(args, "text");
         if (!target) throw new Error("Missing required argument: target.");
@@ -197,6 +227,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "browser",
       run: async () => {
+        await ensureBrowserReady();
         browserController.goBack();
         return "Went back. Use browser_snapshot to see the page.";
       },
@@ -207,6 +238,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "browser",
       run: async () => {
+        await ensureBrowserReady();
         browserController.goForward();
         return "Went forward. Use browser_snapshot to see the page.";
       },
@@ -218,6 +250,7 @@ export function createBrowserTools(_deps: ToolDeps = {}): LocalTool[] {
       parameters: { type: "object", properties: {}, additionalProperties: false },
       manualId: "browser",
       run: async () => {
+        await ensureBrowserReady();
         let uri: string;
         try {
           uri = await browserController.captureScreenshot();

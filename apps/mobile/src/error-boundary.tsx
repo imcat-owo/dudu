@@ -1,6 +1,7 @@
 import { HeartCrack, RotateCcw } from "lucide-react-native";
-import { Component, type ReactNode } from "react";
+import { Component, type ReactNode, useEffect, useState } from "react";
 import { Pressable, useColorScheme, View } from "react-native";
+import { type BootMark, bootMark, readBootLog } from "./bootlog";
 import { TText } from "./font";
 import { t } from "./i18n";
 import { CRASH_PALETTE } from "./theme/crash-palette";
@@ -37,6 +38,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(): void {
     // Intentionally silent: this codebase keeps the console clean and the
     // local-first build has no remote error reporting to send to.
+    // Crash-bisection (2026-10-06): still record the milestone so the boot
+    // log shows where the JS tree died.
+    void bootMark("js-crash-caught");
   }
 
   componentDidUpdate(prevProps: ErrorBoundaryProps): void {
@@ -64,6 +68,18 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
   // palette lives in theme/crash-palette.ts as static tokens (not inline hex).
   const dark = useColorScheme() === "dark";
   const p = CRASH_PALETTE[dark ? "dark" : "light"];
+  // Crash-bisection (2026-10-06): show the startup milestones so a screenshot
+  // of this screen tells us how far boot got before dying.
+  const [marks, setMarks] = useState<BootMark[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void readBootLog().then((m) => {
+      if (alive) setMarks(m.slice(-8));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   return (
     <View
       accessibilityRole="alert"
@@ -125,6 +141,18 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
           {t("common.retry")}
         </TText>
       </Pressable>
+      {marks.length > 0 && (
+        <View style={{ marginTop: 18, maxWidth: 300 }}>
+          {marks.map((m) => (
+            <TText
+              key={`${m.t}-${m.name}`}
+              style={{ fontSize: 11, color: p.muted, textAlign: "center" }}
+            >
+              {new Date(m.t).toLocaleTimeString()} · {m.name}
+            </TText>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

@@ -32,7 +32,9 @@ import { ApiSettingsScreen } from "./api-groups/api-settings";
 import { useChatMode } from "./api-groups/mode";
 import { type FontSizeOption, setFontSizeOption } from "./app-settings";
 import { AppearanceScreen } from "./appearance";
+import { bootMark } from "./bootlog";
 import AIBrowserView from "./browser/AIBrowserView";
+import { isBrowserViewMounted, onBrowserViewMountChange } from "./browser/mount";
 import { ChatScreen } from "./chat";
 import { CrossDialogTraceSheet } from "./chat/cross-dialog-ui";
 import { DoodleComposerHost } from "./doodle/compose";
@@ -194,8 +196,51 @@ function PhotoshareLoopBridge() {
   return null;
 }
 
+/**
+ * Crash-bisection host (2026-10-06): the AI browser WebView used to mount
+ * unconditionally at startup (hidden, full window size) — the #1 suspect
+ * for her deterministic post-splash crash. Now it mounts ONLY when
+ * requested (first AI browser tool call, or her opening the browser tab).
+ * If the new build launches cleanly, the WebView was the killer.
+ */
+function LazyBrowserHost() {
+  const [mounted, setMounted] = useState(isBrowserViewMounted());
+
+  useEffect(() => {
+    // Record the bisection outcome at startup: skipped = the suspect never
+    // mounted during this launch.
+    void bootMark(isBrowserViewMounted() ? "webview-mounted" : "webview-skipped");
+    return onBrowserViewMountChange((m) => {
+      setMounted(m);
+      if (m) void bootMark("webview-mounted");
+    });
+  }, []);
+
+  if (!mounted) return null;
+  return (
+    <View
+      style={{
+        position: "absolute",
+        left: -10000,
+        top: 0,
+        width: Dimensions.get("window").width,
+        height: Dimensions.get("window").height,
+        opacity: 0,
+        pointerEvents: "none",
+      }}
+    >
+      {/* Kept off-screen at full screen size (not 1x1) so browser_screenshot
+          captures a real page image instead of a 1px waste. */}
+      <AIBrowserView visible />
+    </View>
+  );
+}
+
 export function LocalApp() {
   const colors = useColors();
+  useEffect(() => {
+    void bootMark("localapp-mounted");
+  }, []);
   const [section, setSection] = useState<LocalSection>("chat");
   const [toast, setToast] = useState("");
   // remount discipline for useChatAgent: ChatScreen must remount when the
@@ -655,25 +700,10 @@ export function LocalApp() {
               <FontProvider>
                 <ThemeTransition>
                   <View style={{ flex: 1, backgroundColor: colors.canvas }}>
-                    {/* AI browser WebView — always mounted (hidden) so the AI
-                        browser tools work from any screen. The controller
-                        requires a mounted WebView; without this the tools
-                        throw "Browser is not ready". Kept off-screen at full
-                        screen size (not 1x1) so browser_screenshot captures
-                        a real page image instead of a 1px waste. */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        left: -10000,
-                        top: 0,
-                        width: Dimensions.get("window").width,
-                        height: Dimensions.get("window").height,
-                        opacity: 0,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <AIBrowserView visible />
-                    </View>
+                    {/* AI browser WebView — LAZY mount (crash-bisection 2026-10-06).
+                        Was always mounted hidden here; now mounts only on
+                        demand via LazyBrowserHost. */}
+                    <LazyBrowserHost />
                     {/* PDF text extraction bridge for the AI knowledge_add_file
                         tool — hidden, mounts the pdf.js WebView on demand. */}
                     <PdfExtractBridge />

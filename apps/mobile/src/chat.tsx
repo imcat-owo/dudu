@@ -74,6 +74,7 @@ import {
 } from "./mcp/tool-approval";
 import { shouldConvertPaste, savePasteAsFile, pastePreview } from "./mcp/long-paste";
 import { AnimatedAvatar, useLiveAvatarState } from "./animated-avatar";
+import { bootMark } from "./bootlog";
 import { capabilityStore } from "./api-groups/capability-store";
 import {
   dialogModelOverrideStore,
@@ -459,6 +460,11 @@ export function ChatScreen({
   const activeModelRef = useRef<string | undefined>(undefined);
   activeModelRef.current = effectiveGroup?.model;
   const [draft, setDraft] = useState("");
+  // Crash-bisection (2026-10-06): chat screen is the first real screen after
+  // the splash — reaching this mark means the JS tree survived past it.
+  useEffect(() => {
+    void bootMark("chatscreen-mounted");
+  }, []);
   // Batch 7 I6: debounced token estimate of the draft (Kelivo's
   // DraftTokenCounter equivalent — 200ms coalescing).
   const [draftTokens, setDraftTokens] = useState(0);

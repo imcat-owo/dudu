@@ -24,7 +24,7 @@ Typical flow:
 
 Rules:
 - NEVER claim you opened or read a page you didn't — if a tool errors, say so.
-- If the browser view isn't mounted, tools fail honestly with "not ready" — don't fake results.
+- The browser view mounts lazily on your first tool call; if it never comes up, tools fail honestly ("did not mount in time") — don't fake results.
 - Don't use the browser for things she should do herself (logging into her accounts, purchases) — ask her first.
 - Heavy pages may take a moment; snapshot after navigating, not during.
 `,

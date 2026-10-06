@@ -6,6 +6,7 @@
  */
 
 import { browserController } from "../browser/controller";
+import { requestBrowserViewMount } from "../browser/mount";
 import { createNotificationPort } from "../initiative/instances";
 import type { NotificationPort } from "../outreach/notify";
 import { personaStore } from "../persona/stores";
@@ -35,10 +36,16 @@ export function createProductionOpenAppTools(threadId: string) {
     },
     openWebViewUrl: async (url: string) => {
       // Same path as the AI browser's browser_navigate: the controller holds
-      // the URL, the mounted AIBrowserView drives the WebView. Honest failure
-      // when the browser view isn't mounted.
-      if (!browserController.isReady()) {
-        throw new Error("Browser is not ready — the browser view is not mounted.");
+      // the URL, the mounted AIBrowserView drives the WebView. Crash-bisection
+      // (2026-10-06): the view mounts lazily — request it and wait for the
+      // controller instead of failing when it isn't there yet.
+      requestBrowserViewMount();
+      const start = Date.now();
+      while (!browserController.isReady()) {
+        if (Date.now() - start > 12000) {
+          throw new Error("Browser view did not mount in time — the browser view failed to start.");
+        }
+        await new Promise((r) => setTimeout(r, 120));
       }
       browserController.setUrl(url);
       const r = await browserController.evaluate(
