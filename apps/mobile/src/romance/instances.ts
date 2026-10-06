@@ -96,6 +96,13 @@ export async function runMilestoneTick(nowMs: number = Date.now()): Promise<void
           schedule: { kind: "one_time", atMs: input.atMs },
           target: { mode: "latest" },
         }),
+      listRules: async () =>
+        (await initiativeStore.list().catch(() => [])).map((r) => ({
+          id: r.id,
+          personaId: r.personaId,
+          title: r.title,
+          status: r.status,
+        })),
       onRuleCreated: async (ruleId) => {
         const rule = await initiativeStore.get(ruleId).catch(() => null);
         if (rule) await rescheduleInitiativeRule(rule).catch(() => {});

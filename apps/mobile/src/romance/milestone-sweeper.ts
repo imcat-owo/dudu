@@ -32,6 +32,14 @@ export interface MilestoneSweepDeps {
     topic: string;
     atMs: number;
   }): Promise<{ id: string }>;
+  /**
+   * Existing initiative rules (for crash-window idempotency): if the
+   * process died between createRule and saveLedger, the rule exists but
+   * the ledger doesn't know it. Adopt it instead of creating a duplicate.
+   * Only rules with status "active" count — archived ones (e.g. after the
+   * toggle was turned off and on again) must be re-armed fresh.
+   */
+  listRules(): Promise<Array<{ id: string; personaId: string; title: string; status: string }>>;
   /** Re-arm the rule's pre-scheduled notification after creation. */
   onRuleCreated(ruleId: string): Promise<void>;
   nowMs(): number;
@@ -68,13 +76,27 @@ export async function sweepMilestoneCelebrations(
     if (fresh.length === 0) return { fired: [], skipped: "none-due" };
 
     const memories = await deps.sampleMemories(3);
+    const existing = await deps.listRules().catch(() => []);
     const fired: number[] = [];
     for (const d of fresh) {
       const id = milestoneId(d);
+      const title = `在一起${d}天`;
+      // Crash-window idempotency: the rule may already exist (created, but
+      // the ledger write never landed). Adopt it — don't schedule twice.
+      const orphan = existing.find(
+        (r) => r.personaId === personaId && r.title === title && r.status === "active",
+      );
+      if (orphan) {
+        ledger.pending[id] = orphan.id;
+        if (!ledger.celebrated.includes(id)) ledger.celebrated.push(id);
+        fired.push(d);
+        await deps.saveLedger({ ...ledger }).catch(() => {});
+        continue;
+      }
       try {
         const rule = await deps.createRule({
           personaId,
-          title: `在一起${d}天`,
+          title,
           topic: buildMilestoneTopic(d, since, memories),
           atMs: nextCelebrationTimeMs(now),
         });

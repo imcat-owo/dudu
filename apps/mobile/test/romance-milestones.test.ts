@@ -175,6 +175,7 @@ function makeSweepDeps(
     memories?: string[];
     failCreate?: boolean;
     nowMs?: number;
+    existingRules?: Array<{ id: string; personaId: string; title: string; status: string }>;
   } = {},
 ) {
   const nowMs = overrides.nowMs ?? Date.UTC(2026, 9, 6, 2, 0, 0); // 2026-10-06 10:00 Shanghai
@@ -203,6 +204,7 @@ function makeSweepDeps(
         return { id: `ir_test_${ruleSeq}` };
       },
       onRuleCreated: async () => {},
+      listRules: async () => overrides.existingRules ?? [],
       nowMs: () => nowMs,
     },
     get ledger() {
@@ -237,6 +239,36 @@ describe("sweepMilestoneCelebrations", () => {
     assert.deepEqual(r2.fired, []);
     assert.equal(r2.skipped, "none-due");
     assert.equal(created.length, before);
+  });
+
+  it("adopts an orphan rule instead of scheduling twice (crash window)", async () => {
+    // Simulates: process died after createRule but before saveLedger —
+    // the rule exists in the initiative store, the ledger is empty.
+    const orphanId = "ir_orphan_100";
+    const box = makeSweepDeps({
+      existingRules: [
+        { id: orphanId, personaId: "persona-main", title: "在一起100天", status: "active" },
+      ],
+    });
+    const r = await sweepMilestoneCelebrations(box.deps);
+    // 7 and 30 are created fresh; 100 adopts the orphan (no duplicate rule)
+    assert.deepEqual(r.fired, [7, 30, 100]);
+    assert.equal(box.created.length, 2);
+    assert.ok(!box.created.some((c) => c.title === "在一起100天"));
+    assert.deepEqual(box.ledger.pending["together-days-100"], orphanId);
+    assert.ok(box.ledger.celebrated.includes("together-days-100"));
+  });
+
+  it("ignores archived rules when adopting (re-arm after toggle off/on)", async () => {
+    const box = makeSweepDeps({
+      existingRules: [
+        { id: "ir_old", personaId: "persona-main", title: "在一起7天", status: "archived" },
+      ],
+    });
+    const r = await sweepMilestoneCelebrations(box.deps);
+    assert.ok(r.fired.includes(7));
+    // archived rule does not count — a fresh rule is created
+    assert.ok(box.created.some((c) => c.title === "在一起7天"));
   });
 
   it("fires only the 7-day milestone at day 7", async () => {
