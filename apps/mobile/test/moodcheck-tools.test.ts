@@ -18,8 +18,8 @@ import { describe, it } from "node:test";
 import { MoodcheckStore } from "../src/moodcheck/store.js";
 import {
   createMoodcheckTools,
-  shouldRemember,
   type MoodcheckToolEnv,
+  shouldRemember,
 } from "../src/moodcheck/tools.js";
 
 // Tue 2026-10-06 20:00 Shanghai.
@@ -69,7 +69,8 @@ function makeHarness(): ToolHarness {
 function tool(h: ToolHarness, name: string) {
   const t = h.tools.find((x) => x.name === name);
   assert.ok(t, `tool ${name} exists`);
-  return t!;
+  if (!t) throw new Error(`tool ${name} missing after assert`);
+  return t;
 }
 
 const CTX = { authorize: async () => true } as never;
@@ -91,17 +92,13 @@ describe("moodcheck tools", () => {
 
     const entry = await h.store.getDay("2026-10-06", "p1");
     assert.ok(entry);
-    assert.equal(entry!.source, "checkin", "recorded on the check-in day → checkin source");
+    assert.equal(entry?.source, "checkin", "recorded on the check-in day → checkin source");
     assert.equal(h.herMoods.length, 1);
     assert.equal(h.herMoods[0].mood, "有点累");
     assert.equal(h.memories.length, 1, "rough day becomes a memory");
     assert.ok(h.memories[0].content.includes("10月6日"));
     assert.ok(h.memories[0].content.includes("有点累"));
-    assert.equal(
-      (h.memories[0].opts as { actor: string }).actor,
-      "user",
-      "her words, her memory",
-    );
+    assert.equal((h.memories[0].opts as { actor: string }).actor, "user", "her words, her memory");
     assert.equal(await h.store.getLastOutcome(), "answered");
   });
 
@@ -116,7 +113,7 @@ describe("moodcheck tools", () => {
     const h = makeHarness();
     await run(tool(h, "moodcheck_record"), { personaId: "p1", mood: "还行" });
     const entry = await h.store.getDay("2026-10-06", "p1");
-    assert.equal(entry!.source, "chat");
+    assert.equal(entry?.source, "chat");
   });
 
   it("record: twice the same day updates, never duplicates", async () => {
@@ -125,7 +122,7 @@ describe("moodcheck tools", () => {
     await run(tool(h, "moodcheck_record"), { personaId: "p1", mood: "还行了" });
     assert.equal((await h.store.list()).length, 1);
     const entry = await h.store.getDay("2026-10-06", "p1");
-    assert.equal(entry!.mood, "还行了");
+    assert.equal(entry?.mood, "还行了");
   });
 
   it("record: validation", async () => {
@@ -149,12 +146,10 @@ describe("moodcheck tools", () => {
     const listed = await run(tool(h, "moodcheck_list"), {});
     assert.ok(listed.includes("累"));
     const entry = await h.store.getDay("2026-10-06", "p1");
-    const del = await run(tool(h, "moodcheck_delete"), { entryId: entry!.id });
+    const del = await run(tool(h, "moodcheck_delete"), { entryId: entry?.id });
     assert.ok(del.includes("Deleted"));
     assert.equal((await h.store.list()).length, 0);
-    await assert.rejects(() =>
-      run(tool(h, "moodcheck_delete"), { entryId: entry!.id }),
-    );
+    await assert.rejects(() => run(tool(h, "moodcheck_delete"), { entryId: entry?.id }));
   });
 
   it("set_config: hour validation", async () => {

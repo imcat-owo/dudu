@@ -16,17 +16,17 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { FireOutcome } from "../src/initiative/executor.js";
+import { InitiativeStore } from "../src/initiative/store.js";
 import {
   buildCheckinTitle,
   buildCheckinTopic,
   checkDueMoodcheck,
-  RECENTLY_ACTIVE_MS,
   type MoodcheckEngineDeps,
   type MoodcheckTickResult,
+  RECENTLY_ACTIVE_MS,
 } from "../src/moodcheck/engine.js";
 import { MoodcheckStore } from "../src/moodcheck/store.js";
-import type { FireOutcome } from "../src/initiative/executor.js";
-import { InitiativeStore } from "../src/initiative/store.js";
 
 // Tue 2026-10-06 20:00 Shanghai — exactly her default hour.
 const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
@@ -120,11 +120,11 @@ describe("moodcheck engine", () => {
     await tick(h);
     const rule = await h.initiativeStore.get(h.fired[0].ruleId);
     assert.ok(rule);
-    assert.equal(rule!.type, "one_time");
-    assert.equal(rule!.personaId, "p1");
+    assert.equal(rule?.type, "one_time");
+    assert.equal(rule?.personaId, "p1");
     // The topic names the forbidden words only inside a "never say" instruction.
     assert.ok(
-      /不要出现.*"打卡".*"check-in".*"记录"/s.test(rule!.topic),
+      /不要出现.*"打卡".*"check-in".*"记录"/s.test(rule?.topic ?? ""),
       "topic forbids form words",
     );
   });
