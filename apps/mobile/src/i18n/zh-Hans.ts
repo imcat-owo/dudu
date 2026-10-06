@@ -34,6 +34,7 @@ const zhHans = {
   // ---- crash fallback ----
   "error.crashTitle": "这里摔了一跤",
   "error.crashBody": "别担心，你的东西都还在。点一下重试，我带你回去。",
+  "error.nativeLogTitle": "原生日志（用于诊断）",
 
   // ---- app chrome ----
   "app.name": "嘟嘟",

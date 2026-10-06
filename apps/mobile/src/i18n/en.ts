@@ -29,6 +29,7 @@ export const enStrings: Record<StringKey, string> = {
   // ---- crash fallback ----
   "error.crashTitle": "This page tripped",
   "error.crashBody": "Don't worry — nothing of yours was lost. Tap retry and I'll take you back.",
+  "error.nativeLogTitle": "Native log (for diagnosis)",
 
   // ---- app chrome ----
   "app.name": "Dudu",

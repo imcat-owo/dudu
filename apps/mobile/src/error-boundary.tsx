@@ -4,6 +4,7 @@ import { Pressable, Text, useColorScheme, View } from "react-native";
 import { type BootMark, bootMark, readBootLog } from "./bootlog";
 import { type CrashReport, readCrashReports, recordCrashReport } from "./crash-report";
 import { t } from "./i18n";
+import { readNativeCrashLog } from "./native-crash-log";
 import { CRASH_PALETTE } from "./theme/crash-palette";
 import { radii } from "./theme/radii";
 
@@ -78,6 +79,11 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
   // recorded crash report (what the error actually was).
   const [marks, setMarks] = useState<BootMark[]>([]);
   const [report, setReport] = useState<CrashReport | null>(null);
+  // Native trap log (NSException + RCTLog lines written by the AppDelegate
+  // trap). Identifies which native module threw at startup.
+  const [nativeLog, setNativeLog] = useState<string[]>([]);
+  // Occurrence counters for stable React keys on (possibly repeated) log lines.
+  const nativeLogKeys = new Map<string, number>();
   useEffect(() => {
     let alive = true;
     void readBootLog().then((m) => {
@@ -85,6 +91,9 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
     });
     void readCrashReports().then((r) => {
       if (alive) setReport(r.length > 0 ? r[r.length - 1] : null);
+    });
+    void readNativeCrashLog().then((lines) => {
+      if (alive) setNativeLog(lines.slice(-12));
     });
     return () => {
       alive = false;
@@ -169,6 +178,41 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
               {new Date(m.t).toLocaleTimeString()} · {m.name}
             </Text>
           ))}
+        </View>
+      )}
+      {nativeLog.length > 0 && (
+        <View style={{ marginTop: 10, maxWidth: 320 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "600",
+              color: p.muted,
+              textAlign: "center",
+              marginBottom: 4,
+            }}
+          >
+            {t("error.nativeLogTitle")}
+          </Text>
+          {nativeLog.map((line) => {
+            // Log lines can repeat; key by content + occurrence count
+            // (noArrayIndexKey: index alone is not a stable key).
+            const n = (nativeLogKeys.get(line) ?? 0) + 1;
+            nativeLogKeys.set(line, n);
+            return (
+              <Text
+                key={`${line}#${n}`}
+                style={{
+                  fontSize: 9,
+                  color: p.muted,
+                  textAlign: "left",
+                  fontFamily: "Menlo",
+                }}
+                numberOfLines={2}
+              >
+                {line}
+              </Text>
+            );
+          })}
         </View>
       )}
     </View>

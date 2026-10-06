@@ -37,6 +37,7 @@ const zhHant = {
   // ---- crash fallback ----
   "error.crashTitle": "這裏摔了一跤",
   "error.crashBody": "別擔心，你的東西都還在。點一下重試，我帶你回去。",
+  "error.nativeLogTitle": "原生日誌（用於診斷）",
 
   // ---- app chrome ----
   "app.name": "嘟嘟",
