@@ -41,6 +41,10 @@ export type CrossDialogAction =
   | "openapp_return"
   /** AI self-post trigger （自发帖触发器） — the AI's own feed post. */
   | "selfpost_post"
+  /** AI photo share （主动发照片） — a photo he shared with her, or a
+   * quiet slot where the model chose not to share. */
+  | "photoshare_shared"
+  | "photoshare_skipped"
   /** Persona group chat (人设群聊) — group management + rounds, same trace, same law. */
   | "persona_group_create"
   | "persona_group_round"

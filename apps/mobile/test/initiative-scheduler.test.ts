@@ -25,6 +25,7 @@ import {
   rescheduleAll,
 } from "../src/initiative/scheduler.js";
 import { InitiativeStore } from "../src/initiative/store.js";
+import { PhotoshareStore } from "../src/photoshare/store.js";
 import { SelfpostStore } from "../src/selfpost/store.js";
 
 // 2026-10-05 12:00 Shanghai.
@@ -83,6 +84,7 @@ function makeCtx(permission = "granted", clock: () => number = () => NOW): TestC
       getLastOutreachAt: async () => ({}),
     } as unknown as TestCtx["deps"]["outreachStore"],
     selfpostStore: new SelfpostStore(kv, { nowMs: clock }),
+    photoshareStore: new PhotoshareStore(kv, { nowMs: clock }),
     storage: kv,
     trace: {
       append: async (e: { action: string }) => {

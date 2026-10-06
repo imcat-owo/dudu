@@ -106,6 +106,9 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "moodcheck_record",
       "moodcheck_delete",
       "moodcheck_set_config",
+      // AI photo share (write tools; status/log stay readable)
+      "photoshare_config",
+      "photoshare_share_now",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

@@ -45,6 +45,7 @@ import { OUR_SPACE_MANUAL } from "./our-space";
 import { OUTREACH_MANUAL } from "./outreach";
 import { PERMISSIONS_MANUAL } from "./permissions";
 import { PERSONA_GROUP_MANUAL } from "./persona-group";
+import { PHOTOSHARE_MANUAL } from "./photoshare";
 import { SANDBOX_MANUAL } from "./sandbox";
 import { SELFPOST_MANUAL } from "./selfpost";
 import { SKILLS_MANUAL } from "./skills";
@@ -91,6 +92,7 @@ export const MANUALS: ManualEntry[] = [
   NATIVE_APPS_MANUAL,
   OPEN_APP_MANUAL,
   PERSONA_GROUP_MANUAL,
+  PHOTOSHARE_MANUAL,
   SKILLS_MANUAL,
   SELFPOST_MANUAL,
   KNOWLEDGE_MANUAL,

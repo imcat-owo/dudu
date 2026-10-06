@@ -188,6 +188,12 @@ export const enStrings: Record<StringKey, string> = {
   "moodcheck.item.fromCheckin": "from the daily check-in",
   "moodcheck.item.fromChat": "from chat",
   "moodcheck.actions.delete": "Delete mood entry",
+  // ---- AI photo share （主动发照片） ----
+  "photoshare.section.title": "Photos from him",
+  "photoshare.section.desc": "When this is on, he may share a photo with you at a quiet moment — like a selfie of what he's up to. Off by default; only you turn it on.",
+  "photoshare.list.title": "Photos he shared",
+  "photoshare.list.empty": "Nothing shared yet. When he shares a photo, it'll show up here.",
+  "photoshare.item.manual": "you asked",
   // ---- AI self-post trigger （自发帖触发器） ----
   "selfpost.section.title": "His own posts",
   "selfpost.section.desc": "At a few quiet moments each day, he decides whether he has something worth sharing to the feed. No pings — you'll find it when you open Our Space.",
@@ -2102,6 +2108,8 @@ export const enStrings: Record<StringKey, string> = {
   "crossDialog.actionFeedNudge": "Reacted to her post",
   "crossDialog.actionOpenAppReturn": "Welcomed her back from another app",
   "crossDialog.actionSelfpostPost": "Posted to the feed by himself",
+  "crossDialog.actionPhotoshareShared": "Shared a photo with her",
+  "crossDialog.actionPhotoshareSkipped": "Decided not to share a photo",
   "crossDialog.actionFollowupCancelled": "Follow-up auto-cancelled (already discussed)",
   "crossDialog.actionMoodcheckFired": "Daily mood check-in sent",
   "crossDialog.actionMoodcheckSkipped": "Daily mood check-in skipped",

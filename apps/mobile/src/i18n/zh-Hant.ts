@@ -186,6 +186,12 @@ const zhHant = {
   "moodcheck.item.fromCheckin": "來自每日問候",
   "moodcheck.item.fromChat": "來自聊天",
   "moodcheck.actions.delete": "刪除這條心情",
+  // ---- AI 主動發照片 ----
+  "photoshare.section.title": "他發來的照片",
+  "photoshare.section.desc": "打開後，他會在安靜時刻給你發照片——像隨手拍一張自拍告訴你在幹嘛。預設關閉，只有你能打開。",
+  "photoshare.list.title": "他分享過的照片",
+  "photoshare.list.empty": "還沒有。他給你發照片之後，會顯示在這裡。",
+  "photoshare.item.manual": "你讓他發的",
   // ---- AI 自發帖觸發器 ----
   "selfpost.section.title": "他自己發的動態",
   "selfpost.section.desc": "每天幾個安靜時刻，他自己決定有沒有值得發到動態裡的事。不打擾你——你打開我們的空間時自然會看到。",
@@ -2016,6 +2022,8 @@ const zhHant = {
   "crossDialog.actionFeedNudge": "給她的動態點了讚",
   "crossDialog.actionOpenAppReturn": "她從別的 App 回來了",
   "crossDialog.actionSelfpostPost": "他自己發了一條動態",
+  "crossDialog.actionPhotoshareShared": "給她發了一張照片",
+  "crossDialog.actionPhotoshareSkipped": "決定這次不發照片",
   "crossDialog.actionFollowupCancelled": "跟進自動取消（已經聊過了）",
   "crossDialog.actionMoodcheckFired": "發出了每日心情問候",
   "crossDialog.actionMoodcheckSkipped": "跳過了每日心情問候",

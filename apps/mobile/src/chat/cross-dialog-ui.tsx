@@ -72,6 +72,10 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionPersonaGroupArchive");
     case "selfpost_post":
       return t("crossDialog.actionSelfpostPost");
+    case "photoshare_shared":
+      return t("crossDialog.actionPhotoshareShared");
+    case "photoshare_skipped":
+      return t("crossDialog.actionPhotoshareSkipped");
     case "followup_cancelled":
       return t("crossDialog.actionFollowupCancelled");
     case "moodcheck_fired":

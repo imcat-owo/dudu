@@ -89,6 +89,7 @@ import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
 import { FollowupSection } from "./followup/followup-ui";
 import { MoodcheckSection } from "./moodcheck/moodcheck-ui";
+import { PhotoshareSection } from "./photoshare/photoshare-ui";
 import { SelfpostSection } from "./selfpost/selfpost-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
@@ -1034,6 +1035,7 @@ function TellLaterView() {
   const initiativeSection = <InitiativeSection />;
   const followupSection = <FollowupSection />;
   const moodcheckSection = <MoodcheckSection />;
+  const photoshareSection = <PhotoshareSection />;
 
   if (items.length === 0)
     return (
@@ -1042,6 +1044,7 @@ function TellLaterView() {
         {initiativeSection}
         {followupSection}
         {moodcheckSection}
+        {photoshareSection}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1107,6 +1110,7 @@ function TellLaterView() {
         {initiativeSection}
         {followupSection}
         {moodcheckSection}
+        {photoshareSection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

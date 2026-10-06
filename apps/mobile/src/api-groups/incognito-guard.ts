@@ -136,6 +136,10 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "moodcheck_record",
   "moodcheck_delete",
   "moodcheck_set_config",
+  // AI photo share （主动发照片）: config writes + manual share write to
+  // chat history (zero-trace promise); status/log stay readable
+  "photoshare_config",
+  "photoshare_share_now",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

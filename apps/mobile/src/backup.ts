@@ -178,6 +178,12 @@ const EXTENSION_KEYS = [
   "dudu.moodcheck.v1.history",
   "dudu.moodcheck.v1.lastCheckinDay",
   "dudu.moodcheck.v1.lastOutcome",
+  // AI photo share （主动发照片）: config + fired-slot ledger + daily
+  // sends + decision log. Plain JSON, no secrets.
+  "dudu.photoshare.v1.config",
+  "dudu.photoshare.v1.fired",
+  "dudu.photoshare.v1.sends",
+  "dudu.photoshare.v1.log",
   // Realtime voice call: AI-initiated call proposals (pending/accepted/
   // declined/missed). Plain JSON, no secrets. Losing these on restore
   // would silently drop a ringing proposal, so back them up.

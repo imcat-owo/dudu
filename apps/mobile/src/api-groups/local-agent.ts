@@ -87,6 +87,7 @@ import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionFollowupTools } from "../followup/instances";
 import { createProductionMoodcheckTools } from "../moodcheck/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
+import { createProductionPhotoshareTools } from "../photoshare/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createProductionVoiceCallTools } from "../voice-call/instances";
 import type { OutreachTriggerKind } from "../outreach/engine";
@@ -1095,6 +1096,10 @@ export function createLocalAgent(opts: {
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),
+        // AI photo share （主动发照片）: management tools. The write tools
+        // (photoshare_config, photoshare_share_now) are in
+        // INCOGNITO_BLOCKED_TOOLS; reads stay available.
+        ...createProductionPhotoshareTools(incognito),
         // AI self-post trigger （自发帖触发器）: management tools. The
         // write tools (selfpost_config, selfpost_post_now) are in
         // INCOGNITO_BLOCKED_TOOLS; reads stay available.

@@ -160,6 +160,39 @@ function SelfpostLoopBridge() {
   return null;
 }
 
+/**
+ * AI photo share （主动发照片） — foreground loop bridge.
+ * Lives INSIDE IncognitoProvider (like the self-post loop) because the
+ * photo-share gate hard-blocks in incognito — the loop needs the live
+ * toggle. Never blocks startup, never throws.
+ */
+function PhotoshareLoopBridge() {
+  const { incognito } = useIncognito();
+  const incognitoRef = useRef(incognito);
+  incognitoRef.current = incognito;
+  useEffect(() => {
+    let alive = true;
+    let stop: (() => void) | null = null;
+    void Promise.all([import("./photoshare/instances"), import("./photoshare/foreground-loop")])
+      .then(([im, sm]) => {
+        if (!alive) return;
+        stop = sm.startPhotoshareForegroundLoop(() =>
+          im.buildPhotoshareDeps({ isIncognito: () => incognitoRef.current }),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      try {
+        stop?.();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+  return null;
+}
+
 export function LocalApp() {
   const colors = useColors();
   const [section, setSection] = useState<LocalSection>("chat");
@@ -615,6 +648,7 @@ export function LocalApp() {
         <LocalAgentWorkspaceProvider>
           <IncognitoProvider>
             <SelfpostLoopBridge />
+            <PhotoshareLoopBridge />
             <VoiceCallBridge />
             <ThemeProvider>
               <FontProvider>

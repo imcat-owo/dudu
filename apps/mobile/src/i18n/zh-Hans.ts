@@ -183,6 +183,12 @@ const zhHans = {
   "moodcheck.item.fromCheckin": "来自每日问候",
   "moodcheck.item.fromChat": "来自聊天",
   "moodcheck.actions.delete": "删除这条心情",
+  // ---- AI 主动发照片 ----
+  "photoshare.section.title": "他发来的照片",
+  "photoshare.section.desc": "打开后，他会在安静时刻给你发照片——像随手拍一张自拍告诉你在干嘛。默认关闭，只有你能打开。",
+  "photoshare.list.title": "他分享过的照片",
+  "photoshare.list.empty": "还没有。他给你发照片之后，会显示在这里。",
+  "photoshare.item.manual": "你让他发的",
   // ---- AI 自发帖触发器 ----
   "selfpost.section.title": "他自己发的动态",
   "selfpost.section.desc": "每天几个安静时刻，他自己决定有没有值得发到动态里的事。不打扰你——你打开我们的空间时自然会看到。",
@@ -2013,6 +2019,8 @@ const zhHans = {
   "crossDialog.actionFeedNudge": "给她的动态点了赞",
   "crossDialog.actionOpenAppReturn": "她从别的 App 回来了",
   "crossDialog.actionSelfpostPost": "他自己发了一条动态",
+  "crossDialog.actionPhotoshareShared": "给她发了一张照片",
+  "crossDialog.actionPhotoshareSkipped": "决定这次不发照片",
   "crossDialog.actionFollowupCancelled": "跟进自动取消（已经聊过了）",
   "crossDialog.actionMoodcheckFired": "发出了每日心情问候",
   "crossDialog.actionMoodcheckSkipped": "跳过了每日心情问候",
