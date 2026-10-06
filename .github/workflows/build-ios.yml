@@ -61,6 +61,11 @@ jobs:
         run: pnpm exec expo prebuild --platform ios --clean
         env:
           CI: 1
+          # Build Hermes from source (2026-10-06): prebuild runs `pod install`
+          # internally, so the flag must be set here (not only on the later
+          # CocoaPods step) for hermes-engine to compile from the pinned tag
+          # instead of downloading the prebuilt tarball (expo#44606).
+          RCT_BUILD_HERMES_FROM_SOURCE: "true"
 
       - name: Install CocoaPods
         env:
