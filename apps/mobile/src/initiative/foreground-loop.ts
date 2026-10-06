@@ -28,6 +28,12 @@ export function startInitiativeForegroundLoop(
         // tick no-ops). Dynamic import keeps scheduler.ts node-testable
         // and avoids a static initiative→followup edge.
         try {
+          const { runMoodcheckTick } = await import("../moodcheck/instances");
+          await runMoodcheckTick();
+        } catch {
+          // Never break the follow-up / initiative sweep.
+        }
+        try {
           const { runFollowupTick } = await import("../followup/instances");
           await runFollowupTick();
         } catch {

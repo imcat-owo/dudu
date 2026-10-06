@@ -88,6 +88,7 @@ import { ourSpaceStore } from "./our-space/instance";
 import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
 import { FollowupSection } from "./followup/followup-ui";
+import { MoodcheckSection } from "./moodcheck/moodcheck-ui";
 import { SelfpostSection } from "./selfpost/selfpost-ui";
 import { getOnThisDay, type OnThisDayItem } from "./our-space/on-this-day";
 import type {
@@ -1032,6 +1033,7 @@ function TellLaterView() {
   const freqSection = <OutreachFrequencySection />;
   const initiativeSection = <InitiativeSection />;
   const followupSection = <FollowupSection />;
+  const moodcheckSection = <MoodcheckSection />;
 
   if (items.length === 0)
     return (
@@ -1039,6 +1041,7 @@ function TellLaterView() {
         {freqSection}
         {initiativeSection}
         {followupSection}
+        {moodcheckSection}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1103,6 +1106,7 @@ function TellLaterView() {
         {freqSection}
         {initiativeSection}
         {followupSection}
+        {moodcheckSection}
         {pending.length > 0 && (
           <SoftCard>
             <TText

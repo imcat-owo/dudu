@@ -131,6 +131,11 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "followup_add",
   "followup_delete",
   "followup_set_enabled",
+  // Daily mood check-in （每日心情）: record/delete/config persist the
+  // timeline + latest mood + memories; moodcheck_list stays readable
+  "moodcheck_record",
+  "moodcheck_delete",
+  "moodcheck_set_config",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

@@ -74,6 +74,10 @@ function actionLabel(action: CrossDialogTraceEntry["action"]): string {
       return t("crossDialog.actionSelfpostPost");
     case "followup_cancelled":
       return t("crossDialog.actionFollowupCancelled");
+    case "moodcheck_fired":
+      return t("crossDialog.actionMoodcheckFired");
+    case "moodcheck_skipped":
+      return t("crossDialog.actionMoodcheckSkipped");
   }
 }
 

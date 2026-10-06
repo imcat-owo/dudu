@@ -85,6 +85,7 @@ import {
 } from "../our-space/tools";
 import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionFollowupTools } from "../followup/instances";
+import { createProductionMoodcheckTools } from "../moodcheck/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createProductionVoiceCallTools } from "../voice-call/instances";
@@ -1087,6 +1088,10 @@ export function createLocalAgent(opts: {
         // (followup_add/delete/set_enabled) are in INCOGNITO_BLOCKED_TOOLS;
         // followup_list stays available.
         ...createProductionFollowupTools(),
+        // Daily mood check-in （每日心情）: the write tools
+        // (moodcheck_record/delete/set_config) are in INCOGNITO_BLOCKED_TOOLS;
+        // moodcheck_list stays available.
+        ...createProductionMoodcheckTools(),
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),

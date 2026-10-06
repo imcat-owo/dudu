@@ -31,6 +31,10 @@ export type CrossDialogAction =
   /** Memory-driven next-day follow-up （次日跟进） — auto-cancelled because
    * the event already came up in chat. */
   | "followup_cancelled"
+  /** Daily mood check-in （每日心情） — fired, or skipped with a reason
+   * (already recorded / recently active / no reply yesterday). */
+  | "moodcheck_fired"
+  | "moodcheck_skipped"
   /** Feed nudge (C3) — the like + reply he left on her unacknowledged post. */
   | "feed_nudge"
   /** Open-app watchdog (Aru-gap 轻控制） — welcome-back after she taps the return notification. */

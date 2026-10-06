@@ -37,6 +37,7 @@ import { KNOWLEDGE_MANUAL } from "./knowledge";
 import { MCP_TOOLS_MANUAL } from "./mcp-tools";
 import { MEDIA_MANUAL } from "./media";
 import { MEMORY_MANUAL } from "./memory";
+import { MOODCHECK_MANUAL } from "./moodcheck";
 import { MUSIC_ROOM_MANUAL } from "./music-room";
 import { NATIVE_APPS_MANUAL } from "./native-apps";
 import { OPEN_APP_MANUAL } from "./openapp";
@@ -84,6 +85,7 @@ export const MANUALS: ManualEntry[] = [
   OUR_SPACE_MANUAL,
   OUTREACH_MANUAL,
   INITIATIVE_MANUAL,
+  MOODCHECK_MANUAL,
   MEMORY_MANUAL,
   MUSIC_ROOM_MANUAL,
   NATIVE_APPS_MANUAL,
