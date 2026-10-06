@@ -335,8 +335,11 @@ export function VoiceCallController({ persona, adapters, onEnd }: VoiceCallContr
   const recState = useAudioRecorderState(recorder, 120);
 
   // Feed the hook's live metering into the session's onMetering callback.
-  // Single recorder: the same stream meters through monitor AND capture —
-  // the VAD never loses samples, so speech-end always fires on silence.
+  // Single recorder: the same stream meters through monitor AND capture.
+  // Note (honest): startSegment() does stop→prepare→record, so the mic
+  // stream has a brief handoff gap (~200ms of onset clipping, see
+  // session.ts) — far below the 900ms silence threshold, and the barge-in
+  // path has a forceSpeaking backstop. VAD sample loss is negligible.
   useEffect(() => {
     meterCbRef.current?.(recState.metering);
     setLevelDb(recState.metering ?? -160);
