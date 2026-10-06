@@ -17,6 +17,7 @@ import { blankWorldBook, type WorldBook } from "./world-book";
 import { CharaExportButton, CharaExtrasSection, CharaImportRow } from "../chara/chara-ui";
 import { DialsSection } from "../dials/dials-ui";
 import { dialsStore } from "../dials/instances";
+import { WardrobeSection } from "../outfit/outfit-ui";
 
 const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
@@ -396,6 +397,8 @@ function PersonaEditor({
       </View>
 
       <DialsSection personaId={p.id} />
+
+      <WardrobeSection personaId={p.id} />
 
       {tags.length > 0 && (
         <View style={{ marginBottom: 12 }}>

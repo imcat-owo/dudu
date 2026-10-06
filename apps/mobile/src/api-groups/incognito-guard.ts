@@ -160,6 +160,12 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "story_resume",
   "story_end",
   "story_delete",
+  // Outfit / dress-up system （换装系统）: write tools (add/delete/
+  // set_active) — changing her look leaves a trace; outfit_list stays
+  // readable
+  "outfit_add",
+  "outfit_delete",
+  "outfit_set_active",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

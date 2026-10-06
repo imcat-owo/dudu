@@ -241,6 +241,16 @@ export const enStrings: Record<StringKey, string> = {
   "photoshare.list.title": "Photos he shared",
   "photoshare.list.empty": "Nothing shared yet. When he shares a photo, it'll show up here.",
   "photoshare.item.manual": "you asked",
+  // ---- Outfit / dress-up system （换装系统） ----
+  "outfit.section.title": "Wardrobe",
+  "outfit.section.desc": "What he's wearing. The worn outfit shows up in his next generated photos — prompt-level, like the character description. It never redraws the fixed avatar.",
+  "outfit.list.empty": "The wardrobe is empty. Add an outfit below, or let him pick one out for you.",
+  "outfit.item.wearing": "wearing",
+  "outfit.actions.setActive": "Wear this outfit",
+  "outfit.actions.delete": "Delete outfit",
+  "outfit.add.namePlaceholder": "Outfit name, e.g. Cream Sweater",
+  "outfit.add.descPlaceholder": "English description for the image model, e.g. oversized cream sweater, plaid skirt",
+  "outfit.add.submit": "Add outfit",
   // ---- AI self-post trigger （自发帖触发器） ----
   "selfpost.section.title": "His own posts",
   "selfpost.section.desc": "At a few quiet moments each day, he decides whether he has something worth sharing to the feed. No pings — you'll find it when you open Our Space.",

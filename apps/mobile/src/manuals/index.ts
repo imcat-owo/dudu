@@ -44,6 +44,7 @@ import { MUSIC_ROOM_MANUAL } from "./music-room";
 import { NATIVE_APPS_MANUAL } from "./native-apps";
 import { OPEN_APP_MANUAL } from "./openapp";
 import { OUR_SPACE_MANUAL } from "./our-space";
+import { OUTFIT_MANUAL } from "./outfit";
 import { OUTREACH_MANUAL } from "./outreach";
 import { PERMISSIONS_MANUAL } from "./permissions";
 import { PERSONA_GROUP_MANUAL } from "./persona-group";
@@ -89,6 +90,7 @@ export const MANUALS: ManualEntry[] = [
   BROWSER_MANUAL,
   SANDBOX_MANUAL,
   OUR_SPACE_MANUAL,
+  OUTFIT_MANUAL,
   OUTREACH_MANUAL,
   INITIATIVE_MANUAL,
   MOODCHECK_MANUAL,

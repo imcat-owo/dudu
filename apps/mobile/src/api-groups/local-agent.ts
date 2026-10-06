@@ -90,6 +90,7 @@ import { createProductionMilestoneTools } from "../romance/instances";
 import { createProductionEvolutionTools, buildActiveEvolutionSection } from "../evolution/instances";
 import { buildActiveDialsSection } from "../dials/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
+import { createProductionOutfitTools } from "../outfit/instances";
 import { createProductionPhotoshareTools } from "../photoshare/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
 import { createProductionVoiceCallTools } from "../voice-call/instances";
@@ -1121,6 +1122,10 @@ export function createLocalAgent(opts: {
         // (photoshare_config, photoshare_share_now) are in
         // INCOGNITO_BLOCKED_TOOLS; reads stay available.
         ...createProductionPhotoshareTools(incognito),
+        // Outfit / dress-up system （换装系统）: wardrobe tools. The write
+        // tools (outfit_add/delete/set_active) are in
+        // INCOGNITO_BLOCKED_TOOLS; outfit_list stays available.
+        ...createProductionOutfitTools(),
         // AI self-post trigger （自发帖触发器）: management tools. The
         // write tools (selfpost_config, selfpost_post_now) are in
         // INCOGNITO_BLOCKED_TOOLS; reads stay available.

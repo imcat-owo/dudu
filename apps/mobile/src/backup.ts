@@ -186,6 +186,10 @@ const EXTENSION_KEYS = [
   "dudu.moodcheck.v1.history",
   "dudu.moodcheck.v1.lastCheckinDay",
   "dudu.moodcheck.v1.lastOutcome",
+  // Outfit / dress-up system （换装系统）: per-persona wardrobes + worn
+  // outfit. Plain JSON, no secrets. Losing these on restore would
+  // silently undress the persona's look in generated photos.
+  "dudu.outfit.v1.wardrobes",
   // Personality dials （人格维度滑杆）: per-persona 0–100 dial values +
   // master toggle. Plain JSON, no secrets.
   "dudu.dials.v1.values",
