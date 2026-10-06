@@ -126,10 +126,6 @@ describe("incognito guard (P1-3: zero trace)", () => {
       "story_resume",
       "story_end",
       "story_delete",
-      // Outfit / dress-up system (write tools; outfit_list stays readable)
-      "outfit_add",
-      "outfit_delete",
-      "outfit_set_active",
       // Photo doodle (write tool — creates a PNG file)
       "photo_doodle",
     ];

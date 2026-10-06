@@ -61,13 +61,6 @@ export interface PhotoshareExecutorDeps {
   isIncognito(): boolean;
   trace: TracePort;
   nowMs(): number;
-  /**
-   * Worn outfit's English prompt fragment (outfit system). Optional —
-   * absent in tests; when present it is pinned into the character
-   * reference so generated photos wear the current outfit. Never throws
-   * (production impl swallows errors → null).
-   */
-  getActiveOutfitDescription?(personaId: string): Promise<string | null>;
 }
 
 export type PhotoshareFireOutcome =
@@ -296,13 +289,7 @@ async function firePhotoshareSlotInner(
     const dctx: PhotoshareDecisionContext = {
       personaName,
       personaHint: deps.personaVoiceHint(persona as Persona),
-      // The worn outfit (if any) rides the character reference into the
-      // photo prompt — prompt-level consistency, honestly documented.
-      characterRef: buildCharacterRef(
-        persona as Persona,
-        (await deps.getActiveOutfitDescription?.((persona as Persona).id)?.catch(() => null)) ??
-          null,
-      ),
+      characterRef: buildCharacterRef(persona as Persona),
       herMoment: describeHerMoment(now),
       memories,
       todayEvents,

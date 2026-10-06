@@ -38,12 +38,8 @@ export interface PhotoshareDecision {
  * Build the in-character look reference from the persona card. The image
  * backends take text prompts only (no image-to-image in this pipeline),
  * so visual consistency is prompt-based — honest about the limit.
- *
- * `outfit` is the worn outfit's English prompt fragment (from the
- * outfit system, may be null). When present it is pinned into the
- * reference so the model writes it into the photo prompt.
  */
-export function buildCharacterRef(persona: Persona, outfit?: string | null): string {
+export function buildCharacterRef(persona: Persona): string {
   const parts: string[] = [];
   const desc = (persona.description ?? "").trim();
   const pers = (persona.personality ?? "").trim().replace(/\s+/g, " ");
@@ -51,8 +47,6 @@ export function buildCharacterRef(persona: Persona, outfit?: string | null): str
   if (pers) parts.push(`personality: ${pers.slice(0, 200)}`);
   const bg = (persona.background ?? "").trim().replace(/\s+/g, " ");
   if (bg && parts.join(" ").length < 300) parts.push(`backstory: ${bg.slice(0, 200)}`);
-  const o = (outfit ?? "").trim();
-  if (o) parts.push(`current outfit: ${o.slice(0, 300)}`);
   return parts.join(" ").slice(0, 600);
 }
 

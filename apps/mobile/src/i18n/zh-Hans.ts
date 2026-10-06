@@ -240,16 +240,6 @@ const zhHans = {
   "photoshare.list.title": "他分享过的照片",
   "photoshare.list.empty": "还没有。他给你发照片之后，会显示在这里。",
   "photoshare.item.manual": "你让他发的",
-  // ---- 换装系统 ----
-  "outfit.section.title": "衣柜",
-  "outfit.section.desc": "他现在穿什么。正在穿的那件会出现在他接下来的生成照片里——和人物设定一样，是提示词层面的还原，不会重画固定的头像。",
-  "outfit.list.empty": "衣柜是空的。在下面添一件，或者让他给你挑一件。",
-  "outfit.item.wearing": "正在穿",
-  "outfit.actions.setActive": "换上这件",
-  "outfit.actions.delete": "删除衣服",
-  "outfit.add.namePlaceholder": "衣服名字，比如：奶油白卫衣",
-  "outfit.add.descPlaceholder": "给画图模型的英文描述，比如：oversized cream sweater, plaid skirt",
-  "outfit.add.submit": "添一件",
   // ---- AI 自发帖触发器 ----
   "selfpost.section.title": "他自己发的动态",
   "selfpost.section.desc": "每天几个安静时刻，他自己决定有没有值得发到动态里的事。不打扰你——你打开我们的空间时自然会看到。",

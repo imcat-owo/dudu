@@ -243,16 +243,6 @@ const zhHant = {
   "photoshare.list.title": "他分享過的照片",
   "photoshare.list.empty": "還沒有。他給你發照片之後，會顯示在這裡。",
   "photoshare.item.manual": "你讓他發的",
-  // ---- 換裝系統 ----
-  "outfit.section.title": "衣櫃",
-  "outfit.section.desc": "他現在穿什麼。正在穿的那件會出現在他接下來的生成照片裡——和人物設定一樣，是提示詞層面的還原，不會重畫固定的頭像。",
-  "outfit.list.empty": "衣櫃是空的。在下面添一件，或者讓他給你挑一件。",
-  "outfit.item.wearing": "正在穿",
-  "outfit.actions.setActive": "換上這件",
-  "outfit.actions.delete": "刪除衣服",
-  "outfit.add.namePlaceholder": "衣服名字，比如：奶油白衛衣",
-  "outfit.add.descPlaceholder": "給畫圖模型的英文描述，比如：oversized cream sweater, plaid skirt",
-  "outfit.add.submit": "添一件",
   // ---- AI 自發帖觸發器 ----
   "selfpost.section.title": "他自己發的動態",
   "selfpost.section.desc": "每天幾個安靜時刻，他自己決定有沒有值得發到動態裡的事。不打擾你——你打開我們的空間時自然會看到。",

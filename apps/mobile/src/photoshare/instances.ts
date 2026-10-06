@@ -192,16 +192,6 @@ export async function buildPhotoshareDeps(
     isIncognito: opts.isIncognito,
     trace: crossDialogTraceStore,
     nowMs: () => Date.now(),
-    // Worn outfit → photo prompt. Dynamic import: outfit/instances pulls
-    // persona stores; keep the module graph acyclic at load time.
-    getActiveOutfitDescription: async (personaId: string) => {
-      try {
-        const { getActiveOutfitDescription } = await import("../outfit/instances");
-        return await getActiveOutfitDescription(personaId);
-      } catch {
-        return null;
-      }
-    },
   };
 }
 
