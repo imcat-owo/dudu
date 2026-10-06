@@ -97,11 +97,14 @@ export function createEvolutionTools(env: EvolutionToolEnv): LocalTool[] {
           const personaId = strArg(args, "personaId");
           await requirePersona(personaId);
           const v = args.sourceKind;
+          if (v !== "chat" && v !== "manual") {
+            throw new ToolError(`sourceKind must be "chat" or "manual", got: ${String(v)}.`);
+          }
           const input = {
             personaId,
             content: strArg(args, "content"),
             source: {
-              kind: v === "manual" ? ("manual" as const) : ("chat" as const),
+              kind: v as "chat" | "manual",
               dateMs: typeof args.sourceDateMs === "number" ? args.sourceDateMs : 0,
               ref: strArg(args, "sourceRef"),
             },
