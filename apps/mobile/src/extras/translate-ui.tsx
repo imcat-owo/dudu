@@ -9,7 +9,7 @@
  *   settings. Uses the active API group; honest about needing one.
  */
 
-import { Languages, X } from "lucide-react-native";
+import { Check, Languages, X } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import type { ApiGroup } from "../api-groups/types";
@@ -61,7 +61,7 @@ export function TranslateLanguageSheet({
               }}
             >
               <TText style={{ flex: 1, fontSize: 16, color: colors.text }}>{l.label}</TText>
-              {selected && <TText style={{ color: colors.blueDark }}>✓</TText>}
+              {selected && <Check size={16} color={colors.blueDark} />}
             </Pressable>
           );
         })}
