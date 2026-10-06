@@ -57,10 +57,16 @@ describe("validateDoodleActions", () => {
 
   it("rejects unknown kinds, bad colors, empty, too many, overlong text", () => {
     assert.throws(() => validateDoodleActions([{ kind: "star", x: 0.5, y: 0.5 }]), /unknown kind/);
-    assert.throws(() => validateDoodleActions([{ kind: "heart", x: 0.5, y: 0.5, color: "notacolor" }]), /Bad doodle color/);
+    assert.throws(
+      () => validateDoodleActions([{ kind: "heart", x: 0.5, y: 0.5, color: "notacolor" }]),
+      /Bad doodle color/,
+    );
     assert.throws(() => validateDoodleActions([]), /at least one/);
     assert.throws(
-      () => validateDoodleActions(new Array(MAX_DOODLE_ACTIONS + 1).fill({ kind: "heart", x: 0.5, y: 0.5 })),
+      () =>
+        validateDoodleActions(
+          new Array(MAX_DOODLE_ACTIONS + 1).fill({ kind: "heart", x: 0.5, y: 0.5 }),
+        ),
       /At most/,
     );
     assert.throws(
@@ -93,11 +99,14 @@ describe("buildDoodleSvg", () => {
   it("agrees with doodleRenderSpec (device renderer uses the same numbers)", () => {
     const svg = buildDoodleSvg(1200, 800, actions);
     const spec = doodleRenderSpec(1200, 800, actions);
-    const heart = spec.find((s) => s.type === "heart")!;
+    const heart = spec.find((s) => s.type === "heart");
+    assert.ok(heart, "heart spec exists");
     assert.ok(svg.includes(`translate(${heart.cx} ${heart.cy})`));
-    const circle = spec.find((s) => s.type === "circle")!;
+    const circle = spec.find((s) => s.type === "circle");
+    assert.ok(circle, "circle spec exists");
     assert.ok(svg.includes(`cx="${circle.cx}"`));
-    const text = spec.find((s) => s.type === "text")!;
+    const text = spec.find((s) => s.type === "text");
+    assert.ok(text, "text spec exists");
     assert.ok(svg.includes(`font-size="${text.fontSize}"`));
   });
 });

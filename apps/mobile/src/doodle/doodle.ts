@@ -247,7 +247,9 @@ export function doodleRenderSpec(
       default:
         // Unreachable: validateDoodleActions constrains kind. Fail loud
         // rather than silently dropping a doodle.
-        throw new DoodleError(`Unknown doodle kind: ${JSON.stringify((a as { kind: unknown }).kind)}`);
+        throw new DoodleError(
+          `Unknown doodle kind: ${JSON.stringify((a as { kind: unknown }).kind)}`,
+        );
     }
   });
 }
@@ -340,7 +342,9 @@ export function describeDoodles(actions: DoodleAction[]): string[] {
       case "text":
         return `在照片${quadrant(a.x, a.y)}写了${KIND_CN.text}「${a.text}」`;
       default:
-        throw new DoodleError(`Unknown doodle kind: ${JSON.stringify((a as { kind: unknown }).kind)}`);
+        throw new DoodleError(
+          `Unknown doodle kind: ${JSON.stringify((a as { kind: unknown }).kind)}`,
+        );
     }
   });
 }

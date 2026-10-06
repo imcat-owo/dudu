@@ -7,9 +7,9 @@
  * rejects honestly when the composer isn't ready.
  */
 
+import { Image } from "react-native";
 import type { DoodleAction } from "./doodle";
 import { createDoodleTools, type DoodleToolEnv } from "./tools";
-import { Image } from "react-native";
 
 const productionEnv: DoodleToolEnv = {
   compose: async (photoUri: string, width: number, height: number, actions: DoodleAction[]) => {

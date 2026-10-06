@@ -11,8 +11,8 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildMindMap, spiralPos, TOGETHER_WINDOW_MS } from "../src/mindmap/layout.js";
 import type { MemoryRecord } from "../src/memory/types.js";
+import { buildMindMap, spiralPos, TOGETHER_WINDOW_MS } from "../src/mindmap/layout.js";
 
 const DAY = 24 * 3600 * 1000;
 const T0 = Date.UTC(2026, 9, 1);
@@ -33,7 +33,12 @@ function rec(partial: Partial<MemoryRecord> & { id: string }): MemoryRecord {
   };
 }
 
-function hasEdge(edges: { from: string; to: string; kind: string }[], a: string, b: string, kind: string) {
+function hasEdge(
+  edges: { from: string; to: string; kind: string }[],
+  a: string,
+  b: string,
+  kind: string,
+) {
   return edges.some(
     (e) => e.kind === kind && ((e.from === a && e.to === b) || (e.from === b && e.to === a)),
   );
@@ -70,9 +75,7 @@ describe("buildMindMap edges", () => {
 
   it("caps together edges per node, nearest first", () => {
     const center = rec({ id: "center", validFrom: T0 });
-    const near = [1, 2, 3, 4, 5].map((i) =>
-      rec({ id: `n${i}`, validFrom: T0 + i * DAY }),
-    );
+    const near = [1, 2, 3, 4, 5].map((i) => rec({ id: `n${i}`, validFrom: T0 + i * DAY }));
     const { edges } = buildMindMap([center, ...near]);
     const centerEdges = edges.filter(
       (e) => e.kind === "together" && (e.from === "center" || e.to === "center"),
@@ -107,8 +110,10 @@ describe("buildMindMap nodes", () => {
     const quiet = rec({ id: "q", content: "short" });
     const loud = rec({ id: "l", content: "x".repeat(50), reinforcedCount: 6 });
     const { nodes } = buildMindMap([quiet, loud]);
-    const nq = nodes.find((nd) => nd.id === "q")!;
-    const nl = nodes.find((nd) => nd.id === "l")!;
+    const nq = nodes.find((nd) => nd.id === "q");
+    const nl = nodes.find((nd) => nd.id === "l");
+    assert.ok(nq, "quiet node exists");
+    assert.ok(nl, "loud node exists");
     assert.ok(nl.r > nq.r, "reinforced node is bigger");
     assert.ok(nl.label.length <= 15, `label: ${nl.label}`);
     assert.equal(nq.label, "short");

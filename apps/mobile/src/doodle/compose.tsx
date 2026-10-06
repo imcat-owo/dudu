@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Image, View } from "react-native";
 import Svg, { Defs, Ellipse, G, Line, Marker, Path, Text as SvgText } from "react-native-svg";
 import ViewShot, { type ViewShotRef } from "react-native-view-shot";
-import { doodleRenderSpec, type DoodleAction, type DoodleShape } from "./doodle";
+import { type DoodleAction, type DoodleShape, doodleRenderSpec } from "./doodle";
 
 export interface DoodleComposeResult {
   uri: string;
@@ -87,16 +87,14 @@ function DoodleShapes({ shapes }: { shapes: DoodleShape[] }) {
         switch (s.type) {
           case "heart":
             return (
-              <G
-                key={key}
-                x={s.cx}
-                y={s.cy}
-                scale={s.scale}
-                rotation={-8}
-                originX={0}
-                originY={0}
-              >
-                <Path d={s.heartPath} fill={s.color} fillOpacity={0.92} stroke="#ffffff" strokeWidth={0.06} />
+              <G key={key} x={s.cx} y={s.cy} scale={s.scale} rotation={-8} originX={0} originY={0}>
+                <Path
+                  d={s.heartPath}
+                  fill={s.color}
+                  fillOpacity={0.92}
+                  stroke="#ffffff"
+                  strokeWidth={0.06}
+                />
               </G>
             );
           case "circle":
@@ -117,7 +115,14 @@ function DoodleShapes({ shapes }: { shapes: DoodleShape[] }) {
             return (
               <G key={key}>
                 <Defs>
-                  <Marker id={s.markerId} markerWidth={8} markerHeight={8} refX={6} refY={4} orient="auto">
+                  <Marker
+                    id={s.markerId}
+                    markerWidth={8}
+                    markerHeight={8}
+                    refX={6}
+                    refY={4}
+                    orient="auto"
+                  >
                     <Path d="M0,0 L8,4 L0,8 Z" fill={s.color} />
                   </Marker>
                 </Defs>

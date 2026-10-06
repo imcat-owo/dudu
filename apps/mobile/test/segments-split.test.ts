@@ -40,17 +40,17 @@ describe("splitIntoBubbles", () => {
   });
 
   it("never splits code fences", () => {
-    const code = "看这个：\n```js\n" + "x".repeat(200) + "\n```\n明白了吗？";
+    const code = `看这个：\n\`\`\`js\n${"x".repeat(200)}\n\`\`\`\n明白了吗？`;
     assert.deepEqual(splitIntoBubbles(code), [code]);
   });
 
   it("never splits image/voice envelopes", () => {
-    const env = `给你看这个 {"type":"image_message","uri":"file://x.png","prompt":"hi"}` + "啊".repeat(160);
+    const env = `给你看这个 {"type":"image_message","uri":"file://x.png","prompt":"hi"}${"啊".repeat(160)}`;
     assert.deepEqual(splitIntoBubbles(env), [env]);
   });
 
   it("merges a tiny trailing fragment instead of dangling it", () => {
-    const text = "第一句很长很长。" + "第".repeat(60) + "句。第二句也很长很长。" + "啊".repeat(60) + "。好";
+    const text = `第一句很长很长。${"第".repeat(60)}句。第二句也很长很长。${"啊".repeat(60)}。好`;
     const bubbles = splitIntoBubbles(text);
     const last = bubbles[bubbles.length - 1];
     assert.ok(last.length >= 25 || bubbles.length === 1, `dangling tail: ${JSON.stringify(last)}`);
@@ -58,9 +58,9 @@ describe("splitIntoBubbles", () => {
   });
 
   it("splits only into balanced, ordered bubbles", () => {
-    const s1 = "第一段。" + "一".repeat(80);
-    const s2 = "第二段。" + "二".repeat(80);
-    const s3 = "第三段。" + "三".repeat(80);
+    const s1 = `第一段。${"一".repeat(80)}`;
+    const s2 = `第二段。${"二".repeat(80)}`;
+    const s3 = `第三段。${"三".repeat(80)}`;
     const bubbles = splitIntoBubbles(s1 + s2 + s3);
     assert.ok(bubbles.length >= 2);
     // Order preserved: first bubble starts with 第一段, concatenation lossless.
@@ -112,7 +112,11 @@ describe("BubbleDrip", () => {
   it("flush() delivers everything immediately — no loss on stop", () => {
     const { timer } = fakeTimer();
     const delivered: string[] = [];
-    const drip = new BubbleDrip((t) => delivered.push(t), () => {}, timer);
+    const drip = new BubbleDrip(
+      (t) => delivered.push(t),
+      () => {},
+      timer,
+    );
     drip.start(["b2", "b3", "b4"], 50);
     drip.flush();
     assert.deepEqual(delivered, ["b2", "b3", "b4"]);
