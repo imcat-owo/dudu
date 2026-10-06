@@ -186,6 +186,17 @@ const zhHant = {
   "moodcheck.item.fromCheckin": "來自每日問候",
   "moodcheck.item.fromChat": "來自聊天",
   "moodcheck.actions.delete": "刪除這條心情",
+  // ---- 性格進化 ----
+  "evolution.section.title": "一起長大",
+  "evolution.section.desc": "他跟你相處中學到的東西——每條都標著出處，隨時可改可刪。",
+  "evolution.section.persona": "給 ",
+  "evolution.list.empty": "還沒學到什麼。他注意到你們相處裡的規律時，會記在這裡。",
+  "evolution.item.fromHer": "她親口說的",
+  "evolution.actions.delete": "刪除這條記錄",
+  "evolution.actions.edit": "修改這條記錄",
+  "evolution.actions.reset": "回到人設卡原樣",
+  "evolution.actions.resetTitle": "清空成長記錄？",
+  "evolution.actions.resetBody": "這會刪掉這個人設的全部成長記錄，他會回到人設卡裡寫的樣子。這個操作不能撤銷。",
   // ---- AI 主動發照片 ----
   "photoshare.section.title": "他發來的照片",
   "photoshare.section.desc": "打開後，他會在安靜時刻給你發照片——像隨手拍一張自拍告訴你在幹嘛。預設關閉，只有你能打開。",

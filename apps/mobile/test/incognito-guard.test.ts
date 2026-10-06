@@ -109,6 +109,12 @@ describe("incognito guard (P1-3: zero trace)", () => {
       // AI photo share (write tools; status/log stay readable)
       "photoshare_config",
       "photoshare_share_now",
+      // Personality evolution (write tools; evolution_note_list stays readable)
+      "evolution_note_add",
+      "evolution_note_edit",
+      "evolution_note_delete",
+      "evolution_set_enabled",
+      "evolution_reset",
     ];
     for (const name of writes) {
       assert.equal(isBlockedInIncognito(name), true, `${name} must be blocked`);

@@ -183,6 +183,17 @@ const zhHans = {
   "moodcheck.item.fromCheckin": "来自每日问候",
   "moodcheck.item.fromChat": "来自聊天",
   "moodcheck.actions.delete": "删除这条心情",
+  // ---- 性格进化 ----
+  "evolution.section.title": "一起长大",
+  "evolution.section.desc": "他跟你相处中学到的东西——每条都标着出处，随时可改可删。",
+  "evolution.section.persona": "给 ",
+  "evolution.list.empty": "还没学到什么。他注意到你们相处里的规律时，会记在这里。",
+  "evolution.item.fromHer": "她亲口说的",
+  "evolution.actions.delete": "删除这条记录",
+  "evolution.actions.edit": "修改这条记录",
+  "evolution.actions.reset": "回到人设卡原样",
+  "evolution.actions.resetTitle": "清空成长记录？",
+  "evolution.actions.resetBody": "这会删掉这个人设的全部成长记录，他会回到人设卡里写的样子。这个操作不能撤销。",
   // ---- AI 主动发照片 ----
   "photoshare.section.title": "他发来的照片",
   "photoshare.section.desc": "打开后，他会在安静时刻给你发照片——像随手拍一张自拍告诉你在干嘛。默认关闭，只有你能打开。",

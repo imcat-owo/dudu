@@ -87,6 +87,7 @@ import { getUpcomingAnniversaries } from "./our-space/anniversary-section";
 import { ourSpaceStore } from "./our-space/instance";
 import { OutreachFrequencySection } from "./outreach/outreach-ui";
 import { InitiativeSection } from "./initiative/initiative-ui";
+import { EvolutionSection } from "./evolution/evolution-ui";
 import { FollowupSection } from "./followup/followup-ui";
 import { MoodcheckSection } from "./moodcheck/moodcheck-ui";
 import { PhotoshareSection } from "./photoshare/photoshare-ui";
@@ -1036,6 +1037,7 @@ function TellLaterView() {
   const followupSection = <FollowupSection />;
   const moodcheckSection = <MoodcheckSection />;
   const photoshareSection = <PhotoshareSection />;
+  const evolutionSectionUi = <EvolutionSection />;
 
   if (items.length === 0)
     return (
@@ -1045,6 +1047,7 @@ function TellLaterView() {
         {followupSection}
         {moodcheckSection}
         {photoshareSection}
+        {evolutionSectionUi}
         <EmptyState text={t("space.tellLater.empty")} />
       </View>
     );
@@ -1111,6 +1114,7 @@ function TellLaterView() {
         {followupSection}
         {moodcheckSection}
         {photoshareSection}
+        {evolutionSectionUi}
         {pending.length > 0 && (
           <SoftCard>
             <TText

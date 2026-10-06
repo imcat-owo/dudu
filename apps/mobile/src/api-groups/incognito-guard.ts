@@ -140,6 +140,13 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   // chat history (zero-trace promise); status/log stay readable
   "photoshare_config",
   "photoshare_share_now",
+  // Personality evolution （性格进化）: note add/edit/delete + toggle +
+  // reset write notes; evolution_note_list stays readable
+  "evolution_note_add",
+  "evolution_note_edit",
+  "evolution_note_delete",
+  "evolution_set_enabled",
+  "evolution_reset",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

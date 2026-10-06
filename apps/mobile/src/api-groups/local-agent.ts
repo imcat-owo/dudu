@@ -86,6 +86,7 @@ import {
 import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionFollowupTools } from "../followup/instances";
 import { createProductionMoodcheckTools } from "../moodcheck/instances";
+import { createProductionEvolutionTools, buildActiveEvolutionSection } from "../evolution/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionPhotoshareTools } from "../photoshare/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
@@ -1093,6 +1094,11 @@ export function createLocalAgent(opts: {
         // (moodcheck_record/delete/set_config) are in INCOGNITO_BLOCKED_TOOLS;
         // moodcheck_list stays available.
         ...createProductionMoodcheckTools(),
+        // Personality evolution （性格进化）: the write tools
+        // (evolution_note_add/edit/delete, evolution_set_enabled,
+        // evolution_reset) are in INCOGNITO_BLOCKED_TOOLS;
+        // evolution_note_list stays available.
+        ...createProductionEvolutionTools(),
         // Voice call （实时双工语音通话）: propose_voice_call is the AI's
         // ring — it is in INCOGNITO_BLOCKED_TOOLS; list_voice_calls stays.
         ...createProductionVoiceCallTools(),
@@ -1869,6 +1875,15 @@ export function createLocalAgent(opts: {
           // ignore
         }
       }
+      // Personality evolution （性格进化）: what the AI has learned about
+      // being with her, distilled into notes for the ACTIVE persona only.
+      // Persona-isolated; empty in incognito / when disabled / no notes.
+      // Never throws — buildActiveEvolutionSection swallows storage hiccups.
+      const evolutionSection = await buildActiveEvolutionSection(
+        activePersona?.id ?? null,
+        activePersona?.name ?? "",
+        { incognito: incognitoOn },
+      );
       // A16: per-dialog system prompt override — her rule for THIS dialog,
       // appended after the persona sections. Empty when unset: no noise.
       const dialogSystemPrompt =
@@ -1882,6 +1897,7 @@ export function createLocalAgent(opts: {
           undefined,
         [
           memorySection,
+          evolutionSection,
           skillSection,
           anniversarySection,
           herMoodSection,

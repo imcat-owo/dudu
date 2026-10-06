@@ -29,6 +29,7 @@ import { CHARA_MANUAL } from "./chara";
 import { CODING_MANUAL } from "./coding";
 import { COORDINATION_MANUAL } from "./coordination";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
+import { EVOLUTION_MANUAL } from "./evolution";
 import { EXCHANGE_MANUAL } from "./exchange";
 import { GROUP_MEETING_MANUAL } from "./group-meeting";
 import { INCOGNITO_MANUAL } from "./incognito";
@@ -101,6 +102,7 @@ export const MANUALS: ManualEntry[] = [
   CHARA_MANUAL,
   CODING_MANUAL,
   EXCHANGE_MANUAL,
+  EVOLUTION_MANUAL,
   ABOUT_DUDU_MANUAL,
 ];
 

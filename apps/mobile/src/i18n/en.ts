@@ -188,6 +188,17 @@ export const enStrings: Record<StringKey, string> = {
   "moodcheck.item.fromCheckin": "from the daily check-in",
   "moodcheck.item.fromChat": "from chat",
   "moodcheck.actions.delete": "Delete mood entry",
+  // ---- Personality evolution （性格进化） ----
+  "evolution.section.title": "Growing together",
+  "evolution.section.desc": "What he's learned about being with you — every note cites where it came from. Each is editable and deletable anytime.",
+  "evolution.section.persona": "For ",
+  "evolution.list.empty": "Nothing learned yet. When he notices a pattern across days, it'll show up here.",
+  "evolution.item.fromHer": "she told him directly",
+  "evolution.actions.delete": "Delete this note",
+  "evolution.actions.edit": "Edit this note",
+  "evolution.actions.reset": "Reset to card baseline",
+  "evolution.actions.resetTitle": "Reset personality evolution?",
+  "evolution.actions.resetBody": "This removes every growth note for this persona. He'll go back to how his card describes him. This cannot be undone.",
   // ---- AI photo share （主动发照片） ----
   "photoshare.section.title": "Photos from him",
   "photoshare.section.desc": "When this is on, he may share a photo with you at a quiet moment — like a selfie of what he's up to. Off by default; only you turn it on.",

@@ -183,6 +183,11 @@ const EXTENSION_KEYS = [
   "dudu.photoshare.v1.config",
   "dudu.photoshare.v1.fired",
   "dudu.photoshare.v1.sends",
+  // Personality evolution （性格进化）: notes + master toggle + weekly
+  // distill cadence. Plain JSON, no secrets.
+  "dudu.evolution.v1.notes",
+  "dudu.evolution.v1.enabled",
+  "dudu.evolution.v1.lastDistilled",
   "dudu.photoshare.v1.log",
   // Realtime voice call: AI-initiated call proposals (pending/accepted/
   // declined/missed). Plain JSON, no secrets. Losing these on restore
