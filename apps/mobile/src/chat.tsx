@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Settings2,
   Square,
+  Sticker,
   Trash2,
   X,
   Zap,
@@ -141,6 +142,18 @@ import {
 } from "./image-generation";
 import { useIncognito } from "./incognito";
 import { confirmedJevSelection, displayJevUserMessage, latestJevPanelId } from "./jev-actions";
+import { copyForSend } from "./sticker/files";
+import {
+  StickerBubble,
+  StickerManager,
+  StickerPanel,
+  type ResolvedSticker,
+} from "./sticker/sticker-ui";
+import {
+  encodeStickerMessage,
+  extractStickerMessage,
+  extractStickerMessageStrict,
+} from "./sticker/types";
 import { JevInteractionContext, JevToolCard } from "./jev-tool-card";
 import { MailToolCard } from "./mail-tool-card";
 import { memoryStore } from "./memory/instance";
@@ -495,6 +508,9 @@ export function ChatScreen({
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [picking, setPicking] = useState(false);
+  // Sticker panel (WeChat-style picker above the input) + pack manager modal.
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [stickerManagerOpen, setStickerManagerOpen] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   // Local-mode image attachments (vision): picked via expo-image-picker,
   // processed by the local agent at runTurn time.
@@ -1096,6 +1112,24 @@ export function ChatScreen({
       ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+  /** Send a sticker: copy-on-send (survives pack deletion), then enqueue a whole-message envelope. */
+  async function sendSticker(sticker: ResolvedSticker) {
+    if (!isReady || !loaded) return;
+    setStickerOpen(false);
+    try {
+      const uri = await copyForSend(sticker.uri);
+      enqueue(
+        encodeStickerMessage({
+          uri,
+          stickerId: sticker.id,
+          packId: sticker.packId,
+          name: sticker.name,
+        }),
+      );
+    } catch {
+      setError(t("sticker.sendFailed"));
     }
   }
   /** Local mode: pick a txt/md/pdf document to attach (for the knowledge base). */
@@ -1980,16 +2014,27 @@ export function ChatScreen({
                   : extractImageMessage(message.content)
                 : null;
             const generatedImage = imageHit?.image ?? null;
+            // Sticker envelope (sticker_message): strict whole-message match
+            // for her (P3-14 rule), tolerant scan for the AI (P2-27 rule).
+            const stickerHit =
+              !voiceHit && !imageHit && typeof message.content === "string"
+                ? user
+                  ? extractStickerMessageStrict(message.content)
+                  : extractStickerMessage(message.content)
+                : null;
+            const sticker = stickerHit?.sticker ?? null;
             const text =
               typeof message.content === "string"
                 ? user
-                  ? voiceHit || imageHit
+                  ? voiceHit || imageHit || stickerHit
                     ? ""
                     : displayJevUserMessage(
                         message.content,
                         messages.slice(0, messages.indexOf(message)),
                       )
-                  : resolveAssistantText(message.content, voiceHit, imageHit)
+                  : stickerHit
+                    ? stickerHit.rest
+                    : resolveAssistantText(message.content, voiceHit, imageHit)
                 : "";
             const userImages =
               user && typeof message.content === "string"
@@ -2007,7 +2052,7 @@ export function ChatScreen({
             // avatar row only when there is visible bubble content.
             // A thinking-only message (reasoning streamed, reply not yet)
             // still renders its inline thinking status.
-            const hasBubble = !!voice || !!generatedImage || !!text || !!userImages || !!thinking;
+            const hasBubble = !!voice || !!generatedImage || !!sticker || !!text || !!userImages || !!thinking;
             // A media envelope (voice/image) may carry the AI's own prose
             // around it (P2-27) — render the prose as a text bubble stacked
             // above the media bubble instead of dropping it.
@@ -2142,13 +2187,15 @@ export function ChatScreen({
                           onOpen={() => setActivityId(message.id)}
                         />
                       )}
-                      {voice || generatedImage ? (
+                      {voice || generatedImage || sticker ? (
                         <View style={{ gap: 6 }}>
                           {textBubble}
                           {voice ? (
                             <VoiceBubble voice={voice} user={user} />
                           ) : generatedImage ? (
                             <ImageBubble image={generatedImage} user={user} />
+                          ) : sticker ? (
+                            <StickerBubble sticker={sticker} />
                           ) : null}
                         </View>
                       ) : userImages ? (
@@ -2614,6 +2661,19 @@ export function ChatScreen({
             )}
           </Card>
         )}
+        {/* Sticker picker panel (WeChat-style, above the input). */}
+        {stickerOpen && (
+          <View style={{ marginBottom: 12, borderRadius: radii.xl, overflow: "hidden" }}>
+            <StickerPanel
+              onPick={(s) => void sendSticker(s)}
+              onManage={() => {
+                setStickerOpen(false);
+                setStickerManagerOpen(true);
+              }}
+            />
+          </View>
+        )}
+        <StickerManager visible={stickerManagerOpen} onClose={() => setStickerManagerOpen(false)} />
         <GlassView
           intensity={56}
           edgeColor={focused ? colors.blue : undefined}
@@ -2903,6 +2963,26 @@ export function ChatScreen({
                 <Plus size={24} color={colors.text} />
               </Pressable>
             )}
+            {/* Sticker picker (WeChat-style panel above the input). */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("sticker.title")}
+              accessibilityState={{ expanded: stickerOpen }}
+              onPress={() => {
+                setPicking(false);
+                setStickerOpen(!stickerOpen);
+              }}
+              style={({ pressed }) => ({
+                width: 44,
+                height: 44,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: radii.xl,
+                backgroundColor: stickerOpen || pressed ? colors.sky : "transparent",
+              })}
+            >
+              <Sticker size={22} color={colors.text} />
+            </Pressable>
             <TextInput
               ref={inputRef}
               accessibilityLabel={t("a11y.messageInput")}

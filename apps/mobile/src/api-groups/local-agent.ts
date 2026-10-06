@@ -126,6 +126,7 @@ import { createFontSizeTools } from "../settings/tools";
 import { skillStore } from "../skills/instance";
 import { createSkillTools } from "../skills/tools";
 import { ambientVideoStore } from "../sora-ambient-video-instance";
+import { createProductionStickerTools } from "../sticker/instances";
 import { buildStorySectionForThread, createProductionStoryTools } from "../story/instances";
 import { getAiThemeMode } from "../theme/ai-mode";
 import {
@@ -1138,6 +1139,10 @@ export function createLocalAgent(opts: {
         // Photo doodle （照片涂鸦）: photo_doodle writes a PNG file —
         // it is in INCOGNITO_BLOCKED_TOOLS.
         ...createProductionDoodleTools(),
+        // Image stickers （图片表情包）: sticker_list / sticker_send are
+        // read-only (pack management is her UI-only job) — they stay
+        // available in incognito, like words.
+        ...createProductionStickerTools(),
         // Interactive story mode （互动故事）: the 8 write tools
         // (story_start/_scene_add/_choose/_bible_update/_pause/_resume/
         // _end/_delete) are in INCOGNITO_BLOCKED_TOOLS;

@@ -53,6 +53,7 @@ import { ROMANCE_MANUAL } from "./romance";
 import { SANDBOX_MANUAL } from "./sandbox";
 import { SELFPOST_MANUAL } from "./selfpost";
 import { SKILLS_MANUAL } from "./skills";
+import { STICKER_MANUAL } from "./sticker";
 import { STORY_MANUAL } from "./story";
 import { THEMES_MANUAL } from "./themes";
 import { THINKING_DRAWER_MANUAL } from "./thinking-drawer";
@@ -103,6 +104,7 @@ export const MANUALS: ManualEntry[] = [
   PHOTOSHARE_MANUAL,
   SKILLS_MANUAL,
   SELFPOST_MANUAL,
+  STICKER_MANUAL,
   STORY_MANUAL,
   KNOWLEDGE_MANUAL,
   MEDIA_MANUAL,
