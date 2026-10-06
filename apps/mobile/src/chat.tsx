@@ -84,6 +84,7 @@ import { planVoiceInput } from "./api-groups/group-router";
 import { useChatMode } from "./api-groups/mode";
 import { withSlotModel } from "./api-groups/model-slots";
 import { PlanGateCard } from "./api-groups/plan-gate-card";
+import { CodingPlanCard, CodingReportCard } from "./coding/coding-ui";
 import { groupStore, useApiGroups } from "./api-groups/store";
 import { useFontSizeSetting } from "./app-settings";
 import { AssistantResponse } from "./assistant-response";
@@ -2416,6 +2417,11 @@ export function ChatScreen({
         {/* Plan gate (开启原则): a proposed multi-model plan waits for her
             approve/stop here — the AI must not act before she decides. */}
         <PlanGateCard threadId={threadId} />
+        {/* Coding loop (E3): a proposed code-change plan waits for her
+            approve/stop here — the engine refuses any write/run/verify
+            before she decides. The report card shows the honest outcome. */}
+        <CodingPlanCard threadId={threadId} />
+        <CodingReportCard threadId={threadId} />
         {/* Group meeting (P2-13): a live meeting for this thread is visible
             here — members, round progress, one-tap stop. */}
         <GroupMeetingCard threadId={threadId} />

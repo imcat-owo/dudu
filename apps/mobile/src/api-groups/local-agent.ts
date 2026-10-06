@@ -164,6 +164,7 @@ import { modelProfileStore } from "./model-profiles";
 import { buildRankingSlip } from "./model-ranking";
 import { withSlotModel } from "./model-slots";
 import { createPlanTools } from "./plan-tools";
+import { createCodingToolsForThread } from "../coding/instances";
 import { groupStore } from "./store";
 import { assembleAgentTools } from "./tool-assembly";
 import type { ApiGroup, FeatureSwitch } from "./types";
@@ -1126,6 +1127,10 @@ export function createLocalAgent(opts: {
           // 开启原则）. The AI can only propose when she flipped it on.
           isCoordinationEnabled: () => capabilityStore.getSnapshot().coordinationEnabled,
         }),
+        // Coding loop (E3): plan → execute → verify → report on a repo
+        // checkout inside the sandbox backend. The plan card is the consent
+        // gate — the engine refuses writes/runs/verify before she approves.
+        ...createCodingToolsForThread(opts.threadId, incognito),
         ...themeTools,
         ...createFontSizeTools(AsyncStorage),
         ...createBackupTools({

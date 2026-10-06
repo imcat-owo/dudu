@@ -26,6 +26,7 @@ import { API_GROUPS_MANUAL } from "./api-groups";
 import { BACKUP_MANUAL } from "./backup";
 import { BROWSER_MANUAL } from "./browser";
 import { CHARA_MANUAL } from "./chara";
+import { CODING_MANUAL } from "./coding";
 import { COORDINATION_MANUAL } from "./coordination";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
 import { EXCHANGE_MANUAL } from "./exchange";
@@ -90,6 +91,7 @@ export const MANUALS: ManualEntry[] = [
   MEDIA_MANUAL,
   BACKUP_MANUAL,
   CHARA_MANUAL,
+  CODING_MANUAL,
   EXCHANGE_MANUAL,
   ABOUT_DUDU_MANUAL,
 ];

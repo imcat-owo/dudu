@@ -188,6 +188,10 @@ const EXTENSION_KEYS = [
   // Persona group chat (人设群聊): per-persona API group preference + groups.
   "dudu.persona.v1.api-group",
   "dudu.persona-groups.v1",
+  // Coding loop (E3): task records (plans, logs, verify results — no secrets)
+  // + the repo URL override (plain URL, no credentials).
+  "dudu.coding.tasks.v1",
+  "dudu.coding.repoUrl.v1",
   "dudu.worldbook.v1.list",
   "dudu.global-md.v1",
   "dudu.webapps.v1.list",

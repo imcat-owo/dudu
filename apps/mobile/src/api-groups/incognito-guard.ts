@@ -100,6 +100,8 @@ const INCOGNITO_BLOCKED_TOOLS: ReadonlySet<string> = new Set([
   "write_clipboard",
   // Secrets
   "ask_env_form", // D15: persists a secret into envStore — a real write
+  // Coding loop (E3): writes to her sandbox + persists task records
+  "coding_task",
 ]);
 
 /** True when this tool must be refused in an incognito session. */

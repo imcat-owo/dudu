@@ -1642,6 +1642,22 @@ export const enStrings: Record<StringKey, string> = {
   "plangate.reject": "No thanks",
   "plangate.approvedNote": "Approved, not used yet — you can take it back",
   "plangate.revoke": "Revoke approval",
+  // ---- coding loop ----
+  "coding.plan.title": "Code change plan",
+  "coding.plan.request": "Her request",
+  "coding.plan.steps": "{n} steps",
+  "coding.plan.files": "Files",
+  "coding.plan.outcome": "What it will look like",
+  "coding.plan.doneCriteria": "What counts as done",
+  "coding.plan.approve": "Approve",
+  "coding.plan.reject": "No thanks",
+  "coding.status.proposed": "Waiting for her decision — nothing runs before approval",
+  "coding.status.approved": "Approved, ready to start",
+  "coding.status.inProgress": "Working on it…",
+  "coding.report.title": "Code change report",
+  "coding.report.done": "Done, verification passed",
+  "coding.report.failed": "Not done — here's the honest truth",
+  "coding.report.verify": "Verification",
 
   // ---- capability groups ----
   "capgroup.title": "Capability groups",

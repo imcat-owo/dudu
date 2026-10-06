@@ -1575,6 +1575,22 @@ const zhHans = {
   "plangate.reject": "不用了",
   "plangate.approvedNote": "已批准，还没用——改变主意可以收回",
   "plangate.revoke": "收回批准",
+  // ---- coding loop（E3 改代码闭环） ----
+  "coding.plan.title": "改代码计划",
+  "coding.plan.request": "她的需求",
+  "coding.plan.steps": "共 {n} 步",
+  "coding.plan.files": "涉及文件",
+  "coding.plan.outcome": "改完长什么样",
+  "coding.plan.doneCriteria": "什么叫「做完」",
+  "coding.plan.approve": "批准执行",
+  "coding.plan.reject": "不用了",
+  "coding.status.proposed": "等她拍板：批准前一步都不会执行",
+  "coding.status.approved": "已批准，可以开工",
+  "coding.status.inProgress": "正在执行…",
+  "coding.report.title": "改代码汇报",
+  "coding.report.done": "做完了，验证通过",
+  "coding.report.failed": "没做完，下面是实话",
+  "coding.report.verify": "验证结果",
 
   // ---- capability groups ----
   "capgroup.title": "能力分组",

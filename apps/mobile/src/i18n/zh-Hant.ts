@@ -1578,6 +1578,22 @@ const zhHant = {
   "plangate.reject": "不用了",
   "plangate.approvedNote": "已批准，還沒用——改變主意可以收回",
   "plangate.revoke": "收回批准",
+  // ---- coding loop（E3 改代碼閉環） ----
+  "coding.plan.title": "改代碼計劃",
+  "coding.plan.request": "她的需求",
+  "coding.plan.steps": "共 {n} 步",
+  "coding.plan.files": "涉及文件",
+  "coding.plan.outcome": "改完長什麼樣",
+  "coding.plan.doneCriteria": "什麼叫「做完」",
+  "coding.plan.approve": "批准執行",
+  "coding.plan.reject": "不用了",
+  "coding.status.proposed": "等她拍板：批准前一步都不會執行",
+  "coding.status.approved": "已批准，可以開工",
+  "coding.status.inProgress": "正在執行…",
+  "coding.report.title": "改代碼匯報",
+  "coding.report.done": "做完了，驗證通過",
+  "coding.report.failed": "沒做完，下面是實話",
+  "coding.report.verify": "驗證結果",
 
   // ---- capability groups ----
   "capgroup.title": "能力分組",
