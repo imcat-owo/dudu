@@ -87,6 +87,7 @@ import { createProductionInitiativeTools } from "../initiative/instances";
 import { createProductionFollowupTools } from "../followup/instances";
 import { createProductionMoodcheckTools } from "../moodcheck/instances";
 import { createProductionEvolutionTools, buildActiveEvolutionSection } from "../evolution/instances";
+import { buildActiveDialsSection } from "../dials/instances";
 import { createProductionOpenAppTools } from "../openapp/instances";
 import { createProductionPhotoshareTools } from "../photoshare/instances";
 import { createProductionSelfpostTools } from "../selfpost/instances";
@@ -1884,6 +1885,14 @@ export function createLocalAgent(opts: {
         activePersona?.name ?? "",
         { incognito: incognitoOn },
       );
+      // Personality dials （人格维度滑杆）: HER explicit settings per
+      // persona, riding the prompt right after the evolution notes.
+      // Dials OVERRIDE evolution notes on conflict (her hand beats the
+      // AI's guesses) — enforced by the section's own precedence line.
+      // Empty in incognito / when disabled / no persona. Never throws.
+      const dialsSection = await buildActiveDialsSection(activePersona?.id ?? null, {
+        incognito: incognitoOn,
+      });
       // A16: per-dialog system prompt override — her rule for THIS dialog,
       // appended after the persona sections. Empty when unset: no noise.
       const dialogSystemPrompt =
@@ -1898,6 +1907,7 @@ export function createLocalAgent(opts: {
         [
           memorySection,
           evolutionSection,
+          dialsSection,
           skillSection,
           anniversarySection,
           herMoodSection,

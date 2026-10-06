@@ -29,6 +29,7 @@ import { CHARA_MANUAL } from "./chara";
 import { CODING_MANUAL } from "./coding";
 import { COORDINATION_MANUAL } from "./coordination";
 import { CROSS_DIALOG_MANUAL } from "./cross-dialog";
+import { DIALS_MANUAL } from "./dials";
 import { EVOLUTION_MANUAL } from "./evolution";
 import { EXCHANGE_MANUAL } from "./exchange";
 import { GROUP_MEETING_MANUAL } from "./group-meeting";
@@ -81,6 +82,7 @@ export const MANUALS: ManualEntry[] = [
   API_GROUPS_MANUAL,
   COORDINATION_MANUAL,
   CROSS_DIALOG_MANUAL,
+  DIALS_MANUAL,
   GROUP_MEETING_MANUAL,
   BROWSER_MANUAL,
   SANDBOX_MANUAL,

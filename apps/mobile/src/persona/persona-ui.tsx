@@ -15,6 +15,7 @@ import { blankPersona, type Persona, type PersonaTag } from "./types";
 import { createWorldBookStore } from "./world-book-store";
 import { blankWorldBook, type WorldBook } from "./world-book";
 import { CharaExportButton, CharaExtrasSection, CharaImportRow } from "../chara/chara-ui";
+import { DialsSection } from "../dials/dials-ui";
 
 const personaStore = createPersonaStore(AsyncStorage);
 const worldBookStore = createWorldBookStore(AsyncStorage);
@@ -381,6 +382,8 @@ function PersonaEditor({
         <TText style={{ flex: 1 }}>{t("persona.enabled")}</TText>
         <Switch value={p.enabled} onValueChange={(v) => set({ enabled: v })} />
       </View>
+
+      <DialsSection personaId={p.id} />
 
       {tags.length > 0 && (
         <View style={{ marginBottom: 12 }}>

@@ -178,6 +178,10 @@ const EXTENSION_KEYS = [
   "dudu.moodcheck.v1.history",
   "dudu.moodcheck.v1.lastCheckinDay",
   "dudu.moodcheck.v1.lastOutcome",
+  // Personality dials （人格维度滑杆）: per-persona 0–100 dial values +
+  // master toggle. Plain JSON, no secrets.
+  "dudu.dials.v1.values",
+  "dudu.dials.v1.enabled",
   // AI photo share （主动发照片）: config + fired-slot ledger + daily
   // sends + decision log. Plain JSON, no secrets.
   "dudu.photoshare.v1.config",
