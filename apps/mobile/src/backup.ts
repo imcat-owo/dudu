@@ -172,6 +172,10 @@ const EXTENSION_KEYS = [
   // covered above under dudu.initiative.v1.*.
   "dudu.followup.v1.items",
   "dudu.followup.v1.enabled",
+  // Realtime voice call: AI-initiated call proposals (pending/accepted/
+  // declined/missed). Plain JSON, no secrets. Losing these on restore
+  // would silently drop a ringing proposal, so back them up.
+  "dudu.voice-call.v1.proposals",
   // AI self-post trigger: config + fired-slot ledger + daily sends + decision log.
   // Plain JSON, no secrets.
   "dudu.selfpost.v1.config",
