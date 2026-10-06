@@ -34,6 +34,40 @@ export interface ProviderCredentials {
   rate: number;
 }
 
+/**
+ * Emotional prosody for network providers. Honest limits:
+ * - minimax: speed + pitch (semitones) + vol — full support.
+ * - fish-audio / stepfun / custom: speed only (their APIs have no
+ *   pitch/volume knob); the rate still applies.
+ * - qwen: no prosody parameters — always flat.
+ */
+export interface ProviderProsody {
+  /** Effective rate multiplier (her base speed × emotion rate). */
+  rate: number;
+  /** Pitch shift in semitones, approximated from the emotion's Hz delta. */
+  pitchSt: number;
+  /** Volume multiplier around 1.0. */
+  vol: number;
+}
+
+/**
+ * Convert the emotion-layer prosody (Hz/percent, tuned for edge-tts SSML)
+ * into MiniMax's units. Approximate by design: semitones ≈ pitchHz / 8
+ * (a +16Hz lift on a ~120Hz male voice ≈ +2 semitones).
+ */
+export function toProviderProsody(p: {
+  rate: number;
+  pitchHz: number;
+  volumePct: number;
+}): ProviderProsody {
+  const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+  return {
+    rate: clamp(p.rate, 0.5, 2.0),
+    pitchSt: clamp(Math.round(p.pitchHz / 8), -4, 4),
+    vol: clamp(1 + p.volumePct / 100, 0.5, 1.5),
+  };
+}
+
 /** Resolve effective credentials: user override or provider default. */
 export function resolveProviderCredentials(cfg: TtsConfig): ProviderCredentials {
   const provider = cfg.provider as NetworkTtsProvider;
@@ -174,6 +208,7 @@ export async function synthesizeMiniMax(
   text: string,
   cred: ProviderCredentials,
   fetchFn: typeof fetch = fetch,
+  prosody?: ProviderProsody | null,
 ): Promise<SynthesizedAudio> {
   const url = joinUrl(cred.baseUrl, "/t2a_v2");
   const body = JSON.stringify({
@@ -182,9 +217,9 @@ export async function synthesizeMiniMax(
     stream: true,
     voice_setting: {
       voice_id: cred.voice,
-      speed: cred.rate,
-      vol: 1.0,
-      pitch: 0,
+      speed: prosody?.rate ?? cred.rate,
+      vol: prosody?.vol ?? 1.0,
+      pitch: prosody?.pitchSt ?? 0,
     },
     audio_setting: {
       sample_rate: 32000,
@@ -410,6 +445,7 @@ export async function synthesizeWithProvider(
   text: string,
   cfg: TtsConfig,
   fetchFn?: typeof fetch,
+  prosody?: ProviderProsody | null,
 ): Promise<SynthesizedAudio> {
   const cred = resolveProviderCredentials(cfg);
   if (!cred.apiKey) {
@@ -417,7 +453,7 @@ export async function synthesizeWithProvider(
   }
   switch (provider) {
     case "minimax":
-      return synthesizeMiniMax(text, cred, fetchFn);
+      return synthesizeMiniMax(text, cred, fetchFn, prosody);
     case "fish-audio":
       return synthesizeFishAudio(text, cred, fetchFn);
     case "stepfun":

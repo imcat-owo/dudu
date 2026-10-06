@@ -28,6 +28,7 @@ import { radii } from "../theme/radii";
 import { Button, Card, Field, useColors, useStyles } from "../ui";
 import type { Alarm } from "./alarms";
 import { getAlarmStore } from "./alarms-instance";
+import { VOICE_EMOTIONS, type VoiceEmotion } from "./emotion";
 import { useVoiceConfig, voiceStore } from "./store";
 import { transcribeAudio } from "./stt";
 import { synthesizeSpeech } from "./tts";
@@ -663,9 +664,100 @@ export function VoiceSettingsSection() {
       <TtsSection />
       <SttSection />
       <MicModeSection />
+      <EmotionSection />
       <AlarmsSection />
       <CacheSection />
     </View>
+  );
+}
+
+/**
+ * Emotional TTS: master switch + pinned tone. The switch and the pin are
+ * the only two things she controls — everything else (classification,
+ * per-message emotion) flows from them. Every control hits the real
+ * voice store; nothing here is decorative.
+ */
+function EmotionSection() {
+  const colors = useColors();
+  const s = useStyles();
+  const { settings, loaded } = useVoiceConfig();
+  const [error, setError] = useState("");
+
+  async function save(next: typeof settings) {
+    setError("");
+    const ok = await voiceStore.setSettings(next);
+    if (!ok) setError(t("voice.saveFailed"));
+  }
+
+  if (!loaded) return null;
+  const pins: Array<{ id: VoiceEmotion | null; label: string }> = [
+    { id: null, label: t("voice.emotionAuto") },
+    ...VOICE_EMOTIONS.map((id) => ({ id: id as VoiceEmotion | null, label: t(`voice.emotion.${id}`) })),
+  ];
+  return (
+    <Card>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <TText style={{ fontWeight: "700", color: colors.text }}>
+            {t("voice.emotionTts")}
+          </TText>
+          <TText style={[s.small, { color: colors.muted, marginTop: 2 }]}>
+            {t("voice.emotionTtsDesc")}
+          </TText>
+        </View>
+        <Switch
+          value={settings.emotionalTts}
+          onValueChange={(v) => void save({ ...settings, emotionalTts: v })}
+        />
+      </View>
+      {!!error && (
+        <TText style={{ color: colors.danger, marginTop: 8 }}>{error}</TText>
+      )}
+      {settings.emotionalTts && (
+        <View style={{ marginTop: 10 }}>
+          <TText style={[s.small, { color: colors.muted, marginBottom: 6 }]}>
+            {t("voice.emotionPinDesc")}
+          </TText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {pins.map((p) => {
+              const active =
+                p.id === null ? settings.emotionPin === null : settings.emotionPin === p.id;
+              return (
+                <Pressable
+                  key={p.label}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => void save({ ...settings, emotionPin: p.id })}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: radii.sm,
+                    borderWidth: 1,
+                    borderColor: active ? colors.blueDark : colors.line,
+                    backgroundColor: active ? colors.sky : colors.card,
+                  }}
+                >
+                  <TText
+                    style={[
+                      s.small,
+                      { fontWeight: "700", color: active ? colors.blueDark : colors.text },
+                    ]}
+                  >
+                    {p.label}
+                  </TText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </Card>
   );
 }
 

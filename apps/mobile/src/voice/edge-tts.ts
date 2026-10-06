@@ -118,14 +118,55 @@ function speechConfigMessage(): string {
   );
 }
 
-function ssmlMessage(text: string, voice: string, requestId: string, rate = 1.0): string {
+/** Extra prosody for emotional TTS. SSML <prosody> supports pitch in Hz
+ * and volume in percent — both are honored by the Edge service. */
+export interface EdgeProsody {
+  pitchHz?: number;
+  volumePct?: number;
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n));
+}
+
+/**
+ * Build the SSML for one chunk. Exported for tests: the emotion layer's
+ * pitch/volume MUST be provable on the wire, not just a label.
+ */
+export function buildSsml(
+  text: string,
+  voice: string,
+  opts: { rate?: number; pitchHz?: number; volumePct?: number } = {},
+): string {
   // SSML prosody rate: "+20%" = 1.2x, "-20%" = 0.8x, "+0%" = normal.
+  const rate = opts.rate ?? 1.0;
   const pct = Math.round((rate - 1) * 100);
   const rateAttr = pct >= 0 ? `+${pct}%` : `${pct}%`;
-  const ssml =
+  // Pitch in Hz, volume in percent — clamped so an emotion mapping bug
+  // can never produce a chipmunk or a whisper she can't hear.
+  const pitch = Math.round(clamp(opts.pitchHz ?? 0, -50, 50));
+  const vol = Math.round(clamp(opts.volumePct ?? 0, -50, 50));
+  const pitchAttr = pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`;
+  const volAttr = vol >= 0 ? `+${vol}%` : `${vol}%`;
+  return (
     `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-CN'>` +
-    `<voice name='${voice}'><prosody pitch='+0Hz' rate='${rateAttr}' volume='+0%'>` +
-    `${escapeXml(text)}</prosody></voice></speak>`;
+    `<voice name='${voice}'><prosody pitch='${pitchAttr}' rate='${rateAttr}' volume='${volAttr}'>` +
+    `${escapeXml(text)}</prosody></voice></speak>`
+  );
+}
+
+function ssmlMessage(
+  text: string,
+  voice: string,
+  requestId: string,
+  rate = 1.0,
+  extra?: EdgeProsody,
+): string {
+  const ssml = buildSsml(text, voice, {
+    rate,
+    pitchHz: extra?.pitchHz,
+    volumePct: extra?.volumePct,
+  });
   return (
     `X-RequestId:${requestId}\r\n` +
     "Content-Type:application/ssml+xml\r\n" +
@@ -161,6 +202,7 @@ function synthesizeChunk(
   voice: string,
   rate = 1.0,
   timeoutMs = 30000,
+  extra?: EdgeProsody,
 ): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     let ws: WsLike | null = null;
@@ -201,7 +243,7 @@ function synthesizeChunk(
     ws.onopen = () => {
       try {
         ws?.send(speechConfigMessage());
-        ws?.send(ssmlMessage(text, voice, uuid().replace(/-/g, ""), rate));
+        ws?.send(ssmlMessage(text, voice, uuid().replace(/-/g, ""), rate, extra));
       } catch (e) {
         finish(e instanceof Error ? e : new EdgeTtsError("send failed"));
       }
@@ -257,18 +299,22 @@ function synthesizeChunk(
 /**
  * Synthesize full text to MP3 bytes. Chunks long text and concatenates.
  * Pure protocol — no file I/O here (callers decide where to save).
+ *
+ * `extra` carries emotional prosody (pitch/volume); every chunk gets the
+ * same emotion so a long message doesn't change character halfway.
  */
 export async function edgeTtsSynthesize(
   text: string,
   voice: string,
   rate = 1.0,
+  extra?: EdgeProsody,
 ): Promise<Uint8Array> {
   const trimmed = text.trim();
   if (!trimmed) throw new EdgeTtsError("empty text");
   const chunks = chunkText(trimmed);
   const parts: Uint8Array[] = [];
   for (const chunk of chunks) {
-    const bytes = await synthesizeChunk(chunk, voice, rate);
+    const bytes = await synthesizeChunk(chunk, voice, rate, 30000, extra);
     if (bytes.length === 0) throw new EdgeTtsError("edge-tts returned no audio");
     parts.push(bytes);
   }

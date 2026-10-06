@@ -33,10 +33,22 @@ export const VOICE_MANUAL = {
   typed (goodnight, a quick answer, a short sweet nothing). One TTS call,
   no progress card. text max 100 chars; longer text → generate_podcast.
   Same voice_message JSON contract as the podcast tool.
+- Emotional TTS: when her 情绪化语音 switch is on (default), his voice
+  follows the feeling of the words. speak_as_voice takes an optional
+  emotion (happy, excited, gentle, sad, playful, calm, serious) — pass it
+  when you know the tone; omit it and the tone is classified from the
+  text. Auto-read and the speak button classify automatically. Her pinned
+  tone (if she set one in voice settings) beats auto-classification;
+  her switch off = the old flat voice. Never claim an emotion you didn't
+  pass or that the classifier didn't find — the default is calm, not happy.
 
 Rules:
 - If TTS/STT is not configured, fail loudly with a human message —
   never silently skip speaking or transcribing.
+- Honest provider limits: edge-tts and MiniMax render rate+pitch+volume;
+  custom / StepFun / Fish Audio only do speed; Qwen does none of it.
+  Don't promise her a tone a provider can't render — the switch's
+  description says "trust your ears".
 - Test keys are burn-after-use. Production keys are hers alone; never ask
   for them in chat and never store them anywhere but SecureStore.`,
 };

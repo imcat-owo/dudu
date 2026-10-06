@@ -1775,6 +1775,18 @@ export const enStrings: Record<StringKey, string> = {
     "When on, AI replies are read aloud automatically. Handy when driving or doing chores.",
   "voice.autoReadUnavailable":
     "Auto-read only works in local mode — unavailable in cloud mode or incognito.",
+  "voice.emotionTts": "Emotional voice",
+  "voice.emotionTtsDesc":
+    "When on, his voice follows the feeling of what he's saying — quicker when happy, slower and lower when sad. Only the default voice and some providers can do this; trust your ears.",
+  "voice.emotionPinDesc": "Lock one tone for everything, or leave it on Auto and let the tone follow the words.",
+  "voice.emotionAuto": "Auto (follow the words)",
+  "voice.emotion.happy": "Happy",
+  "voice.emotion.excited": "Excited",
+  "voice.emotion.gentle": "Gentle",
+  "voice.emotion.sad": "Down",
+  "voice.emotion.playful": "Playful",
+  "voice.emotion.calm": "Calm",
+  "voice.emotion.serious": "Serious",
   "voice.sttPreset": "Transcription service",
   "voice.sttDashscope": "Alibaba Bailian",
   "voice.sttStepfun": "StepFun",

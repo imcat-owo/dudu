@@ -12,9 +12,10 @@ import { enStrings } from "../i18n/en";
 import { zhHansStrings } from "../i18n/zh-Hans";
 import { type AlarmBackend, createAlarmStore } from "./alarms";
 import { loadAlarmKitNative, loadNotificationsNative } from "./alarms-instance";
+import { resolveSpeakEmotion, VOICE_EMOTIONS, type VoiceEmotion } from "./emotion";
 import { estimateDurationFromText, generatePodcastAudio, splitPodcastText } from "./podcast";
-import { synthesizeSpeech } from "./tts";
-import type { TtsConfig } from "./types";
+import { type SynthesizeOptions, synthesizeSpeech } from "./tts";
+import { defaultVoiceSettings, type TtsConfig } from "./types";
 import { persistVoiceMessage } from "./voice-message-files";
 
 function strArg(args: Record<string, unknown>, name: string): string {
@@ -202,7 +203,7 @@ export function createPodcastTools(
 export const MAX_VOICE_MESSAGE_CHARS = 100;
 
 export interface VoiceMessageToolDeps {
-  synthesize: (text: string, cfg: TtsConfig) => Promise<string>;
+  synthesize: (text: string, cfg: TtsConfig, opts?: SynthesizeOptions) => Promise<string>;
   /** Copy the synthesized file into stable voice-message storage. */
   persist: (srcUri: string) => Promise<string>;
   estimateDuration: (text: string) => number;
@@ -216,6 +217,7 @@ export async function makeVoiceMessage(
   text: string,
   cfg: TtsConfig,
   deps: VoiceMessageToolDeps,
+  opts?: { emotion?: VoiceEmotion | null },
 ): Promise<string> {
   const clean = text.trim();
   if (!clean) throw new ToolError("text is required.");
@@ -227,7 +229,7 @@ export async function makeVoiceMessage(
   }
   let uri: string;
   try {
-    uri = await deps.synthesize(clean, cfg);
+    uri = await deps.synthesize(clean, cfg, { emotion: opts?.emotion ?? null });
   } catch (e) {
     throw new ToolError(friendlyPodcastError(e, "语音"));
   }
@@ -253,6 +255,10 @@ export function createVoiceMessageTools(
         "reply fits better than text — a quick goodnight, a one-line answer, a short sweet nothing. " +
         "text must be SHORT: one or two sentences, max 100 characters. For anything longer " +
         "(stories, briefings, paragraphs), use generate_podcast instead. " +
+        "EMOTION: his voice follows the feeling of the words. Pass emotion to set the tone " +
+        "explicitly (happy, excited, gentle, sad, playful, calm, serious) — omit it and the " +
+        "tone is classified from the text automatically. Her pinned tone (if she set one) " +
+        "beats auto-classification; turning her 情绪化语音 switch off makes it flat. " +
         "The tool returns a JSON string like " +
         '{"type":"voice_message","uri":"file:///...","duration":8}. ' +
         "Include that JSON in your reply (a short intro line is fine — the app finds it and renders " +
@@ -265,6 +271,13 @@ export function createVoiceMessageTools(
             description:
               "Short text to speak — one or two sentences, max 100 characters. Plain prose; markdown is stripped.",
           },
+          emotion: {
+            type: "string",
+            description:
+              "Optional tone for this message: one of " +
+              VOICE_EMOTIONS.join(", ") +
+              ". Omit for auto — the tone follows the words.",
+          },
         },
         required: ["text"],
         additionalProperties: false,
@@ -272,7 +285,18 @@ export function createVoiceMessageTools(
       manualId: "voice",
       run: async (args) => {
         const text = strArg(args, "text");
+        const emotionArg = strArg(args, "emotion").trim() || null;
         const cfg: TtsConfig = voiceStore.getSnapshot().tts;
+        // Old test fakes return no settings — fall back to defaults.
+        const settings = voiceStore.getSnapshot().settings ?? defaultVoiceSettings();
+        const emotion = resolveSpeakEmotion(
+          text,
+          {
+            emotionalTts: settings.emotionalTts ?? true,
+            emotionPin: settings.emotionPin ?? null,
+          },
+          emotionArg,
+        );
         const ephemeral = opts?.isIncognito?.() === true;
         const deps: VoiceMessageToolDeps = {
           synthesize: synthesizeSpeech,
@@ -283,7 +307,7 @@ export function createVoiceMessageTools(
           estimateDuration: estimateDurationFromText,
           ...opts?.deps,
         };
-        return makeVoiceMessage(text, cfg, deps);
+        return makeVoiceMessage(text, cfg, deps, { emotion });
       },
     },
   ];

@@ -11,7 +11,12 @@
  */
 
 import { edgeTtsSynthesize } from "./edge-tts";
-import { synthesizeWithProvider, type NetworkTtsProvider } from "./tts-providers";
+import { emotionProsody, type VoiceEmotion } from "./emotion";
+import {
+  type NetworkTtsProvider,
+  synthesizeWithProvider,
+  toProviderProsody,
+} from "./tts-providers";
 import type { TtsConfig } from "./types";
 
 export class TtsError extends Error {
@@ -124,20 +129,35 @@ function base64Encode(binary: string): string {
   return out;
 }
 
-async function synthesizeEdgeTts(text: string, voice: string, rate = 1.0): Promise<string> {
+async function synthesizeEdgeTts(
+  text: string,
+  voice: string,
+  rate = 1.0,
+  prosody?: { pitchHz: number; volumePct: number },
+): Promise<string> {
   let bytes: Uint8Array;
   try {
-    bytes = await edgeTtsSynthesize(text, voice, rate);
+    bytes = await edgeTtsSynthesize(text, voice, rate, prosody);
   } catch (e) {
     throw new TtsError(e instanceof Error ? e.message : "edge-tts failed");
   }
   return writeBytes(bytes, "mp3");
 }
 
-async function synthesizeNetworkProvider(text: string, cfg: TtsConfig): Promise<string> {
+async function synthesizeNetworkProvider(
+  text: string,
+  cfg: TtsConfig,
+  prosody?: { pitchHz: number; volumePct: number } | null,
+): Promise<string> {
   let audio;
   try {
-    audio = await synthesizeWithProvider(cfg.provider as NetworkTtsProvider, text, cfg);
+    audio = await synthesizeWithProvider(
+      cfg.provider as NetworkTtsProvider,
+      text,
+      cfg,
+      undefined,
+      prosody ? toProviderProsody({ rate: cfg.rate ?? 1.0, ...prosody }) : null,
+    );
   } catch (e) {
     throw new TtsError(e instanceof Error ? e.message : "TTS provider failed");
   }
@@ -170,10 +190,41 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
 }
 
 /**
- * Synthesize text with the given config. Returns a local file URI.
- * Results are cached by (provider, voice, model, rate, text hash) — playing the
- * same bubble twice doesn't hit the network twice.
+ * Options for synthesizeSpeech. `emotion` is the resolved emotion (or null
+ * for the flat voice). Callers resolve it with resolveSpeakEmotion(); this
+ * layer only applies it. Null/omitted = the old behavior, byte for byte.
  */
+export interface SynthesizeOptions {
+  emotion?: VoiceEmotion | null;
+}
+
+/** Effective synthesis parameters for an emotion. Exported for tests. */
+export interface EffectiveEmotionParams {
+  /** Effective rate: her base speed × emotion rate, clamped to 0.5–2.0. */
+  rate: number;
+  pitchHz: number;
+  volumePct: number;
+}
+
+/**
+ * Resolve the concrete parameters an emotion produces on her config.
+ * Pure — the tests assert these exact numbers reach the synthesizer.
+ * Null emotion = flat: her rate untouched, zero pitch/volume delta.
+ */
+export function resolveEmotionParams(
+  cfg: TtsConfig,
+  emotion: VoiceEmotion | null,
+): EffectiveEmotionParams {
+  const base = cfg.rate ?? 1.0;
+  if (!emotion) return { rate: base, pitchHz: 0, volumePct: 0 };
+  const p = emotionProsody(emotion);
+  const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+  return {
+    rate: clamp(base * p.rate, 0.5, 2.0),
+    pitchHz: clamp(Math.round(p.pitchHz), -50, 50),
+    volumePct: clamp(Math.round(p.volumePct), -50, 50),
+  };
+}
 
 // P2-17: in-flight dedup by cache key. Concurrent syntheses of identical
 // text share one network call and one cache-slot write — two racing temps
@@ -181,7 +232,18 @@ async function synthesizeCustom(text: string, cfg: TtsConfig): Promise<string> {
 // that's replayed on every future hit.
 const inFlightSynth = new Map<string, Promise<string>>();
 
-export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<string> {
+/**
+ * Synthesize text with the given config. Returns a local file URI.
+ * Results are cached by (provider, voice, model, rate, emotion params,
+ * text hash) — playing the same bubble twice doesn't hit the network
+ * twice. The emotion params are part of the key: the same sentence said
+ * happy and said sad are different audio and must not share a cache slot.
+ */
+export async function synthesizeSpeech(
+  text: string,
+  cfg: TtsConfig,
+  opts?: SynthesizeOptions,
+): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) throw new TtsError("empty text");
   // Strip markdown-ish formatting so the voice doesn't read asterisks.
@@ -196,8 +258,9 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
 
   const fs = await loadFs();
   const dir = await cacheDir();
+  const ep = resolveEmotionParams(cfg, opts?.emotion ?? null);
   const cacheKey = hashText(
-    `${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${cfg.providerModel ?? ""}|${cfg.providerUrl ?? ""}|${cfg.rate ?? 1.0}|${clean}`,
+    `${cfg.provider}|${cfg.voice}|${cfg.customModel ?? ""}|${cfg.providerModel ?? ""}|${cfg.providerUrl ?? ""}|${ep.rate.toFixed(3)}|${ep.pitchHz}|${ep.volumePct}|${clean}`,
   );
   // Cache slot lookup: the stored extension follows the actual audio format
   // (sniffed from Content-Type), so scan for any `${cacheKey}.*` — the .mp3
@@ -220,12 +283,15 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<st
   const ongoing = inFlightSynth.get(cacheKey);
   if (ongoing) return ongoing;
   const job = (async (): Promise<string> => {
+    const emotionCfg: TtsConfig = { ...cfg, rate: ep.rate };
+    const emoProsody =
+      opts?.emotion != null ? { pitchHz: ep.pitchHz, volumePct: ep.volumePct } : null;
     const uri =
       cfg.provider === "edge-tts"
-        ? await synthesizeEdgeTts(clean, cfg.voice, cfg.rate ?? 1.0)
+        ? await synthesizeEdgeTts(clean, cfg.voice, ep.rate, emoProsody ?? undefined)
         : cfg.provider === "custom"
-          ? await synthesizeCustom(clean, cfg)
-          : await synthesizeNetworkProvider(clean, cfg);
+          ? await synthesizeCustom(clean, emotionCfg)
+          : await synthesizeNetworkProvider(clean, emotionCfg, emoProsody);
     // Move into the cache slot for next time (best-effort), keeping the real extension.
     const ext = uri.split(".").pop() ?? "mp3";
     const cachedUri = `${dir}${cacheKey}.${ext}`;

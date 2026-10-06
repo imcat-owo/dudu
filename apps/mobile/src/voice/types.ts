@@ -22,6 +22,8 @@
  *   base64 PCM audio (converted to WAV).
  */
 
+import type { VoiceEmotion } from "./emotion";
+
 export type TtsProvider =
   | "edge-tts"
   | "custom"
@@ -174,10 +176,23 @@ export interface VoiceSettings {
    * opt-in because it spends TTS quota on every reply.
    */
   autoRead: boolean;
+  /**
+   * Emotional TTS: his voice follows the message's emotion (rate/pitch/
+   * volume per emotion, see ./emotion.ts). Default true — her voice brief
+   * already describes an emotional voice ("轻重快慢随情绪变化，不平铺直叙").
+   * Off = the old flat voice, byte for byte.
+   */
+  emotionalTts: boolean;
+  /**
+   * Pinned tone for every synthesis, or null = auto (follow the words).
+   * Her pin beats auto-classification; the AI's per-message explicit
+   * emotion beats the pin.
+   */
+  emotionPin: VoiceEmotion | null;
 }
 
 export function defaultVoiceSettings(): VoiceSettings {
   // Transcribe by default: "recording must not be decorative" — the AI
   // should hear what the user says. Voice messages stay one toggle away.
-  return { micMode: "transcribe", autoRead: false };
+  return { micMode: "transcribe", autoRead: false, emotionalTts: true, emotionPin: null };
 }

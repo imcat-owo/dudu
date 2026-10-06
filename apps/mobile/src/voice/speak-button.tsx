@@ -12,12 +12,13 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable } from "react-native";
 import { t } from "../i18n";
 import { useColors } from "../ui";
+import { resolveSpeakEmotion } from "./emotion";
 import { useVoiceConfig } from "./store";
 import { synthesizeSpeech } from "./tts";
 
 export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string }) {
   const colors = useColors();
-  const { tts } = useVoiceConfig();
+  const { tts, settings } = useVoiceConfig();
   const [state, setState] = useState<"idle" | "synthesizing" | "playing">("idle");
   const [error, setError] = useState("");
   const playerRef = useRef<AudioPlayer | null>(null);
@@ -65,7 +66,13 @@ export function SpeakButton({ text, bubbleFg }: { text: string; bubbleFg: string
     setError("");
     setState("synthesizing");
     try {
-      const uri = await synthesizeSpeech(text, tts);
+      // Emotional TTS: tapped bubbles are read in the tone their words
+      // carry (or her pinned tone). Off → null → the old flat voice.
+      const emotion = resolveSpeakEmotion(text, {
+        emotionalTts: settings.emotionalTts ?? true,
+        emotionPin: settings.emotionPin ?? null,
+      });
+      const uri = await synthesizeSpeech(text, tts, { emotion });
       // P3-15: unmounted while synthesizing — bail before creating a player
       // nobody can stop.
       if (!mountedRef.current) {

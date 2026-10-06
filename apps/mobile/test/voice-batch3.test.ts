@@ -259,7 +259,12 @@ describe("auto-read", () => {
     const played: string[] = [];
     let playerReleased = false;
     const deps = {
-      getSettings: () => ({ micMode: "transcribe" as const, autoRead: true }),
+      getSettings: () => ({
+        micMode: "transcribe" as const,
+        autoRead: true,
+        emotionalTts: true,
+        emotionPin: null,
+      }),
       getTtsConfig: () => ({ provider: "edge-tts" as const, voice: "v" }),
       synthesize: async (text: string) => {
         played.push(text);
@@ -284,7 +289,12 @@ describe("auto-read", () => {
   it("no-op when autoRead is off", async () => {
     __resetAutoReadForTests();
     const { deps, played } = makeDeps({
-      getSettings: () => ({ micMode: "transcribe" as const, autoRead: false }),
+      getSettings: () => ({
+        micMode: "transcribe" as const,
+        autoRead: false,
+        emotionalTts: true,
+        emotionPin: null,
+      }),
     });
     const ok = await maybeAutoReadAssistantMessage("hello", deps);
     assert.equal(ok, false);

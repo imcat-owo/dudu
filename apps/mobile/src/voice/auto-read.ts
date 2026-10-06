@@ -12,6 +12,7 @@
  * interruption.
  */
 
+import { resolveSpeakEmotion, type VoiceEmotion } from "./emotion";
 import type { TtsConfig, VoiceSettings } from "./types";
 
 export interface AudioPlayerLike {
@@ -27,7 +28,11 @@ export interface AudioPlayerLike {
 export interface AutoReadDeps {
   getSettings: () => VoiceSettings;
   getTtsConfig: () => TtsConfig;
-  synthesize: (text: string, cfg: TtsConfig) => Promise<string>;
+  synthesize: (
+    text: string,
+    cfg: TtsConfig,
+    opts?: { emotion?: VoiceEmotion | null },
+  ) => Promise<string>;
   createPlayer: (uri: string) => AudioPlayerLike;
   setAudioMode: (mode: { playsInSilentMode: boolean }) => Promise<void>;
   /**
@@ -85,9 +90,15 @@ export async function maybeAutoReadAssistantMessage(
   const token = ++autoReadToken;
   // A newer message cancels this one — never talk over the latest reply.
   releaseCurrent();
+  // Emotional TTS: the reply is read in the tone its words carry (or her
+  // pinned tone). Off → null → the old flat voice.
+  const emotion = resolveSpeakEmotion(clean, {
+    emotionalTts: settings.emotionalTts ?? true,
+    emotionPin: settings.emotionPin ?? null,
+  });
   let uri: string;
   try {
-    uri = await deps.synthesize(clean, deps.getTtsConfig());
+    uri = await deps.synthesize(clean, deps.getTtsConfig(), { emotion });
   } catch (e) {
     // D35: never swallow a synthesis failure — tell the caller so the
     // UI can show it instead of silently not playing anything.
