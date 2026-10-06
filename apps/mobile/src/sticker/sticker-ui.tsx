@@ -341,6 +341,11 @@ export function StickerManager({ visible, onClose }: { visible: boolean; onClose
             <X size={22} color={colors.text} />
           </Pressable>
         </View>
+        <TText
+          style={{ paddingHorizontal: 16, marginBottom: 8, fontSize: 12, color: colors.muted }}
+        >
+          {t("sticker.localOnlyHint")}
+        </TText>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
           <SectionHeading title={t("sticker.createPack")} />
           <View style={{ flexDirection: "row", gap: 8 }}>

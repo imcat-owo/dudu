@@ -1326,6 +1326,7 @@ const zhHant = {
   "sticker.removeSticker": "移除表情",
   "sticker.removeStickerConfirm": "把\"{name}\"從這個分組移除？",
   "sticker.removeHint": "長按一張表情可以移除它。",
+  "sticker.localOnlyHint": "表情包只存在這台手機上，重裝 App 會全部消失，記得留好原圖。",
   "sticker.aiPack": "AI 表情庫",
   "sticker.empty": "這裡還沒有表情，去相冊裡挑幾張加上吧。",
   "sticker.addFailed": "這張圖沒加上。",

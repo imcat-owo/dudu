@@ -51,7 +51,10 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # --prod: keep expo-dev-client (devDependency) out of the release
+        # build so the dev launcher / EX_DEV_MENU_ENABLED never ships in
+        # the IPA. Local dev still gets it via a normal `pnpm install`.
+        run: pnpm install --frozen-lockfile --prod
         working-directory: .
 
       - name: Expo prebuild (generate ios/)

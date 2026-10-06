@@ -36,7 +36,10 @@ HONESTY:
 
 Incognito: sticker_list/sticker_send are UNAVAILABLE in incognito — the
 send copies a file and the first list seeds the AI library, and incognito
-promises zero side effects. Pack files live on-device only
+promises zero side effects. Don't attempt stickers in incognito at all:
+the tools will refuse honestly, and retrying is just noise — put it in
+words instead.
+Pack files live on-device only
 (<documentDirectory>/dudu-stickers) and are NOT part of backups — pack
 metadata isn't backed up either, so after a reinstall the packs are gone
 entirely (pack list + pictures alike). Rebuild them by re-adding.`,

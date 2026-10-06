@@ -31,6 +31,18 @@ export const stickerStore = new StickerStore(asyncBackend);
 
 let aiSeeded = false;
 
+/**
+ * Turn-scoped sticker cap counter. local-agent resets it at the start of
+ * every runTurn; sticker_send refuses the second call in the same turn.
+ * Module-level is fine — there is one active agent at a time.
+ */
+let stickersSentThisTurn = 0;
+
+/** Reset the per-turn sticker counter. Called by local-agent at turn start. */
+export function resetStickerTurnCount(): void {
+  stickersSentThisTurn = 0;
+}
+
 /** Seed the AI library pack from the devil mascot art (once per launch). */
 export async function ensureAiPackSeeded(): Promise<void> {
   if (aiSeeded) return;
@@ -69,6 +81,10 @@ const productionEnv: StickerToolEnv = {
   },
   stickerFileUri: (packId, fileName) => packStickerUri(packId, fileName),
   copyForSend: (srcUri) => copyForSendFile(srcUri),
+  countStickersSentThisTurn: () => stickersSentThisTurn,
+  noteStickerSentThisTurn: () => {
+    stickersSentThisTurn += 1;
+  },
   // Resolved per tool call (never captured at construction) so a persona
   // switch mid-session takes effect immediately — same rule as
   // currentPersonaId() in local-agent.ts. Lazy import avoids any

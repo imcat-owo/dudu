@@ -126,7 +126,7 @@ import { createFontSizeTools } from "../settings/tools";
 import { skillStore } from "../skills/instance";
 import { createSkillTools } from "../skills/tools";
 import { ambientVideoStore } from "../sora-ambient-video-instance";
-import { createProductionStickerTools } from "../sticker/instances";
+import { createProductionStickerTools, resetStickerTurnCount } from "../sticker/instances";
 import { buildStorySectionForThread, createProductionStoryTools } from "../story/instances";
 import { getAiThemeMode } from "../theme/ai-mode";
 import {
@@ -1024,6 +1024,8 @@ export function createLocalAgent(opts: {
       // mid-function) so the harness post-execute hook can see it.
       // 纸条机制: manuals read this turn (so error notes don't repeat).
       const readManuals = new Set<string>();
+      // Sticker cap: one sticker per turn, enforced in code (sticker/tools.ts).
+      resetStickerTurnCount();
       const turnHarness = agentHarness.beginTurn({
         readManuals,
         findTool: (name: string) => tools.find((t) => t.name === name),

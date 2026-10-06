@@ -1,8 +1,8 @@
 import { HeartCrack, RotateCcw } from "lucide-react-native";
 import { Component, type ReactNode, useEffect, useState } from "react";
-import { Pressable, useColorScheme, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import { type BootMark, bootMark, readBootLog } from "./bootlog";
-import { TText } from "./font";
+import { type CrashReport, readCrashReports, recordCrashReport } from "./crash-report";
 import { t } from "./i18n";
 import { CRASH_PALETTE } from "./theme/crash-palette";
 import { radii } from "./theme/radii";
@@ -35,11 +35,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { error };
   }
 
-  componentDidCatch(): void {
-    // Intentionally silent: this codebase keeps the console clean and the
-    // local-first build has no remote error reporting to send to.
-    // Crash-bisection (2026-10-06): still record the milestone so the boot
-    // log shows where the JS tree died.
+  componentDidCatch(error: Error): void {
+    // Record the crash (message + stack + timestamp) so a JS crash leaves
+    // a trace on the device — previously this was intentionally silent.
+    // Still record the boot milestone so the boot log shows where the JS
+    // tree died.
+    void recordCrashReport(error, this.props.label);
     void bootMark("js-crash-caught");
   }
 
@@ -66,15 +67,24 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
   // screen — if the theme system itself is what crashed, depending on it
   // would blank the fallback too. useColorScheme() alone is safe, and the
   // palette lives in theme/crash-palette.ts as static tokens (not inline hex).
+  //
+  // Deliberately NOT using TText either: TText reads the font-size store,
+  // so if the font system is what crashed, the fallback would white-screen
+  // too. Raw react-native Text only.
   const dark = useColorScheme() === "dark";
   const p = CRASH_PALETTE[dark ? "dark" : "light"];
   // Crash-bisection (2026-10-06): show the startup milestones so a screenshot
-  // of this screen tells us how far boot got before dying.
+  // of this screen tells us how far boot got before dying. Also show the
+  // recorded crash report (what the error actually was).
   const [marks, setMarks] = useState<BootMark[]>([]);
+  const [report, setReport] = useState<CrashReport | null>(null);
   useEffect(() => {
     let alive = true;
     void readBootLog().then((m) => {
       if (alive) setMarks(m.slice(-8));
+    });
+    void readCrashReports().then((r) => {
+      if (alive) setReport(r.length > 0 ? r[r.length - 1] : null);
     });
     return () => {
       alive = false;
@@ -106,10 +116,10 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
       >
         <HeartCrack size={34} strokeWidth={1.6} color={p.muted} />
       </View>
-      <TText style={{ fontSize: 19, fontWeight: "600", color: p.fg, textAlign: "center" }}>
+      <Text style={{ fontSize: 19, fontWeight: "600", color: p.fg, textAlign: "center" }}>
         {t("error.crashTitle")}
-      </TText>
-      <TText
+      </Text>
+      <Text
         style={{
           fontSize: 14,
           color: p.muted,
@@ -119,7 +129,7 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
         }}
       >
         {t("error.crashBody")}
-      </TText>
+      </Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("common.retry")}
@@ -137,19 +147,27 @@ function CrashFallback({ label, onRetry }: { label?: string; onRetry: () => void
         })}
       >
         <RotateCcw size={16} color={p.buttonFg} />
-        <TText style={{ fontSize: 15, fontWeight: "600", color: p.buttonFg }}>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: p.buttonFg }}>
           {t("common.retry")}
-        </TText>
+        </Text>
       </Pressable>
-      {marks.length > 0 && (
+      {report && (
         <View style={{ marginTop: 18, maxWidth: 300 }}>
+          <Text style={{ fontSize: 11, color: p.muted, textAlign: "center" }}>
+            {new Date(report.t).toLocaleTimeString()}
+            {report.label ? ` · ${report.label}` : ""} · {report.message}
+          </Text>
+        </View>
+      )}
+      {marks.length > 0 && (
+        <View style={{ marginTop: 6, maxWidth: 300 }}>
           {marks.map((m) => (
-            <TText
+            <Text
               key={`${m.t}-${m.name}`}
               style={{ fontSize: 11, color: p.muted, textAlign: "center" }}
             >
               {new Date(m.t).toLocaleTimeString()} · {m.name}
-            </TText>
+            </Text>
           ))}
         </View>
       )}

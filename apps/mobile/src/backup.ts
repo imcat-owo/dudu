@@ -120,6 +120,10 @@ const OURSPACE_KEYS = [
 // Task progress cards (our-space/task-progress.ts) — enumerated by prefix.
 const TASKS_PREFIX = "dudu.tasks.v1.";
 
+// Segmented sending per-persona toggle (segments/store.ts) — enumerated by
+// prefix (one key per persona: dudu.segments.v1.<personaId>).
+const SEGMENTS_PREFIX = "dudu.segments.v1.";
+
 // Music library (music/store.ts): tracks, playlists, queue, comments,
 // "our songs" counters, now-playing, DJ intent. No secrets — the Apple
 // Music user token lives in SecureStore and is never backed up.
@@ -611,6 +615,13 @@ export async function collectBackup(
     }
   }
 
+  // Segmented sending: per-persona toggle, enumerated by prefix.
+  for (const key of allKeys) {
+    if (!key.startsWith(SEGMENTS_PREFIX)) continue;
+    const v = await readJson(kv, key);
+    if (v !== null) extensions[key] = v;
+  }
+
   // Knowledge base: full snapshot (docs + chunks with vectors) so search
   // keeps working after restore without re-embedding (API keys are never
   // backed up, so re-embedding would silently fail).
@@ -858,10 +869,13 @@ export async function applyBackup(
   }
 
   // Extended sections: allowlisted keys only — a crafted backup must not
-  // be able to write arbitrary storage keys.
+  // be able to write arbitrary storage keys. Segments toggles are
+  // prefix-enumerated (one key per persona), like our-space task cards.
   if (backup.extensions) {
     for (const [key, value] of Object.entries(backup.extensions)) {
-      if (!(EXTENSION_KEYS as readonly string[]).includes(key)) continue;
+      const isFixed = (EXTENSION_KEYS as readonly string[]).includes(key);
+      const isSegments = key.startsWith(SEGMENTS_PREFIX);
+      if (!isFixed && !isSegments) continue;
       await kv.setItem(key, JSON.stringify(value));
     }
   }
@@ -912,6 +926,8 @@ const KNOWN_UNBACKED_KEYS: ReadonlySet<string> = new Set([
   "dudu.backup.s3.secret.v1", // secret (SecureStore)
   "dudu.backup.webdav.pass.v1", // secret (SecureStore)
   "dudu.diagnostics.v1", // bookkeeping: diagnostics log, not her data
+  "dudu.bootlog.v1", // bookkeeping: startup milestone ring buffer, device-local diagnostics
+  "dudu.crashreport.v1", // bookkeeping: caught JS crash reports, device-local diagnostics
   "dudu.backup.lastAt.v1", // bookkeeping, not her data
   "dudu.kb.v2.migrated", // internal migration flag
   // App Group shared defaults (native UserDefaults, not AsyncStorage) —
@@ -941,6 +957,7 @@ export function isKeyExcluded(key: string): boolean {
 function isKeyCovered(key: string): boolean {
   if (key.startsWith(CHAT_PREFIX) && key.endsWith(CHAT_SUFFIX)) return true;
   if (key.startsWith(TASKS_PREFIX)) return true;
+  if (key.startsWith(SEGMENTS_PREFIX)) return true; // per-persona segments toggles
   if (key.startsWith("dudu.kb.v1.")) return true; // covered by the knowledge section
   if (key === GROUPS_KEY) return true;
   if (key === AI_AUTH_KEY || key.startsWith(`${AI_AUTH_KEY}.`)) return true;

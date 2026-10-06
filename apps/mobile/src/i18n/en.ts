@@ -1370,6 +1370,8 @@ export const enStrings: Record<StringKey, string> = {
   "sticker.removeSticker": "Remove sticker",
   "sticker.removeStickerConfirm": "Remove \"{name}\" from this pack?",
   "sticker.removeHint": "Long-press a sticker to remove it.",
+  "sticker.localOnlyHint":
+    "Sticker packs live on this phone only. Reinstalling the app wipes them — keep your originals.",
   "sticker.aiPack": "AI library",
   "sticker.empty": "No stickers here yet — add some from your photo library.",
   "sticker.addFailed": "That image could not be added.",

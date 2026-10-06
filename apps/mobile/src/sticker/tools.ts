@@ -34,6 +34,14 @@ export interface StickerToolEnv {
   copyForSend: (srcUri: string) => Promise<string>;
   /** May the AI send stickers in the current persona's chats? (per-persona toggle) */
   isAiEnabled: () => Promise<boolean>;
+  /**
+   * Turn-scoped sticker cap ("at most one sticker per turn" is enforced in
+   * code, not just the manual). Optional — defaults to 0/no-op so unit
+   * tests and other envs don't need to provide it. Production wires a
+   * counter that local-agent resets at the start of every runTurn.
+   */
+  countStickersSentThisTurn?: () => number;
+  noteStickerSentThisTurn?: () => void;
 }
 
 export function createStickerTools(env: StickerToolEnv): LocalTool[] {
@@ -66,7 +74,8 @@ export function createStickerTools(env: StickerToolEnv): LocalTool[] {
         "so it renders as a sticker bubble, and keep your words around it short. " +
         "GIFs render as their first frame only — never promise animation. " +
         "Restraint (from the sticker manual): stickers punctuate, never replace, " +
-        "words — at most one per turn, never a sticker-only reply to anything serious.",
+        "words — at most one per turn, never a sticker-only reply to anything serious. " +
+        "The one-per-turn cap is enforced: a second call in the same turn is refused.",
       parameters: {
         type: "object",
         properties: {
@@ -82,6 +91,12 @@ export function createStickerTools(env: StickerToolEnv): LocalTool[] {
         if (!(await env.isAiEnabled())) {
           throw new ToolError(
             "sticker sending is turned off for this persona — say so honestly instead of sending one.",
+          );
+        }
+        // One sticker per turn, enforced in code (not just the manual).
+        if ((env.countStickersSentThisTurn?.() ?? 0) >= 1) {
+          throw new ToolError(
+            "one sticker per turn — you already sent one this turn. Put the rest into words.",
           );
         }
         const stickerId = typeof args.stickerId === "string" ? args.stickerId.trim() : "";
@@ -102,6 +117,7 @@ export function createStickerTools(env: StickerToolEnv): LocalTool[] {
         }
         const srcUri = await env.stickerFileUri(found.pack.id, found.sticker.fileName);
         const uri = await env.copyForSend(srcUri);
+        env.noteStickerSentThisTurn?.();
         return JSON.stringify({
           sticker_message: encodeStickerMessage({
             uri,

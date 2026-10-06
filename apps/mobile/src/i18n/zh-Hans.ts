@@ -1323,6 +1323,7 @@ const zhHans = {
   "sticker.removeSticker": "移除表情",
   "sticker.removeStickerConfirm": "把\"{name}\"从这个分组移除？",
   "sticker.removeHint": "长按一张表情可以移除它。",
+  "sticker.localOnlyHint": "表情包只存在这台手机上，重装 App 会全部消失，记得留好原图。",
   "sticker.aiPack": "AI 表情库",
   "sticker.empty": "这里还没有表情，去相册里挑几张加上吧。",
   "sticker.addFailed": "这张图没加上。",

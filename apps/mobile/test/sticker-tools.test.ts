@@ -100,4 +100,28 @@ describe("sticker_send", () => {
     const hit = extractStickerMessage(out.sticker_message);
     assert.ok(hit && hit.sticker.packId === "ai", "AI-library sticker bubble ready");
   });
+
+  it("one sticker per turn: the second send in the same turn is refused", async () => {
+    let sent = 0;
+    const env = mockEnv();
+    const turnEnv: StickerToolEnv = {
+      ...env,
+      countStickersSentThisTurn: () => sent,
+      noteStickerSentThisTurn: () => {
+        sent += 1;
+      },
+    };
+    const tools = createStickerTools(turnEnv);
+    const send = tool(tools, "sticker_send");
+    await send.run({ stickerId: "st_devil1" }, {} as never);
+    assert.equal(sent, 1, "first send counted");
+    await assert.rejects(send.run({ stickerId: "st_happy" }, {} as never), /one sticker per turn/);
+    assert.equal(env.copied.length, 1, "refused send copies no file");
+  });
+
+  it("without a turn counter env, single sends still work (back-compat)", async () => {
+    const tools = createStickerTools(mockEnv());
+    const raw = await tool(tools, "sticker_send").run({ stickerId: "st_happy" }, {} as never);
+    assert.ok(JSON.parse(raw as string).sticker_message, "envelope returned");
+  });
 });

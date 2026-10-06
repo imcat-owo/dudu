@@ -811,6 +811,39 @@ describe("findUnbackedKeys — real src/ key scan (B7, not decorative)", () => {
       "scheduled tasks must survive the round trip",
     );
   });
+
+  it("segments per-persona toggles survive backup → restore via prefix (P3)", async () => {
+    // Read the REAL prefix from the source module so a rename breaks loudly
+    // instead of silently testing a stale string.
+    const src = readFileSync(join(SRC_DIR, "segments", "store.ts"), "utf8");
+    const m = src.match(/KEY_PREFIX\s*=\s*["']([^"']+)["']/);
+    assert.ok(m, "KEY_PREFIX must exist in segments/store.ts");
+    const prefix = m[1];
+    const seed: Record<string, string> = {
+      [`${prefix}personaA`]: JSON.stringify("0"), // she turned it off
+      [`${prefix}default`]: JSON.stringify("1"),
+    };
+    const b = await collectBackup(fakeKV(seed), fakeSecure());
+    assert.equal(
+      b.extensions?.[`${prefix}personaA`],
+      "0",
+      "segments toggle must be collected into the backup",
+    );
+    const parsed = parseBackup(serializeBackup(b));
+    assert.equal(parsed.ok, true, "serialized backup must parse");
+    const kv2 = fakeKV();
+    await applyBackup(parsed.ok ? parsed.backup : b, kv2, fakeSecure());
+    assert.equal(
+      await kv2.getItem(`${prefix}personaA`),
+      JSON.stringify("0"),
+      "segments toggle must survive the round trip",
+    );
+    assert.equal(
+      await kv2.getItem(`${prefix}default`),
+      JSON.stringify("1"),
+      "segments default toggle must survive the round trip",
+    );
+  });
 });
 
 describe("chat envelope backup round trip (gap fill A2)", () => {
